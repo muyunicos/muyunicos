@@ -1,0 +1,155 @@
+/*
+Theme Name: GeneratePress Child
+Theme URI: https://generatepress.com
+Template: generatepress
+Author: Tom Usborne
+Author URI: https://generatepress.com/about
+Description: GeneratePress is a lightweight WordPress theme built with a focus on speed and usability. Performance is important to us, which is why a fresh GeneratePress install adds less than 10kb (gzipped) to your page size. We take full advantage of the block editor (Gutenberg), which gives you more control over creating your content. If you use page builders, GeneratePress is the right theme for you. It is completely compatible with all major page builders, including Beaver Builder and Elementor. Thanks to our emphasis on WordPress coding standards, we can boast full compatibility with all well-coded plugins, including WooCommerce. GeneratePress is fully responsive, uses valid HTML/CSS, and is translated into over 25 languages by our amazing community of users. A few of our many features include 60+ color controls, powerful dynamic typography, 5 navigation locations, 5 sidebar layouts, dropdown menus (click or hover), and 9 widget areas. Learn more and check out our powerful premium version at https://generatepress.com
+Tags: two-columns,three-columns,one-column,right-sidebar,left-sidebar,footer-widgets,blog,e-commerce,flexible-header,full-width-template,buddypress,custom-header,custom-background,custom-menu,custom-colors,sticky-post,threaded-comments,translation-ready,rtl-language-support,featured-images,theme-options
+Version: 3.6.1.1770851975
+Updated: 2026-02-11 20:19:35
+
+*/
+
+:root {
+  --primario: #2B9FCF;
+  --secundario: #FFD77A;
+  --texto: #277292;
+  --texto-light: #6C6F7A;
+  --fondo: #fbf7f5;
+  --blanco: #FFFFFF;
+  --exito: #a3ffbc;
+  --resaltado: #237FA9;
+  --mu-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --mu-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --mu-shadow-md: 0 8px 16px rgba(0, 0, 0, 0.15);
+  --mu-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.15);
+  --mu-radius-sm: 6px;
+  --mu-radius: 12px;
+  --mu-radius-md: 16px;
+  --mu-radius-lg: 20px;
+  --mu-radius-xl: 32px;
+  --mu-radius-full: 9999px;
+  --mu-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --mu-transition-fast: all 0.2s ease;
+  --mu-font-display: 'Fredoka One', display, sans-serif;
+  --mu-font-base: Inter, sans-serif;
+  --mu-space-xs: 5px;
+  --mu-space-sm: 10px;
+  --mu-space-md: 20px;
+  --mu-space-lg: 40px;
+  --mu-space-xl: 40px;
+}
+
+/* Elementos Base y Reset */
+html, body { height: 100%; margin: 0; padding: 0; }
+body { display: flex; flex-direction: column; min-height: 100vh; font-family: var(--mu-font-base); color: var(--texto); background-color: var(--fondo); }
+#page { flex: 1 0 auto; display: flex; flex-direction: column; width: 100%; }
+.site-content { flex: 1; }
+* { box-sizing: border-box; }
+
+/* Iconos */
+.mu-icon-svg { background-color: transparent; color: currentColor; stroke-width: 3px; fill: none; stroke-linecap: round; stroke-linejoin: round; width: 22px; height: 22px; stroke: currentColor; display: block; flex-shrink: 0; }
+
+/* Ocultar Imagen Header (Considerar eliminar via PHP) */
+.featured-image.page-header-image.grid-container.grid-parent { display: none; }
+
+/* Inputs Específicos */
+input#nombre_personalizado { width: 100%; height: 40px; padding: 0 15px 0 15px; padding-right: 50px; border: 2px solid var(--primario); border-radius: 4px; color: var(--primario, #111); font-size: 14px; }
+
+/* Layout y Contenedores */
+.mu-container { max-width: 1280px; margin: 0 auto; padding: 0 20px; }
+.mu-section { padding: var(--mu-space-xl) 0; }
+.mu-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; flex-wrap: wrap; gap: 20px; }
+.mu-section-title { font-size: clamp(2rem, 4vw, 2.5rem); text-align: center; margin-bottom: 50px; color: var(--texto); font-weight: 800; font-family: var(--mu-font-display); line-height: 1.3em; }
+.mu-section-subtitle { text-align: center; color: var(--texto-light); margin-top: -30px; margin-bottom: 50px; font-size: 1.1rem; }
+
+/* Botones (Globales) */
+.mu-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 16px 32px; border-radius: var(--mu-radius); font-weight: 600; font-size: 1.05rem; text-decoration: none; transition: var(--mu-transition); border: 2px solid transparent; cursor: pointer; position: relative; overflow: hidden; }
+.mu-btn:focus-visible { outline: 3px solid var(--primario); outline-offset: 4px; }
+.mu-btn:hover .mu-btn-icon { transform: translateX(4px); }
+.mu-btn-icon { transition: transform 0.3s ease; }
+
+/* Variantes de Botones */
+.mu-btn-primary { background: var(--primario); color: var(--blanco) !important; border-color: var(--primario); box-shadow: var(--mu-shadow); }
+.mu-btn-primary:hover { background: var(--resaltado); border-color: var(--resaltado); transform: translateY(-3px); box-shadow: var(--mu-shadow-lg); }
+.mu-btn-secondary { background: var(--secundario); color: var(--texto); border-color: var(--secundario); }
+.mu-btn-secondary:hover { background: #ffc94d; transform: translateY(-2px); }
+.mu-btn-outline { background: #ffffff99; color: var(--primario); border-color: var(--primario); }
+.mu-btn-outline:hover { background: var(--primario); color: var(--blanco) !important; }
+.mu-btn-outline-light { background: rgba(255, 255, 255, 0.1); color: #fff; border-color: rgba(255, 255, 255, 0.4); backdrop-filter: blur(10px); }
+.mu-btn-outline-light:hover { background: rgba(255, 255, 255, 0.25); border-color: rgba(255, 255, 255, 0.6); transform: translateY(-2px); box-shadow: var(--mu-shadow); }
+
+/* Tamaños de Botones */
+.mu-btn-lg { padding: 18px 48px; font-size: 1.15rem; }
+.mu-btn-sm { padding: 8px 16px; font-size: 0.9rem; }
+
+/* Links y Badges */
+.mu-link-arrow { color: var(--primario); text-decoration: none; font-weight: 600; transition: var(--mu-transition); font-size: 1.05rem; }
+.mu-link-arrow:hover { transform: translateX(5px); color: var(--resaltado); }
+.mu-badge { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: #ef4444; color: #fff; border-radius: var(--mu-radius-full); font-size: 0.85rem; font-weight: 700; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4); }
+.mu-badge-sale { background: linear-gradient(135deg, var(--secundario) 0%, #f59e0b 100%); box-shadow: 0 4px 12px rgba(251, 191, 36, 0.4); }
+.mu-badge-success { background: var(--exito); color: var(--texto); }
+
+/* Cards y Grids */
+.mu-card { background: var(--blanco); border-radius: var(--mu-radius-lg); box-shadow: var(--mu-shadow); overflow: hidden; transition: var(--mu-transition); }
+.mu-card:hover { transform: translateY(-5px); box-shadow: var(--mu-shadow-lg); }
+.mu-card-body { padding: var(--mu-space-md); }
+.mu-grid { display: grid; gap: 30px; }
+.mu-grid-2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.mu-grid-3 { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+.mu-grid-4 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+
+/* Utilidades Flex y Spacing */
+.mu-flex { display: flex; }
+.mu-flex-center { display: flex; align-items: center; justify-content: center; }
+.mu-flex-between { display: flex; justify-content: space-between; align-items: center; }
+.mu-flex-wrap { flex-wrap: wrap; }
+.mu-gap-sm { gap: var(--mu-space-sm); }
+.mu-gap-md { gap: var(--mu-space-md); }
+.mu-gap-lg { gap: var(--mu-space-lg); }
+.mu-mt-sm { margin-top: var(--mu-space-sm); }
+.mu-mt-md { margin-top: var(--mu-space-md); }
+.mu-mt-lg { margin-top: var(--mu-space-lg); }
+.mu-mb-sm { margin-bottom: var(--mu-space-sm); }
+.mu-mb-md { margin-bottom: var(--mu-space-md); }
+.mu-mb-lg { margin-bottom: var(--mu-space-lg); }
+.mu-p-sm { padding: var(--mu-space-sm); }
+.mu-p-md { padding: var(--mu-space-md); }
+.mu-p-lg { padding: var(--mu-space-lg); }
+
+/* Animaciones */
+@keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
+@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+.mu-animate-float { animation: float 3s ease-in-out infinite; }
+.mu-animate-pulse { animation: pulse 2s ease-in-out infinite; }
+
+/* E-commerce / Precios */
+.mu-qty-wrap { display: flex; align-items: center; overflow: hidden; }
+.mu-qty-btn { width: 32px; height: 32px; border: none; background: var(--primario); cursor: pointer; font-weight: bold; color: #fff; transition: background 0.2s; font-size: 16px; padding: 0; border-radius: 16px; }
+.mu-qty-btn:hover { background: var(--resaltado); }
+.mu-qty-input { width: 40px !important; text-align: center; border: none !important; padding: 0 !important; background-color: transparent !important; font-size: 1.2em; color: #333; -moz-appearance: textfield; font-weight: 600; }
+.mu-qty-input::-webkit-outer-spin-button, .mu-qty-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.promo-badge { font-size: 0.75em; background: var(--secundario); color: var(--texto); padding: 2px 6px; border-radius: 4px; margin-left: 3px; font-weight: 600; display: inline-block; }
+.price-strike { text-decoration: line-through; opacity: 0.6; margin-right: 3px; font-size: 0.9em; }
+
+/* Media Queries */
+@media (prefers-reduced-motion: reduce) {
+  .mu-animate-float, .mu-animate-pulse { animation: none; }
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+@supports not (backdrop-filter: blur(10px)) {
+  .mu-btn-outline-light { background: rgba(255, 255, 255, 0.25); }
+}
+@media (max-width: 900px) {
+  .mu-container { padding: 0 15px; }
+  .mu-grid-2, .mu-grid-3, .mu-grid-4 { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+  .mu-section { padding: 50px 0; }
+}
+@media (max-width: 640px) {
+  .mu-btn { width: 100%; justify-content: center; }
+  .mu-section-title { font-size: 2rem; }
+}
