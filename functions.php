@@ -129,7 +129,7 @@ function mu_enqueue_assets() {
         true
     );
 }
-add_action('wp_enqueue_scripts', 'mu_enqueue_assets', 20);
+add_action('wp_enqueue_scripts', 'mu_enqueue_assets', 5);
 
 /* ============================================
    MODAL AUTH - LOCALIZE SCRIPT
