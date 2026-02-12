@@ -1,0 +1,343 @@
+/* ========================================
+   FOOTER - ESTILOS PRINCIPALES
+   Migrado desde snippet "Footer"
+   ======================================== */
+
+/* ========================================
+   VARIABLES LOCALES DEL FOOTER
+   ======================================== */
+:root {
+    --mu-footer-bg: var(--primario);
+    --mu-footer-text: var(--blanco);
+    --mu-footer-accent: var(--secundario);
+}
+
+/* ========================================
+   OCULTAR FOOTER NATIVO DEL TEMA
+   ======================================== */
+.site-info,
+div.site-footer:not(.mu-custom-footer) {
+    display: none !important;
+}
+
+/* ========================================
+   CONTENEDOR PRINCIPAL
+   ======================================== */
+.mu-custom-footer {
+    background-color: var(--mu-footer-bg);
+    color: var(--mu-footer-text);
+    padding-top: 50px;
+    margin-top: auto;
+    width: 100%;
+    position: relative;
+    z-index: 10;
+    background-image: none !important;
+    border: none !important;
+}
+
+/* ========================================
+   GRID LAYOUT - DESKTOP (4 COLUMNAS)
+   ======================================== */
+.mu-footer-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr 1fr;
+    gap: var(--mu-space-lg);
+    padding-bottom: 50px;
+}
+
+/* ========================================
+   TÍTULOS DE SECCIÓN
+   ======================================== */
+.mu-footer-title {
+    color: var(--mu-footer-text);
+    font-size: 16px;
+    font-weight: normal;
+    font-family: var(--mu-font-display);
+    line-height: 1.3em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0 0 var(--mu-space-md) 0;
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Ocultar marcador nativo de <details> */
+.mu-footer-title::-webkit-details-marker {
+    display: none;
+}
+
+/* ========================================
+   ICONO DE FLECHA (ACCORDION MÓVIL)
+   ======================================== */
+.mu-arrow-icon {
+    font-size: 14px;
+    transition: transform 0.3s ease;
+    display: flex;
+    align-items: center;
+    opacity: 0.8;
+}
+
+.mu-arrow-icon svg {
+    fill: currentColor;
+}
+
+/* ========================================
+   ENLACES DEL FOOTER
+   ======================================== */
+.mu-footer-links {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.mu-footer-links li {
+    margin-bottom: var(--mu-space-sm);
+}
+
+.mu-footer-links a {
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: none;
+    font-size: 14px;
+    transition: var(--mu-transition-fast);
+    display: inline-block;
+}
+
+.mu-footer-links a:hover {
+    color: var(--mu-footer-accent);
+    transform: translateX(5px);
+}
+
+/* ========================================
+   TRUSTINDEX BADGE
+   ======================================== */
+.mu-trust-wrapper {
+    margin-top: var(--mu-space-md);
+}
+
+.ti-text:hover {
+    color: var(--blanco);
+}
+
+.mu-trust-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--mu-space-sm);
+    background: rgba(0, 0, 0, 0.1);
+    padding: 10px 15px;
+    border-radius: var(--mu-radius);
+    text-decoration: none;
+    color: white;
+    font-weight: bold;
+    font-size: 13px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ti-stars {
+    color: var(--mu-footer-accent);
+    letter-spacing: 2px;
+    margin-right: 5px;
+}
+
+/* ========================================
+   BUSCADOR DEL FOOTER
+   ======================================== */
+.mu-footer-search form {
+    display: flex;
+    position: relative;
+}
+
+.mu-footer-search input {
+    width: 100%;
+    padding: 12px 15px;
+    border-radius: var(--mu-radius-sm);
+    border: none;
+    outline: none;
+    font-size: 14px;
+    color: var(--texto);
+}
+
+.mu-footer-search button {
+    position: absolute;
+    right: 4px;
+    top: 4px;
+    bottom: 4px;
+    background: var(--mu-footer-accent);
+    color: var(--texto);
+    border: none;
+    border-radius: 4px;
+    padding: 0 15px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+/* ========================================
+   MEDIOS DE PAGO Y SEGURIDAD
+   ======================================== */
+.mu-payment-icons img {
+    width: -webkit-fill-available;
+    max-width: 360px;
+    margin-bottom: var(--mu-space-sm);
+}
+
+.mu-secure-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--exito);
+}
+
+/* ========================================
+   BOTÓN DE ARREPENTIMIENTO
+   ======================================== */
+a.mu-regret-btn {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: var(--mu-radius-md);
+    padding: 5px 12px;
+    font-size: 12px;
+    display: inline-block;
+    margin-top: 5px;
+}
+
+/* ========================================
+   SOCKET (BARRA INFERIOR)
+   ======================================== */
+.mu-socket {
+    background: rgba(0, 0, 0, 0.1);
+    padding: var(--mu-space-md) 0;
+    font-size: 13px;
+}
+
+.mu-socket-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* ========================================
+   ICONOS DE REDES SOCIALES
+   ======================================== */
+.mu-social-icons {
+    display: flex;
+    gap: var(--mu-space-sm);
+}
+
+.mu-social-link {
+    width: 36px;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    transition: var(--mu-transition);
+}
+
+.mu-social-link:hover {
+    background: #357d9b;
+    color: var(--blanco);
+}
+
+/* ========================================
+   RESPONSIVE - DESKTOP (> 900px)
+   Accordion siempre abierto en desktop
+   ======================================== */
+@media (min-width: 901px) {
+    details.mu-accordion {
+        display: block !important;
+        height: auto !important;
+    }
+
+    details.mu-accordion summary {
+        display: block !important;
+        pointer-events: none !important;
+        cursor: default !important;
+    }
+
+    details.mu-accordion .mu-arrow-icon {
+        display: none !important;
+    }
+}
+
+/* ========================================
+   RESPONSIVE - TABLET & MÓVIL (<= 900px)
+   ======================================== */
+@media (max-width: 900px) {
+    /* Ocultar títulos de secciones especiales en móvil */
+    .mu-col-search .mu-footer-title,
+    .mu-col-brand .mu-footer-title {
+        display: none !important;
+    }
+
+    /* Grid de 2 columnas en tablet/móvil */
+    .mu-footer-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+    }
+
+    /* Reordenar columnas */
+    .mu-col-search {
+        grid-column: 1 / -1;
+        order: -1;
+        margin-bottom: var(--mu-space-sm);
+    }
+
+    .mu-col-brand {
+        grid-column: 1 / -1;
+        text-align: center;
+    }
+
+    .mu-trust-wrapper {
+        justify-content: center;
+    }
+
+    .mu-col-links {
+        grid-column: 1 / -1;
+    }
+
+    .mu-col-pay {
+        grid-column: 1 / -1;
+        text-align: center;
+        background: rgba(0, 0, 0, 0.05);
+        padding: var(--mu-space-md);
+        border-radius: var(--mu-radius);
+    }
+
+    .mu-secure-badge {
+        justify-content: center;
+    }
+
+    /* Estilos del accordion móvil */
+    details.mu-accordion {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: var(--mu-radius);
+        overflow: hidden;
+    }
+
+    details.mu-accordion .mu-footer-title {
+        margin: 0;
+        padding: 15px;
+        cursor: pointer;
+    }
+
+    .mu-accordion-content {
+        padding: 0 15px 15px 15px;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    /* Rotación de flecha cuando está abierto */
+    details.mu-accordion[open] .mu-arrow-icon {
+        transform: rotate(180deg);
+    }
+
+    /* Socket en columna en móvil */
+    .mu-socket-inner {
+        flex-direction: column-reverse;
+        gap: var(--mu-space-md);
+    }
+}
