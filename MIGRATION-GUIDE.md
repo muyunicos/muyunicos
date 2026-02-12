@@ -18,24 +18,29 @@ Migrar CSS y JavaScript desde Code Snippets inline hacia archivos modulares y ca
   - JS: 0.9 KB (antes inline)
   - **Impacto**: -8.7 KB por carga de página, ahora cacheable
 
-**Total Migrado**: -20.5 KB inline eliminados | 100% cacheable
+- **Repositorio de SVGs** → `functions.php` (función `mu_get_icon()`)
+  - **Impacto**: Sistema centralizado de iconos, previene errores fatales
+  - **Iconos incluidos**: arrow, search, close, instagram, facebook, tiktok, youtube, pinterest
+  - **Ubicación**: Función `mu_get_icon()` en functions.php líneas ~120-145
+  - **Status**: ✅ CRÍTICO - Resuelve error fatal al activar tema hijo
+
+**Total Migrado**: -20.5 KB inline eliminados | 100% cacheable | Sistema de iconos centralizado
 
 ### 📅 Pendientes (Priorizados)
 
 #### Tier 1 - Global/Alto Impacto
 1. ⬜ **UX - Modal Login & Auth** → `css/components/modal-auth.css` + `assets/js/modal-auth.js`
-2. ⬜ **Repositorio de SVGs** → `css/utilities/icons.css`
-3. ⬜ **Chips de categorías y tags** → `css/components/category-chips.css`
+2. ⬜ **Chips de categorías y tags** → `css/components/category-chips.css`
 
 #### Tier 2 - E-commerce Core
-4. ⬜ **Estilo de catálogo** → `css/pages/shop.css`
-5. ⬜ **UX - Carrito Moderno** → `css/pages/cart.css` + `assets/js/cart.js`
-6. ⬜ **Checkout Moderno (Mobile-First)** → `css/pages/checkout.css`
-7. ⬜ **Estilos Ficha de Producto** → `css/pages/product.css`
+3. ⬜ **Estilo de catálogo** → `css/pages/shop.css`
+4. ⬜ **UX - Carrito Moderno** → `css/pages/cart.css` + `assets/js/cart.js`
+5. ⬜ **Checkout Moderno (Mobile-First)** → `css/pages/checkout.css`
+6. ⬜ **Estilos Ficha de Producto** → `css/pages/product.css`
 
 #### Tier 3 - Funcionalidad Específica
-8. ⬜ **Sección Hero - Promos Dinámicas (Home)** → `css/pages/home.css`
-9. ⬜ **Multi-País - Modal de Sugerencia** → `css/components/country-modal.css`
+7. ⬜ **Sección Hero - Promos Dinámicas (Home)** → `css/pages/home.css`
+8. ⬜ **Multi-País - Modal de Sugerencia** → `css/components/country-modal.css`
 
 ---
 
@@ -44,7 +49,7 @@ Migrar CSS y JavaScript desde Code Snippets inline hacia archivos modulares y ca
 ```
 muyunicos/
 ├── style.css                    # CSS base global + variables
-├── functions.php                # Enqueue system + PHP functions
+├── functions.php                # Enqueue system + PHP functions + mu_get_icon()
 │
 ├── css/
 │   ├── components/              # Componentes reutilizables
@@ -61,8 +66,7 @@ muyunicos/
 │   │   ├── cart.css
 │   │   └── checkout.css
 │   │
-│   └── utilities/               # Helpers y utilidades
-│       └── icons.css
+│   └── utilities/               # Helpers y utilidades (futuro)
 │
 └── assets/
     └── js/
@@ -106,6 +110,7 @@ En WordPress Admin:
 - Mantener funciones que generan HTML
 - Mantener hooks de WordPress/WooCommerce
 - Mantener AJAX handlers y fragments
+- Funciones helper globales (como `mu_get_icon()`)
 
 #### JavaScript → `assets/js/[nombre].js`
 
@@ -214,6 +219,18 @@ wp_enqueue_script(
 
 ---
 
+## 🐛 Errores Críticos Resueltos
+
+### Error Fatal: mu_get_icon() no definida
+
+**Fecha**: 11 Feb 2026  
+**Síntoma**: "Se ha producido un error crítico en este sitio web" al activar tema hijo  
+**Causa**: Funciones `mu_header_icons()` y `muyunicos_custom_footer_structure()` llamaban a `mu_get_icon()` que no existía  
+**Solución**: Añadida función `mu_get_icon()` en functions.php (líneas ~120-145)  
+**Commit**: [34dc1f4](https://github.com/muyunicos/muyunicos/commit/34dc1f480daa29ff3f4c299003199148bad3934e)
+
+---
+
 ## 📈 Beneficios Medibles
 
 ### Performance
@@ -233,6 +250,7 @@ wp_enqueue_script(
 - **0 versionado** → **Git tracking completo**
 - **Search imposible** → **IDE autocomplete + search**
 - **Testing manual** → **Visual regression automático**
+- **Errores fatales** → **Prevención con function_exists()**
 
 ---
 
@@ -298,6 +316,23 @@ wp_enqueue_script(
 })();
 ```
 
+### Plantilla PHP Function (Helper)
+
+```php
+if ( !function_exists( 'mu_helper_function' ) ) {
+    /**
+     * Descripción de la función
+     * 
+     * @param string $param Descripción del parámetro
+     * @return mixed Descripción del retorno
+     */
+    function mu_helper_function($param) {
+        // Lógica de la función
+        return $result;
+    }
+}
+```
+
 ---
 
 ## ❓ FAQ
@@ -334,18 +369,31 @@ add_filter('body_class', function($classes) {
 .user-logged-in .mu-account-menu { display: block; }
 ```
 
+### ¿Por qué usar `function_exists()` antes de definir funciones?
+
+Previene errores fatales si la función ya existe (child theme override, plugin conflict, etc.). Es una best practice de WordPress:
+
+```php
+if ( !function_exists( 'mu_get_icon' ) ) {
+    function mu_get_icon($name) {
+        // ...
+    }
+}
+```
+
 ---
 
 ## 🚀 Próximos Pasos
 
 1. ✅ **Header completado** (11.8 KB migrados)
 2. ✅ **Footer completado** (8.7 KB migrados)
-3. 🔵 **Modal Auth** → Siguiente prioridad (Alto tráfico)
-4. 🔵 **Shop/Product** → Critical conversion paths
+3. ✅ **Repositorio de Iconos** (Sistema centralizado mu_get_icon)
+4. 🔵 **Modal Auth** → Siguiente prioridad (Alto tráfico)
+5. 🔵 **Shop/Product** → Critical conversion paths
 
 **Meta**: Migrar todos los snippets Tier 1-2 en las próximas 2 semanas.
 
-**Progreso actual**: 2/10 componentes migrados (20%) | **-20.5 KB inline eliminados**
+**Progreso actual**: 3/10 componentes migrados (30%) | **-20.5 KB inline eliminados** | **0 errores críticos**
 
 ---
 
