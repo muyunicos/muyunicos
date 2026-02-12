@@ -1,11 +1,12 @@
 /**
  * Header - Interacciones JavaScript
  * Migrado desde snippet "Header"
+ * Actualizado para soportar menús nativos de GeneratePress
  */
 
 (function() {
     'use strict';
-    
+
     /**
      * Inicializa la funcionalidad del dropdown de Mi Cuenta en móvil
      */
@@ -62,10 +63,79 @@
         });
     }
 
+    /**
+     * Inicializa los submenús nativos de GeneratePress
+     * Añade funcionalidad hover/click que puede haber sido interrumpida por CSS custom
+     */
+    function initNativeSubmenus() {
+        const menuItems = document.querySelectorAll('.main-navigation .menu-item-has-children');
+        
+        // En móvil (cuando el menú está colapsado)
+        if (window.innerWidth <= 768) {
+            menuItems.forEach(function(item) {
+                const link = item.querySelector('a');
+                const submenu = item.querySelector('.sub-menu');
+                
+                if (link && submenu) {
+                    // Clonar el link para remover listeners anteriores
+                    const newLink = link.cloneNode(true);
+                    link.parentNode.replaceChild(newLink, link);
+                    
+                    newLink.addEventListener('click', function(e) {
+                        // Solo en móvil cuando el menú está abierto
+                        if (document.querySelector('.main-navigation.toggled')) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            
+                            // Toggle del item
+                            item.classList.toggle('sfHover');
+                            item.classList.toggle('toggled-on');
+                        }
+                    });
+                }
+            });
+        }
+    }
+
+    /**
+     * Re-inicializa funcionalidad después de que GeneratePress modifica el DOM
+     */
+    function reinitOnMenuToggle() {
+        const menuToggle = document.querySelector('.menu-toggle');
+        
+        if (menuToggle) {
+            menuToggle.addEventListener('click', function() {
+                // Esperar a que GeneratePress termine de animar
+                setTimeout(function() {
+                    initNativeSubmenus();
+                }, 100);
+            });
+        }
+    }
+
+    /**
+     * Inicialización principal
+     */
+    function init() {
+        initAccountDropdown();
+        initNativeSubmenus();
+        reinitOnMenuToggle();
+        
+        // Re-inicializar submenús en resize
+        let resizeTimer;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function() {
+                initNativeSubmenus();
+            }, 250);
+        });
+    }
+
     // Inicializar cuando el DOM esté listo
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initAccountDropdown);
+        document.addEventListener('DOMContentLoaded', init);
     } else {
-        initAccountDropdown();
+        init();
     }
+
 })();
