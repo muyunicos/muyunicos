@@ -41,6 +41,13 @@ function mu_enqueue_assets() {
         $theme_version
     );
     
+    wp_enqueue_style(
+        'mu-footer', 
+        $theme_uri . '/css/components/footer.css', 
+        array('mu-base'), 
+        $theme_version
+    );
+    
     // CSS Condicional por Página
     if (is_front_page()) {
         wp_enqueue_style(
@@ -87,13 +94,21 @@ function mu_enqueue_assets() {
         );
     }
     
-    // JavaScript del Header
+    // JavaScript Modular
     wp_enqueue_script(
         'mu-header-js',
         $theme_uri . '/assets/js/header.js',
         array(),
         $theme_version,
         true // Cargar en footer con defer implícito
+    );
+    
+    wp_enqueue_script(
+        'mu-footer-js',
+        $theme_uri . '/assets/js/footer.js',
+        array(),
+        $theme_version,
+        true
     );
 }
 add_action('wp_enqueue_scripts', 'mu_enqueue_assets', 20);
@@ -199,4 +214,121 @@ function mu_update_cart_badge( $fragments ) {
     <?php
     $fragments['.mu-cart-badge'] = ob_get_clean();
     return $fragments;
+}
+
+/* ============================================
+   FOOTER - ESTRUCTURA CUSTOM
+   HTML/PHP puro, CSS migrado a /css/components/footer.css
+   ============================================ */
+
+add_action('generate_before_footer', 'muyunicos_custom_footer_structure');
+function muyunicos_custom_footer_structure() {
+    // Definición de redes sociales
+    $social_networks = [
+        ['name' => 'Instagram', 'url' => 'https://www.instagram.com/muyunicos', 'id' => 'instagram'],
+        ['name' => 'Facebook',  'url' => 'https://www.facebook.com/muyunicos',  'id' => 'facebook'],
+        ['name' => 'TikTok',    'url' => 'https://www.tiktok.com/@muyunicos',   'id' => 'tiktok'],
+        ['name' => 'YouTube',   'url' => 'https://www.youtube.com/@muyunicos',  'id' => 'youtube'],
+        ['name' => 'Pinterest', 'url' => 'https://www.pinterest.com/muyunicos', 'id' => 'pinterest'], 
+    ];
+    ?>
+    
+    <footer class="mu-custom-footer site-footer">
+        <div class="mu-container">
+            <div class="mu-footer-grid">
+                
+                <!-- Columna: Marca -->
+                <div class="mu-footer-col mu-col-brand">
+                    <h3 class="mu-footer-title">Muy Únicos</h3>
+                    <p style="opacity: 0.8; line-height: 1.6; margin-bottom: 15px;">
+                        Diseños exclusivos y productos personalizados hechos con pasión en Mar del Plata.
+                    </p>
+                    <div class="mu-trust-wrapper">
+                        <a href="https://www.trustindex.io/reviews/muyunicos.com" target="_blank" class="mu-trust-badge">
+                             <span class="ti-stars">★★★★★</span>
+                             <span class="ti-text">4.9/5 en Trustindex</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Columna: Enlaces -->
+                <div class="mu-footer-col mu-col-links">
+                    <details class="mu-accordion">
+                        <summary class="mu-footer-title">
+                            Te ayudamos
+                            <span class="gp-icon mu-arrow-icon">
+                                <?php echo mu_get_icon('arrow'); ?>
+                            </span>
+                        </summary>
+                        
+                        <div class="mu-accordion-content">
+                            <ul class="mu-footer-links">
+                                <li><a href="/mi-cuenta/">Mi Cuenta</a></li>
+                                <li><a href="/mi-cuenta/downloads/">Mis Descargas</a></li>
+                                <li><a href="/envios/">Información de Envíos</a></li>
+                                <li><a href="/privacy-policy/">Políticas</a></li>
+                                <li><a href="/reembolso_devoluciones/" class="mu-regret-btn">Botón de arrepentimiento</a></li>
+                            </ul>
+                        </div>
+                    </details>
+                </div>
+
+                <!-- Columna: Medios de Pago -->
+                <div class="mu-footer-col mu-col-pay">
+                    <h3 class="mu-footer-title">Pagá seguro</h3>
+                    <div class="mu-payment-icons">
+                        <img decoding="async" src="https://muyunicos.com/wp-content/uploads/2026/01/medios.png" alt="Medios de Pago" width="200">
+                    </div>
+                    <div class="mu-secure-badge">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        Compra 100% Protegida
+                    </div>
+                </div>
+
+                <!-- Columna: Buscador -->
+                <div class="mu-footer-col mu-col-search">
+                    <h3 class="mu-footer-title">¿Buscás algo?</h3>
+                    <div class="mu-footer-search">
+                        <?php if(function_exists('get_product_search_form')) { 
+                            get_product_search_form(); 
+                        } else { ?>
+                            <form role="search" method="get" class="woocommerce-product-search" action="<?php echo esc_url( home_url( '/' ) ); ?>">
+                                <input type="search" class="search-field" placeholder="Buscar productos..." value="<?php echo get_search_query(); ?>" name="s" />
+                                <button type="submit">Buscar</button>
+                                <input type="hidden" name="post_type" value="product" />
+                            </form>
+                        <?php } ?>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Socket (Barra Inferior) -->
+        <div class="mu-socket">
+            <div class="mu-container mu-socket-inner">
+                <div class="mu-copyright">
+                    © 2022-<?php echo date('Y'); ?> <strong>Muy Únicos</strong>. Mar del Plata.
+                </div>
+                
+                <div class="mu-social-icons">
+                    <?php foreach ($social_networks as $net): ?>
+                        <a href="<?php echo esc_url($net['url']); ?>" class="mu-social-link" target="_blank" aria-label="<?php echo esc_attr($net['name']); ?>">
+                            <?php 
+                                if (function_exists('mu_get_icon')) {
+                                    echo mu_get_icon($net['id']); 
+                                } else {
+                                    echo '<span class="mu-fallback-icon">?</span>';
+                                }
+                            ?>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
+    </footer>
+    <?php
 }
