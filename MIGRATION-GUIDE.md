@@ -24,12 +24,29 @@ Migrar CSS y JavaScript desde Code Snippets inline hacia archivos modulares y ca
   - **Ubicación**: Función `mu_get_icon()` en functions.php líneas ~120-145
   - **Status**: ✅ CRÍTICO - Resuelve error fatal al activar tema hijo
 
-**Total Migrado**: -20.5 KB inline eliminados | 100% cacheable | Sistema de iconos centralizado
+- **Modal de Autenticación** → `css/components/modal-auth.css` + `assets/js/modal-auth.js` + `functions.php`
+  - CSS: 8.3 KB (antes inline)
+  - JS: 15.5 KB (antes inline)
+  - PHP: Handlers WC-AJAX integrados en functions.php
+  - **Impacto**: -10 KB inline eliminados por carga (solo usuarios no logueados)
+  - **Optimizaciones**:
+    - Uso de WC-AJAX en lugar de admin-ajax (menor TTFB)
+    - Carga condicional (solo si !is_user_logged_in())
+    - Variables CSS reutilizadas (--primario, --mu-radius, etc.)
+    - Accesibilidad mejorada (focus-visible, ARIA)
+    - Responsive mobile-first
+  - **Fecha migración**: 12 Feb 2026
+  - **Commits**: 
+    - [4357470](https://github.com/muyunicos/muyunicos/commit/4357470be2d2f01329b3dd7bbfc73b6078f51740) - CSS
+    - [ce51264](https://github.com/muyunicos/muyunicos/commit/ce51264a32c1de9ee2f221e637a91163e8ea0291) - JavaScript
+    - [3e34b16](https://github.com/muyunicos/muyunicos/commit/3e34b1638876a04384cff8d960825876e3474bf8) - PHP Integration
+
+**Total Migrado**: -30.5 KB inline eliminados | 100% cacheable | Sistema de iconos centralizado
 
 ### 📅 Pendientes (Priorizados)
 
 #### Tier 1 - Global/Alto Impacto
-1. ⬜ **UX - Modal Login & Auth** → `css/components/modal-auth.css` + `assets/js/modal-auth.js`
+1. ✅ **UX - Modal Login & Auth** → COMPLETADO
 2. ⬜ **Chips de categorías y tags** → `css/components/category-chips.css`
 
 #### Tier 2 - E-commerce Core
@@ -55,7 +72,7 @@ muyunicos/
 │   ├── components/              # Componentes reutilizables
 │   │   ├── header.css           # ✅ Migrado
 │   │   ├── footer.css           # ✅ Migrado
-│   │   ├── modal-auth.css
+│   │   ├── modal-auth.css       # ✅ Migrado
 │   │   ├── category-chips.css
 │   │   └── country-modal.css
 │   │
@@ -72,7 +89,7 @@ muyunicos/
     └── js/
         ├── header.js            # ✅ Migrado
         ├── footer.js            # ✅ Migrado
-        ├── modal-auth.js
+        ├── modal-auth.js        # ✅ Migrado
         └── cart.js
 ```
 
@@ -242,7 +259,7 @@ wp_enqueue_script(
 | **LCP (Largest Contentful Paint)** | ~2.8s | <1.5s | **-46%** |
 | **Cache Hit Ratio** | 0% (inline) | 95%+ (static files) | +∞ |
 | **Tiempo rebuild CSS** | N/A | Instant (no regenerate) | - |
-| **Inline Code Eliminado** | 45 KB | 20.5 KB | **-54%** restante |
+| **Inline Code Eliminado** | 45 KB | 14.5 KB | **-68%** restante |
 
 ### Mantenibilidad
 
@@ -388,12 +405,13 @@ if ( !function_exists( 'mu_get_icon' ) ) {
 1. ✅ **Header completado** (11.8 KB migrados)
 2. ✅ **Footer completado** (8.7 KB migrados)
 3. ✅ **Repositorio de Iconos** (Sistema centralizado mu_get_icon)
-4. 🔵 **Modal Auth** → Siguiente prioridad (Alto tráfico)
-5. 🔵 **Shop/Product** → Critical conversion paths
+4. ✅ **Modal Auth completado** (10 KB migrados, WC-AJAX optimizado)
+5. 🔵 **Category Chips** → Siguiente prioridad
+6. 🔵 **Shop/Product** → Critical conversion paths
 
 **Meta**: Migrar todos los snippets Tier 1-2 en las próximas 2 semanas.
 
-**Progreso actual**: 3/10 componentes migrados (30%) | **-20.5 KB inline eliminados** | **0 errores críticos**
+**Progreso actual**: **4/10 componentes migrados (40%)** | **-30.5 KB inline eliminados** | **0 errores críticos**
 
 ---
 
