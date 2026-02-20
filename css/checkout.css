@@ -37,7 +37,7 @@
    ============================================ */
 
 /* Encabezado de sección de contacto */
-.muyunicos-contact-header {
+.mu-contact-header {
     font-weight: 600;
     font-size: 1.1em;
     color: var(--texto, #333);
@@ -47,35 +47,35 @@
 }
 
 /* Toggle de dirección (cursor desde PHP → CSS) */
-.muyunicos-shipping-toggle-wrapper { margin: 10px 0 20px; padding: 12px; background: #f9f9f9; border-radius: var(--mu-radius, 8px); border: 1px solid #e0e0e0; }
-.muyunicos-shipping-toggle-wrapper label { cursor: pointer; }
+.mu-shipping-toggle-wrapper { margin: 10px 0 20px; padding: 12px; background: #f9f9f9; border-radius: var(--mu-radius, 8px); border: 1px solid #e0e0e0; }
+.mu-shipping-toggle-wrapper label { cursor: pointer; }
 
 /* Estados de inputs */
-.muyunicos-smart-field input,
-.muyunicos-contact-field input {
+.mu-smart-field input,
+.mu-contact-field input {
     border-radius: var(--mu-radius, 8px);
     padding: 12px;
     transition: border-color 0.3s ease, background-color 0.3s ease;
 }
-.muyunicos-field-valid input { border-color: var(--exito, #2ecc71) !important; }
-.muyunicos-field-error input { border-color: #e74c3c !important; background-color: #fff5f5 !important; }
+.mu-field-valid input { border-color: var(--exito, #a3ffbc) !important; }
+.mu-field-error input { border-color: #e74c3c !important; background-color: #fff5f5 !important; }
 
 /* Badge verificado — inline style removido del PHP */
-.muyunicos-verified-badge {
+.mu-verified-badge {
     display: none; /* JS usa .show() / .hide() */
-    color: var(--exito, #2ecc71);
+    color: var(--exito, #a3ffbc);
     margin-left: 5px;
     font-weight: bold;
 }
 
 /* Indicador WhatsApp */
 #wa-status-msg         { font-size: 0.85em; transition: all 0.3s; margin-left: 5px; }
-.wa-ok                 { color: var(--exito, #2ecc71); font-weight: 700; }
+.wa-ok                 { color: var(--exito, #a3ffbc); font-weight: 700; }
 .wa-err                { color: #e74c3c; font-weight: 700; }
 #billing_phone_field.hide-optional label .optional { display: none !important; }
 
 /* Notice email existente */
-#muyunicos-email-exists-notice {
+#mu-email-exists-notice {
     background-color: #e3f2fd;
     color: #0d47a1;
     padding: 10px;
@@ -85,7 +85,7 @@
     border-left: 4px solid #2196f3;
     font-size: 0.9em;
 }
-#muyunicos-email-exists-notice a { font-weight: bold; text-decoration: underline; cursor: pointer; }
+#mu-email-exists-notice a { font-weight: bold; text-decoration: underline; cursor: pointer; }
 
 /* ============================================
    4. LAYOUT GENERAL (MOBILE-FIRST)
@@ -98,7 +98,7 @@
 .woocommerce-shipping-fields h3,
 .woocommerce-additional-fields h3,
 #order_review_heading {
-    background: var(--primario, #333);
+    background: var(--primario, #2B9FCF);
     color: var(--blanco, #fff);
     padding: 16px 20px;
     margin: 0;
@@ -152,12 +152,12 @@
 .woocommerce-checkout select:focus,
 .woocommerce-checkout textarea:focus {
     outline: none;
-    border-color: var(--primario, #333);
+    border-color: var(--primario, #2B9FCF);
     background: #fcfcfc;
 }
 .woocommerce-checkout input[type="checkbox"] {
     width: 20px; height: 20px;
-    accent-color: var(--primario, #333);
+    accent-color: var(--primario, #2B9FCF);
     vertical-align: middle; margin-right: 8px;
 }
 
@@ -167,7 +167,7 @@
 #order_review_heading  { margin-top: 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
 #order_review {
     background: #fff;
-    border: 2px solid var(--primario, #333);
+    border: 2px solid var(--primario, #2B9FCF);
     border-top: none;
     border-radius: 0 0 var(--mu-radius-md, 8px) var(--mu-radius-md, 8px);
     padding: 0; overflow: hidden;
@@ -179,15 +179,15 @@
 .woocommerce-checkout-review-order-table .order-total th,
 .woocommerce-checkout-review-order-table .order-total td {
     background: #f0f9ff;
-    color: var(--primario, #333);
+    color: var(--primario, #2B9FCF);
     font-size: 1.2rem; font-weight: 800;
-    border-top: 2px solid var(--primario, #333);
+    border-top: 2px solid var(--primario, #2B9FCF);
 }
 
 /* Botón de pago */
 #place_order {
     width: 100%; padding: 18px;
-    background: var(--primario, #333);
+    background: var(--primario, #2B9FCF);
     color: #fff; font-weight: 700; font-size: 1.1rem;
     border: none; border-radius: var(--mu-radius, 6px);
     margin-top: 20px; cursor: pointer;
