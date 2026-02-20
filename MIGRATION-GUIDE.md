@@ -30,8 +30,9 @@
 | WooCommerce: agregar múltiples productos por URL | `woo_add_multiple_products_to_cart()` | ✅ Migrado |
 | BACS: reemplazar NUMERODEPEDIDO en página y emails | `bacs_buffer_start/end`, `bacs_email_buffer_start/end` | ✅ Migrado |
 | WooCommerce: mover descripción de categoría | `muyunicos_move_category_description()` | ✅ Migrado |
+| Sistema Restricción de Contenido Digital v2.2 | `MUYU_Digital_Restriction_System` (Singleton) | ✅ Migrado |
 
-**Progreso**: 6 de 9 archivos CSS migrados · 5 de 5 snippets PHP migrados · ~46.7 KB de CSS modular activo
+**Progreso**: 6 de 9 archivos CSS migrados · 6 de 6 snippets PHP migrados · ~46.7 KB de CSS modular activo
 
 ---
 
