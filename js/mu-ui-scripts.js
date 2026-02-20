@@ -131,11 +131,109 @@
     }
 
     /**
+     * Share button - Native Share API (mobile) + clipboard fallback (desktop)
+     */
+    function initShareButtons() {
+        const shareBtns = document.querySelectorAll('.dcms-share-btn');
+        if (!shareBtns.length) return;
+
+        shareBtns.forEach((btn) => {
+            if (btn.dataset.muShareBound === '1') return;
+            btn.dataset.muShareBound = '1';
+
+            btn.addEventListener('click', async (e) => {
+                e.preventDefault();
+
+                const desc = document.querySelector('meta[name="description"]');
+                const shareData = {
+                    title: document.title,
+                    text: (desc && desc.content) ? desc.content : document.title,
+                    url: window.location.href
+                };
+
+                if (navigator.share) {
+                    try {
+                        await navigator.share(shareData);
+                        return;
+                    } catch (err) {
+                        if (err && err.name !== 'AbortError') {
+                            copyToClipboard(shareData.url, btn);
+                        }
+                        return;
+                    }
+                }
+
+                copyToClipboard(shareData.url, btn);
+            });
+        });
+
+        function copyToClipboard(text, btn) {
+            if (!navigator.clipboard) {
+                fallbackCopyTextToClipboard(text, btn);
+                return;
+            }
+
+            navigator.clipboard.writeText(text).then(function() {
+                showFeedback(btn);
+            }, function() {
+                fallbackCopyTextToClipboard(text, btn);
+            });
+        }
+
+        function fallbackCopyTextToClipboard(text, btn) {
+            var textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.setAttribute('readonly', '');
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-9999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showFeedback(btn);
+            } catch (err) {
+                // noop
+            }
+            document.body.removeChild(textArea);
+        }
+
+        function showFeedback(btn) {
+            if (btn.classList.contains('is-copied')) return;
+
+            btn.classList.add('is-copied');
+
+            // Tooltip flotante
+            const tooltip = document.createElement('span');
+            tooltip.className = 'dcms-share-tooltip';
+            tooltip.textContent = '¡Enlace copiado!';
+            tooltip.setAttribute('role', 'status');
+            tooltip.setAttribute('aria-live', 'polite');
+
+            // Asegurar contexto
+            const parent = btn.parentNode;
+            if (parent && parent.style && parent.style.position !== 'relative') {
+                parent.style.position = 'relative';
+            }
+
+            if (parent) {
+                parent.insertBefore(tooltip, btn.nextSibling);
+            }
+
+            setTimeout(() => {
+                btn.classList.remove('is-copied');
+                if (tooltip && tooltip.parentNode) tooltip.parentNode.removeChild(tooltip);
+            }, 2000);
+        }
+    }
+
+    /**
      * Initialize all UI components
      */
     function init() {
         initCountrySelector();
         initWpLinguaSwitcherToggle();
+        initShareButtons();
     }
 
     // Run on DOM ready

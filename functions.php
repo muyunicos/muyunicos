@@ -47,6 +47,14 @@ function mu_enqueue_assets() {
         array('mu-base'), 
         $theme_version
     );
+
+    // Share button (global; liviano)
+    wp_enqueue_style(
+        'mu-share',
+        $theme_uri . '/css/components/share-button.css',
+        array('mu-base'),
+        $theme_version
+    );
     
     // Modal de Autenticación (solo si no está logueado)
     if (!is_user_logged_in()) {
@@ -236,6 +244,11 @@ if ( !function_exists( 'mu_get_icon' ) ) {
             'arrow'     => '<svg class="mu-icon-svg muy-svg" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>',
             'search'    => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>',
             'close'     => '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>',
+
+            // UI helpers
+            'share'     => '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>',
+            'check'     => '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>',
+
             'instagram' => '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12,4.622c2.403,0,2.688,0.009,3.637,0.052c0.877,0.04,1.354,0.187,1.671,0.31c0.42,0.163,0.72,0.358,1.035,0.673 c0.315,0.315,0.51,0.615,0.673,1.035c0.123,0.317,0.27,0.794,0.31,1.671c0.043,0.949,0.052,1.234,0.052,3.637 s-0.009,2.688-0.052,3.637c-0.04,0.877-0.187,1.354-0.31,1.671c-0.163,0.42-0.358,0.72-0.673,1.035 c-0.315-0.315-0.615,0.51-1.035,0.673c-0.317,0.123-0.794,0.27-1.671,0.31c-0.949,0.043-1.233,0.052-3.637,0.052 s-2.688-0.009-3.637-0.052c-0.877-0.04-1.354-0.187-1.671-0.31c-0.42-0.163-0.72-0.358-1.035-0.673 c-0.315-0.315-0.51-0.615-0.673-1.035c-0.123-0.317-0.27-0.794-0.31-1.671C4.631,14.688,4.622,14.403,4.622,12 s0.009-2.688,0.052-3.637c0.04-0.877,0.187-1.354,0.31-1.671c0.163-0.42,0.358-0.72,0.673-1.035 c0.315-0.315,0.615-0.51,1.035-0.673c0.317-0.123,0.794-0.27,1.671-0.31C9.312,4.631,9.597,4.622,12,4.622 M12,3 C9.556,3,9.249,3.01,8.289,3.054C7.331,3.098,6.677,3.25,6.105,3.472C5.513,3.702,5.011,4.01,4.511,4.511 c-0.5,0.5-0.808,1.002-1.038,1.594C3.25,6.677,3.098,7.331,3.054,8.289C3.01,9.249,3,9.556,3,12c0,2.444,0.01,2.751,0.054,3.711 c0.044,0.958,0.196,1.612,0.418,2.185c0.23,0.592,0.538,1.094,1.038,1.594c0.5,0.5,1.002,0.808,1.594,1.038 c0.572,0.222,1.227,0.375,2.185,0.418C9.249,20.99,9.556,21,12,21s2.751-0.01,3.711-0.054c0.958-0.044,1.612-0.196,2.185-0.418 c0.592-0.23,1.094-0.538,1.594-1.038c0.5-0.5,0.808-1.002,1.038-1.594c0.222-0.572,0.375-1.227,0.418-2.185 C20.99,14.751,21,14.444,21,12s-0.01-2.751-0.054-3.711c-0.044-0.958-0.196-1.612-0.418-2.185c-0.23-0.592-0.538-1.094-1.038-1.594 c-0.5-0.5-1.002-0.808-1.594-1.038c-0.572-0.222-1.227-0.375-2.185-0.418C14.751,3.01,14.444,3,12,3L12,3z M12,7.378 c-2.552,0-4.622,2.069-4.622,4.622S9.448,16.622,12,16.622s4.622-2.069,4.622-4.622S14.552,7.378,12,7.378z M12,15 c-1.657,0-3-1.343-3-3s1.343-3,3-3s3,1.343,3,3S13.657,15,12,15z M16.804,6.116c-0.596,0-1.08,0.484-1.08,1.08 s0.484,1.08,1.08,1.08c0.596,0,1.08-0.484,1.08-1.08S17.401,6.116,16.804,6.116z"></path></svg>',
             'facebook'  => '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12c0 5 3.7 9.1 8.4 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.3c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.3v7C18.3 21.1 22 17 22 12c0-5.5-4.5-10-10-10z"></path></svg>',
             'pinterest' => '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M12.289,2C6.617,2,3.606,5.648,3.606,9.622c0,1.846,1.025,4.146,2.666,4.878c0.25,0.111,0.381,0.063,0.439-0.169 c0.044-0.175,0.267-1.029,0.365-1.428c0.032-0.128,0.017-0.237-0.091-0.362C6.445,11.911,6.01,10.75,6.01,9.668 c0-2.777,2.194-5.464,5.933-5.464c3.23,0,5.49,2.108,5.49,5.122c0,3.407-1.794,5.768-4.13,5.768c-1.291,0-2.257-1.021-1.948-2.277 c0.372-1.495,1.089-3.112,1.089-4.191c0-0.967-0.542-1.775-1.663-1.775c-1.319,0-2.379,1.309-2.379,3.059 c0,1.115,0.394,1.869,0.394,1.869s-1.302,5.279-1.54,6.261c-0.405,1.666,0.053,4.368,0.094,4.604 c0.021,0.126,0.167,0.169,0.25,0.063c0.129-0.165,1.699-2.419,2.142-4.051c0.158-0.59,0.817-2.995,0.817-2.995 c0.43,0.784,1.681,1.446,3.013,1.446c3.963,0,6.822-3.494,6.822-7.833C20.394,5.112,16.849,2,12.289,2"></path></svg>',
@@ -607,22 +620,7 @@ function mu_custom_search_form_logic( $form ) {
         ? mu_get_icon( 'search' )
         : '<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>';
 
-    $form = '
-    <form role="search" method="get" class="woocommerce-product-search mu-product-search" action="' . esc_url( home_url( '/' ) ) . '">
-        <label class="screen-reader-text" for="' . esc_attr( $unique_id ) . '">Buscar productos:</label>
-        <div class="mu-search-group">
-            <input type="search"
-                   id="' . esc_attr( $unique_id ) . '"
-                   class="search-field"
-                   placeholder="Buscar en la tienda..."
-                   value="' . get_search_query() . '"
-                   name="s" />
-            <button type="submit" class="mu-search-submit" aria-label="Buscar">
-                ' . $icon_html . '
-            </button>
-            <input type="hidden" name="post_type" value="product" />
-        </div>
-    </form>';
+    $form = '\n    <form role="search" method="get" class="woocommerce-product-search mu-product-search" action="' . esc_url( home_url( '/' ) ) . '">\n        <label class="screen-reader-text" for="' . esc_attr( $unique_id ) . '">Buscar productos:</label>\n        <div class="mu-search-group">\n            <input type="search"\n                   id="' . esc_attr( $unique_id ) . '"\n                   class="search-field"\n                   placeholder="Buscar en la tienda..."\n                   value="' . get_search_query() . '"\n                   name="s" />\n            <button type="submit" class="mu-search-submit" aria-label="Buscar">\n                ' . $icon_html . '\n            </button>\n            <input type="hidden" name="post_type" value="product" />\n        </div>\n    </form>';
 
     return $form;
 }
@@ -935,21 +933,11 @@ if ( ! function_exists( 'muyunicos_render_html_fragments' ) ) {
     add_filter( 'woocommerce_form_field', 'muyunicos_render_html_fragments', 10, 4 );
     function muyunicos_render_html_fragments( $field, $key, $args, $value ) {
         if ( $key === 'billing_contact_header' ) {
-            return '<div class="form-row form-row-wide" id="muyunicos_header_row" style="margin-bottom:0;">
-                        <div class="mu-contact-header">Te contactamos por:</div>
-                        <div id="mu-email-exists-notice"></div>
-                    </div>';
+            return '<div class="form-row form-row-wide" id="muyunicos_header_row" style="margin-bottom:0;">\n                        <div class="mu-contact-header">Te contactamos por:</div>\n                        <div id="mu-email-exists-notice"></div>\n                    </div>';
         }
         
         if ( $key === 'billing_shipping_toggle' ) {
-            return '<div class="form-row form-row-wide" id="muyunicos_toggle_row">
-                        <div class="mu-shipping-toggle-wrapper">
-                            <label style="cursor:pointer;">
-                                <input type="checkbox" id="muyunicos-toggle-shipping" name="muyunicos_shipping_toggle" value="1"> 
-                                <b>Ingresar datos para envío</b> (Opcional)
-                            </label>
-                        </div>
-                    </div>';
+            return '<div class="form-row form-row-wide" id="muyunicos_toggle_row">\n                        <div class="mu-shipping-toggle-wrapper">\n                            <label style="cursor:pointer;">\n                                <input type="checkbox" id="muyunicos-toggle-shipping" name="muyunicos_shipping_toggle" value="1"> \n                                <b>Ingresar datos para envío</b> (Opcional)\n                            </label>\n                        </div>\n                    </div>';
         }
 
         return $field;
@@ -969,7 +957,7 @@ if ( ! function_exists( 'muyunicos_sanitize_posted_data' ) ) {
 
         // Limpieza de Teléfono: Si es muy corto, lo vaciamos para que pase como "vacío opcional"
         if ( ! empty( $data['billing_phone'] ) ) {
-            $digits = preg_replace('/\D/', '', $data['billing_phone']);
+            $digits = preg_replace('/\\D/', '', $data['billing_phone']);
             if ( strlen( $digits ) <= 6 ) {
                 $data['billing_phone'] = '';
             }
@@ -1033,3 +1021,148 @@ add_filter( 'the_title', function( $title, $id ) {
     }
     return $title;
 }, 10, 2 );
+
+
+/* ============================================
+   MIGRADO (Snippets varios)
+   Canonical Site Kit + Share + Add-multiple + BACS + Category description
+   ============================================ */
+
+// 1) Google Site Kit: canonical fijo de home
+if ( ! function_exists( 'mu_googlesitekit_canonical_home_url' ) ) {
+    function mu_googlesitekit_canonical_home_url( $url ) {
+        return 'https://muyunicos.com';
+    }
+}
+add_filter( 'googlesitekit_canonical_home_url', 'mu_googlesitekit_canonical_home_url' );
+
+// 2) Botón compartir (shortcode: [dcms_share])
+if ( ! function_exists( 'dcms_render_share_button' ) ) {
+    /**
+     * Retorna el HTML del botón.
+     * @param string $custom_class Clase CSS extra opcional.
+     * @param bool $echo Si debe imprimir o retornar.
+     */
+    function dcms_render_share_button( $custom_class = '', $echo = true ) {
+
+        $classes = trim( 'mu-share-btn dcms-share-btn ' . $custom_class );
+
+        $icon_share = function_exists( 'mu_get_icon' ) ? mu_get_icon( 'share' ) : '';
+        $icon_check = function_exists( 'mu_get_icon' ) ? mu_get_icon( 'check' ) : '';
+
+        $html = sprintf(
+            '<button class="%s" type="button" title="Compartir" aria-label="Compartir">' .
+            '<span class="dcms-share-icon dcms-share-icon--share" aria-hidden="true">%s</span>' .
+            '<span class="dcms-share-icon dcms-share-icon--check" aria-hidden="true">%s</span>' .
+            '</button>',
+            esc_attr( $classes ),
+            $icon_share,
+            $icon_check
+        );
+
+        if ( $echo ) {
+            echo $html;
+        } else {
+            return $html;
+        }
+    }
+}
+
+add_shortcode( 'dcms_share', function( $atts ) {
+    return dcms_render_share_button( 'dcms-share-btn--shortcode', false );
+});
+
+// 3) WooCommerce: agregar múltiples productos al carrito por URL (?add-multiple=1,2,3)
+add_action( 'wp_loaded', 'woo_add_multiple_products_to_cart' );
+if ( ! function_exists( 'woo_add_multiple_products_to_cart' ) ) {
+    function woo_add_multiple_products_to_cart() {
+        if ( ! isset( $_GET['add-multiple'] ) || empty( $_GET['add-multiple'] ) ) {
+            return;
+        }
+
+        if ( ! function_exists( 'WC' ) ) {
+            return;
+        }
+
+        if ( null === WC()->cart && function_exists( 'wc_load_cart' ) ) {
+            wc_load_cart();
+        }
+
+        if ( null === WC()->cart ) {
+            return;
+        }
+
+        $product_ids = explode( ',', sanitize_text_field( wp_unslash( $_GET['add-multiple'] ) ) );
+        $productos_agregados = false;
+
+        foreach ( $product_ids as $product_id ) {
+            $product_id = absint( $product_id );
+            if ( $product_id > 0 ) {
+                WC()->cart->add_to_cart( $product_id );
+                $productos_agregados = true;
+            }
+        }
+
+        if ( $productos_agregados ) {
+            wp_safe_redirect( wc_get_cart_url() );
+            exit;
+        }
+    }
+}
+
+// 4) Reemplazar NUMERODEPEDIDO por el ID real en Transferencia Bancaria (BACS)
+if ( ! function_exists( 'bacs_buffer_start' ) ) {
+    function bacs_buffer_start() {
+        ob_start();
+    }
+}
+if ( ! function_exists( 'bacs_buffer_end' ) ) {
+    function bacs_buffer_end( $order_id ) {
+        $output = ob_get_clean();
+        if ( $order_id ) {
+            echo str_replace( 'NUMERODEPEDIDO', $order_id, $output );
+        } else {
+            echo $output;
+        }
+    }
+}
+add_action( 'woocommerce_thankyou_bacs', 'bacs_buffer_start', 1 );
+add_action( 'woocommerce_thankyou_bacs', 'bacs_buffer_end', 100, 1 );
+
+if ( ! function_exists( 'bacs_email_buffer_start' ) ) {
+    function bacs_email_buffer_start( $order, $sent_to_admin, $plain_text, $email ) {
+        if ( 'bacs' === $order->get_payment_method() && ! $plain_text ) {
+            ob_start();
+        }
+    }
+}
+if ( ! function_exists( 'bacs_email_buffer_end' ) ) {
+    function bacs_email_buffer_end( $order, $sent_to_admin, $plain_text, $email ) {
+        if ( 'bacs' === $order->get_payment_method() && ! $plain_text ) {
+            $output = ob_get_clean();
+            echo str_replace( 'NUMERODEPEDIDO', $order->get_id(), $output );
+        }
+    }
+}
+add_action( 'woocommerce_email_before_order_table', 'bacs_email_buffer_start', 1, 4 );
+add_action( 'woocommerce_email_before_order_table', 'bacs_email_buffer_end', 100, 4 );
+
+// 5) WooCommerce: mover descripción de categoría debajo del loop
+add_action( 'wp', 'muyunicos_move_category_description' );
+if ( ! function_exists( 'muyunicos_move_category_description' ) ) {
+    function muyunicos_move_category_description() {
+        if ( is_product_category() ) {
+            remove_action(
+                'woocommerce_archive_description',
+                'woocommerce_taxonomy_archive_description',
+                10
+            );
+
+            add_action(
+                'woocommerce_after_shop_loop',
+                'woocommerce_taxonomy_archive_description',
+                5
+            );
+        }
+    }
+}

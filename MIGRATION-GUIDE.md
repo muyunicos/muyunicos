@@ -12,13 +12,14 @@
 | `css/components/header.css` | Componente | 9.4 KB | ✅ Migrado |
 | `css/components/footer.css` | Componente | 8.0 KB | ✅ Migrado |
 | `css/components/modal-auth.css` | Componente | 8.3 KB | ✅ Migrado |
+| `css/components/share-button.css` | Componente | 1.4 KB | ✅ Migrado |
 | `css/cart.css` | Página | 9.9 KB | ✅ Migrado |
 | `css/checkout.css` | Página | 9.7 KB | ✅ Migrado |
 | `css/home.css` | Página | 0 KB | 📋 Pendiente (placeholder creado) |
 | `css/product.css` | Página | 0 KB | 📋 Pendiente (placeholder creado) |
 | `css/shop.css` | Página | — | ❌ Archivo no creado aún |
 
-**Progreso**: 5 de 8 archivos CSS migrados · ~45.3 KB de CSS modular activo
+**Progreso**: 6 de 9 archivos CSS migrados · ~46.7 KB de CSS modular activo
 
 ---
 
@@ -51,6 +52,7 @@ Componentes globales reutilizables, cargados en todas las páginas salvo indicac
 | `header.css` | Header global: nav, logo, menú móvil, sticky | `mu-header` | 9.4 KB |
 | `footer.css` | Footer global: columnas, social links, legal | `mu-footer` | 8.0 KB |
 | `modal-auth.css` | Modal login/registro: layout, animaciones, responsive | `mu-modal-auth`* | 8.3 KB |
+| `share-button.css` | Botón compartir: native share + clipboard + tooltip | `mu-share` | 1.4 KB |
 
 *`mu-modal-auth` carga condicional: `!is_user_logged_in()`
 
@@ -77,7 +79,7 @@ Scripts del child theme. Cargados en footer.
 | `header.js` | Menú móvil toggle, sticky header | Footer, defer | Ninguna |
 | `footer.js` | Accordion footer mobile | Footer, defer | Ninguna |
 | `modal-auth.js` | Auth modal AJAX | Footer, `!is_user_logged_in()` | Ninguna |
-| `mu-ui-scripts.js` | WhatsApp, Search, Country selector | Footer, defer | Ninguna |
+| `mu-ui-scripts.js` | UI helpers: Country selector, WPLingua, Share button | Footer, defer | Ninguna |
 | `cart.js` | Carrito | Footer, `is_cart()` | `['jquery']` |
 | `checkout.js` | Checkout | Footer, `is_checkout()` | `['jquery', 'libphonenumber-js']` |
 
@@ -85,7 +87,7 @@ Scripts del child theme. Cargados en footer.
 
 ### Sistema de Iconos: `mu_get_icon($name)`
 Función en `functions.php` (~línea 120). Devuelve SVG inline.  
-**Iconos disponibles**: `arrow`, `search`, `close`, `instagram`, `facebook`, `pinterest`, `tiktok`, `youtube`.  
+**Iconos disponibles**: `arrow`, `search`, `close`, `share`, `check`, `instagram`, `facebook`, `pinterest`, `tiktok`, `youtube`.  
 **Siempre usar esta función** — nunca SVG inline directo en templates.
 
 ---
