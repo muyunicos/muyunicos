@@ -1,8 +1,9 @@
 /**
  * Carrito JS - Muy Únicos
  * Migrado desde snippet "UX Carrito Moderno V6.3 (Fix Loop & Ajax Stability)"
+ * Usa SVG dinámico y formato modular.
  */
-jQuery(function ($) {
+(function($) {
     'use strict';
 
     const debounceTime = 800;
@@ -54,12 +55,14 @@ jQuery(function ($) {
                     }
                 }
 
-                const trashSVG = `<svg class="mu-red-cart-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-label="Eliminar producto">
-                    <path d="M3 6h18"></path>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
-                    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                </svg>`;
-                $controls.append(trashSVG);
+                // C. SVG Dinámico desde PHP para ícono eliminar
+                if (typeof muCartVars !== 'undefined' && muCartVars.closeIcon) {
+                    const $deleteIcon = $(muCartVars.closeIcon).addClass('mu-red-cart-icon');
+                    // Asegurar aria-label y tooltip para accesibilidad
+                    $deleteIcon.attr('aria-label', 'Eliminar producto').attr('title', 'Eliminar producto');
+                    $controls.append($deleteIcon);
+                }
+
                 $qtyCell.append($controls);
             }
 
@@ -88,60 +91,76 @@ jQuery(function ($) {
     // EVENT HANDLERS
     // ================================================
 
-    // Toggle cupón
-    $(document).on('click', '.mu-toggle-coupon', function (e) {
-        e.preventDefault();
-        $(this).next('.mu-coupon-fields').slideToggle(200).css('display', 'flex');
-    });
+    function bindEvents() {
+        // Toggle cupón
+        $(document).on('click', '.mu-toggle-coupon', function (e) {
+            e.preventDefault();
+            $(this).next('.mu-coupon-fields').slideToggle(200).css('display', 'flex');
+        });
 
-    // Botones +/- con debounce (fix loop infinito)
-    $(document).on('click', '.mu-qty-btn', function (e) {
-        e.preventDefault();
-        if ($('.woocommerce-cart-form').hasClass('processing')) return;
+        // Botones +/- con debounce (fix loop infinito)
+        $(document).on('click', '.mu-qty-btn', function (e) {
+            e.preventDefault();
+            if ($('.woocommerce-cart-form').hasClass('processing')) return;
 
-        const $btn      = $(this);
-        const $input    = $btn.siblings('input.qty');
-        const currentVal = parseFloat($input.val() || 0);
-        const step       = parseFloat($input.attr('step') || 1);
-        const min        = parseFloat($input.attr('min') || 0);
-        const max        = parseFloat($input.attr('max'));
-        let newVal       = currentVal;
+            const $btn      = $(this);
+            const $input    = $btn.siblings('input.qty');
+            const currentVal = parseFloat($input.val() || 0);
+            const step       = parseFloat($input.attr('step') || 1);
+            const min        = parseFloat($input.attr('min') || 0);
+            const max        = parseFloat($input.attr('max'));
+            let newVal       = currentVal;
 
-        if ($btn.hasClass('plus')) {
-            newVal = (!isNaN(max) && currentVal >= max) ? max : currentVal + step;
-        } else {
-            newVal = (currentVal > min && currentVal > 0) ? currentVal - step : (min > 0 ? min : 1);
-        }
+            if ($btn.hasClass('plus')) {
+                newVal = (!isNaN(max) && currentVal >= max) ? max : currentVal + step;
+            } else {
+                newVal = (currentVal > min && currentVal > 0) ? currentVal - step : (min > 0 ? min : 1);
+            }
 
-        if (newVal !== currentVal) {
-            $input.val(newVal).trigger('change');
-            clearTimeout(updateTimer);
-            updateTimer = setTimeout(function () {
-                const $updateBtn = $('button[name="update_cart"]').first();
-                if ($updateBtn.length) {
-                    $updateBtn.prop('disabled', false).attr('disabled', false).trigger('click');
-                }
-            }, debounceTime);
-        }
-    });
+            if (newVal !== currentVal) {
+                $input.val(newVal).trigger('change');
+                clearTimeout(updateTimer);
+                updateTimer = setTimeout(function () {
+                    const $updateBtn = $('button[name="update_cart"]').first();
+                    if ($updateBtn.length) {
+                        $updateBtn.prop('disabled', false).attr('disabled', false).trigger('click');
+                    }
+                }, debounceTime);
+            }
+        });
 
-    // Eliminar item
-    $(document).on('click', '.mu-red-cart-icon', function () {
-        const $row = $(this).closest('tr');
-        const $nativeRemove = $row.find('.product-remove a.remove');
-        if ($nativeRemove.length) {
-            $row.css('opacity', '0.5');
-            $nativeRemove[0].click();
-        }
-    });
+        // Eliminar item
+        $(document).on('click', '.mu-red-cart-icon', function () {
+            const $row = $(this).closest('tr');
+            const $nativeRemove = $row.find('.product-remove a.remove');
+            if ($nativeRemove.length) {
+                $row.css('opacity', '0.5');
+                $nativeRemove[0].click();
+            }
+        });
+
+        // Re-init tras AJAX de WC
+        $(document.body).on('updated_wc_div', function () {
+            $('.shop_table.cart tbody tr.cart_item').removeClass('mu-optimized');
+            initCartEnhancements();
+        });
+    }
 
     // ================================================
-    // INICIALIZACIÓN Y RE-INIT TRAS AJAX DE WC
+    // INICIALIZACIÓN
     // ================================================
-    initCartEnhancements();
+    
+    function init() {
+        if ($('body').hasClass('woocommerce-cart')) {
+            initCartEnhancements();
+            bindEvents();
+        }
+    }
 
-    $(document.body).on('updated_wc_div', function () {
-        $('.shop_table.cart tbody tr.cart_item').removeClass('mu-optimized');
-        initCartEnhancements();
-    });
-});
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+
+})(jQuery);
