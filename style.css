@@ -7,7 +7,7 @@ Author URI: https://generatepress.com/about
 Description: GeneratePress is a lightweight WordPress theme built with a focus on speed and usability. Performance is important to us, which is why a fresh GeneratePress install adds less than 10kb (gzipped) to your page size. We take full advantage of the block editor (Gutenberg), which gives you more control over creating your content. If you use page builders, GeneratePress is the right theme for you. It is completely compatible with all major page builders, including Beaver Builder and Elementor. Thanks to our emphasis on WordPress coding standards, we can boast full compatibility with all well-coded plugins, including WooCommerce. GeneratePress is fully responsive, uses valid HTML/CSS, and is translated into over 25 languages by our amazing community of users. A few of our many features include 60+ color controls, powerful dynamic typography, 5 navigation locations, 5 sidebar layouts, dropdown menus (click or hover), and 9 widget areas. Learn more and check out our powerful premium version at https://generatepress.com
 Tags: two-columns,three-columns,one-column,right-sidebar,left-sidebar,footer-widgets,blog,e-commerce,flexible-header,full-width-template,buddypress,custom-header,custom-background,custom-menu,custom-colors,sticky-post,threaded-comments,translation-ready,rtl-language-support,featured-images,theme-options
 Version: 3.6.1.1770851975
-Updated: 2026-02-11 20:19:35
+Updated: 2026-02-20 18:08:00
 
 */
 
@@ -134,7 +134,256 @@ input#nombre_personalizado { width: 100%; height: 40px; padding: 0 15px 0 15px; 
 .promo-badge { font-size: 0.75em; background: var(--secundario); color: var(--texto); padding: 2px 6px; border-radius: 4px; margin-left: 3px; font-weight: 600; display: inline-block; }
 .price-strike { text-decoration: line-through; opacity: 0.6; margin-right: 3px; font-size: 0.9em; }
 
+/* ============================================
+   WHATSAPP FLOATING BUTTON
+   ============================================ */
+.boton-whatsapp {
+    position: fixed;
+    width: 50px;
+    height: 50px;
+    bottom: 82px;
+    right: 25px;
+    background-color: #25d366;
+    color: #FFF;
+    border-radius: 50px;
+    text-align: center;
+    font-size: 30px;
+    box-shadow: 2px 2px 0px 0px #339db7;
+    z-index: 100;
+}
+.boton-whatsapp img {
+    width: 100%;
+}
+
+/* ============================================
+   SEARCH FORM (WooCommerce Product Search)
+   ============================================ */
+.mu-search-group {
+    display: flex;
+    width: 100%;
+    position: relative;
+    align-items: center;
+}
+
+.mu-product-search .search-field {
+    width: 100%;
+    height: 40px;
+    padding: 0 15px;
+    padding-right: 50px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    background-color: var(--blanco, #ffffff);
+    color: var(--primario, #111111);
+    font-size: 14px;
+    box-shadow: none;
+    outline: none;
+}
+
+.mu-product-search .mu-search-submit {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 45px; 
+    height: 40px; 
+    background-color: var(--secundario, #FFD77A);
+    color: var(--primario, #111111);
+    border: none;
+    border-radius: 0 4px 4px 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: background-color 0.2s ease;
+    line-height: 0; 
+}
+
+.mu-product-search .mu-search-submit:hover {
+    background-color: #ffe099; 
+    color: #000;
+}
+
+.mu-product-search .mu-search-submit svg {
+    width: 18px;
+    height: 18px;
+    stroke-width: 2.5px;
+    fill: none;
+    stroke: currentColor;
+}
+
+/* ============================================
+   COUNTRY SELECTOR (Header Left)
+   ============================================ */
+.mu-header-country-item {
+    position: absolute;
+    left: 30px;
+    top: 30px;
+    z-index: 1000;
+}
+
+.country-redirect-container {
+    position: relative;
+    display: inline-block;
+}
+
+.country-selector-trigger {
+    cursor: pointer;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    transition: all 0.2s ease;
+    width: 45px;
+    height: 45px;
+}
+
+.country-selector-trigger:hover {
+    background: rgba(0,0,0,0.03);
+    border-color: rgba(0,0,0,0.1);
+}
+
+.country-selector-trigger img {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+    border-style: solid;
+    border-color: #247fa5;
+}
+
+.country-selector-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 12px);
+    left: -5px;
+    width: 260px;
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    z-index: 2001;
+    list-style: none;
+    padding: 5px 0;
+    margin: 0;
+    text-align: left;
+}
+
+.country-selector-dropdown .dropdown-header {
+    padding: 10px 15px;
+    border-bottom: 1px solid #f5f5f5;
+    color: #999;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.country-selector-dropdown .dropdown-header p { margin: 0; }
+
+.country-selector-dropdown li a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 15px;
+    color: #444;
+    text-decoration: none;
+    font-size: 14px;
+    transition: background 0.2s;
+}
+
+.country-selector-dropdown li a:hover {
+    background-color: #f7f7f7;
+    color: #000;
+}
+
+.country-selector-dropdown li img {
+    width: 20px;
+    height: auto;
+    border-radius: 2px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* ============================================
+   WPLINGUA SWITCHER UI (Toggle + Restore Tab)
+   ============================================ */
+.wplng-close-btn {
+    background-color: #fff;
+    color: #1d2327;
+    border: none;
+    border-radius: 9px;
+    margin: 0;
+    width: 30px;
+    height: 30px;
+    padding: 0px 0px;
+    display: inline-block;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    vertical-align: text-bottom;
+}
+.wplng-close-btn:hover {
+    background-color: #f0f0f1;
+}
+
+.wplng-switcher.wplng-collapsed {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(20px);
+    transition: all 0.3s;
+}
+
+.wplng-switcher.theme-light-simple-smooth .switcher-content {
+    border: 0;
+    box-shadow: rgba(0, 0, 0, 0.19) 0px 10px 20px, rgba(0, 0, 0, 0.23) 0px 6px 6px;
+}
+
+.wplng-restore-tab {
+    position: fixed;
+    bottom: 0;
+    right: 18px;
+    background-color: #fff;
+    box-shadow: rgba(0, 0, 0, 0.19) 0px 10px 20px, rgba(0, 0, 0, 0.23) 0px 6px 6px;
+    border-radius: 9px 9px 0 0;
+    padding: 4px 10px 4px 10px;
+    cursor: pointer;
+    min-width: 50px;
+    min-height: 28px;
+    z-index: 10500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.wplng-restore-tab span {
+    font-size: 20px;
+    line-height: 20px;
+}
+.wplng-restore-tab span img.emoji {
+    display: inline !important;
+    border: none !important;
+    box-shadow: none !important;
+    height: 1em !important;
+    width: 1em !important;
+    margin: 0 0.07em !important;
+    vertical-align: -0.1em !important;
+    background: none !important;
+    padding: 0 !important;
+}
+.wplng-restore-tab:hover {
+    background: #f0f0f1;
+}
+
 /* Media Queries */
+@media (max-width: 768px) {
+    .mu-header-country-item {
+        left: 20px;
+        top: 20px;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mu-animate-float, .mu-animate-pulse { animation: none; }
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
