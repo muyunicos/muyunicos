@@ -128,8 +128,40 @@ function mu_enqueue_assets() {
         $theme_version,
         true
     );
+    
+    // JavaScript UI helpers (Country selector + WPLingua toggle)
+    wp_enqueue_script(
+        'mu-ui-scripts',
+        $theme_uri . '/assets/js/mu-ui-scripts.js',
+        array(),
+        $theme_version,
+        true
+    );
 }
 add_action('wp_enqueue_scripts', 'mu_enqueue_assets', 20);
+
+/* ============================================
+   CSS CONDICIONAL - WPLingua Switcher
+   Oculta switcher en hosts no permitidos
+   ============================================ */
+
+add_action('wp_enqueue_scripts', function() {
+    $allowed_hosts = ['us.muyunicos.com', 'br.muyunicos.com'];
+    
+    if (is_admin()) {
+        return;
+    }
+    
+    $host = $_SERVER['HTTP_HOST'] ?? '';
+    
+    if (!in_array($host, $allowed_hosts, true)) {
+        // Adjuntar al handle de CSS base
+        wp_add_inline_style(
+            'mu-base',
+            '.wplng-switcher { display: none !important; }'
+        );
+    }
+}, 25);
 
 /* ============================================
    MODAL AUTH - LOCALIZE SCRIPT
@@ -504,6 +536,135 @@ function mu_update_cart_badge( $fragments ) {
     $fragments['.mu-cart-badge'] = ob_get_clean();
     return $fragments;
 }
+
+/* ============================================
+   BOTÓN FLOTANTE WHATSAPP
+   HTML/PHP puro, CSS migrado a style.css
+   ============================================ */
+
+function mu_boton_flotante_whatsapp() {
+    ?>
+    <a href="https://api.whatsapp.com/send?phone=542235331311&amp;text=Hola!%20te%20escribo%20de%20la%20p%C3%A1gina%20muyunicos.com"
+       class="boton-whatsapp"
+       target="_blank"
+       rel="noopener noreferrer">
+        <img src="https://muyunicos.com/wp-content/uploads/2025/10/whatsapp.webp"
+             alt="Contacto por WhatsApp">
+    </a>
+    <?php
+}
+add_action( 'wp_footer', 'mu_boton_flotante_whatsapp' );
+
+/* ============================================
+   FORMULARIO DE BÚSQUEDA DE PRODUCTOS
+   HTML/PHP puro, CSS migrado a style.css
+   ============================================ */
+
+add_filter( 'get_product_search_form', 'mu_custom_search_form_logic' );
+function mu_custom_search_form_logic( $form ) {
+
+    $unique_id = uniqid( 'search-form-' );
+
+    $icon_html = function_exists( 'mu_get_icon' )
+        ? mu_get_icon( 'search' )
+        : '<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>';
+
+    $form = '
+    <form role="search" method="get" class="woocommerce-product-search mu-product-search" action="' . esc_url( home_url( '/' ) ) . '">
+        <label class="screen-reader-text" for="' . esc_attr( $unique_id ) . '">Buscar productos:</label>
+        <div class="mu-search-group">
+            <input type="search"
+                   id="' . esc_attr( $unique_id ) . '"
+                   class="search-field"
+                   placeholder="Buscar en la tienda..."
+                   value="' . get_search_query() . '"
+                   name="s" />
+            <button type="submit" class="mu-search-submit" aria-label="Buscar">
+                ' . $icon_html . '
+            </button>
+            <input type="hidden" name="post_type" value="product" />
+        </div>
+    </form>';
+
+    return $form;
+}
+
+/* ============================================
+   MUYUNICOS - Selector de País en Header (Izquierda)
+   Ubicación: Inside Header (Left)
+   HTML/PHP puro, CSS y JS migrados a archivos separados
+   ============================================ */
+
+if ( ! function_exists( 'render_country_redirect_selector' ) ) {
+    function render_country_redirect_selector() {
+        if ( ! function_exists( 'WC' ) || ! WC()->customer ) {
+            return '';
+        }
+
+        $countries_data        = muyu_get_countries_data();
+        $current_country_code  = WC()->customer->get_billing_country() ?: 'AR';
+
+        if ( ! isset( $countries_data[ $current_country_code ] ) ) {
+            $current_country_code = 'AR';
+        }
+
+        $current_country_data = $countries_data[ $current_country_code ];
+        $request_uri          = $_SERVER['REQUEST_URI'] ?? '/';
+        $scheme               = ( isset( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] !== 'off' ) ? 'https' : 'http';
+
+        ob_start();
+        ?>
+        <div id="country-redirect-selector" class="country-redirect-container">
+            <div class="country-selector-trigger"
+                 title="Cambiar de País"
+                 tabindex="0"
+                 role="button"
+                 aria-haspopup="true"
+                 aria-expanded="false">
+                <img src="https://flagcdn.com/w40/<?php echo esc_attr( $current_country_data['flag'] ); ?>.png"
+                     alt="<?php echo esc_attr( $current_country_data['name'] ); ?>" />
+            </div>
+
+            <ul class="country-selector-dropdown" aria-label="Cambiar país">
+                <div class="dropdown-header"><p>Selecciona tu país</p></div>
+                <?php foreach ( $countries_data as $code => $country ) : ?>
+                    <?php if ( $code !== $current_country_code ) : ?>
+                        <?php
+                        $prefix     = muyu_country_language_prefix( $code );
+                        $target_url = $scheme . '://' . rtrim( $country['host'], '/' ) . muyu_clean_uri( $prefix, $request_uri );
+                        ?>
+                        <li>
+                            <a href="<?php echo esc_url( $target_url ); ?>">
+                                <img src="https://flagcdn.com/w40/<?php echo esc_attr( $country['flag'] ); ?>.png"
+                                     alt="<?php echo esc_attr( $country['name'] ); ?>" />
+                                <span><?php echo esc_html( $country['name'] ); ?></span>
+                            </a>
+                        </li>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+
+    add_shortcode( 'country_redirect_selector', 'render_country_redirect_selector' );
+}
+
+/**
+ * Inyectar selector dentro del header GeneratePress
+ */
+function mu_inject_country_selector_header() {
+    if ( ! function_exists( 'render_country_redirect_selector' ) ) {
+        return;
+    }
+    ?>
+    <div class="mu-header-country-item">
+        <?php echo render_country_redirect_selector(); ?>
+    </div>
+    <?php
+}
+add_action( 'generate_header', 'mu_inject_country_selector_header', 1 );
 
 /* ============================================
    FOOTER - ESTRUCTURA CUSTOM
