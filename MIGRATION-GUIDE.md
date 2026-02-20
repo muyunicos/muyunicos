@@ -7,6 +7,8 @@
 
 ## 0. Estado de la Migración
 
+### Archivos CSS
+
 | Archivo | Tipo | Tamaño | Estado |
 |---|---|---|---|
 | `css/components/header.css` | Componente | 9.4 KB | ✅ Migrado |
@@ -19,7 +21,17 @@
 | `css/product.css` | Página | 0 KB | 📋 Pendiente (placeholder creado) |
 | `css/shop.css` | Página | — | ❌ Archivo no creado aún |
 
-**Progreso**: 6 de 9 archivos CSS migrados · ~46.7 KB de CSS modular activo
+### Snippets PHP → `functions.php`
+
+| Snippet / Funcionalidad | Función(es) en `functions.php` | Estado |
+|---|---|---|
+| Google Site Kit: canonical home URL | `mu_googlesitekit_canonical_home_url()` | ✅ Migrado |
+| Botón Compartir HTML + shortcode `[dcms_share]` | `dcms_render_share_button()` | ✅ Migrado |
+| WooCommerce: agregar múltiples productos por URL | `woo_add_multiple_products_to_cart()` | ✅ Migrado |
+| BACS: reemplazar NUMERODEPEDIDO en página y emails | `bacs_buffer_start/end`, `bacs_email_buffer_start/end` | ✅ Migrado |
+| WooCommerce: mover descripción de categoría | `muyunicos_move_category_description()` | ✅ Migrado |
+
+**Progreso**: 6 de 9 archivos CSS migrados · 5 de 5 snippets PHP migrados · ~46.7 KB de CSS modular activo
 
 ---
 
@@ -79,7 +91,7 @@ Scripts del child theme. Cargados en footer.
 | `header.js` | Menú móvil toggle, sticky header | Footer, defer | Ninguna |
 | `footer.js` | Accordion footer mobile | Footer, defer | Ninguna |
 | `modal-auth.js` | Auth modal AJAX | Footer, `!is_user_logged_in()` | Ninguna |
-| `mu-ui-scripts.js` | UI helpers: Country selector, WPLingua, Share button | Footer, defer | Ninguna |
+| `mu-ui-scripts.js` | UI helpers: Country selector + WPLingua toggle + Share button | Footer, defer | Ninguna |
 | `cart.js` | Carrito | Footer, `is_cart()` | `['jquery']` |
 | `checkout.js` | Checkout | Footer, `is_checkout()` | `['jquery', 'libphonenumber-js']` |
 
