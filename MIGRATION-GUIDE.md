@@ -36,6 +36,83 @@
 
 ---
 
+### Sistema de Restricción Digital — Operación y Configuración
+
+> Clase: `MUYU_Digital_Restriction_System` · Archivo: `functions.php` · Patrón: Singleton · Versión: 2.2.0
+
+| Ítem | Valor |
+|---|---|
+| Clase | `MUYU_Digital_Restriction_System` (protegida con `class_exists`) |
+| Inicialización | `muyu_digital_restriction_init()` en hook `plugins_loaded`, prioridad 5 |
+| Criterio de restricción | Solo `muyunicos.com` (sin subdominio) ve todos los productos; cualquier subdominio ve únicamente digitales |
+| Formato físico (`pa_formato`) | `PHYSICAL_FORMAT_ID = 112` (Imprimible) |
+| Formato digital (`pa_formato`) | `DIGITAL_FORMAT_ID = 111` (Digital) |
+
+**Option Keys** (guardadas en `wp_options`, `autoload = false`)
+
+| Option Key | Descripción |
+|---|---|
+| `muyu_digital_product_ids` | Array de IDs de productos digitales indexados |
+| `muyu_digital_category_ids` | Array de IDs de categorías con productos digitales (incluye ancestros) |
+| `muyu_digital_tag_ids` | Array de IDs de tags de productos digitales |
+| `muyu_phys_to_dig_map` | Mapa `[id_físico => id_digital]` para redirecciones directas vía slug `-imprimible` |
+| `muyu_digital_list_updated` | Timestamp del último rebuild (formato datetime MySQL) |
+
+**Admin / Operación**
+- Botón **⚡ Reindexar Digitales** disponible en `/wp-admin/edit.php?post_type=product`
+- Endpoint AJAX: `action = muyu_rebuild_digital_list` · Nonce: `muyu-rebuild-nonce`
+- Rebuild automático: se encola en `shutdown` al guardar/actualizar cualquier producto, protegido por transient `muyu_rebuild_scheduled` (TTL 120 s) para evitar ejecuciones múltiples
+- Bootstrap de índices: `ensure_indexes_exist()` en `admin_init` — si la option no existe, lanza rebuild automático
+
+**Funciones de compatibilidad (backward compat)**
+
+| Función | Retorno | Descripción |
+|---|---|---|
+| `muyu_is_restricted_user()` | `bool` | `true` si el usuario está en un subdominio |
+| `muyu_get_user_country_code()` | `string` | Código ISO 3166-1 alpha-2 derivado del subdominio |
+| `muyu_rebuild_digital_indexes_optimized()` | `int` | Total de productos digitales indexados |
+
+**Mapeo de subdominios → país**
+
+| Subdominio | Código país |
+|---|---|
+| `mexico.*` | `MX` |
+| `br.*` | `BR` |
+| `co.*` | `CO` |
+| `ec.*` | `EC` |
+| `cl.*` | `CL` |
+| `pe.*` | `PE` |
+| `ar.*` | `AR` |
+| Cualquier 2 letras no listado | uppercase del subdominio |
+| Sin subdominio / dominio principal | `AR` (default) |
+
+**Auto-selección de variación `pa_formato`**
+- Usuarios restringidos (subdominio extranjero): selecciona Digital (ID 111) y **oculta** la fila del selector de variación
+- Argentina (`muyunicos.com`): selecciona Físico/Imprimible (ID 112) y **deja el selector visible**
+- PHP: implementado via `woocommerce_product_get_default_attributes` (prioridad 20) + `woocommerce_before_add_to_cart_button` (prioridad 5)
+- JS: inyectado via `wc_enqueue_js()` (se encola después de las dependencias de WooCommerce)
+
+**Hooks registrados**
+
+| Hook | Método | Tipo | Prioridad |
+|---|---|---|---|
+| `wp_ajax_muyu_rebuild_digital_list` | `ajax_rebuild_indexes` | action | — |
+| `woocommerce_update_product` | `schedule_rebuild` | action | 10 |
+| `admin_init` | `ensure_indexes_exist` | action | 5 |
+| `admin_head-edit.php` | `add_rebuild_button` | action | — |
+| `pre_get_posts` | `filter_product_queries` | action | 50 |
+| `template_redirect` | `handle_redirects` | action | 20 |
+| `wp` | `init_frontend_filters` | action | 5 |
+| `woocommerce_variation_is_visible` | `hide_physical_variation` | filter | 10 |
+| `woocommerce_dropdown_variation_attribute_options_args` | `clean_variation_dropdown` | filter | 10 |
+| `woocommerce_variation_prices` | `filter_variation_prices` | filter | 10 |
+| `woocommerce_product_get_default_attributes` | `set_format_default` | filter | 20 |
+| `woocommerce_before_add_to_cart_button` | `autoselect_format_variation` | action | 5 |
+| `get_terms_args` *(via init_frontend_filters)* | `filter_category_terms` | filter | 10 |
+| `wp_get_nav_menu_items` *(via init_frontend_filters)* | `filter_menu_items` | filter | 10 |
+
+---
+
 ## 1. Arquitectura del Repositorio
 
 ### Archivos Raíz
