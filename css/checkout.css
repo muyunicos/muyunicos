@@ -1,0 +1,243 @@
+/* ========================================
+   CHECKOUT - Estilos de página
+   Migrado desde snippets:
+     - "Checkout Híbrido Optimizado" (Section 6.1)
+     - "Checkout Moderno Mobile-First" (Snippet 3)
+   Carga: condicional is_checkout()
+   ~14 KB / 0 KB inline eliminado
+   ======================================== */
+
+/* ============================================
+   1. ANTI-FOUC: Campos nativos ocultos
+   Render-blocking gracias a <link> en <head>
+   ============================================ */
+#billing_first_name_field,
+#billing_last_name_field,
+.woocommerce-billing-fields__field-wrapper .mu-hidden,
+.woocommerce-account-fields {
+    display: none !important;
+}
+
+/* ============================================
+   2. RESET Y BASE
+   ============================================ */
+.woocommerce-shipping-fields  { border: none !important; margin-bottom: 0 !important; }
+.site-content                  { background-color: var(--fondo); }
+.woocommerce-checkout *        { box-sizing: border-box; }
+.woocommerce-checkout          { background: var(--fondo, #f7f7f7); overflow-x: hidden; }
+.woocommerce-checkout .woocommerce {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 15px;
+    width: 100%;
+}
+
+/* ============================================
+   3. COMPONENTES CUSTOM (CAMPOS)
+   ============================================ */
+
+/* Encabezado de sección de contacto */
+.muyunicos-contact-header {
+    font-weight: 600;
+    font-size: 1.1em;
+    color: var(--texto, #333);
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+    margin: 20px 0 5px;
+}
+
+/* Toggle de dirección (cursor desde PHP → CSS) */
+.muyunicos-shipping-toggle-wrapper { margin: 10px 0 20px; padding: 12px; background: #f9f9f9; border-radius: var(--mu-radius, 8px); border: 1px solid #e0e0e0; }
+.muyunicos-shipping-toggle-wrapper label { cursor: pointer; }
+
+/* Estados de inputs */
+.muyunicos-smart-field input,
+.muyunicos-contact-field input {
+    border-radius: var(--mu-radius, 8px);
+    padding: 12px;
+    transition: border-color 0.3s ease, background-color 0.3s ease;
+}
+.muyunicos-field-valid input { border-color: var(--exito, #2ecc71) !important; }
+.muyunicos-field-error input { border-color: #e74c3c !important; background-color: #fff5f5 !important; }
+
+/* Badge verificado — inline style removido del PHP */
+.muyunicos-verified-badge {
+    display: none; /* JS usa .show() / .hide() */
+    color: var(--exito, #2ecc71);
+    margin-left: 5px;
+    font-weight: bold;
+}
+
+/* Indicador WhatsApp */
+#wa-status-msg         { font-size: 0.85em; transition: all 0.3s; margin-left: 5px; }
+.wa-ok                 { color: var(--exito, #2ecc71); font-weight: 700; }
+.wa-err                { color: #e74c3c; font-weight: 700; }
+#billing_phone_field.hide-optional label .optional { display: none !important; }
+
+/* Notice email existente */
+#muyunicos-email-exists-notice {
+    background-color: #e3f2fd;
+    color: #0d47a1;
+    padding: 10px;
+    border-radius: var(--mu-radius, 6px);
+    margin-bottom: 10px;
+    display: none;
+    border-left: 4px solid #2196f3;
+    font-size: 0.9em;
+}
+#muyunicos-email-exists-notice a { font-weight: bold; text-decoration: underline; cursor: pointer; }
+
+/* ============================================
+   4. LAYOUT GENERAL (MOBILE-FIRST)
+   ============================================ */
+.woocommerce-checkout #customer_details { margin-bottom: 30px; }
+.woocommerce-checkout .woocommerce-form-coupon-toggle { display: none !important; }
+
+/* Títulos de sección con ícono emoji */
+.woocommerce-billing-fields h3,
+.woocommerce-shipping-fields h3,
+.woocommerce-additional-fields h3,
+#order_review_heading {
+    background: var(--primario, #333);
+    color: var(--blanco, #fff);
+    padding: 16px 20px;
+    margin: 0;
+    border-radius: var(--mu-radius, 8px) var(--mu-radius, 8px) 0 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    line-height: 1.4;
+}
+.woocommerce-billing-fields h3::before   { content: "📍"; font-size: 1.2rem; }
+.woocommerce-shipping-fields h3::before  { content: "📦"; font-size: 1.2rem; }
+.woocommerce-additional-fields h3::before { content: "📝"; font-size: 1.2rem; }
+
+/* Cajas contenedoras */
+.woocommerce-billing-fields,
+.woocommerce-shipping-fields,
+.woocommerce-additional-fields {
+    background: var(--blanco, #fff);
+    border-radius: var(--mu-radius-md, 8px);
+    border: 1px solid #e0e0e0;
+    overflow: hidden;
+    margin-bottom: 25px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+}
+.woocommerce-billing-fields__field-wrapper,
+.woocommerce-shipping-fields__field-wrapper,
+.woocommerce-additional-fields__field-wrapper { padding: 20px; }
+
+/* Form rows */
+.woocommerce-checkout .form-row { margin-bottom: 15px; width: 100%; float: none; }
+.woocommerce-checkout .form-row label { display: block; margin-bottom: 6px; font-weight: 600; color: var(--texto, #333); font-size: 0.9rem; }
+
+/* Inputs globales (font-size: 16px evita zoom en iOS) */
+.woocommerce-checkout input.input-text,
+.woocommerce-checkout select,
+.woocommerce-checkout textarea {
+    width: 100% !important;
+    padding: 12px 15px;
+    min-height: 48px;
+    border: 2px solid #e0e0e0;
+    border-radius: var(--mu-radius, 6px);
+    font-size: 16px;
+    color: var(--texto, #333);
+    background: #fff;
+    transition: all 0.2s ease;
+    box-shadow: none;
+}
+.woocommerce-checkout input.input-text:focus,
+.woocommerce-checkout select:focus,
+.woocommerce-checkout textarea:focus {
+    outline: none;
+    border-color: var(--primario, #333);
+    background: #fcfcfc;
+}
+.woocommerce-checkout input[type="checkbox"] {
+    width: 20px; height: 20px;
+    accent-color: var(--primario, #333);
+    vertical-align: middle; margin-right: 8px;
+}
+
+/* ============================================
+   5. SIDEBAR — RESUMEN DE PEDIDO
+   ============================================ */
+#order_review_heading  { margin-top: 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+#order_review {
+    background: #fff;
+    border: 2px solid var(--primario, #333);
+    border-top: none;
+    border-radius: 0 0 var(--mu-radius-md, 8px) var(--mu-radius-md, 8px);
+    padding: 0; overflow: hidden;
+}
+.woocommerce-checkout-review-order-table { margin: 0; border: none; }
+.woocommerce-checkout-review-order-table th,
+.woocommerce-checkout-review-order-table td { padding: 15px 20px; border-bottom: 1px solid #eee; }
+.woocommerce-checkout-review-order-table thead th { background: #f9f9f9; font-weight: 700; text-transform: uppercase; font-size: 0.85rem; }
+.woocommerce-checkout-review-order-table .order-total th,
+.woocommerce-checkout-review-order-table .order-total td {
+    background: #f0f9ff;
+    color: var(--primario, #333);
+    font-size: 1.2rem; font-weight: 800;
+    border-top: 2px solid var(--primario, #333);
+}
+
+/* Botón de pago */
+#place_order {
+    width: 100%; padding: 18px;
+    background: var(--primario, #333);
+    color: #fff; font-weight: 700; font-size: 1.1rem;
+    border: none; border-radius: var(--mu-radius, 6px);
+    margin-top: 20px; cursor: pointer;
+    transition: transform 0.2s; text-transform: uppercase;
+}
+#place_order:hover         { transform: translateY(-2px); opacity: 0.95; }
+#place_order:focus-visible { outline: 3px solid var(--secundario, #FFD77A); outline-offset: 2px; }
+
+/* ============================================
+   6. DESKTOP GRID ≥1025px
+   ============================================ */
+@media (min-width: 1025px) {
+    .woocommerce-checkout form.checkout {
+        display: grid;
+        grid-template-columns: 1fr 420px;
+        gap: 40px;
+        align-items: start;
+    }
+    /* Todo elemento desconocido ocupa ancho completo */
+    .woocommerce-checkout form.checkout > * { grid-column: 1 / -1; width: 100%; }
+
+    .woocommerce-checkout .col2-set {
+        width: 100% !important; float: none !important;
+        margin: 0 !important; padding: 0 !important;
+        display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+    }
+    .woocommerce-checkout .col2-set::before,
+    .woocommerce-checkout .col2-set::after { display: none !important; }
+
+    .woocommerce-checkout .col2-set .col-1,
+    .woocommerce-checkout .col2-set .col-2 { width: 100% !important; float: none !important; max-width: 100% !important; flex: none; }
+
+    .woocommerce-checkout #customer_details { grid-column: 1; grid-row: 2; margin-bottom: 0; display: block; }
+    .woocommerce-checkout #order_review_heading { grid-column: 2; grid-row: 2; margin-bottom: 0; position: sticky; top: 20px; z-index: 10; }
+    .woocommerce-checkout #order_review        { grid-column: 2; grid-row: 2; margin-top: 53px; position: sticky; top: 73px; }
+}
+
+/* ============================================
+   7. MOBILE ≤1024px
+   FIX: removidas reglas !important conflictivas
+   del snippet original (dead code detectado)
+   ============================================ */
+@media (max-width: 1024px) {
+    .woocommerce-checkout form.checkout { display: block; }
+    .woocommerce-checkout .col2-set { display: block; }
+    .woocommerce-checkout .col2-set .col-1,
+    .woocommerce-checkout .col2-set .col-2 { width: 100%; margin-bottom: 20px; }
+
+    /* Tabla de revisión como tabla nativa en móvil */
+    .woocommerce-checkout-review-order-table tr    { display: table-row !important; }
+    .woocommerce-checkout-review-order-table thead { display: table-header-group !important; }
+    .woocommerce-checkout-review-order-table td    { display: table-cell !important; }
+}
