@@ -83,13 +83,6 @@ Scripts del child theme. Cargados en footer.
 
 ---
 
-### snippets/
-Archivo de referencia para código ya migrado. No cargar en producción.
-
-| Archivo | Contenido | Estado |
-|---|---|---|
-| `header-refactored.php` | Header PHP refactorizado (referencia post-migración) | 🗄️ Archivado |
-
 ### Sistema de Iconos: `mu_get_icon($name)`
 Función en `functions.php` (~línea 120). Devuelve SVG inline.  
 **Iconos disponibles**: `arrow`, `search`, `close`, `instagram`, `facebook`, `pinterest`, `tiktok`, `youtube`.  
