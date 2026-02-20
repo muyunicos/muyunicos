@@ -122,10 +122,16 @@ td.actions .coupon::after { display: none !important; }
 .mu-qty-btn:hover         { background: #f7f7f7; color: #000; }
 .mu-qty-btn:focus-visible { outline: 2px solid var(--primario, #333); outline-offset: -2px; }
 
-/* Ícono de eliminar */
-.mu-red-cart-icon { width: 20px; height: 20px; cursor: pointer; transition: transform 0.2s; display: block; }
+/* Ícono de eliminar (close dynamically converted to red for delete) */
+.mu-red-cart-icon { 
+    width: 20px; 
+    height: 20px; 
+    cursor: pointer; 
+    transition: transform 0.2s; 
+    display: block; 
+    color: var(--error, #e74c3c); /* Hereda stroke="currentColor" del SVG */
+}
 .mu-red-cart-icon:hover { transform: scale(1.1); }
-.mu-red-cart-icon path { fill: none; stroke: #e74c3c; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
 /* Subtotal movido */
 .mu-moved-subtotal { font-weight: 600; font-size: 1rem; color: #333; }
