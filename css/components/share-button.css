@@ -1,0 +1,62 @@
+/* ========================================
+   SHARE BUTTON - BOTÓN COMPARTIR INTELIGENTE
+   ======================================== */
+
+.mu-share-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: transparent;
+    color: var(--primario, #2367a7);
+    border: none;
+    padding: 6px;
+    cursor: pointer;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    line-height: 0;
+    vertical-align: middle;
+    position: relative;
+}
+
+.mu-share-btn:hover {
+    transform: scale(1.15);
+}
+
+.mu-share-btn.is-success {
+    background-color: rgba(39, 174, 96, 0.1);
+}
+
+/* Tooltip "Enlace copiado" */
+.mu-share-tooltip {
+    position: absolute;
+    bottom: 110%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #333;
+    color: #fff;
+    padding: 5px 10px;
+    border-radius: var(--mu-radius, 4px);
+    font-size: 12px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    animation: muFadeIn 0.3s forwards;
+    z-index: 999;
+    box-shadow: var(--mu-shadow-sm, 0 2px 5px rgba(0,0,0,0.2));
+}
+
+.mu-share-tooltip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #333 transparent transparent transparent;
+}
+
+@keyframes muFadeIn {
+    from { opacity: 0; transform: translate(-50%, 5px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+}
