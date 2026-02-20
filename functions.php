@@ -810,379 +810,188 @@ function muyunicos_custom_footer_structure() {
     <?php
 }
 
-/* ============================================
-   CHECKOUT - CONFIGURACIÓN WooCommerce
-   Migrado desde snippet "Checkout Híbrido Optimizado"
-   Fecha: 20 Feb 2026
-   ============================================ */
+/**
+ * Checkout JS - Muy Únicos
+ * Migrado desde snippet "Checkout Híbrido Optimizado"
+ * Vars PHP recibidas via wp_localize_script como `muCheckout`
+ */
+jQuery(document).ready(function ($) {
+    'use strict';
 
-// 1. Configuración general
-add_filter( 'woocommerce_enable_checkout_login_reminder',   '__return_false' );
-add_filter( 'woocommerce_checkout_registration_enabled',    '__return_true'  );
-add_filter( 'woocommerce_checkout_registration_required',   '__return_false' );
-add_filter( 'woocommerce_create_account_default_checked',   '__return_true'  );
-add_filter( 'woocommerce_terms_is_checked_default',         '__return_true'  );
+    // --- CONFIG (PHP → JS via wp_localize_script) ---
+    const isLoggedIn = muCheckout.isLoggedIn;
+    const ajaxUrl    = muCheckout.ajaxUrl;
+    const ajaxNonce  = muCheckout.nonce;
 
-// 2. Helper cacheado: detecta productos físicos (static evita loop múltiple)
-if ( ! function_exists( 'muyunicos_has_physical_products' ) ) {
-    function muyunicos_has_physical_products() {
-        static $has_physical = null;
-        if ( $has_physical !== null ) return $has_physical;
-        $has_physical = false;
-        if ( WC()->cart ) {
-            foreach ( WC()->cart->get_cart() as $item ) {
-                if ( ! $item['data']->is_virtual() && ! $item['data']->is_downloadable() ) {
-                    $has_physical = true;
-                    break;
-                }
+    // --- INYECCIONES DOM INICIALES ---
+    if ($('#wa-status-msg').length === 0) {
+        $('label[for="billing_phone"]').append('<span id="wa-status-msg"></span>');
+    }
+    if ($('#muyunicos_wa_valid').length === 0) {
+        $('form.checkout').append('<input type="hidden" name="muyunicos_wa_valid" id="muyunicos_wa_valid" value="1">');
+    }
+
+    // --- REFERENCIAS ---
+    const $phoneInput   = $('#billing_phone');
+    const $countryInput = $('#billing_country');
+    const $phoneWrapper = $('#billing_phone_field');
+    const $statusMsg    = $('#wa-status-msg');
+    let valTimer;
+
+    // ================================================
+    // LÓGICA WHATSAPP
+    // ================================================
+
+    function validarWhatsApp() {
+        // libphonenumber cargado como dependencia WP, retry por seguridad
+        if (typeof libphonenumber === 'undefined') {
+            setTimeout(validarWhatsApp, 500);
+            return;
+        }
+
+        const rawVal      = $phoneInput.val();
+        const countryCode = $countryInput.val();
+        const cleanDigits = rawVal.replace(/\D/g, '');
+
+        if (rawVal.trim().length === 0) {
+            $phoneWrapper.removeClass('hide-optional');
+            setVisualState('reset');
+            $('#muyunicos_wa_valid').val('1');
+            return;
+        }
+
+        $phoneWrapper.addClass('hide-optional');
+
+        if (cleanDigits.length < 6) {
+            setVisualState('reset');
+            $('#muyunicos_wa_valid').val('0');
+            return;
+        }
+
+        try {
+            const pn = libphonenumber.parsePhoneNumber(rawVal, countryCode);
+            if (pn && pn.isValid()) {
+                setVisualState('valid', '✓ ' + pn.formatInternational());
+                $('#muyunicos_wa_valid').val('1');
+            } else {
+                setVisualState('error', 'Revisá el número');
+                $('#muyunicos_wa_valid').val('0');
             }
+        } catch (e) {
+            setVisualState('error', 'Revisá el número');
+            $('#muyunicos_wa_valid').val('0');
         }
-        return $has_physical;
-    }
-}
-
-// 3. Manipulación de campos
-add_filter( 'woocommerce_checkout_fields', 'muyunicos_optimize_checkout_fields', 9999 );
-function muyunicos_optimize_checkout_fields( $fields ) {
-
-    // Campo unificado Nombre + Apellido
-    $fields['billing']['billing_full_name'] = array(
-        'label'       => 'Nombre y Apellido',
-        'placeholder' => 'Ej: Juan Pérez',
-        'required'    => true,
-        'class'       => array( 'form-row-wide', 'muyunicos-smart-field' ),
-        'clear'       => true,
-        'priority'    => 10,
-    );
-
-    // País ancho completo
-    if ( isset( $fields['billing']['billing_country'] ) ) {
-        $fields['billing']['billing_country']['priority'] = 20;
-        $fields['billing']['billing_country']['class']    = array( 'form-row-wide' );
     }
 
-    // Separador "Te contactamos por:"
-    $fields['billing']['billing_contact_header'] = array(
-        'type'     => 'text',
-        'label'    => '',
-        'required' => false,
-        'class'    => array( 'form-row-wide' ),
-        'priority' => 25,
-    );
-
-    // Email — inline style removido, la clase CSS lo oculta inicialmente
-    $fields['billing']['billing_email']['priority'] = 30;
-    $fields['billing']['billing_email']['class']    = array( 'form-row-wide', 'muyunicos-contact-field' );
-    $fields['billing']['billing_email']['label']    = '<span class="muyunicos-verified-badge">✓</span> E-Mail';
-
-    // WhatsApp (opcional, JS decide)
-    $fields['billing']['billing_phone']['priority']    = 40;
-    $fields['billing']['billing_phone']['label']       = 'WhatsApp';
-    $fields['billing']['billing_phone']['required']    = false;
-    $fields['billing']['billing_phone']['placeholder'] = 'Ej: 9 223 123 4567';
-    $fields['billing']['billing_phone']['class']       = array( 'form-row-wide', 'muyunicos-contact-field' );
-
-    // Eliminar empresa siempre
-    unset( $fields['billing']['billing_company'] );
-
-    $address_fields = [ 'billing_address_1', 'billing_address_2', 'billing_city', 'billing_postcode', 'billing_state' ];
-
-    if ( ! muyunicos_has_physical_products() ) {
-        // MODO DIGITAL: sin campos de dirección
-        foreach ( $address_fields as $key ) {
-            unset( $fields['billing'][ $key ] );
+    function setVisualState(state, text = '') {
+        $phoneInput.parent().removeClass('muyunicos-field-valid muyunicos-field-error');
+        if (state === 'valid') {
+            $phoneInput.parent().addClass('muyunicos-field-valid');
+            $statusMsg.html('<span class="wa-ok">' + text + '</span>');
+        } else if (state === 'error') {
+            $phoneInput.parent().addClass('muyunicos-field-error');
+            $statusMsg.html('<span class="wa-err">' + text + '</span>');
+        } else {
+            $statusMsg.text('');
         }
-        add_filter( 'woocommerce_cart_needs_shipping', '__return_false' );
-    } else {
-        // MODO FÍSICO: toggle + campos ocultos por defecto
-        $fields['billing']['billing_shipping_toggle'] = array(
-            'type'     => 'text',
-            'label'    => '',
-            'required' => false,
-            'class'    => array( 'form-row-wide' ),
-            'priority' => 45,
-        );
-        foreach ( $address_fields as $index => $field_key ) {
-            if ( isset( $fields['billing'][ $field_key ] ) ) {
-                $fields['billing'][ $field_key ]['required'] = false;
-                $fields['billing'][ $field_key ]['class'][]  = 'mu-hidden';
-                $fields['billing'][ $field_key ]['class'][]  = 'muyunicos-physical-address-field';
-                $fields['billing'][ $field_key ]['priority'] = 90 + $index;
+    }
+
+    function autoPrefix() {
+        if (typeof libphonenumber === 'undefined') return;
+        if ($phoneInput.val() === '') {
+            try {
+                const code = libphonenumber.getCountryCallingCode($countryInput.val());
+                $phoneInput.val('+' + code + ' ');
+            } catch (e) {}
+        }
+    }
+
+    $phoneInput.on('input keyup', function () {
+        clearTimeout(valTimer);
+        valTimer = setTimeout(validarWhatsApp, 800);
+    });
+    $phoneInput.on('blur', validarWhatsApp);
+    $countryInput.on('change', function () {
+        autoPrefix();
+        setTimeout(validarWhatsApp, 100);
+    });
+    $(window).on('load', function () {
+        setTimeout(function () { autoPrefix(); validarWhatsApp(); }, 1000);
+    });
+
+    // ================================================
+    // LÓGICA NOMBRE: sincroniza campos nativos ocultos
+    // ================================================
+    $('#billing_full_name').on('input change', function () {
+        const val   = $(this).val().trim();
+        const space = val.indexOf(' ');
+        if (space !== -1) {
+            $('#billing_first_name').val(val.substring(0, space));
+            $('#billing_last_name').val(val.substring(space + 1));
+        } else {
+            $('#billing_first_name').val(val);
+            $('#billing_last_name').val('.');
+        }
+    });
+
+    // ================================================
+    // TOGGLE FÍSICO: mostrar/ocultar campos dirección
+    // ================================================
+    const $addrFields = $('.muyunicos-physical-address-field');
+
+    $('#muyunicos-toggle-shipping').on('change', function () {
+        if ($(this).is(':checked')) {
+            $addrFields.removeClass('mu-hidden').hide().slideDown();
+        } else {
+            $addrFields.slideUp(function () { $(this).addClass('mu-hidden'); });
+        }
+    });
+    // Restaurar estado en recarga con error de validación
+    if ($('#muyunicos-toggle-shipping').is(':checked')) {
+        $addrFields.removeClass('mu-hidden');
+    }
+
+    // ================================================
+    // AJAX EMAIL — solo para guests
+    // ================================================
+    if (!isLoggedIn) {
+        let emailTimer;
+
+        $('#billing_email').on('keyup change', function () {
+            const email  = $(this).val();
+            const $wrap  = $(this).parent();
+
+            clearTimeout(emailTimer);
+
+            if (/^.+@.+\..+$/.test(email)) {
+                $wrap.addClass('muyunicos-field-valid');
+
+                emailTimer = setTimeout(function () {
+                    $.post(ajaxUrl, {
+                        action:   'muyunicos_check_email',
+                        email:    email,
+                        security: ajaxNonce
+                    }, function (res) {
+                        if (res.exists) {
+                            $('#muyunicos-email-exists-notice')
+                                .html('👋 Ya tenés cuenta. <a href="#" class="mu-open-modal">Iniciá sesión</a>.')
+                                .slideDown();
+                            $('.muyunicos-verified-badge').show();
+                        } else {
+                            $('#muyunicos-email-exists-notice').slideUp();
+                            $('.muyunicos-verified-badge').show();
+                        }
+                    });
+                }, 1000);
+            } else {
+                $wrap.removeClass('muyunicos-field-valid');
+                $('.muyunicos-verified-badge').hide();
+                $('#muyunicos-email-exists-notice').slideUp();
             }
-        }
+        });
     }
 
-    return $fields;
-}
+    // Aceptar términos automáticamente
+    $('input[name="terms"]').prop('checked', true);
+});
 
-// 4. Renderizado de fragmentos HTML custom
-add_filter( 'woocommerce_form_field', 'muyunicos_render_html_fragments', 10, 4 );
-function muyunicos_render_html_fragments( $field, $key, $args, $value ) {
-    if ( $key === 'billing_contact_header' ) {
-        return '<div class="form-row form-row-wide" id="muyunicos_header_row">
-                    <div class="muyunicos-contact-header">Te contactamos por:</div>
-                    <div id="muyunicos-email-exists-notice"></div>
-                </div>';
-    }
-    if ( $key === 'billing_shipping_toggle' ) {
-        return '<div class="form-row form-row-wide" id="muyunicos_toggle_row">
-                    <div class="muyunicos-shipping-toggle-wrapper">
-                        <label>
-                            <input type="checkbox" id="muyunicos-toggle-shipping" name="muyunicos_shipping_toggle" value="1">
-                            <b>Ingresar datos para envío</b> (Opcional)
-                        </label>
-                    </div>
-                </div>';
-    }
-    return $field;
-}
-
-// 5. Sanitización de datos POST
-add_filter( 'woocommerce_checkout_posted_data', 'muyunicos_sanitize_posted_data' );
-function muyunicos_sanitize_posted_data( $data ) {
-    if ( ! empty( $data['billing_full_name'] ) ) {
-        $parts = explode( ' ', trim( $data['billing_full_name'] ), 2 );
-        $data['billing_first_name'] = $parts[0];
-        $data['billing_last_name']  = isset( $parts[1] ) ? $parts[1] : '.';
-    }
-
-    if ( ! empty( $data['billing_phone'] ) ) {
-        $digits = preg_replace('/\D/', '', $data['billing_phone']);
-        if ( strlen( $digits ) <= 6 ) {
-            $data['billing_phone'] = '';
-        }
-    }
-
-    return $data;
-}
-
-// 6. Validación checkout
-add_action( 'woocommerce_checkout_process', 'muyunicos_validate_checkout' );
-function muyunicos_validate_checkout() {
-    if ( empty( $_POST['billing_full_name'] ) ) {
-        wc_add_notice( __( 'Por favor, completa tu Nombre y Apellido.' ), 'error' );
-    }
-    
-    if ( ! empty( $_POST['billing_phone'] ) ) {
-        if ( isset($_POST['muyunicos_wa_valid']) && $_POST['muyunicos_wa_valid'] === '0' ) {
-             wc_add_notice( __( 'El número de WhatsApp parece incompleto o inválido.' ), 'error' );
-        }
-    }
-
-    if ( isset( $_POST['muyunicos_shipping_toggle'] ) && $_POST['muyunicos_shipping_toggle'] == '1' ) {
-        if ( empty( $_POST['billing_address_1'] ) ) wc_add_notice( __( 'La <strong>Dirección</strong> es necesaria para el envío.' ), 'error' );
-        if ( empty( $_POST['billing_city'] ) ) wc_add_notice( __( 'La <strong>Ciudad</strong> es necesaria.' ), 'error' );
-        if ( empty( $_POST['billing_postcode'] ) ) wc_add_notice( __( 'El <strong>Código Postal</strong> es necesario.' ), 'error' );
-        
-        if ( empty( $_POST['billing_state'] ) && WC()->countries->get_states( $_POST['billing_country'] ) ) {
-             wc_add_notice( __( 'La <strong>Provincia/Estado</strong> es necesaria.' ), 'error' );
-        }
-    }
-}
-
-// 7. AJAX Handler - Check Email
-add_action( 'wp_ajax_muyunicos_check_email', 'muyunicos_ajax_check_email_optimized' );
-add_action( 'wp_ajax_nopriv_muyunicos_check_email', 'muyunicos_ajax_check_email_optimized' );
-
-function muyunicos_ajax_check_email_optimized() {
-    check_ajax_referer( 'check-email-nonce', 'security' );
-    
-    $email = isset($_POST['email']) ? sanitize_email( $_POST['email'] ) : '';
-    
-    if ( ! empty($email) && email_exists( $email ) ) {
-        wp_send_json( array( 'exists' => true ) );
-    } else {
-        wp_send_json( array( 'exists' => false ) );
-    }
-}
-
-// 8. Extras UI - Título página thank you
-add_filter( 'the_title', function( $title, $id ) {
-    if ( is_order_received_page() && get_the_ID() === $id && in_the_loop() ) {
-        return '¡Pedido Recibido!';
-    }
-    return $title;
-}, 10, 2 );
-
-/* ============================================
-   CHECKOUT - CONFIGURACIÓN WooCommerce
-   Migrado desde snippet "Checkout Híbrido Optimizado"
-   Fecha: 20 Feb 2026
-   ============================================ */
-
-// 1. Configuración general
-add_filter( 'woocommerce_enable_checkout_login_reminder',   '__return_false' );
-add_filter( 'woocommerce_checkout_registration_enabled',    '__return_true'  );
-add_filter( 'woocommerce_checkout_registration_required',   '__return_false' );
-add_filter( 'woocommerce_create_account_default_checked',   '__return_true'  );
-add_filter( 'woocommerce_terms_is_checked_default',         '__return_true'  );
-
-// 2. Helper cacheado: detecta productos físicos (static evita loop múltiple)
-if ( ! function_exists( 'muyunicos_has_physical_products' ) ) {
-    function muyunicos_has_physical_products() {
-        static $has_physical = null;
-        if ( $has_physical !== null ) return $has_physical;
-        $has_physical = false;
-        if ( WC()->cart ) {
-            foreach ( WC()->cart->get_cart() as $item ) {
-                if ( ! $item['data']->is_virtual() && ! $item['data']->is_downloadable() ) {
-                    $has_physical = true;
-                    break;
-                }
-            }
-        }
-        return $has_physical;
-    }
-}
-
-// 3. Manipulación de campos
-add_filter( 'woocommerce_checkout_fields', 'muyunicos_optimize_checkout_fields', 9999 );
-function muyunicos_optimize_checkout_fields( $fields ) {
-
-    // Campo unificado Nombre + Apellido
-    $fields['billing']['billing_full_name'] = array(
-        'label'       => 'Nombre y Apellido',
-        'placeholder' => 'Ej: Juan Pérez',
-        'required'    => true,
-        'class'       => array( 'form-row-wide', 'muyunicos-smart-field' ),
-        'clear'       => true,
-        'priority'    => 10,
-    );
-
-    // País ancho completo
-    if ( isset( $fields['billing']['billing_country'] ) ) {
-        $fields['billing']['billing_country']['priority'] = 20;
-        $fields['billing']['billing_country']['class']    = array( 'form-row-wide' );
-    }
-
-    // Separador "Te contactamos por:"
-    $fields['billing']['billing_contact_header'] = array(
-        'type'     => 'text',
-        'label'    => '',
-        'required' => false,
-        'class'    => array( 'form-row-wide' ),
-        'priority' => 25,
-    );
-
-    // Email — inline style removido, la clase CSS lo oculta inicialmente
-    $fields['billing']['billing_email']['priority'] = 30;
-    $fields['billing']['billing_email']['class']    = array( 'form-row-wide', 'muyunicos-contact-field' );
-    $fields['billing']['billing_email']['label']    = '<span class="muyunicos-verified-badge">✓</span> E-Mail';
-
-    // WhatsApp (opcional, JS decide)
-    $fields['billing']['billing_phone']['priority']    = 40;
-    $fields['billing']['billing_phone']['label']       = 'WhatsApp';
-    $fields['billing']['billing_phone']['required']    = false;
-    $fields['billing']['billing_phone']['placeholder'] = 'Ej: 9 223 123 4567';
-    $fields['billing']['billing_phone']['class']       = array( 'form-row-wide', 'muyunicos-contact-field' );
-
-    // Eliminar empresa siempre
-    unset( $fields['billing']['billing_company'] );
-
-    $address_fields = [ 'billing_address_1', 'billing_address_2', 'billing_city', 'billing_postcode', 'billing_state' ];
-
-    if ( ! muyunicos_has_physical_products() ) {
-        // MODO DIGITAL: sin campos de dirección
-        foreach ( $address_fields as $key ) {
-            unset( $fields['billing'][ $key ] );
-        }
-        add_filter( 'woocommerce_cart_needs_shipping', '__return_false' );
-    } else {
-        // MODO FÍSICO: toggle + campos ocultos por defecto
-        $fields['billing']['billing_shipping_toggle'] = array(
-            'type'     => 'text',
-            'label'    => '',
-            'required' => false,
-            'class'    => array( 'form-row-wide' ),
-            'priority' => 45,
-        );
-        foreach ( $address_fields as $index => $field_key ) {
-            if ( isset( $fields['billing'][ $field_key ] ) ) {
-                $fields['billing'][ $field_key ]['required'] = false;
-                $fields['billing'][ $field_key ]['class'][]  = 'mu-hidden';
-                $fields['billing'][ $field_key ]['class'][]  = 'muyunicos-physical-address-field';
-                $fields['billing'][ $field_key ]['priority'] = 90 + $index;
-            }
-        }
-    }
-
-    return $fields;
-}
-
-// 4. Renderizado de fragmentos HTML custom
-add_filter( 'woocommerce_form_field', 'muyunicos_render_html_fragments', 10, 4 );
-function muyunicos_render_html_fragments( $field, $key, $args, $value ) {
-    if ( $key === 'billing_contact_header' ) {
-        return '<div class="form-row form-row-wide" id="muyunicos_header_row">
-                    <div class="muyunicos-contact-header">Te contactamos por:</div>
-                    <div id="muyunicos-email-exists-notice"></div>
-                </div>';
-        // Nota: cursor:pointer del label está en checkout.css
-    }
-    if ( $key === 'billing_shipping_toggle' ) {
-        return '<div class="form-row form-row-wide" id="muyunicos_toggle_row">
-                    <div class="muyunicos-shipping-toggle-wrapper">
-                        <label>
-                            <input type="checkbox" id="muyunicos-toggle-shipping" name="muyunicos_shipping_toggle" value="1">
-                            <b>Ingresar datos para envío</b> (Opcional)
-                        </label>
-                    </div>
-                </div>';
-    }
-    return $field;
-}
-
-// 5. Sanitización de datos POST
-add_filter( 'woocommerce_checkout_posted_data', 'muyunicos_sanitize_posted_data' );
-function muyunicos_sanitize_posted_data( $data ) {
-    if ( ! empty( $data['billing_full_name'] ) ) {
-        $parts = explode( ' ', trim( $data['billing_full_name'] ), 2 );
-        $data['billing_first_name'] = $parts[0];
-        $data['billing_last_name']  = isset( $parts[1] ) ? $parts[1] : '.';
-    }
-    if ( ! empty( $data['billing_phone'] ) ) {
-        $digits = preg_replace( '/\D/', '', $data['billing_phone'] );
-        if ( strlen( $digits ) <= 6 ) {
-            $data['billing_phone'] = '';
-        }
-    }
-    return $data;
-}
-
-// 5b. Validación server-side
-add_action( 'woocommerce_checkout_process', 'muyunicos_validate_checkout' );
-function muyunicos_validate_checkout() {
-    if ( empty( $_POST['billing_full_name'] ) ) {
-        wc_add_notice( __( 'Por favor, completá tu Nombre y Apellido.' ), 'error' );
-    }
-    if ( ! empty( $_POST['billing_phone'] ) ) {
-        if ( isset( $_POST['muyunicos_wa_valid'] ) && $_POST['muyunicos_wa_valid'] === '0' ) {
-            wc_add_notice( __( 'El número de WhatsApp parece incompleto o inválido.' ), 'error' );
-        }
-    }
-    if ( isset( $_POST['muyunicos_shipping_toggle'] ) && $_POST['muyunicos_shipping_toggle'] == '1' ) {
-        if ( empty( $_POST['billing_address_1'] ) )  wc_add_notice( __( 'La <strong>Dirección</strong> es necesaria para el envío.' ), 'error' );
-        if ( empty( $_POST['billing_city'] ) )        wc_add_notice( __( 'La <strong>Ciudad</strong> es necesaria.' ), 'error' );
-        if ( empty( $_POST['billing_postcode'] ) )    wc_add_notice( __( 'El <strong>Código Postal</strong> es necesario.' ), 'error' );
-        if ( empty( $_POST['billing_state'] ) && WC()->countries->get_states( $_POST['billing_country'] ) ) {
-            wc_add_notice( __( 'La <strong>Provincia/Estado</strong> es necesaria.' ), 'error' );
-        }
-    }
-}
-
-// 7. AJAX: verificar email existente
-add_action( 'wp_ajax_muyunicos_check_email',        'muyunicos_ajax_check_email_optimized' );
-add_action( 'wp_ajax_nopriv_muyunicos_check_email', 'muyunicos_ajax_check_email_optimized' );
-function muyunicos_ajax_check_email_optimized() {
-    check_ajax_referer( 'check-email-nonce', 'security' );
-    $email = isset( $_POST['email'] ) ? sanitize_email( $_POST['email'] ) : '';
-    wp_send_json( array( 'exists' => ( ! empty( $email ) && email_exists( $email ) ) ) );
-}
-
-// 8. UX: título página de agradecimiento
-add_filter( 'the_title', function( $title, $id ) {
-    if ( is_order_received_page() && get_the_ID() === $id && in_the_loop() ) {
-        return '¡Pedido Recibido!';
-    }
-    return $title;
-}, 10, 2 );
