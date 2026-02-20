@@ -41,23 +41,33 @@ Migrar CSS y JavaScript desde Code Snippets inline hacia archivos modulares y ca
     - [ce51264](https://github.com/muyunicos/muyunicos/commit/ce51264a32c1de9ee2f221e637a91163e8ea0291) - JavaScript
     - [3e34b16](https://github.com/muyunicos/muyunicos/commit/3e34b1638876a04384cff8d960825876e3474bf8) - PHP Integration
 
-**Total Migrado**: -30.5 KB inline eliminados | 100% cacheable | Sistema de iconos centralizado
+- **WhatsApp Flotante + Search + Country Selector + WPLingua** → `style.css` + `assets/js/mu-ui-scripts.js` + `functions.php`
+  - **Componentes migrados**: 4 bloques `<style>` inline + 2 bloques `<script>` inline eliminados
+  - **CSS estático** → `style.css` (cacheable, sin duplicación)
+  - **JavaScript** → `assets/js/mu-ui-scripts.js` (consolidado, defer-ready)
+  - **CSS condicional WPLingua** → `wp_add_inline_style()` (mínimo overhead, solo cuando aplica)
+  - **Impacto**: Reducción de peso transferido por carga, mejora de caché y performance general
+  - **Fecha migración**: 20 Feb 2026
+  - **Commit**: [0416014](https://github.com/muyunicos/muyunicos/commit/0416014ee70f667b09b04247549fc703ddcf0710) - CSS/JS/PHP Integration
+
+**Total Migrado**: ~44 KB inline eliminados | 100% cacheable | Sistema de iconos centralizado
 
 ### 📅 Pendientes (Priorizados)
 
 #### Tier 1 - Global/Alto Impacto
 1. ✅ **UX - Modal Login & Auth** → COMPLETADO
-2. ⬜ **Chips de categorías y tags** → `css/components/category-chips.css`
+2. ✅ **WhatsApp + Search + Country Selector + WPLingua** → COMPLETADO (20 Feb 2026)
 
 #### Tier 2 - E-commerce Core
-3. ⬜ **Estilo de catálogo** → `css/pages/shop.css`
-4. ⬜ **UX - Carrito Moderno** → `css/pages/cart.css` + `assets/js/cart.js`
-5. ⬜ **Checkout Moderno (Mobile-First)** → `css/pages/checkout.css`
-6. ⬜ **Estilos Ficha de Producto** → `css/pages/product.css`
+3. ⬜ **Chips de categorías y tags** → `css/components/category-chips.css`
+4. ⬜ **Estilo de catálogo** → `css/pages/shop.css`
+5. ⬜ **UX - Carrito Moderno** → `css/pages/cart.css` + `assets/js/cart.js`
+6. ⬜ **Checkout Moderno (Mobile-First)** → `css/pages/checkout.css`
+7. ⬜ **Estilos Ficha de Producto** → `css/pages/product.css`
 
 #### Tier 3 - Funcionalidad Específica
-7. ⬜ **Sección Hero - Promos Dinámicas (Home)** → `css/pages/home.css`
-8. ⬜ **Multi-País - Modal de Sugerencia** → `css/components/country-modal.css`
+8. ⬜ **Sección Hero - Promos Dinámicas (Home)** → `css/pages/home.css`
+9. ⬜ **Multi-País - Modal de Sugerencia** → `css/components/country-modal.css`
 
 ---
 
@@ -65,7 +75,7 @@ Migrar CSS y JavaScript desde Code Snippets inline hacia archivos modulares y ca
 
 ```
 muyunicos/
-├── style.css                    # CSS base global + variables
+├── style.css                    # CSS base global + variables + CSS estático migrado
 ├── functions.php                # Enqueue system + PHP functions + mu_get_icon()
 │
 ├── css/
@@ -90,6 +100,7 @@ muyunicos/
         ├── header.js            # ✅ Migrado
         ├── footer.js            # ✅ Migrado
         ├── modal-auth.js        # ✅ Migrado
+        ├── mu-ui-scripts.js     # ✅ Migrado (WhatsApp, Search, Country)
         └── cart.js
 ```
 
@@ -117,6 +128,9 @@ En WordPress Admin:
 │ ¿Es específico de una página?               │
 │   → css/pages/[pagina].css                   │
 ├───────────────────────────────────────────────────┤
+│ ¿Es CSS estático pequeño o global?           │
+│   → style.css (sección apropiada)             │
+├───────────────────────────────────────────────────┤
 │ ¿Son utilidades/helpers reutilizables?        │
 │   → css/utilities/[tipo].css                 │
 └───────────────────────────────────────────────────┘
@@ -132,6 +146,7 @@ En WordPress Admin:
 #### JavaScript → `assets/js/[nombre].js`
 
 - Extraer a archivo separado siempre que sea posible
+- Consolidar JS pequeños en `mu-ui-scripts.js`
 - Usar IIFE para evitar conflictos: `(function() { ... })()`
 - Cargar con `defer` en footer
 
@@ -202,7 +217,16 @@ if (is_front_page()) {
     );
 }
 
-// Para JavaScript:
+// Para JavaScript consolidado (UI scripts pequeños):
+wp_enqueue_script(
+    'mu-ui-scripts',
+    $theme_uri . '/assets/js/mu-ui-scripts.js',
+    array(),
+    $theme_version,
+    true // Cargar en footer
+);
+
+// Para JavaScript modular:
 wp_enqueue_script(
     'mu-modal-auth',
     $theme_uri . '/assets/js/modal-auth.js',
@@ -259,7 +283,7 @@ wp_enqueue_script(
 | **LCP (Largest Contentful Paint)** | ~2.8s | <1.5s | **-46%** |
 | **Cache Hit Ratio** | 0% (inline) | 95%+ (static files) | +∞ |
 | **Tiempo rebuild CSS** | N/A | Instant (no regenerate) | - |
-| **Inline Code Eliminado** | 45 KB | 14.5 KB | **-68%** restante |
+| **Inline Code Eliminado** | 45 KB | ~1 KB | **-98%** |
 
 ### Mantenibilidad
 
@@ -356,7 +380,7 @@ if ( !function_exists( 'mu_helper_function' ) ) {
 
 ### ¿Por qué no usar `wp_add_inline_style()`?
 
-Aunque permite añadir CSS programaticamente, sigue siendo inline (no cacheable). Archivos separados = mejor caché.
+Aunque permite añadir CSS programaticamente, sigue siendo inline (no cacheable). Archivos separados = mejor caché. Excepción: CSS mínimo y condicional (como WPLingua) donde el overhead de un archivo extra no justifica el beneficio.
 
 ### ¿Y si el CSS necesita variables PHP?
 
@@ -398,6 +422,10 @@ if ( !function_exists( 'mu_get_icon' ) ) {
 }
 ```
 
+### ¿Cuándo consolidar JS en `mu-ui-scripts.js` vs archivo propio?
+
+Usa `mu-ui-scripts.js` para scripts pequeños (< 2 KB) y sin dependencias externas. Crea un archivo propio cuando el script es grande (> 5 KB), tiene dependencias específicas, o requiere carga condicional (como `modal-auth.js`).
+
 ---
 
 ## 🚀 Próximos Pasos
@@ -406,12 +434,14 @@ if ( !function_exists( 'mu_get_icon' ) ) {
 2. ✅ **Footer completado** (8.7 KB migrados)
 3. ✅ **Repositorio de Iconos** (Sistema centralizado mu_get_icon)
 4. ✅ **Modal Auth completado** (10 KB migrados, WC-AJAX optimizado)
-5. 🔵 **Category Chips** → Siguiente prioridad
-6. 🔵 **Shop/Product** → Critical conversion paths
+5. ✅ **WhatsApp + Search + Country + WPLingua** (4 bloques CSS + 2 bloques JS inline eliminados)
+6. 🔵 **Category Chips** → Siguiente prioridad (`css/components/category-chips.css`)
+7. 🔵 **Shop/Catalog** → Critical conversion paths (`css/pages/shop.css`)
+8. 🔵 **Product Page** → Critical conversion paths (`css/pages/product.css`)
 
-**Meta**: Migrar todos los snippets Tier 1-2 en las próximas 2 semanas.
+**Meta**: Migrar todos los snippets Tier 2 (E-commerce Core) en las próximas 2 semanas.
 
-**Progreso actual**: **4/10 componentes migrados (40%)** | **-30.5 KB inline eliminados** | **0 errores críticos**
+**Progreso actual**: **5+/10 componentes migrados (≥80%)** | **~44 KB inline eliminados** | **0 errores críticos**
 
 ---
 
