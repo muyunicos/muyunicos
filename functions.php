@@ -109,6 +109,11 @@ function mu_enqueue_assets() {
             $theme_version,
             true
         );
+        
+        // Localize SVG icon para JS
+        wp_localize_script( 'mu-cart-js', 'muCartVars', array(
+            'closeIcon' => function_exists('mu_get_icon') ? mu_get_icon('close') : ''
+        ) );
     }
 
     // --- CHECKOUT (excluir thank-you page) ---
