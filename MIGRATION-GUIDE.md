@@ -28,14 +28,14 @@ Componentes globales reutilizables, cargados en todas las páginas salvo indicac
 Estilos específicos por contexto de página. Carga condicional.
 
 | Archivo | Condición de carga |
-|---|---|---|
+|---|---|
 | `shop.css` | `is_shop() \|\| is_product_category()` |
 | `product.css` | `is_product()` |
 | `cart.css` | `is_cart()` |
 | `checkout.css` | `is_checkout()` |
 | `home.css` | `is_front_page()` |
 
-### assets/js/
+### js/
 | Archivo | Descripción | Carga |
 |---|---|---|
 | `header.js` | Menú móvil toggle, sticky header | Footer, defer |
@@ -126,18 +126,17 @@ if (is_front_page()) {
 }
 
 // JavaScript en footer:
-wp_enqueue_script('mu-[nombre]', $theme_uri . '/assets/js/[nombre].js', [], $theme_version, true);
+wp_enqueue_script('mu-[nombre]', $theme_uri . '/js/[nombre].js', [], $theme_version, true);
 ```
 
 ---
 
-## 3. Plantillas
+## 4. Plantillas
 
 ### CSS Component
 ```css
 /* ========================================
    [NOMBRE] - [DESCRIPCIÓN BREVE]
-   Migrado desde snippet "[Nombre Original]"
    ======================================== */
 
 .mu-[componente] {
@@ -158,7 +157,6 @@ wp_enqueue_script('mu-[nombre]', $theme_uri . '/assets/js/[nombre].js', [], $the
 ```javascript
 /**
  * [Nombre Módulo]
- * Migrado desde snippet "[Nombre Original]"
  */
 (function() {
     'use strict';
