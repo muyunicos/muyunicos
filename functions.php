@@ -70,7 +70,7 @@ function mu_enqueue_assets() {
     if (is_front_page()) {
         wp_enqueue_style(
             'mu-home', 
-            $theme_uri . '/css/pages/home.css', 
+            $theme_uri . '/css/home.css', 
             array('mu-base'), 
             $theme_version
         );
@@ -79,7 +79,7 @@ function mu_enqueue_assets() {
     if (is_shop() || is_product_category() || is_product_tag()) {
         wp_enqueue_style(
             'mu-shop', 
-            $theme_uri . '/css/pages/shop.css', 
+            $theme_uri . '/css/shop.css', 
             array('mu-base'), 
             $theme_version
         );
@@ -88,7 +88,7 @@ function mu_enqueue_assets() {
     if (is_product()) {
         wp_enqueue_style(
             'mu-product', 
-            $theme_uri . '/css/pages/product.css', 
+            $theme_uri . '/css/product.css', 
             array('mu-base'), 
             $theme_version
         );
@@ -98,7 +98,7 @@ function mu_enqueue_assets() {
     if ( is_cart() ) {
         wp_enqueue_style(
             'mu-cart',
-            $theme_uri . '/css/pages/cart.css',
+            $theme_uri . '/css/cart.css',
             array('mu-base'),
             $theme_version
         );
@@ -115,7 +115,7 @@ function mu_enqueue_assets() {
     if ( is_checkout() && ! is_order_received_page() ) {
         wp_enqueue_style(
             'mu-checkout',
-            $theme_uri . '/css/pages/checkout.css',
+            $theme_uri . '/css/checkout.css',
             array('mu-base'),
             $theme_version
         );
