@@ -620,7 +620,7 @@ function mu_custom_search_form_logic( $form ) {
         ? mu_get_icon( 'search' )
         : '<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>';
 
-    $form = '\n    <form role="search" method="get" class="woocommerce-product-search mu-product-search" action="' . esc_url( home_url( '/' ) ) . '">\n        <label class="screen-reader-text" for="' . esc_attr( $unique_id ) . '">Buscar productos:</label>\n        <div class="mu-search-group">\n            <input type="search"\n                   id="' . esc_attr( $unique_id ) . '"\n                   class="search-field"\n                   placeholder="Buscar en la tienda..."\n                   value="' . get_search_query() . '"\n                   name="s" />\n            <button type="submit" class="mu-search-submit" aria-label="Buscar">\n                ' . $icon_html . '\n            </button>\n            <input type="hidden" name="post_type" value="product" />\n        </div>\n    </form>';
+    $form = '<form role="search" method="get" class="woocommerce-product-search mu-product-search" action="' . esc_url( home_url( '/' ) ) . '"><label class="screen-reader-text" for="' . esc_attr( $unique_id ) . '">Buscar productos:</label><div class="mu-search-group"><input type="search" id="' . esc_attr( $unique_id ) . '" class="search-field" placeholder="Buscar en la tienda..." value="' . get_search_query() . '" name="s" /><button type="submit" class="mu-search-submit" aria-label="Buscar">' . $icon_html . '</button><input type="hidden" name="post_type" value="product" /></div></form>';
 
     return $form;
 }
