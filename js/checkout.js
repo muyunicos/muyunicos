@@ -72,12 +72,12 @@ jQuery(document).ready(function ($) {
     }
 
     function setVisualState(state, text = '') {
-        $phoneInput.parent().removeClass('muyunicos-field-valid muyunicos-field-error');
+        $phoneInput.parent().removeClass('mu-field-valid mu-field-error');
         if (state === 'valid') {
-            $phoneInput.parent().addClass('muyunicos-field-valid');
+            $phoneInput.parent().addClass('mu-field-valid');
             $statusMsg.html('<span class="wa-ok">' + text + '</span>');
         } else if (state === 'error') {
-            $phoneInput.parent().addClass('muyunicos-field-error');
+            $phoneInput.parent().addClass('mu-field-error');
             $statusMsg.html('<span class="wa-err">' + text + '</span>');
         } else {
             $statusMsg.text('');
@@ -125,7 +125,7 @@ jQuery(document).ready(function ($) {
     // ================================================
     // TOGGLE FÍSICO: mostrar/ocultar campos dirección
     // ================================================
-    const $addrFields = $('.muyunicos-physical-address-field');
+    const $addrFields = $('.mu-physical-address-field');
 
     $('#muyunicos-toggle-shipping').on('change', function () {
         if ($(this).is(':checked')) {
@@ -152,29 +152,29 @@ jQuery(document).ready(function ($) {
             clearTimeout(emailTimer);
 
             if (/^.+@.+\..+$/.test(email)) {
-                $wrap.addClass('muyunicos-field-valid');
+                $wrap.addClass('mu-field-valid');
 
                 emailTimer = setTimeout(function () {
                     $.post(ajaxUrl, {
-                        action:   'muyunicos_check_email',
+                        action:   'mu_check_email',
                         email:    email,
                         security: ajaxNonce
                     }, function (res) {
                         if (res.exists) {
-                            $('#muyunicos-email-exists-notice')
+                            $('#mu-email-exists-notice')
                                 .html('👋 Ya tenés cuenta. <a href="#" class="mu-open-modal">Iniciá sesión</a>.')
                                 .slideDown();
-                            $('.muyunicos-verified-badge').show();
+                            $('.mu-verified-badge').show();
                         } else {
-                            $('#muyunicos-email-exists-notice').slideUp();
-                            $('.muyunicos-verified-badge').show();
+                            $('#mu-email-exists-notice').slideUp();
+                            $('.mu-verified-badge').show();
                         }
                     });
                 }, 1000);
             } else {
-                $wrap.removeClass('muyunicos-field-valid');
-                $('.muyunicos-verified-badge').hide();
-                $('#muyunicos-email-exists-notice').slideUp();
+                $wrap.removeClass('mu-field-valid');
+                $('.mu-verified-badge').hide();
+                $('#mu-email-exists-notice').slideUp();
             }
         });
     }
