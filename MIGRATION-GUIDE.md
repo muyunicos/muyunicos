@@ -1,358 +1,172 @@
-# Guía de Migración: Code Snippets → Arquitectura Modular
-
-## 🎯 Objetivo
-
-Migrar CSS y JavaScript desde Code Snippets inline hacia archivos modulares y cacheables, mejorando performance, mantenibilidad y organización del código.
-
-## 📊 Estado de Migración
-
-### ✅ Completados
-
-- **Header** → `css/components/header.css` + `assets/js/header.js`
-  - CSS: 9.4 KB (antes inline en cada página)
-  - JS: 2.4 KB (antes inline)
-  - **Impacto**: -11.8 KB por carga de página, ahora cacheable
-
-- **Footer** → `css/components/footer.css` + `assets/js/footer.js`
-  - CSS: 7.8 KB (antes inline en cada página)
-  - JS: 0.9 KB (antes inline)
-  - **Impacto**: -8.7 KB por carga de página, ahora cacheable
-
-- **Repositorio de SVGs** → `functions.php` (función `mu_get_icon()`)
-  - **Impacto**: Sistema centralizado de iconos, previene errores fatales
-  - **Iconos incluidos**: arrow, search, close, instagram, facebook, tiktok, youtube, pinterest
-  - **Ubicación**: Función `mu_get_icon()` en functions.php líneas ~120-145
-  - **Status**: ✅ CRÍTICO - Resuelve error fatal al activar tema hijo
-
-- **Modal de Autenticación** → `css/components/modal-auth.css` + `assets/js/modal-auth.js` + `functions.php`
-  - CSS: 8.3 KB (antes inline)
-  - JS: 15.5 KB (antes inline)
-  - PHP: Handlers WC-AJAX integrados en functions.php
-  - **Impacto**: -10 KB inline eliminados por carga (solo usuarios no logueados)
-  - **Optimizaciones**:
-    - Uso de WC-AJAX en lugar de admin-ajax (menor TTFB)
-    - Carga condicional (solo si !is_user_logged_in())
-    - Variables CSS reutilizadas (--primario, --mu-radius, etc.)
-    - Accesibilidad mejorada (focus-visible, ARIA)
-    - Responsive mobile-first
-  - **Fecha migración**: 12 Feb 2026
-  - **Commits**: 
-    - [4357470](https://github.com/muyunicos/muyunicos/commit/4357470be2d2f01329b3dd7bbfc73b6078f51740) - CSS
-    - [ce51264](https://github.com/muyunicos/muyunicos/commit/ce51264a32c1de9ee2f221e637a91163e8ea0291) - JavaScript
-    - [3e34b16](https://github.com/muyunicos/muyunicos/commit/3e34b1638876a04384cff8d960825876e3474bf8) - PHP Integration
-
-- **WhatsApp Flotante + Search + Country Selector + WPLingua** → `style.css` + `assets/js/mu-ui-scripts.js` + `functions.php`
-  - **Componentes migrados**: 4 bloques `<style>` inline + 2 bloques `<script>` inline eliminados
-  - **CSS estático** → `style.css` (cacheable, sin duplicación)
-  - **JavaScript** → `assets/js/mu-ui-scripts.js` (consolidado, defer-ready)
-  - **CSS condicional WPLingua** → `wp_add_inline_style()` (mínimo overhead, solo cuando aplica)
-  - **Impacto**: Reducción de peso transferido por carga, mejora de caché y performance general
-  - **Fecha migración**: 20 Feb 2026
-  - **Commit**: [0416014](https://github.com/muyunicos/muyunicos/commit/0416014ee70f667b09b04247549fc703ddcf0710) - CSS/JS/PHP Integration
-
-**Total Migrado**: ~44 KB inline eliminados | 100% cacheable | Sistema de iconos centralizado
-
-### 📅 Pendientes (Priorizados)
-
-#### Tier 1 - Global/Alto Impacto
-1. ✅ **UX - Modal Login & Auth** → COMPLETADO
-2. ✅ **WhatsApp + Search + Country Selector + WPLingua** → COMPLETADO (20 Feb 2026)
-
-#### Tier 2 - E-commerce Core
-3. ⬜ **Chips de categorías y tags** → `css/components/category-chips.css`
-4. ⬜ **Estilo de catálogo** → `css/shop.css`
-5. ⬜ **UX - Carrito Moderno** → `css/cart.css` (CSS pendiente) + `assets/js/cart.js` (JS ✅ existe en repositorio)
-6. ⬜ **Checkout Moderno (Mobile-First)** → `css/checkout.css` (CSS pendiente) + `assets/js/checkout.js` (JS ✅ existe en repositorio)
-7. ⬜ **Estilos Ficha de Producto** → `css/product.css`
-
-#### Tier 3 - Funcionalidad Específica
-8. ⬜ **Sección Hero - Promos Dinámicas (Home)** → `css/home.css`
-9. ⬜ **Multi-País - Modal de Sugerencia** → `css/components/country-modal.css`
+# MIGRATION-GUIDE.md
+> Guía operativa para migración de Code Snippets → Arquitectura Modular  
+> **Uso**: Este archivo es contexto vivo para asistencia de IA y referencia técnica del proyecto.  
+> Repositorio: `muyunicos/muyunicos` | Tema: GeneratePress Child
 
 ---
 
-## 📁 Estructura de Archivos
+## 1. Arquitectura Actual del Repositorio
 
-```
-muyunicos/
-├── style.css                    # CSS base global + variables + CSS estático migrado
-├── functions.php                # Enqueue system + PHP functions + mu_get_icon()
-├── MIGRATION-GUIDE.md           # Estado de migración (este archivo)
-│
-├── css/
-│   ├── components/              # Componentes reutilizables
-│   │   ├── header.css           # ✅ Migrado
-│   │   ├── footer.css           # ✅ Migrado
-│   │   ├── modal-auth.css       # ✅ Migrado
-│   │   ├── category-chips.css
-│   │   └── country-modal.css
-│   │
-│   ├── home.css
-│   ├── shop.css
-│   ├── product.css
-│   ├── cart.css
-│   └── checkout.css
-│   │
-│   └── utilities/               # Helpers y utilidades (futuro)
-│
-├── assets/
-│   ├── css/                     # Assets CSS (futuro)
-│   └── js/                      # JavaScript modules
-│       ├── header.js            # ✅ Migrado
-│       ├── footer.js            # ✅ Migrado
-│       ├── modal-auth.js        # ✅ Migrado
-│       ├── mu-ui-scripts.js     # ✅ Migrado (WhatsApp, Search, Country)
-│       ├── cart.js              # ✅ Existe (CSS pendiente)
-│       └── checkout.js          # ✅ Existe (CSS pendiente)
-│
-└── snippets/                    # Legacy code snippets (en migración)
-```
+### Archivos Raíz
+
+| Archivo | Rol |
+|---|---|
+| `style.css` | CSS base global, variables CSS, CSS estático global migrado |
+| `functions.php` | Sistema de enqueue (`mu_enqueue_assets()`), hooks WC, AJAX handlers, helpers PHP globales |
+| `MIGRATION-GUIDE.md` | Este archivo |
+
+### css/components/
+Componentes globales reutilizables, cargados en todas las páginas salvo indicación.
+
+| Archivo | Descripción | Enqueue Handle |
+|---|---|---|
+| `header.css` | Header global: nav, logo, menú móvil, sticky | `mu-header` |
+| `footer.css` | Footer global: columnas, social links, legal | `mu-footer` |
+| `modal-auth.css` | Modal login/registro: layout, animaciones, responsive | `mu-modal-auth` (condicional: `!is_user_logged_in()`) |
+
+### css/ (páginas)
+Estilos específicos por contexto de página. Carga condicional.
+
+| Archivo | Condición de carga |
+|---|---|---|
+| `shop.css` | `is_shop() \|\| is_product_category()` |
+| `product.css` | `is_product()` |
+| `cart.css` | `is_cart()` |
+| `checkout.css` | `is_checkout()` |
+| `home.css` | `is_front_page()` |
+
+### assets/js/
+| Archivo | Descripción | Carga |
+|---|---|---|
+| `header.js` | Menú móvil toggle, sticky header | Footer, defer |
+| `footer.js` | Accordion footer mobile | Footer, defer |
+| `modal-auth.js` | Auth modal: open/close, AJAX login/register via WC-AJAX | Footer, condicional `!is_user_logged_in()` |
+| `mu-ui-scripts.js` | WhatsApp flotante, Search toggle, Country selector | Footer, defer |
+| `cart.js` | Carrito (JS listo, CSS pendiente) | Footer, `is_cart()` |
+| `checkout.js` | Checkout (JS listo, CSS pendiente) | Footer, `is_checkout()` |
+
+### Sistema de Iconos: `mu_get_icon($name)`
+Función en `functions.php` (~línea 120). Devuelve SVG inline.  
+Iconos disponibles: `arrow`, `search`, `close`, `instagram`, `facebook`, `tiktok`, `youtube`, `pinterest`, ...  
+**Siempre usar esta función** — nunca SVG inline directo en templates.
 
 ---
 
-## 🔧 Proceso de Migración (Paso a Paso)
+## 2. Convenciones del Proyecto
 
-### 1. Extraer Código del Snippet
+### Nomenclatura CSS
+- Prefijo universal: `.mu-*`
+- Componentes: `.mu-card`, `.mu-btn`, `.mu-badge`, `.mu-modal`
+- Utilidades: `.mu-flex`, `.mu-gap-md`, `.mu-mt-lg`
+- Estados: `.is-active`, `.is-open`, `.is-loading`
 
-En WordPress Admin:
-1. Ir a **Snippets** → Encontrar el snippet activo
-2. Copiar **TODO** el CSS entre `<style>` tags
-3. Copiar **TODO** el JavaScript entre `<script>` tags
-4. Copiar el **PHP** (si tiene HTML/markup)
+### Variables CSS Globales (definidas en `style.css`)
+```css
+--primario          /* Color principal de marca */
+--mu-radius         /* Border radius estándar */
+--mu-shadow-sm      /* Sombra suave */
+--mu-space-md       /* Spacing medio */
+```
+**Siempre usar variables** en lugar de valores hardcoded.
 
-### 2. Clasificar el Código
+### Reglas de JavaScript
+- Siempre envolver en IIFE: `(function() { 'use strict'; ... })()`
+- Inicializar con DOMContentLoaded guard (ver plantilla)
+- Scripts < 2 KB sin dependencias → consolidar en `mu-ui-scripts.js`
+- Scripts > 5 KB o con carga condicional → archivo propio
 
-#### CSS → ¿Dónde va?
+### Reglas de PHP
+- Siempre usar `if ( !function_exists('nombre') )` antes de declarar funciones
+- AJAX handlers: usar `wc_ajax_` (WC-AJAX) en lugar de `admin-ajax` cuando sea posible
+- CSS condicional mínimo → `wp_add_inline_style()` (excepción justificada)
+- CSS de tamaño real → siempre archivo separado
+
+---
+
+## 3. Protocolo de Migración
+
+### Paso 1 — Extraer del Snippet Dado
+Identificar si el snippet es global o condicional a una página/rol
+
+### Paso 2 — Clasificar destino
+
+**CSS:**
+- Componente global (visible en todas las páginas) → `css/components/[nombre].css`
+- Específico de una página → `css/[pagina].css`
+- CSS estático pequeño y global → sección apropiada en `style.css`
+- CSS que requiere variables PHP dinámicas → `wp_add_inline_style()` como excepción
+
+**JavaScript:**
+- Script pequeño (< 2 KB), sin dependencias → añadir a `mu-ui-scripts.js`
+- Script mediano/grande o condicional → `js/[nombre].js` propio
+
+**PHP:**
+- Todo va a `functions.php` (hooks, handlers AJAX, helpers, HTML generators)
+
+### Paso 3 — Refactorizar
 
 ```
-┌───────────────────────────────────────────────────┐
-│ ¿Es un componente global (header/footer/modal)? │
-│   → css/components/[nombre].css              │
-├───────────────────────────────────────────────────┤
-│ ¿Es específico de una página?               │
-│   → css/[pagina].css                   │
-├───────────────────────────────────────────────────┤
-│ ¿Es CSS estático pequeño o global?           │
-│   → style.css (sección apropiada)             │
-├───────────────────────────────────────────────────┤
-│ ¿Son utilidades/helpers reutilizables?        │
-│   → css/utilities/[tipo].css                 │
-└───────────────────────────────────────────────────┘
+Reemplazar valores hardcoded con variables CSS
+Eliminar duplicaciones con style.css base
+Usar clases con prefijo .mu-*
+Agrupar @media queries al final del archivo
+Añadir comentario de sección en el encabezado del archivo
+Verificar accesibilidad: contrast, :focus-visible, ARIA
 ```
 
-#### PHP → Siempre va a `functions.php`
-
-- Mantener funciones que generan HTML
-- Mantener hooks de WordPress/WooCommerce
-- Mantener AJAX handlers y fragments
-- Funciones helper globales (como `mu_get_icon()`)
-
-#### JavaScript → `assets/js/[nombre].js`
-
-- Extraer a archivo separado siempre que sea posible
-- Consolidar JS pequeños en `assets/js/mu-ui-scripts.js`
-- Usar IIFE para evitar conflictos: `(function() { ... })()`
-- Cargar con `defer` en footer
-
-### 3. Refactorizar y Optimizar
-
-#### Checklist de Refactorización
-```
-☐ Reemplazar valores hardcoded con variables CSS existentes
-   Ejemplo: #2B9FCF → var(--primario)
-   
-☐ Eliminar duplicaciones con style.css base
-   Ejemplo: No repetir .mu-btn si ya existe global
-   
-☐ Usar clases semánticas del sistema MU
-   Prefijo: .mu-*
-   Componentes: .mu-card, .mu-btn, .mu-badge
-   Utilidades: .mu-flex, .mu-gap-md, .mu-mt-lg
-   
-☐ Agrupar media queries al final del archivo
-   
-☐ Añadir comentarios de sección claros
-   
-☐ Validar accesibilidad (contrast, focus states)
-```
-
-### 4. Crear/Actualizar Archivos en Repositorio
-
-#### Opción A: Desde tu editor local
-```bash
-# Crear archivo CSS
-touch css/components/footer.css
-
-# Editar y guardar
-vim css/components/footer.css
-
-# Commit y push
-git add css/components/footer.css
-git commit -m "feat: Migrar estilos de footer desde snippet inline"
-git push origin main
-```
-
-#### Opción B: Directamente en GitHub
-1. Navegar a la carpeta correspondiente
-2. Click en "Add file" → "Create new file"
-3. Pegar contenido refactorizado
-4. Commit con mensaje descriptivo
-
-### 5. Registrar en `functions.php`
+### Paso 4 — Registrar en `functions.php`
 
 ```php
-// En la función mu_enqueue_assets()
+// Componente global:
+wp_enqueue_style('mu-[nombre]', $theme_uri . '/css/components/[nombre].css', ['mu-base'], $theme_version);
 
-// Para componente global:
-wp_enqueue_style(
-    'mu-footer', 
-    $theme_uri . '/css/components/footer.css', 
-    array('mu-base'), 
-    $theme_version
-);
-
-// Para página específica:
+// Página específica:
 if (is_front_page()) {
-    wp_enqueue_style(
-        'mu-home-hero', 
-        $theme_uri . '/css/home.css', 
-        array('mu-base'), 
-        $theme_version
-    );
+    wp_enqueue_style('mu-home', $theme_uri . '/css/home.css', ['mu-base'], $theme_version);
 }
 
-// Para JavaScript consolidado (UI scripts pequeños):
-wp_enqueue_script(
-    'mu-ui-scripts',
-    $theme_uri . '/assets/js/mu-ui-scripts.js',
-    array(),
-    $theme_version,
-    true // Cargar en footer
-);
-
-// Para JavaScript modular:
-wp_enqueue_script(
-    'mu-modal-auth',
-    $theme_uri . '/assets/js/modal-auth.js',
-    array(), // Dependencias (ej: 'jquery')
-    $theme_version,
-    true // Cargar en footer
-);
-```
-
-### 6. Desactivar Snippet Original
-
-⚠️ **IMPORTANTE**: No eliminar, solo desactivar primero
-
-1. En WordPress Admin → **Snippets**
-2. Encontrar el snippet migrado
-3. Click en **Deactivate** (NO Delete)
-4. Probar el sitio en producción 24-48h
-5. Si todo funciona OK, entonces eliminar
-
-### 7. Testing
-
-```
-☐ Visual: Comparar screenshots before/after
-☐ Responsive: Probar en 320px, 768px, 1024px, 1440px
-☐ Navegadores: Chrome, Safari, Firefox
-☐ Multi-país: Verificar en .ar, .com.mx, .cl
-☐ Performance: Lighthouse score (meta: LCP < 2.5s)
-☐ Console: Sin errores JavaScript
-☐ Cache: Purgar CDN/cache después del deploy
+// JavaScript en footer:
+wp_enqueue_script('mu-[nombre]', $theme_uri . '/assets/js/[nombre].js', [], $theme_version, true);
 ```
 
 ---
 
-## 🐛 Errores Críticos Resueltos
+## 3. Plantillas
 
-### Error Fatal: mu_get_icon() no definida
-
-**Fecha**: 11 Feb 2026  
-**Síntoma**: "Se ha producido un error crítico en este sitio web" al activar tema hijo  
-**Causa**: Funciones `mu_header_icons()` y `muyunicos_custom_footer_structure()` llamaban a `mu_get_icon()` que no existía  
-**Solución**: Añadida función `mu_get_icon()` en functions.php (líneas ~120-145)  
-**Commit**: [34dc1f4](https://github.com/muyunicos/muyunicos/commit/34dc1f480daa29ff3f4c299003199148bad3934e)
-
----
-
-## 📈 Beneficios Medibles
-
-### Performance
-
-| Métrica | Antes (Inline) | Después (Modular) | Mejora |
-|---------|----------------|------------------|--------|
-| **CSS total (Home)** | ~45 KB inline | ~10.2 KB cached | **-77%** |
-| **Requests HTTP** | 1 (bloated HTML) | 4-5 (cached) | Cache +400% |
-| **LCP (Largest Contentful Paint)** | ~2.8s | <1.5s | **-46%** |
-| **Cache Hit Ratio** | 0% (inline) | 95%+ (static files) | +∞ |
-| **Tiempo rebuild CSS** | N/A | Instant (no regenerate) | - |
-| **Inline Code Eliminado** | 45 KB | ~1 KB | **-98%** |
-
-### Mantenibilidad
-
-- **30 snippets dispersos** → **10 archivos organizados** (-66%)
-- **0 versionado** → **Git tracking completo**
-- **Search imposible** → **IDE autocomplete + search**
-- **Testing manual** → **Visual regression automático**
-- **Errores fatales** → **Prevención con function_exists()**
-
----
-
-## 📝 Plantillas
-
-### Plantilla CSS Component
-
+### CSS Component
 ```css
 /* ========================================
-   [NOMBRE COMPONENTE] - DESCRIPCIÓN
+   [NOMBRE] - [DESCRIPCIÓN BREVE]
    Migrado desde snippet "[Nombre Original]"
    ======================================== */
 
-/* Configuración base */
 .mu-[componente] {
-    /* Variables locales si es necesario */
     --local-spacing: var(--mu-space-md);
-    
-    /* Estilos base */
+    /* estilos base */
 }
 
-/* Variantes */
-.mu-[componente]-primary { }
-.mu-[componente]-secondary { }
-
-/* Estados */
 .mu-[componente]:hover { }
 .mu-[componente]:focus-visible { }
 .mu-[componente].is-active { }
 
-/* Responsive */
 @media (max-width: 768px) {
-    .mu-[componente] {
-        /* Ajustes móvil */
-    }
+    .mu-[componente] { }
 }
 ```
 
-### Plantilla JavaScript Module
-
+### JavaScript Module
 ```javascript
 /**
- * [Nombre Módulo] - Descripción
+ * [Nombre Módulo]
  * Migrado desde snippet "[Nombre Original]"
  */
-
 (function() {
     'use strict';
-    
-    /**
-     * Inicializa la funcionalidad
-     */
+
     function init() {
-        // Lógica principal
+        // lógica principal
     }
 
-    // Ejecutar cuando el DOM esté listo
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {
@@ -361,18 +175,14 @@ wp_enqueue_script(
 })();
 ```
 
-### Plantilla PHP Function (Helper)
-
+### PHP Helper
 ```php
-if ( !function_exists( 'mu_helper_function' ) ) {
+if ( !function_exists( 'mu_helper' ) ) {
     /**
-     * Descripción de la función
-     * 
-     * @param string $param Descripción del parámetro
-     * @return mixed Descripción del retorno
+     * @param string $param
+     * @return mixed
      */
-    function mu_helper_function($param) {
-        // Lógica de la función
+    function mu_helper( $param ) {
         return $result;
     }
 }
@@ -380,73 +190,6 @@ if ( !function_exists( 'mu_helper_function' ) ) {
 
 ---
 
-## ❓ FAQ
-
-### ¿Por qué no usar `wp_add_inline_style()`?
-
-Aunque permite añadir CSS programaticamente, sigue siendo inline (no cacheable). Archivos separados = mejor caché. Excepción: CSS mínimo y condicional (como WPLingua) donde el overhead de un archivo extra no justifica el beneficio.
-
-### ¿Y si el CSS necesita variables PHP?
-
-Usa CSS custom properties generadas en PHP:
-
-```php
-function mu_dynamic_css_vars() {
-    $primary_color = get_theme_mod('primary_color', '#2B9FCF');
-    echo "<style>:root { --primario: {$primary_color}; }</style>";
-}
-add_action('wp_head', 'mu_dynamic_css_vars', 5);
-```
-
-### ¿Cómo manejo CSS condicional complejo?
-
-Usa `body_class` filters:
-
-```php
-add_filter('body_class', function($classes) {
-    if (is_user_logged_in()) {
-        $classes[] = 'user-logged-in';
-    }
-    return $classes;
-});
-
-// En CSS:
-.user-logged-in .mu-account-menu { display: block; }
-```
-
-### ¿Por qué usar `function_exists()` antes de definir funciones?
-
-Previene errores fatales si la función ya existe (child theme override, plugin conflict, etc.). Es una best practice de WordPress:
-
-```php
-if ( !function_exists( 'mu_get_icon' ) ) {
-    function mu_get_icon($name) {
-        // ...
-    }
-}
-```
-
-### ¿Cuándo consolidar JS en `assets/js/mu-ui-scripts.js` vs archivo propio?
-
-Usa `assets/js/mu-ui-scripts.js` para scripts pequeños (< 2 KB) y sin dependencias externas. Crea un archivo propio cuando el script es grande (> 5 KB), tiene dependencias específicas, o requiere carga condicional (como `assets/js/modal-auth.js`).
-
----
-
-## 🚀 Próximos Pasos
-
-1. ✅ **Header completado** (11.8 KB migrados)
-2. ✅ **Footer completado** (8.7 KB migrados)
-3. ✅ **Repositorio de Iconos** (Sistema centralizado mu_get_icon)
-4. ✅ **Modal Auth completado** (10 KB migrados, WC-AJAX optimizado)
-5. ✅ **WhatsApp + Search + Country + WPLingua** (4 bloques CSS + 2 bloques JS inline eliminados)
-6. 🔵 **Category Chips** → Siguiente prioridad (`css/components/category-chips.css`)
-7. 🔵 **Shop/Catalog** → Critical conversion paths (`css/shop.css`)
-8. 🔵 **Product Page** → Critical conversion paths (`css/product.css`)
-
-**Meta**: Migrar todos los snippets Tier 2 (E-commerce Core) en las próximas 2 semanas.
-
-**Progreso actual**: **5+/10 componentes migrados (≥80%)** | **~44 KB inline eliminados** | **0 errores críticos**
-
----
-
-💬 **Preguntas o problemas?** Abre un issue o consulta la documentación de GeneratePress.
+> **Nota para IA**: Al recibir un snippet para migrar, seguir el Protocolo §3 en orden.  
+> Consultar §1 para verificar si el archivo destino ya existe antes de crearlo.  
+> Consultar §2 para aplicar convenciones de naming y variables CSS correctas.
