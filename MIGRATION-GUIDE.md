@@ -8,12 +8,12 @@ Migrar CSS y JavaScript desde Code Snippets inline hacia archivos modulares y ca
 
 ### ✅ Completados
 
-- **Header** → `css/components/header.css` + `js/header.js`
+- **Header** → `css/components/header.css` + `assets/js/header.js`
   - CSS: 9.4 KB (antes inline en cada página)
   - JS: 2.4 KB (antes inline)
   - **Impacto**: -11.8 KB por carga de página, ahora cacheable
 
-- **Footer** → `css/components/footer.css` + `js/footer.js`
+- **Footer** → `css/components/footer.css` + `assets/js/footer.js`
   - CSS: 7.8 KB (antes inline en cada página)
   - JS: 0.9 KB (antes inline)
   - **Impacto**: -8.7 KB por carga de página, ahora cacheable
@@ -24,7 +24,7 @@ Migrar CSS y JavaScript desde Code Snippets inline hacia archivos modulares y ca
   - **Ubicación**: Función `mu_get_icon()` en functions.php líneas ~120-145
   - **Status**: ✅ CRÍTICO - Resuelve error fatal al activar tema hijo
 
-- **Modal de Autenticación** → `css/components/modal-auth.css` + `js/modal-auth.js` + `functions.php`
+- **Modal de Autenticación** → `css/components/modal-auth.css` + `assets/js/modal-auth.js` + `functions.php`
   - CSS: 8.3 KB (antes inline)
   - JS: 15.5 KB (antes inline)
   - PHP: Handlers WC-AJAX integrados en functions.php
@@ -41,10 +41,10 @@ Migrar CSS y JavaScript desde Code Snippets inline hacia archivos modulares y ca
     - [ce51264](https://github.com/muyunicos/muyunicos/commit/ce51264a32c1de9ee2f221e637a91163e8ea0291) - JavaScript
     - [3e34b16](https://github.com/muyunicos/muyunicos/commit/3e34b1638876a04384cff8d960825876e3474bf8) - PHP Integration
 
-- **WhatsApp Flotante + Search + Country Selector + WPLingua** → `style.css` + `js/mu-ui-scripts.js` + `functions.php`
+- **WhatsApp Flotante + Search + Country Selector + WPLingua** → `style.css` + `assets/js/mu-ui-scripts.js` + `functions.php`
   - **Componentes migrados**: 4 bloques `<style>` inline + 2 bloques `<script>` inline eliminados
   - **CSS estático** → `style.css` (cacheable, sin duplicación)
-  - **JavaScript** → `js/mu-ui-scripts.js` (consolidado, defer-ready)
+  - **JavaScript** → `assets/js/mu-ui-scripts.js` (consolidado, defer-ready)
   - **CSS condicional WPLingua** → `wp_add_inline_style()` (mínimo overhead, solo cuando aplica)
   - **Impacto**: Reducción de peso transferido por carga, mejora de caché y performance general
   - **Fecha migración**: 20 Feb 2026
@@ -61,8 +61,8 @@ Migrar CSS y JavaScript desde Code Snippets inline hacia archivos modulares y ca
 #### Tier 2 - E-commerce Core
 3. ⬜ **Chips de categorías y tags** → `css/components/category-chips.css`
 4. ⬜ **Estilo de catálogo** → `css/shop.css`
-5. ⬜ **UX - Carrito Moderno** → `css/cart.css` + `js/cart.js`
-6. ⬜ **Checkout Moderno (Mobile-First)** → `css/checkout.css`
+5. ⬜ **UX - Carrito Moderno** → `css/cart.css` (CSS pendiente) + `assets/js/cart.js` (JS ✅ existe en repositorio)
+6. ⬜ **Checkout Moderno (Mobile-First)** → `css/checkout.css` (CSS pendiente) + `assets/js/checkout.js` (JS ✅ existe en repositorio)
 7. ⬜ **Estilos Ficha de Producto** → `css/product.css`
 
 #### Tier 3 - Funcionalidad Específica
@@ -77,6 +77,7 @@ Migrar CSS y JavaScript desde Code Snippets inline hacia archivos modulares y ca
 muyunicos/
 ├── style.css                    # CSS base global + variables + CSS estático migrado
 ├── functions.php                # Enqueue system + PHP functions + mu_get_icon()
+├── MIGRATION-GUIDE.md           # Estado de migración (este archivo)
 │
 ├── css/
 │   ├── components/              # Componentes reutilizables
@@ -94,12 +95,17 @@ muyunicos/
 │   │
 │   └── utilities/               # Helpers y utilidades (futuro)
 │
-└── js/
-        ├── header.js            # ✅ Migrado
-        ├── footer.js            # ✅ Migrado
-        ├── modal-auth.js        # ✅ Migrado
-        ├── mu-ui-scripts.js     # ✅ Migrado (WhatsApp, Search, Country)
-        └── cart.js
+├── assets/
+│   ├── css/                     # Assets CSS (futuro)
+│   └── js/                      # JavaScript modules
+│       ├── header.js            # ✅ Migrado
+│       ├── footer.js            # ✅ Migrado
+│       ├── modal-auth.js        # ✅ Migrado
+│       ├── mu-ui-scripts.js     # ✅ Migrado (WhatsApp, Search, Country)
+│       ├── cart.js              # ✅ Existe (CSS pendiente)
+│       └── checkout.js          # ✅ Existe (CSS pendiente)
+│
+└── snippets/                    # Legacy code snippets (en migración)
 ```
 
 ---
@@ -141,10 +147,10 @@ En WordPress Admin:
 - Mantener AJAX handlers y fragments
 - Funciones helper globales (como `mu_get_icon()`)
 
-#### JavaScript → `js/[nombre].js`
+#### JavaScript → `assets/js/[nombre].js`
 
 - Extraer a archivo separado siempre que sea posible
-- Consolidar JS pequeños en `mu-ui-scripts.js`
+- Consolidar JS pequeños en `assets/js/mu-ui-scripts.js`
 - Usar IIFE para evitar conflictos: `(function() { ... })()`
 - Cargar con `defer` en footer
 
@@ -218,7 +224,7 @@ if (is_front_page()) {
 // Para JavaScript consolidado (UI scripts pequeños):
 wp_enqueue_script(
     'mu-ui-scripts',
-    $theme_uri . '/js/mu-ui-scripts.js',
+    $theme_uri . '/assets/js/mu-ui-scripts.js',
     array(),
     $theme_version,
     true // Cargar en footer
@@ -227,7 +233,7 @@ wp_enqueue_script(
 // Para JavaScript modular:
 wp_enqueue_script(
     'mu-modal-auth',
-    $theme_uri . '/js/modal-auth.js',
+    $theme_uri . '/assets/js/modal-auth.js',
     array(), // Dependencias (ej: 'jquery')
     $theme_version,
     true // Cargar en footer
@@ -420,9 +426,9 @@ if ( !function_exists( 'mu_get_icon' ) ) {
 }
 ```
 
-### ¿Cuándo consolidar JS en `mu-ui-scripts.js` vs archivo propio?
+### ¿Cuándo consolidar JS en `assets/js/mu-ui-scripts.js` vs archivo propio?
 
-Usa `mu-ui-scripts.js` para scripts pequeños (< 2 KB) y sin dependencias externas. Crea un archivo propio cuando el script es grande (> 5 KB), tiene dependencias específicas, o requiere carga condicional (como `modal-auth.js`).
+Usa `assets/js/mu-ui-scripts.js` para scripts pequeños (< 2 KB) y sin dependencias externas. Crea un archivo propio cuando el script es grande (> 5 KB), tiene dependencias específicas, o requiere carga condicional (como `assets/js/modal-auth.js`).
 
 ---
 
