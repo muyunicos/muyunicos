@@ -5,7 +5,24 @@
 
 ---
 
-## 1. Arquitectura Actual del Repositorio
+## 0. Estado de la Migración
+
+| Archivo | Tipo | Tamaño | Estado |
+|---|---|---|---|
+| `css/components/header.css` | Componente | 9.4 KB | ✅ Migrado |
+| `css/components/footer.css` | Componente | 8.0 KB | ✅ Migrado |
+| `css/components/modal-auth.css` | Componente | 8.3 KB | ✅ Migrado |
+| `css/cart.css` | Página | 9.9 KB | ✅ Migrado |
+| `css/checkout.css` | Página | 9.7 KB | ✅ Migrado |
+| `css/home.css` | Página | 0 KB | 📋 Pendiente (placeholder creado) |
+| `css/product.css` | Página | 0 KB | 📋 Pendiente (placeholder creado) |
+| `css/shop.css` | Página | — | ❌ Archivo no creado aún |
+
+**Progreso**: 5 de 8 archivos CSS migrados · ~45.3 KB de CSS modular activo
+
+---
+
+## 1. Arquitectura del Repositorio
 
 ### Archivos Raíz
 
@@ -15,44 +32,76 @@
 | `functions.php` | Sistema de enqueue (`mu_enqueue_assets()`), hooks WC, AJAX handlers, helpers PHP globales |
 | `MIGRATION-GUIDE.md` | Este archivo |
 
+### assets/ (tema padre — solo referencia)
+
+> Copia de archivos del tema padre GeneratePress incluida en el repositorio **únicamente como referencia**.  
+> **Nunca modificar estos archivos.** No pertenecen al child theme.
+
+| Archivo | Rol |
+|---|---|
+| `assets/css/main.min.css` | CSS compilado del tema padre GeneratePress. **Solo lectura — referencia anti-duplicación.** |
+
+---
+
 ### css/components/
 Componentes globales reutilizables, cargados en todas las páginas salvo indicación.
 
-| Archivo | Descripción | Enqueue Handle |
-|---|---|---|
-| `header.css` | Header global: nav, logo, menú móvil, sticky | `mu-header` |
-| `footer.css` | Footer global: columnas, social links, legal | `mu-footer` |
-| `modal-auth.css` | Modal login/registro: layout, animaciones, responsive | `mu-modal-auth` (condicional: `!is_user_logged_in()`) |
+| Archivo | Descripción | Handle | Tamaño |
+|---|---|---|---|
+| `header.css` | Header global: nav, logo, menú móvil, sticky | `mu-header` | 9.4 KB |
+| `footer.css` | Footer global: columnas, social links, legal | `mu-footer` | 8.0 KB |
+| `modal-auth.css` | Modal login/registro: layout, animaciones, responsive | `mu-modal-auth`* | 8.3 KB |
+
+*`mu-modal-auth` carga condicional: `!is_user_logged_in()`
+
+---
 
 ### css/ (páginas)
 Estilos específicos por contexto de página. Carga condicional.
 
-| Archivo | Condición de carga |
-|---|---|
-| `shop.css` | `is_shop() \|\| is_product_category()` |
-| `product.css` | `is_product()` |
-| `cart.css` | `is_cart()` |
-| `checkout.css` | `is_checkout()` |
-| `home.css` | `is_front_page()` |
+| Archivo | Condición de carga | Tamaño | Estado |
+|---|---|---|---|
+| `cart.css` | `is_cart()` | 9.9 KB | ✅ Migrado |
+| `checkout.css` | `is_checkout()` | 9.7 KB | ✅ Migrado |
+| `home.css` | `is_front_page()` | 0 KB | 📋 Pendiente |
+| `product.css` | `is_product()` | 0 KB | 📋 Pendiente |
+| `shop.css` | `is_shop() \|\| is_product_category()` | — | ❌ No creado |
+
+---
 
 ### js/
-| Archivo | Descripción | Carga |
+Scripts del child theme. Cargados en footer.
+
+| Archivo | Descripción | Carga | Dependencias |
+|---|---|---|---|
+| `header.js` | Menú móvil toggle, sticky header | Footer, defer | Ninguna |
+| `footer.js` | Accordion footer mobile | Footer, defer | Ninguna |
+| `modal-auth.js` | Auth modal AJAX | Footer, `!is_user_logged_in()` | Ninguna |
+| `mu-ui-scripts.js` | WhatsApp, Search, Country selector | Footer, defer | Ninguna |
+| `cart.js` | Carrito | Footer, `is_cart()` | `['jquery']` |
+| `checkout.js` | Checkout | Footer, `is_checkout()` | `['jquery', 'libphonenumber-js']` |
+
+---
+
+### snippets/
+Archivo de referencia para código ya migrado. No cargar en producción.
+
+| Archivo | Contenido | Estado |
 |---|---|---|
-| `header.js` | Menú móvil toggle, sticky header | Footer, defer |
-| `footer.js` | Accordion footer mobile | Footer, defer |
-| `modal-auth.js` | Auth modal: open/close, AJAX login/register via WC-AJAX | Footer, condicional `!is_user_logged_in()` |
-| `mu-ui-scripts.js` | WhatsApp flotante, Search toggle, Country selector | Footer, defer |
-| `cart.js` | Carrito (JS listo, CSS pendiente) | Footer, `is_cart()` |
-| `checkout.js` | Checkout (JS listo, CSS pendiente) | Footer, `is_checkout()` |
+| `header-refactored.php` | Header PHP refactorizado (referencia post-migración) | 🗄️ Archivado |
 
 ### Sistema de Iconos: `mu_get_icon($name)`
 Función en `functions.php` (~línea 120). Devuelve SVG inline.  
-Iconos disponibles: `arrow`, `search`, `close`, `instagram`, `facebook`, `tiktok`, `youtube`, `pinterest`, ...  
+**Iconos disponibles**: `arrow`, `search`, `close`, `instagram`, `facebook`, `pinterest`, `tiktok`, `youtube`.  
 **Siempre usar esta función** — nunca SVG inline directo en templates.
 
 ---
 
 ## 2. Convenciones del Proyecto
+
+### Anti-duplicación con tema padre
+Antes de declarar cualquier regla CSS, verificar si GeneratePress ya la provee en `assets/css/main.min.css`.
+Solo sobreescribir cuando sea necesario cambiar el comportamiento base; en ese caso, documentar el override con un comentario `/* override GP: [razón] */`.
 
 ### Nomenclatura CSS
 - Prefijo universal: `.mu-*`
@@ -85,8 +134,13 @@ Iconos disponibles: `arrow`, `search`, `close`, `instagram`, `facebook`, `tiktok
 
 ## 3. Protocolo de Migración
 
-### Paso 1 — Extraer del Snippet Dado
-Identificar si el snippet es global o condicional a una página/rol
+### Paso 0 — Verificar tema padre
+Antes de escribir cualquier CSS nuevo, buscar en `assets/css/main.min.css` si el estilo ya existe.
+- Si ya existe → usar/extender la clase del tema padre, no duplicar.
+- Si no existe → continuar con el Paso 1.
+
+### Paso 1 — Extraer del Snippet
+Identificar si el snippet es global o condicional a una página/rol.
 
 ### Paso 2 — Clasificar destino
 
@@ -106,17 +160,19 @@ Identificar si el snippet es global o condicional a una página/rol
 ### Paso 3 — Refactorizar
 
 ```
-Reemplazar valores hardcoded con variables CSS
-Eliminar duplicaciones con style.css base
-Usar clases con prefijo .mu-*
-Agrupar @media queries al final del archivo
-Añadir comentario de sección en el encabezado del archivo
-Verificar accesibilidad: contrast, :focus-visible, ARIA
+[ ] Reemplazar valores hardcoded con variables CSS
+[ ] Eliminar duplicaciones con style.css base
+[ ] Usar clases con prefijo .mu-*
+[ ] Agrupar @media queries al final del archivo
+[ ] Añadir comentario de sección en el encabezado del archivo
+[ ] Verificar accesibilidad: contrast, :focus-visible, ARIA
 ```
 
 ### Paso 4 — Registrar en `functions.php`
 
 ```php
+// $theme_version = wp_get_theme()->get('Version'); // Se obtiene globalmente en mu_enqueue_assets()
+
 // Componente global:
 wp_enqueue_style('mu-[nombre]', $theme_uri . '/css/components/[nombre].css', ['mu-base'], $theme_version);
 
@@ -128,6 +184,10 @@ if (is_front_page()) {
 // JavaScript en footer:
 wp_enqueue_script('mu-[nombre]', $theme_uri . '/js/[nombre].js', [], $theme_version, true);
 ```
+
+### Paso 5 — Actualizar este archivo
+Actualizar la tabla §0 con el nuevo estado (tamaño real, ✅ Migrado) y registrar
+cualquier cambio de arquitectura o nuevo archivo creado.
 
 ---
 
@@ -141,6 +201,7 @@ wp_enqueue_script('mu-[nombre]', $theme_uri . '/js/[nombre].js', [], $theme_vers
 
 .mu-[componente] {
     --local-spacing: var(--mu-space-md);
+    /* override GP: adaptado al diseño de la marca */
     /* estilos base */
 }
 
@@ -189,5 +250,9 @@ if ( !function_exists( 'mu_helper' ) ) {
 ---
 
 > **Nota para IA**: Al recibir un snippet para migrar, seguir el Protocolo §3 en orden.  
-> Consultar §1 para verificar si el archivo destino ya existe antes de crearlo.  
-> Consultar §2 para aplicar convenciones de naming y variables CSS correctas.
+> **Paso previo obligatorio**: Verificar en `assets/css/main.min.css` que el CSS a crear no duplique estilos del tema padre.  
+> Consultar **§0** para el estado actual antes de crear nuevos archivos.  
+> Consultar **§1** para verificar si el archivo destino ya existe antes de crearlo.  
+> Consultar **§2** para aplicar convenciones de naming y variables CSS correctas.  
+> **Siempre actualizar §0** al finalizar una migración.  
+> Los snippets se entregan de a uno; no preguntar cuándo desactivar — eso lo gestiona el usuario.
