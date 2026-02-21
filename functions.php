@@ -1419,7 +1419,11 @@ if ( ! function_exists( 'mu_googlesitekit_canonical_home_url' ) ) {
 add_filter( 'googlesitekit_canonical_home_url', 'mu_googlesitekit_canonical_home_url' );
 
 add_shortcode( 'dcms_share', function( $atts ) {
-    return dcms_render_share_button( 'dcms-share-btn--shortcode', false );
+    $icon_share = function_exists( 'mu_get_icon' ) ? mu_get_icon( 'share' ) : '';
+    return sprintf(
+        '<button class="dcms-share-btn" type="button" title="Compartir" aria-label="Compartir">%s</button>',
+        $icon_share
+    );
 });
 
 // 3) WooCommerce: agregar múltiples productos al carrito por URL (?add-multiple=1,2,3)
