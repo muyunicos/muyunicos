@@ -261,7 +261,7 @@ if ( !function_exists( 'mu_get_icon' ) ) {
 
 /* ============================================
    MUYUNICOS - FUNCIONES AUXILIARES MULTI-PAÍS (CORE)
-   Versión: 1.0.0
+   Versión: 1.1.0 - Refactorizada para DRY
    Requerido por: Sistema de geolocalización, selector de país, restricción digital
    ============================================ */
 
@@ -298,6 +298,8 @@ if ( !function_exists('muyu_country_language_prefix') ) {
 if ( !function_exists('muyu_get_countries_data') ) {
     /**
      * Retorna array estructurado con datos de todos los países soportados
+     * ÚNICA FUENTE DE VERDAD para el sistema multi-país
+     * 
      * @return array Datos de países (host, flag, idioma)
      */
     function muyu_get_countries_data() {
@@ -319,22 +321,35 @@ if ( !function_exists('muyu_get_countries_data') ) {
 if ( !function_exists('muyu_get_current_country_from_subdomain') ) {
     /**
      * Detecta el país actual basado en el subdominio
+     * Deriva el mapa de subdominios desde muyu_get_countries_data()
+     * 
      * @return string Código de país ISO 3166-1 alpha-2
      */
     function muyu_get_current_country_from_subdomain() {
         $current_host = trim($_SERVER['HTTP_HOST'] ?? '', ':80');
         $main_domain = muyu_get_main_domain();
         
+        // Caso especial: dominio principal sin subdominio = Argentina
         if ( $current_host === $main_domain || strpos($current_host, $main_domain) === false ) {
             return 'AR';
         }
         
+        // Extraer subdominio
         $subdomain = str_replace('.' . $main_domain, '', $current_host);
-        $subdomain_map = array(
-            'br' => 'BR', 'pe' => 'PE', 'cl' => 'CL', 'co' => 'CO', 
-            'mx' => 'MX', 'mexico' => 'MX', 'es' => 'ES', 'ec' => 'EC', 
-            'us' => 'US', 'cr' => 'CR'
-        );
+        
+        // Construir mapa dinámicamente desde la fuente de verdad
+        $subdomain_map = array();
+        foreach ( muyu_get_countries_data() as $code => $data ) {
+            $host_parts = explode('.', $data['host']);
+            $sub = strtolower($host_parts[0]);
+            
+            // Skip si es el dominio principal (Argentina)
+            if ( $data['host'] === $main_domain ) {
+                continue;
+            }
+            
+            $subdomain_map[$sub] = $code;
+        }
         
         return isset($subdomain_map[strtolower($subdomain)]) ? $subdomain_map[strtolower($subdomain)] : 'AR';
     }
@@ -358,35 +373,27 @@ if ( !function_exists('muyu_clean_uri') ) {
 
 /* ============================================
    MUYUNICOS - AUTO-DETECCIÓN DE PAÍS POR DOMINIO
-   Versión: 1.0.0
+   Versión: 1.1.0 - Refactorizada para DRY
    Establece billing_country y shipping_country automáticamente
    Esencial para "WooCommerce Price Based on Country"
    ============================================ */
 
-add_action('template_redirect', 'mu_auto_detect_country_by_domain', 1);
 if ( !function_exists('mu_auto_detect_country_by_domain') ) {
     /**
      * Detecta el país del usuario según el subdominio y configura WooCommerce.
      * Mapeo: subdominio → código ISO 3166-1 alpha-2
+     * Deriva el mapa de hosts desde muyu_get_countries_data()
      */
     function mu_auto_detect_country_by_domain() {
         if ( is_admin() || !function_exists('WC') || !WC()->customer ) {
             return;
         }
         
-        // Mapa de hosts a países
-        $host_to_country_map = array(
-            'mexico.muyunicos.com' => 'MX',
-            'co.muyunicos.com'     => 'CO',
-            'es.muyunicos.com'     => 'ES',
-            'cl.muyunicos.com'     => 'CL',
-            'pe.muyunicos.com'     => 'PE',
-            'br.muyunicos.com'     => 'BR',
-            'ec.muyunicos.com'     => 'EC',
-            'muyunicos.com'        => 'AR',
-            'us.muyunicos.com'     => 'US',
-            'cr.muyunicos.com'     => 'CR',
-        );
+        // Construir mapa dinámicamente desde la fuente de verdad
+        $host_to_country_map = array();
+        foreach ( muyu_get_countries_data() as $code => $data ) {
+            $host_to_country_map[$data['host']] = $code;
+        }
         
         $current_host = $_SERVER['HTTP_HOST'] ?? '';
         
@@ -413,6 +420,9 @@ if ( !function_exists('mu_auto_detect_country_by_domain') ) {
         WC()->customer->set_shipping_country($detected_country_code);
         WC()->customer->save();
     }
+    
+    // Hook dentro del guard para evitar double-hook si otro plugin define la función
+    add_action('template_redirect', 'mu_auto_detect_country_by_domain', 1);
 }
 
 /* ============================================
