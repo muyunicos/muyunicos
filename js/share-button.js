@@ -5,7 +5,7 @@
     'use strict';
 
     function init() {
-        const shareBtns = document.querySelectorAll('.mu-share-btn');
+        const shareBtns = document.querySelectorAll('.dcms-share-btn, .mu-share-btn');
         if (!shareBtns.length) return;
 
         shareBtns.forEach(btn => {
