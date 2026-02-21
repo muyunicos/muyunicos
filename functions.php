@@ -1396,7 +1396,11 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         private function init_hooks() {
             add_action( 'wp_ajax_muyu_rebuild_digital_list', [ $this, 'ajax_rebuild_indexes' ] );
             add_action( 'woocommerce_update_product', [ $this, 'schedule_rebuild' ], 10, 1 );
-            add_action( 'admin_init', [ $this, 'ensure_indexes_exist' ], 5 );
+            
+            // Usar init en lugar de admin_init para asegurar que el índice se cree 
+            // si el primer hit post-deploy es del frontend.
+            add_action( 'init', [ $this, 'ensure_indexes_exist' ], 5 );
+            
             add_action( 'admin_head-edit.php', [ $this, 'add_rebuild_button' ] );
             
             add_action( 'pre_get_posts', [ $this, 'filter_product_queries' ], 50 );
@@ -1418,29 +1422,35 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 return false;
             }
             $host = $this->get_clean_host();
-            $this->cache['is_restricted'] = ( 'muyunicos.com' !== $host );
+            $main_domain = function_exists('muyu_get_main_domain') ? muyu_get_main_domain() : 'muyunicos.com';
+            $this->cache['is_restricted'] = ( $main_domain !== $host );
             return $this->cache['is_restricted'];
         }
         
         public function get_user_country_code() {
             if ( isset( $this->cache['country_code'] ) ) return $this->cache['country_code'];
             
-            $host = isset( $_SERVER['HTTP_HOST'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ) ) : '';
-            $parts = explode( '.', $host );
-            
-            if ( count( $parts ) >= 3 ) {
-                $subdomain = strtolower( $parts[0] );
-                $subdomain_map = [ 'mexico' => 'MX', 'br' => 'BR', 'co' => 'CO', 'ec' => 'EC', 'cl' => 'CL', 'pe' => 'PE', 'ar' => 'AR' ];
+            // Reusar la lógica CORE si existe
+            if ( function_exists('muyu_get_current_country_from_subdomain') ) {
+                $code = muyu_get_current_country_from_subdomain();
+            } else {
+                $host = isset( $_SERVER['HTTP_HOST'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ) ) : '';
+                $parts = explode( '.', $host );
                 
-                if ( isset( $subdomain_map[ $subdomain ] ) ) {
-                    $code = $subdomain_map[ $subdomain ];
-                } elseif ( 2 === strlen( $subdomain ) ) {
-                    $code = strtoupper( $subdomain );
+                if ( count( $parts ) >= 3 ) {
+                    $subdomain = strtolower( $parts[0] );
+                    $subdomain_map = [ 'mexico' => 'MX', 'br' => 'BR', 'co' => 'CO', 'ec' => 'EC', 'cl' => 'CL', 'pe' => 'PE', 'ar' => 'AR', 'us' => 'US' ];
+                    
+                    if ( isset( $subdomain_map[ $subdomain ] ) ) {
+                        $code = $subdomain_map[ $subdomain ];
+                    } elseif ( 2 === strlen( $subdomain ) ) {
+                        $code = strtoupper( $subdomain );
+                    } else {
+                        $code = 'AR';
+                    }
                 } else {
                     $code = 'AR';
                 }
-            } else {
-                $code = 'AR';
             }
             
             $this->cache['country_code'] = $code;
@@ -1450,7 +1460,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         private function get_clean_host() {
             if ( isset( $this->cache['clean_host'] ) ) return $this->cache['clean_host'];
             $host = isset( $_SERVER['HTTP_HOST'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ) ) : '';
-            $host = str_replace( 'www.', '', $host );
+            $host = str_replace( 'www.', '', trim($host, ':80') );
             $this->cache['clean_host'] = $host;
             return $host;
         }
@@ -1585,7 +1595,13 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         }
         
         public function ensure_indexes_exist() {
-            if ( false === get_option( self::OPTION_PRODUCT_IDS ) ) $this->rebuild_digital_indexes();
+            if ( false === get_option( self::OPTION_PRODUCT_IDS ) ) {
+                // Prevenir múltiples rebuilds simultáneos en el frontend (lock por 5 mins)
+                if ( get_transient( 'muyu_rebuild_lock' ) ) return;
+                set_transient( 'muyu_rebuild_lock', true, 300 );
+                
+                $this->rebuild_digital_indexes();
+            }
         }
         
         public function filter_product_queries( $query ) {
@@ -1696,7 +1712,13 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 if ( $prefix ) $target_url = insertar_prefijo_idioma( $target_url, $prefix );
             }
             
-            wp_redirect( $target_url, 302 );
+            // Anti-loop preventivo: no redirigir a la misma URL
+            $current_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://{$_SERVER['HTTP_HOST']}{$_SERVER['REQUEST_URI']}";
+            if ( untrailingslashit($target_url) === untrailingslashit($current_url) ) {
+                return;
+            }
+            
+            wp_safe_redirect( $target_url, 302 );
             exit;
         }
         
@@ -1736,10 +1758,10 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             if ( ! $visible || ! $this->is_restricted_user() ) return $visible;
             
             $attributes = $variation->get_attributes();
-            $physical_term = get_term( self::PHYSICAL_FORMAT_ID, 'pa_formato' );
+            $physical_slug = $this->get_physical_term_slug();
             
-            if ( $physical_term && ! is_wp_error( $physical_term ) ) {
-                if ( isset( $attributes['pa_formato'] ) && $attributes['pa_formato'] === $physical_term->slug ) return false;
+            if ( $physical_slug && isset( $attributes['pa_formato'] ) && $attributes['pa_formato'] === $physical_slug ) {
+                return false;
             }
             return $visible;
         }
@@ -1748,12 +1770,12 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             if ( ! $this->is_restricted_user() || ! isset( $args['attribute'] ) || 'pa_formato' !== $args['attribute'] ) return $args;
             if ( empty( $args['options'] ) ) return $args;
             
-            $physical_term = get_term( self::PHYSICAL_FORMAT_ID, 'pa_formato' );
-            if ( ! $physical_term || is_wp_error( $physical_term ) ) return $args;
+            $physical_slug = $this->get_physical_term_slug();
+            if ( ! $physical_slug ) return $args;
             
             foreach ( $args['options'] as $key => $option ) {
                 if ( ( is_object( $option ) && isset( $option->term_id ) && $option->term_id == self::PHYSICAL_FORMAT_ID ) ||
-                     ( is_string( $option ) && $option === $physical_term->slug ) ) {
+                     ( is_string( $option ) && $option === $physical_slug ) ) {
                     unset( $args['options'][ $key ] );
                 }
             }
@@ -1763,18 +1785,25 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         public function filter_variation_prices( $prices_array, $product, $for_display ) {
             if ( ! $this->is_restricted_user() || empty( $prices_array['price'] ) ) return $prices_array;
             
-            $physical_term = get_term( self::PHYSICAL_FORMAT_ID, 'pa_formato' );
-            if ( ! $physical_term || is_wp_error( $physical_term ) ) return $prices_array;
+            $physical_slug = $this->get_physical_term_slug();
+            if ( ! $physical_slug ) return $prices_array;
             
             foreach ( $prices_array['price'] as $variation_id => $amount ) {
                 $format_slug = get_post_meta( $variation_id, 'attribute_pa_formato', true );
-                if ( $format_slug === $physical_term->slug ) {
+                if ( $format_slug === $physical_slug ) {
                     unset( $prices_array['price'][ $variation_id ] );
                     unset( $prices_array['regular_price'][ $variation_id ] );
                     unset( $prices_array['sale_price'][ $variation_id ] );
                 }
             }
             return $prices_array;
+        }
+        
+        private function get_physical_term_slug() {
+            if ( isset($this->cache['physical_term_slug']) ) return $this->cache['physical_term_slug'];
+            $term = get_term( self::PHYSICAL_FORMAT_ID, 'pa_formato' );
+            $this->cache['physical_term_slug'] = ( $term && ! is_wp_error( $term ) ) ? $term->slug : null;
+            return $this->cache['physical_term_slug'];
         }
         
         public function set_format_default( $defaults, $product ) {
