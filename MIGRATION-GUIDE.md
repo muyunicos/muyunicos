@@ -55,13 +55,15 @@ Documento vivo que rastrea la migración progresiva desde **Code Snippets** haci
 | Estilos Shop | CSS | ✅ Migrado | `css/shop.css` | 6.2 KB | Grid productos, filtros |
 | **PRODUCT** |  |  |  |  |  |
 | Estilos Producto | CSS | ✅ Migrado | `css/product.css` | 9.1 KB | Gallery, variations, tabs |
+| **UX - VINCULACIÓN FÍSICO / DIGITAL** |  |  |  |  |  |
+| Vinculación Productos Físicos/Digitales (Meta Persistente) | PHP+CSS | ✅ Migrado | `functions.php` + `css/product.css` | ~2.5 KB | `mu_render_linked_product()`, meta cache `_mu_sibling_id`, usa `muyu_get_current_country_from_subdomain()` |
 
 ### Estadísticas
 
-- **Total Snippets Migrados**: 39+
+- **Total Snippets Migrados**: 40+
 - **Total CSS Modularizado**: ~84 KB
 - **Total JS Modularizado**: ~29 KB
-- **Total PHP en functions.php**: ~62 KB (incluyendo clase restricción digital)
+- **Total PHP en functions.php**: ~65 KB (incluyendo clase restricción digital + vinculación físico/digital)
 - **Última Actualización**: 21 de febrero de 2026
 
 ---
@@ -94,7 +96,7 @@ muyunicos/  (= generatepress-child)
 │   ├── checkout.css            # Página checkout
 │   ├── home.css                # Home page
 │   ├── shop.css                # Shop/Cat/Tag
-│   └── product.css             # Single product
+│   └── product.css             # Single product (incl. .mu-linked-box)
 ├── js/
 │   ├── header.js
 │   ├── footer.js
@@ -315,6 +317,18 @@ $country = muyu_get_user_country_code();  // 'AR', 'MX', 'BR', etc.
 // No requiere shortcode ni invocación manual
 // Solo se muestra si el usuario está en dominio incorrecto
 ```
+
+### 3.6 Vinculación Físico / Digital
+
+**Componente migrado** (21/02/2026):
+
+- **Función**: `mu_render_linked_product()` — muestra caja de navegación cruzada en `woocommerce_single_product_summary` (priority 25)
+- **Meta cache**: `_mu_sibling_id` (ID del hermano), `_mu_sibling_checked` (flag de ya revisado). La SQL pesada se ejecuta **una sola vez por producto**, ideal para LiteSpeed Cache.
+- **Detección de país**: Usa `muyu_get_current_country_from_subdomain()` del CORE. El enlace al físico solo se muestra en Argentina (`=== 'AR'`).
+- **IDs de configuración** (hardcoded en función, actualizar si cambian):
+  - `$cat_fisico = 19` | `$cat_imprimible = 62`
+  - `$prod_pers_imp = 10708` | `$prod_pers_fis = 10279`
+- **CSS**: clases `.mu-linked-box`, `.mu-cross-p`, `.mu-cross-a`, `.mu-cat-p` en `css/product.css`
 
 ---
 
