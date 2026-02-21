@@ -963,7 +963,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         private function init_hooks() {
             add_action( 'wp_ajax_muyu_rebuild_digital_list', [ $this, 'ajax_rebuild_indexes' ] );
             add_action( 'woocommerce_update_product', [ $this, 'schedule_rebuild' ], 10, 1 );
-            add_action( 'init', [ $this, 'ensure_indexes_exist' ], 5 );
+            add_action( 'admin_init', [ $this, 'ensure_indexes_exist' ], 5 );
             add_action( 'admin_head-edit.php', [ $this, 'add_rebuild_button' ] );
             add_action( 'pre_get_posts', [ $this, 'filter_product_queries' ], 50 );
             add_action( 'template_redirect', [ $this, 'handle_redirects' ], 20 );
