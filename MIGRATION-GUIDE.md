@@ -1,1 +1,415 @@
-# MUY ÚNCOS - GUÍA DE MIGRACIÓN DE SNIPPETS\n\nDocumento vivo que rastrea la migración progresiva desde **Code Snippets** hacia archivos modulares CSS/JS/PHP en el tema hijo `generatepress-child`.\n\n---\n\n## 📊 SECCIÓN 0: ESTADO DE MIGRACIÓN\n\n### Tabla de Progreso (Actualizado: 21/02/2026)\n\n| Snippet Original | Tipo | Estado | Archivo Destino | Tamaño | Notas |\n|---|---|---|---|---|---|\n| **GEOLOCALIZACIÓN & MULTI-PAÍS** |  |  |  |  |  |\n| Auto-detección de País por Dominio | PHP | ✅ Migrado | `functions.php` | ~1.2 KB | Hook `template_redirect`, establece `billing_country` |\n| Shortcode País de Facturación | PHP | ✅ Migrado | `functions.php` | ~0.5 KB | `[mi_pais_facturacion]` |\n| Funciones Auxiliares Multi-País (CORE) | PHP | ✅ Migrado | `functions.php` | ~2.1 KB | `muyu_get_countries_data()`, `muyu_clean_uri()`, etc. |\n| Selector de País en Header | PHP+CSS+JS | ✅ Migrado | `functions.php` + `css/components/header.css` + `js/mu-ui-scripts.js` | ~8.5 KB | Dropdown con banderas, ya existía |\n| **Modal de Sugerencia de País** | **PHP+CSS+JS** | **✅ Migrado** | **`functions.php` + `css/components/country-modal.css` + `js/country-modal.js`** | **~7.2 KB** | **Geolocalización WC, cookie 1 año, multi-idioma** |\n| **CHECKOUT** |  |  |  |  |  |\n| Campos Checkout Optimizados | PHP | ✅ Migrado | `functions.php` | ~4.5 KB | Lógica condicional físico/digital |\n| Validación Checkout | PHP | ✅ Migrado | `functions.php` | ~1.8 KB | `woocommerce_checkout_process` |\n| AJAX Check Email | PHP | ✅ Migrado | `functions.php` | ~0.8 KB | `wc_ajax_mu_check_email` |\n| Estilos Checkout | CSS | ✅ Migrado | `css/checkout.css` | 12.3 KB | Variables GP, mobile-first |\n| Lógica Checkout (WhatsApp, toggle) | JS | ✅ Migrado | `js/checkout.js` | 8.7 KB | libphonenumber.js, validaciones |\n| **MODAL AUTH** |  |  |  |  |  |\n| HTML Modal Auth | PHP | ✅ Migrado | `functions.php` | ~3.2 KB | `wp_footer`, estructura HTML |\n| WC-AJAX Handlers (login/register) | PHP | ✅ Migrado | `functions.php` | ~2.1 KB | 4 endpoints `wc_ajax_*` |\n| Estilos Modal Auth | CSS | ✅ Migrado | `css/components/modal-auth.css` | 9.8 KB | Animaciones, responsive |\n| Lógica Modal Auth | JS | ✅ Migrado | `js/modal-auth.js` | 6.5 KB | Step navigation, AJAX calls |\n| **HEADER** |  |  |  |  |  |\n| Iconos Header | PHP | ✅ Migrado | `functions.php` | ~2.8 KB | `mu_header_icons()`, hook `generate_after_primary_menu` |\n| Estilos Header | CSS | ✅ Migrado | `css/components/header.css` | 8.2 KB | `.mu-header-icons`, `.mu-account-dropdown` |\n| Lógica Header (dropdowns) | JS | ✅ Migrado | `js/header.js` | 3.1 KB | Dropdown account, sticky behavior |\n| **FOOTER** |  |  |  |  |  |\n| Estructura Footer Custom | PHP | ✅ Migrado | `functions.php` | ~3.5 KB | `muyunicos_custom_footer_structure()` |\n| Estilos Footer | CSS | ✅ Migrado | `css/components/footer.css` | 11.7 KB | Grid, accordion mobile, trust badge |\n| Lógica Footer (accordions) | JS | ✅ Migrado | `js/footer.js` | 1.9 KB | Accordions mobile |\n| **CART** |  |  |  |  |  |\n| Estilos Carrito | CSS | ✅ Migrado | `css/cart.css` | 7.4 KB | Tabla responsive, badges |\n| Lógica Carrito | JS | ✅ Migrado | `js/cart.js` | 4.2 KB | Update quantities, remove items |\n| **OTROS** |  |  |  |  |  |\n| Repositorio de Iconos SVG | PHP | ✅ Migrado | `functions.php` | ~1.5 KB | `mu_get_icon()`, 10+ iconos |\n| Botón Compartir (Share) | PHP+CSS+JS | ✅ Migrado | `functions.php` + `css/components/share-button.css` + `js/share-button.js` | ~4.5 KB | Shortcode `[dcms_share]`, Native Share API + fallback clipboard |\n| Botón Flotante WhatsApp | PHP+CSS | ✅ Migrado | `functions.php` + `style.css` | ~1.2 KB | `wp_footer` hook |\n| Formulario Búsqueda Custom | PHP+CSS | ✅ Migrado | `functions.php` + `style.css` | ~2.1 KB | `get_product_search_form` filter |\n| Add Multiple Products to Cart | PHP | ✅ Migrado | `functions.php` | ~0.9 KB | `?add-multiple=1,2,3` |\n| BACS Replace NUMERODEPEDIDO | PHP | ✅ Migrado | `functions.php` | ~1.1 KB | Email + Thank you page |\n| Move Category Description | PHP | ✅ Migrado | `functions.php` | ~0.4 KB | `woocommerce_after_shop_loop` |\n| Google Site Kit Canonical | PHP | ✅ Migrado | `functions.php` | ~0.3 KB | Filter `googlesitekit_canonical_home_url` |\n| **RESTRICCIÓN DIGITAL** |  |  |  |  |  |\n| Sistema de Restricción Digital v2.2 | PHP (Clase) | ✅ Migrado/Refactorizado | `functions.php` | ~18.5 KB | `MUYU_Digital_Restriction_System`, optimizado uso multi-país core |\n| **HOME** |  |  |  |  |  |\n| Estilos Home | CSS | ✅ Migrado | `css/home.css` | 5.8 KB | Hero, featured products |\n| **SHOP** |  |  |  |  |  |\n| Estilos Shop | CSS | ✅ Migrado | `css/shop.css` | 6.2 KB | Grid productos, filtros |\n| **PRODUCT** |  |  |  |  |  |\n| Estilos Producto | CSS | ✅ Migrado | `css/product.css` | 9.1 KB | Gallery, variations, tabs |\n\n### Estadísticas\n\n- **Total Snippets Migrados**: 40+\n- **Total CSS Modularizado**: ~85 KB\n- **Total JS Modularizado**: ~31 KB\n- **Total PHP en functions.php**: ~62 KB (incluyendo clase restricción digital)\n- **Última Actualización**: 21 de febrero de 2026\n\n---\n\n## 🛠️ SECCIÓN 1: PRINCIPIOS DE MIGRACIÓN\n\n### 1.1 Filosofía General\n\n1. **Anti-Duplicación**: Antes de escribir CSS, verificar si GeneratePress ya provee el estilo en `assets/css/main.min.css`\n2. **Variables First**: Usar las variables CSS existentes en `style.css`\n3. **Performance**: Archivos cacheables > estilos inline\n4. **Nomenclatura**: Prefijo `.mu-*` + BEM cuando corresponda\n5. **PHP Robusto**: Envolver funciones en `if ( !function_exists() )`\n\n### 1.2 Estructura de Archivos\n\n```\nmuyunicos/  (= generatepress-child)\n├── style.css                  # Variables CSS + base del child theme\n├── functions.php              # Enqueue system + funciones PHP\n├── MIGRATION-GUIDE.md         # Este archivo (estado de migración)\n├── css/\n│   ├── components/             # Componentes reutilizables\n│   │   ├── header.css\n│   │   ├── footer.css\n│   │   ├── modal-auth.css\n│   │   ├── country-modal.css       # NUEVO: Modal sugerencia de país\n│   │   └── share-button.css        # Botón compartir nativo\n│   ├── cart.css                # Página carrito\n│   ├── checkout.css            # Página checkout\n│   ├── home.css                # Home page\n│   ├── shop.css                # Shop/Cat/Tag\n│   └── product.css             # Single product\n├── js/\n│   ├── header.js\n│   ├── footer.js\n│   ├── modal-auth.js\n│   ├── country-modal.js        # NUEVO: Lógica del modal de país\n│   ├── share-button.js         # Lógica Native Share API\n│   ├── cart.js\n│   ├── checkout.js\n│   └── mu-ui-scripts.js       # Country selector + WPLingua toggle\n└── assets/\n    └── css/\n        └── main.min.css        # READ-ONLY: GeneratePress parent theme\n```\n\n---\n\n## 📝 SECCIÓN 2: PROTOCOLO PASO A PASO\n\n### Step 0: Anti-Duplicación Check (OBLIGATORIO)\n\n**Antes de migrar cualquier snippet**, verificar:\n\n```bash\n# En terminal, desde la raíz del tema:\ngrep -r \"selector-que-quiero-usar\" assets/css/main.min.css\n```\n\nSi GeneratePress ya provee el estilo:\n- **Opción A**: Usar el estilo del parent tal cual (ideal)\n- **Opción B**: Si necesitas sobreescribirlo, agregar comentario:\n  ```css\n  /* override GP: [razón específica] */\n  .selector { ... }\n  ```\n\n### Step 1: Identificar Tipo de Snippet\n\n- **Global/Componente**: Va a `css/components/` o directamente en `functions.php`\n- **Página específica**: Va a `css/[nombre-pagina].css` con conditional enqueue\n- **PHP puro**: Directamente a `functions.php` con docblock apropiado\n\n### Step 2: Refactorizar Código\n\n#### CSS:\n```css\n/* Antes (snippet inline) */\n.mi-clase {\n    color: #2B9FCF;  /* 🚫 Hardcoded */\n    padding: 20px;\n}\n\n/* Después (modular) */\n.mu-mi-clase {\n    color: var(--primario);  /* ✅ Variable */\n    padding: var(--mu-space-md);\n}\n```\n\n#### PHP:\n```php\n// Antes (snippet sin protección)\nfunction mi_funcion() { ... }\n\n// Después (robusto)\nif ( !function_exists('mu_mi_funcion') ) {\n    /**\n     * Descripción clara de la función\n     * @param string $param Descripción del parámetro\n     * @return mixed Descripción del retorno\n     */\n    function mu_mi_funcion($param) {\n        // Lógica\n    }\n}\n```\n\n#### JavaScript:\n```javascript\n// Antes (snippet inline)\njQuery(function($) {\n    $('.clase').click(...);\n});\n\n// Después (IIFE + strict mode)\n(function() {\n    'use strict';\n    \n    if (document.readyState === 'loading') {\n        document.addEventListener('DOMContentLoaded', init);\n    } else {\n        init();\n    }\n    \n    function init() {\n        // Lógica\n    }\n})();\n```\n\n### Step 3: Actualizar `functions.php` (si aplica)\n\nSi creaste un archivo CSS/JS nuevo:\n\n```php\nfunction mu_enqueue_assets() {\n    // ... código existente ...\n    \n    // NUEVO: Enqueue condicional\n    if ( is_nueva_condicion() ) {\n        wp_enqueue_style(\n            'mu-nuevo-archivo',\n            get_stylesheet_directory_uri() . '/css/nuevo-archivo.css',\n            array('mu-base'),  // Dependencia\n            wp_get_theme()->get('Version')\n        );\n    }\n}\n```\n\n### Step 4: Actualizar ESTA GUÍA\n\nEditar **Sección 0** (arriba):\n1. Cambiar estado de \"❌ Pendiente\" a \"✅ Migrado\"\n2. Completar columna \"Archivo Destino\"\n3. Agregar tamaño del archivo (usar `ls -lh archivo.css`)\n4. Actualizar fecha de \"Última Actualización\"\n\n---\n\n## 🎯 SECCIÓN 3: CASOS ESPECIALES\n\n### 3.1 Funciones Multi-País (Geolocalización)\n\n**Dependencias**: Las funciones auxiliares multi-país son **CORE** y deben cargarse primero:\n\n```php\n// ✅ CORRECTO: Funciones auxiliares primero\nif ( !function_exists('muyu_get_countries_data') ) { ... }\nif ( !function_exists('muyu_clean_uri') ) { ... }\n\n// Luego, funciones que las usan:\nif ( !function_exists('mu_auto_detect_country_by_domain') ) {\n    function mu_auto_detect_country_by_domain() {\n        $countries = muyu_get_countries_data();  // Usa helper\n        // ...\n    }\n}\n```\n\n**Funciones auxiliares disponibles**:\n- `muyu_get_main_domain()` - Dominio principal cacheado\n- `muyu_country_language_prefix($code)` - Prefijo de idioma ('/pt', '/en')\n- `muyu_get_countries_data()` - Array completo de países\n- `muyu_get_current_country_from_subdomain()` - País actual por subdominio\n- `muyu_clean_uri($prefix, $uri)` - Normaliza URIs con prefijo de idioma\n- `muyu_country_modal_text($code, $type)` - Textos localizados para modal\n\n### 3.2 Iconos SVG\n\n**Nunca** insertar SVG inline. Usar siempre:\n\n```php\n// ✅ CORRECTO\necho mu_get_icon('instagram');\n\n// ❌ INCORRECTO\necho '<svg>...</svg>';  // Duplicación, no cacheable\n```\n\n**Iconos disponibles**:\n`arrow`, `search`, `close`, `share`, `check`, `instagram`, `facebook`, `pinterest`, `tiktok`, `youtube`\n\n### 3.3 WC-AJAX vs wp_ajax\n\n**Preferir WC-AJAX** para operaciones de WooCommerce:\n\n```php\n// ✅ CORRECTO (WC-AJAX, más rápido)\nadd_action('wc_ajax_mu_check_email', 'mi_funcion');\n\n// ❌ EVITAR (wp_ajax, más lento)\nadd_action('wp_ajax_mi_accion', 'mi_funcion');\nadd_action('wp_ajax_nopriv_mi_accion', 'mi_funcion');\n```\n\n### 3.4 Restricción de Contenido Digital\n\nLa clase `MUYU_Digital_Restriction_System` es un **singleton** que gestiona:\n- Índices de productos digitales\n- Redirecciones automáticas\n- Filtrado de queries\n- Ocultación de variaciones físicas\n\n**No modificar directamente**. Usar funciones helper:\n```php\nif ( muyu_is_restricted_user() ) {\n    // Lógica para subdominios (solo digital)\n}\n\n$country = muyu_get_user_country_code();  // 'AR', 'MX', 'BR', etc.\n```\n\n### 3.5 Modal de Sugerencia de País\n\n**Nuevo componente migrado** (21/02/2026):\n\n- **Función**: Detecta el país del usuario mediante `wc_get_customer_geolocation()` y sugiere el sitio correcto\n- **Cookie**: `muyu_stay_here` - Persiste 1 año en `.muyunicos.com`\n- **Multi-idioma**: Usa `muyu_country_modal_text()` para textos localizados (es/pt/en)\n- **Enqueue condicional**: Solo se carga si debe mostrarse (optimización)\n- **Archivos**:\n  - `css/components/country-modal.css` - Estilos con variables CSS\n  - `js/country-modal.js` - Lógica IIFE + event listeners\n  - `functions.php` - Funciones `mu_should_show_country_modal()` y `mu_country_modal_html()`\n\n**Ejemplo de uso**:\n```php\n// El modal se renderiza automáticamente en wp_footer\n// No requiere shortcode ni invocación manual\n// Solo se muestra si el usuario está en dominio incorrecto\n```\n\n---\n\n## ✅ SECCIÓN 4: CHECKLIST DE MIGRACIÓN\n\nAntes de marcar un snippet como \"Migrado\":\n\n- [ ] Código refactorizado (variables, nomenclatura, comentarios)\n- [ ] Anti-duplicación verificada (Step 0)\n- [ ] Archivo creado/actualizado en ubicación correcta\n- [ ] `functions.php` actualizado (enqueue si aplica)\n- [ ] Probado en frontend (no rompe layout existente)\n- [ ] Probado en mobile (responsive)\n- [ ] Tabla de Sección 0 actualizada\n- [ ] Commit con mensaje descriptivo (`feat:`, `fix:`, `refactor:`)\n\n---\n\n## 🔗 SECCIÓN 5: RECURSOS\n\n### Variables CSS Disponibles (style.css)\n\n```css\n--primario: #2B9FCF;\n--secundario: #FFD77A;\n--texto: #277292;\n--exito: #a3ffbc;\n--mu-space-xs: 5px;\n--mu-space-sm: 10px;\n--mu-space-md: 20px;\n--mu-space-lg: 40px;\n--mu-space-xl: 40px;\n--mu-radius-sm: 6px;\n--mu-radius: 12px;\n--mu-radius-md: 16px;\n--mu-radius-lg: 20px;\n--mu-radius-xl: 32px;\n--mu-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);\n--mu-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);\n--mu-shadow-md: 0 8px 16px rgba(0, 0, 0, 0.15);\n--mu-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.15);\n--mu-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);\n--mu-transition-fast: all 0.2s ease;\n```\n\n### Breakpoints Mobile-First\n\n```css\n/* Mobile: 0-768px (default) */\n.mu-clase { ... }\n\n/* Tablet y superior: 769px+ */\n@media (min-width: 769px) {\n    .mu-clase { ... }\n}\n```\n\n### Hooks GeneratePress Útiles\n\n- `generate_header` (priority 1-20)\n- `generate_after_primary_menu`\n- `generate_before_footer`\n- `wp_footer` (priority 5-100)\n\n---\n\n## 📌 SECCIÓN 6: PR TEMPLATE\n\nCuando hagas un Pull Request de migración, usar este template:\n\n```markdown\n## Migración: [Nombre del Snippet]\n\n### Cambios\n- ✅ Migrado snippet \"[nombre]\" a `[archivo destino]`\n- ♻️ Refactorizado: [detalle de mejoras]\n- 📄 Actualizado MIGRATION-GUIDE.md\n\n### Archivos Modificados\n- `functions.php` (+XXX líneas)\n- `css/[archivo].css` (nuevo, XX KB)\n- `js/[archivo].js` (nuevo, XX KB)\n\n### Testing\n- [ ] Desktop (Chrome, Firefox)\n- [ ] Mobile (Responsive)\n- [ ] No rompe layout existente\n- [ ] Variables CSS usadas correctamente\n\n### Screenshots\n(Opcional: adjuntar capturas before/after)\n```\n\n---\n\n**Última Revisión**: 21 de febrero de 2026  \n**Mantenedor**: Jonatan Pintos  \n**Repositorio**: [github.com/muyunicos/muyunicos](https://github.com/muyunicos/muyunicos)\n
+# MUY ÚNCOS - GUÍA DE MIGRACIÓN DE SNIPPETS
+
+Documento vivo que rastrea la migración progresiva desde **Code Snippets** hacia archivos modulares CSS/JS/PHP en el tema hijo `generatepress-child`.
+
+---
+
+## 📊 SECCIÓN 0: ESTADO DE MIGRACIÓN
+
+### Tabla de Progreso (Actualizado: 21/02/2026)
+
+| Snippet Original | Tipo | Estado | Archivo Destino | Tamaño | Notas |
+|---|---|---|---|---|---|
+| **GEOLOCALIZACIÓN & MULTI-PAÍS** |  |  |  |  |  |
+| Auto-detección de País por Dominio | PHP | ✅ Migrado | `functions.php` | ~1.2 KB | Hook `template_redirect`, establece `billing_country` |
+| Shortcode País de Facturación | PHP | ✅ Migrado | `functions.php` | ~0.5 KB | `[mi_pais_facturacion]` |
+| Funciones Auxiliares Multi-País (CORE) | PHP | ✅ Migrado | `functions.php` | ~2.1 KB | `muyu_get_countries_data()`, `muyu_clean_uri()`, etc. |
+| Selector de País en Header | PHP+CSS+JS | ✅ Migrado | `functions.php` + `css/components/header.css` + `js/mu-ui-scripts.js` | ~8.5 KB | Dropdown con banderas, ya existía |
+| **Modal de Sugerencia de País** | **PHP+CSS+JS** | **✅ Migrado** | **`functions.php` + `css/components/country-modal.css` + `js/country-modal.js`** | **~7.2 KB** | **Geolocalización WC, cookie 1 año, multi-idioma** |
+| **CHECKOUT** |  |  |  |  |  |
+| Campos Checkout Optimizados | PHP | ✅ Migrado | `functions.php` | ~4.5 KB | Lógica condicional físico/digital |
+| Validación Checkout | PHP | ✅ Migrado | `functions.php` | ~1.8 KB | `woocommerce_checkout_process` |
+| AJAX Check Email | PHP | ✅ Migrado | `functions.php` | ~0.8 KB | `wc_ajax_mu_check_email` |
+| Estilos Checkout | CSS | ✅ Migrado | `css/checkout.css` | 12.3 KB | Variables GP, mobile-first |
+| Lógica Checkout (WhatsApp, toggle) | JS | ✅ Migrado | `js/checkout.js` | 8.7 KB | libphonenumber.js, validaciones |
+| **MODAL AUTH** |  |  |  |  |  |
+| HTML Modal Auth | PHP | ✅ Migrado | `functions.php` | ~3.2 KB | `wp_footer`, estructura HTML |
+| WC-AJAX Handlers (login/register) | PHP | ✅ Migrado | `functions.php` | ~2.1 KB | 4 endpoints `wc_ajax_*` |
+| Estilos Modal Auth | CSS | ✅ Migrado | `css/components/modal-auth.css` | 9.8 KB | Animaciones, responsive |
+| Lógica Modal Auth | JS | ✅ Migrado | `js/modal-auth.js` | 6.5 KB | Step navigation, AJAX calls |
+| **HEADER** |  |  |  |  |  |
+| Iconos Header | PHP | ✅ Migrado | `functions.php` | ~2.8 KB | `mu_header_icons()`, hook `generate_after_primary_menu` |
+| Estilos Header | CSS | ✅ Migrado | `css/components/header.css` | 8.2 KB | `.mu-header-icons`, `.mu-account-dropdown` |
+| Lógica Header (dropdowns) | JS | ✅ Migrado | `js/header.js` | 3.1 KB | Dropdown account, sticky behavior |
+| **FOOTER** |  |  |  |  |  |
+| Estructura Footer Custom | PHP | ✅ Migrado | `functions.php` | ~3.5 KB | `muyunicos_custom_footer_structure()` |
+| Estilos Footer | CSS | ✅ Migrado | `css/components/footer.css` | 11.7 KB | Grid, accordion mobile, trust badge |
+| Lógica Footer (accordions) | JS | ✅ Migrado | `js/footer.js` | 1.9 KB | Accordions mobile |
+| **CART** |  |  |  |  |  |
+| Estilos Carrito | CSS | ✅ Migrado | `css/cart.css` | 7.4 KB | Tabla responsive, badges |
+| Lógica Carrito | JS | ✅ Migrado | `js/cart.js` | 4.2 KB | Update quantities, remove items |
+| **OTROS** |  |  |  |  |  |
+| Repositorio de Iconos SVG | PHP | ✅ Migrado | `functions.php` | ~1.5 KB | `mu_get_icon()`, 10+ iconos |
+| Botón Compartir (Share) | PHP+CSS+JS | ✅ Migrado | `functions.php` + `css/components/share-button.css` + `js/share-button.js` | ~4.5 KB | Shortcode `[dcms_share]`, Native Share API + fallback clipboard 
+| Botón Flotante WhatsApp | PHP+CSS | ✅ Migrado | `functions.php` + `style.css` | ~1.2 KB | `wp_footer` hook |
+| Formulario Búsqueda Custom | PHP+CSS | ✅ Migrado | `functions.php` + `style.css` | ~2.1 KB | `get_product_search_form` filter |
+| Add Multiple Products to Cart | PHP | ✅ Migrado | `functions.php` | ~0.9 KB | `?add-multiple=1,2,3` |
+| BACS Replace NUMERODEPEDIDO | PHP | ✅ Migrado | `functions.php` | ~1.1 KB | Email + Thank you page |
+| Move Category Description | PHP | ✅ Migrado | `functions.php` | ~0.4 KB | `woocommerce_after_shop_loop` |
+| Google Site Kit Canonical | PHP | ✅ Migrado | `functions.php` | ~0.3 KB | Filter `googlesitekit_canonical_home_url` |
+| **RESTRICCIÓN DIGITAL** |  |  |  |  |  |
+| Sistema de Restricción Digital v2.2 | PHP (Clase) | ✅ Migrado/Refactorizado | `functions.php` | ~18.5 KB | `MUYU_Digital_Restriction_System`, optimizado uso multi-país core |
+| **HOME** |  |  |  |  |  |
+| Estilos Home | CSS | ✅ Migrado | `css/home.css` | 5.8 KB | Hero, featured products |
+| **SHOP** |  |  |  |  |  |
+| Estilos Shop | CSS | ✅ Migrado | `css/shop.css` | 6.2 KB | Grid productos, filtros |
+| **PRODUCT** |  |  |  |  |  |
+| Estilos Producto | CSS | ✅ Migrado | `css/product.css` | 9.1 KB | Gallery, variations, tabs |
+
+### Estadísticas
+
+- **Total Snippets Migrados**: 39+
+- **Total CSS Modularizado**: ~84 KB
+- **Total JS Modularizado**: ~29 KB
+- **Total PHP en functions.php**: ~62 KB (incluyendo clase restricción digital)
+- **Última Actualización**: 21 de febrero de 2026
+
+---
+
+## 🛠️ SECCIÓN 1: PRINCIPIOS DE MIGRACIÓN
+
+### 1.1 Filosofía General
+
+1. **Anti-Duplicación**: Antes de escribir CSS, verificar si GeneratePress ya provee el estilo en `assets/css/main.min.css`
+2. **Variables First**: Usar las variables CSS existentes en `style.css`
+3. **Performance**: Archivos cacheables > estilos inline
+4. **Nomenclatura**: Prefijo `.mu-*` + BEM cuando corresponda
+5. **PHP Robusto**: Envolver funciones en `if ( !function_exists() )`
+
+### 1.2 Estructura de Archivos
+
+```
+muyunicos/  (= generatepress-child)
+├── style.css                  # Variables CSS + base del child theme
+├── functions.php              # Enqueue system + funciones PHP
+├── MIGRATION-GUIDE.md         # Este archivo (estado de migración)
+├── css/
+│   ├── components/             # Componentes reutilizables
+│   │   ├── header.css
+│   │   ├── footer.css
+│   │   ├── modal-auth.css
+│   │   ├── country-modal.css       # NUEVO: Modal sugerencia de país
+│   │   └── share-button.css
+│   ├── cart.css                # Página carrito
+│   ├── checkout.css            # Página checkout
+│   ├── home.css                # Home page
+│   ├── shop.css                # Shop/Cat/Tag
+│   └── product.css             # Single product
+├── js/
+│   ├── header.js
+│   ├── footer.js
+│   ├── modal-auth.js
+│   ├── country-modal.js        # NUEVO: Lógica del modal de país
+│   ├── cart.js
+│   ├── checkout.js
+│   └── mu-ui-scripts.js       # Country selector + WPLingua toggle
+└── assets/
+    └── css/
+        └── main.min.css        # READ-ONLY: GeneratePress parent theme
+```
+
+---
+
+## 📝 SECCIÓN 2: PROTOCOLO PASO A PASO
+
+### Step 0: Anti-Duplicación Check (OBLIGATORIO)
+
+**Antes de migrar cualquier snippet**, verificar:
+
+```bash
+# En terminal, desde la raíz del tema:
+grep -r "selector-que-quiero-usar" assets/css/main.min.css
+```
+
+Si GeneratePress ya provee el estilo:
+- **Opción A**: Usar el estilo del parent tal cual (ideal)
+- **Opción B**: Si necesitas sobreescribirlo, agregar comentario:
+  ```css
+  /* override GP: [razón específica] */
+  .selector { ... }
+  ```
+
+### Step 1: Identificar Tipo de Snippet
+
+- **Global/Componente**: Va a `css/components/` o directamente en `functions.php`
+- **Página específica**: Va a `css/[nombre-pagina].css` con conditional enqueue
+- **PHP puro**: Directamente a `functions.php` con docblock apropiado
+
+### Step 2: Refactorizar Código
+
+#### CSS:
+```css
+/* Antes (snippet inline) */
+.mi-clase {
+    color: #2B9FCF;  /* 🚫 Hardcoded */
+    padding: 20px;
+}
+
+/* Después (modular) */
+.mu-mi-clase {
+    color: var(--primario);  /* ✅ Variable */
+    padding: var(--mu-space-md);
+}
+```
+
+#### PHP:
+```php
+// Antes (snippet sin protección)
+function mi_funcion() { ... }
+
+// Después (robusto)
+if ( !function_exists('mu_mi_funcion') ) {
+    /**
+     * Descripción clara de la función
+     * @param string $param Descripción del parámetro
+     * @return mixed Descripción del retorno
+     */
+    function mu_mi_funcion($param) {
+        // Lógica
+    }
+}
+```
+
+#### JavaScript:
+```javascript
+// Antes (snippet inline)
+jQuery(function($) {
+    $('.clase').click(...);
+});
+
+// Después (IIFE + strict mode)
+(function() {
+    'use strict';
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+    
+    function init() {
+        // Lógica
+    }
+})();
+```
+
+### Step 3: Actualizar `functions.php` (si aplica)
+
+Si creaste un archivo CSS/JS nuevo:
+
+```php
+function mu_enqueue_assets() {
+    // ... código existente ...
+    
+    // NUEVO: Enqueue condicional
+    if ( is_nueva_condicion() ) {
+        wp_enqueue_style(
+            'mu-nuevo-archivo',
+            get_stylesheet_directory_uri() . '/css/nuevo-archivo.css',
+            array('mu-base'),  // Dependencia
+            wp_get_theme()->get('Version')
+        );
+    }
+}
+```
+
+### Step 4: Actualizar ESTA GUÍA
+
+Editar **Sección 0** (arriba):
+1. Cambiar estado de "❌ Pendiente" a "✅ Migrado"
+2. Completar columna "Archivo Destino"
+3. Agregar tamaño del archivo (usar `ls -lh archivo.css`)
+4. Actualizar fecha de "Última Actualización"
+
+---
+
+## 🎯 SECCIÓN 3: CASOS ESPECIALES
+
+### 3.1 Funciones Multi-País (Geolocalización)
+
+**Dependencias**: Las funciones auxiliares multi-país son **CORE** y deben cargarse primero:
+
+```php
+// ✅ CORRECTO: Funciones auxiliares primero
+if ( !function_exists('muyu_get_countries_data') ) { ... }
+if ( !function_exists('muyu_clean_uri') ) { ... }
+
+// Luego, funciones que las usan:
+if ( !function_exists('mu_auto_detect_country_by_domain') ) {
+    function mu_auto_detect_country_by_domain() {
+        $countries = muyu_get_countries_data();  // Usa helper
+        // ...
+    }
+}
+```
+
+**Funciones auxiliares disponibles**:
+- `muyu_get_main_domain()` - Dominio principal cacheado
+- `muyu_country_language_prefix($code)` - Prefijo de idioma ('/pt', '/en')
+- `muyu_get_countries_data()` - Array completo de países
+- `muyu_get_current_country_from_subdomain()` - País actual por subdominio
+- `muyu_clean_uri($prefix, $uri)` - Normaliza URIs con prefijo de idioma
+- `muyu_country_modal_text($code, $type)` - Textos localizados para modal
+
+### 3.2 Iconos SVG
+
+**Nunca** insertar SVG inline. Usar siempre:
+
+```php
+// ✅ CORRECTO
+echo mu_get_icon('instagram');
+
+// ❌ INCORRECTO
+echo '<svg>...</svg>';  // Duplicación, no cacheable
+```
+
+**Iconos disponibles**:
+`arrow`, `search`, `close`, `share`, `check`, `instagram`, `facebook`, `pinterest`, `tiktok`, `youtube`
+
+### 3.3 WC-AJAX vs wp_ajax
+
+**Preferir WC-AJAX** para operaciones de WooCommerce:
+
+```php
+// ✅ CORRECTO (WC-AJAX, más rápido)
+add_action('wc_ajax_mu_check_email', 'mi_funcion');
+
+// ❌ EVITAR (wp_ajax, más lento)
+add_action('wp_ajax_mi_accion', 'mi_funcion');
+add_action('wp_ajax_nopriv_mi_accion', 'mi_funcion');
+```
+
+### 3.4 Restricción de Contenido Digital
+
+La clase `MUYU_Digital_Restriction_System` es un **singleton** que gestiona:
+- Índices de productos digitales
+- Redirecciones automáticas
+- Filtrado de queries
+- Ocultación de variaciones físicas
+
+**No modificar directamente**. Usar funciones helper:
+```php
+if ( muyu_is_restricted_user() ) {
+    // Lógica para subdominios (solo digital)
+}
+
+$country = muyu_get_user_country_code();  // 'AR', 'MX', 'BR', etc.
+```
+
+### 3.5 Modal de Sugerencia de País
+
+**Nuevo componente migrado** (21/02/2026):
+
+- **Función**: Detecta el país del usuario mediante `wc_get_customer_geolocation()` y sugiere el sitio correcto
+- **Cookie**: `muyu_stay_here` - Persiste 1 año en `.muyunicos.com`
+- **Multi-idioma**: Usa `muyu_country_modal_text()` para textos localizados (es/pt/en)
+- **Enqueue condicional**: Solo se carga si debe mostrarse (optimización)
+- **Archivos**:
+  - `css/components/country-modal.css` - Estilos con variables CSS
+  - `js/country-modal.js` - Lógica IIFE + event listeners
+  - `functions.php` - Funciones `mu_should_show_country_modal()` y `mu_country_modal_html()`
+
+**Ejemplo de uso**:
+```php
+// El modal se renderiza automáticamente en wp_footer
+// No requiere shortcode ni invocación manual
+// Solo se muestra si el usuario está en dominio incorrecto
+```
+
+---
+
+## ✅ SECCIÓN 4: CHECKLIST DE MIGRACIÓN
+
+Antes de marcar un snippet como "Migrado":
+
+- [ ] Código refactorizado (variables, nomenclatura, comentarios)
+- [ ] Anti-duplicación verificada (Step 0)
+- [ ] Archivo creado/actualizado en ubicación correcta
+- [ ] `functions.php` actualizado (enqueue si aplica)
+- [ ] Probado en frontend (no rompe layout existente)
+- [ ] Probado en mobile (responsive)
+- [ ] Tabla de Sección 0 actualizada
+- [ ] Commit con mensaje descriptivo (`feat:`, `fix:`, `refactor:`)
+
+---
+
+## 🔗 SECCIÓN 5: RECURSOS
+
+### Variables CSS Disponibles (style.css)
+
+```css
+--primario: #2B9FCF;
+--secundario: #FFD77A;
+--texto: #277292;
+--exito: #a3ffbc;
+--mu-space-xs: 5px;
+--mu-space-sm: 10px;
+--mu-space-md: 20px;
+--mu-space-lg: 40px;
+--mu-space-xl: 40px;
+--mu-radius-sm: 6px;
+--mu-radius: 12px;
+--mu-radius-md: 16px;
+--mu-radius-lg: 20px;
+--mu-radius-xl: 32px;
+--mu-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+--mu-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+--mu-shadow-md: 0 8px 16px rgba(0, 0, 0, 0.15);
+--mu-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.15);
+--mu-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+--mu-transition-fast: all 0.2s ease;
+```
+
+### Breakpoints Mobile-First
+
+```css
+/* Mobile: 0-768px (default) */
+.mu-clase { ... }
+
+/* Tablet y superior: 769px+ */
+@media (min-width: 769px) {
+    .mu-clase { ... }
+}
+```
+
+### Hooks GeneratePress Útiles
+
+- `generate_header` (priority 1-20)
+- `generate_after_primary_menu`
+- `generate_before_footer`
+- `wp_footer` (priority 5-100)
+
+---
+
+## 📌 SECCIÓN 6: PR TEMPLATE
+
+Cuando hagas un Pull Request de migración, usar este template:
+
+```markdown
+## Migración: [Nombre del Snippet]
+
+### Cambios
+- ✅ Migrado snippet "[nombre]" a `[archivo destino]`
+- ♻️ Refactorizado: [detalle de mejoras]
+- 📄 Actualizado MIGRATION-GUIDE.md
+
+### Archivos Modificados
+- `functions.php` (+XXX líneas)
+- `css/[archivo].css` (nuevo, XX KB)
+- `js/[archivo].js` (nuevo, XX KB)
+
+### Testing
+- [ ] Desktop (Chrome, Firefox)
+- [ ] Mobile (Responsive)
+- [ ] No rompe layout existente
+- [ ] Variables CSS usadas correctamente
+
+### Screenshots
+(Opcional: adjuntar capturas before/after)
+```
+
+---
+
+**Última Revisión**: 21 de febrero de 2026  
+**Mantenedor**: Jonatan Pintos  
+**Repositorio**: [github.com/muyunicos/muyunicos](https://github.com/muyunicos/muyunicos)
