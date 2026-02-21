@@ -1418,38 +1418,6 @@ if ( ! function_exists( 'mu_googlesitekit_canonical_home_url' ) ) {
 }
 add_filter( 'googlesitekit_canonical_home_url', 'mu_googlesitekit_canonical_home_url' );
 
-// 2) Botón compartir (shortcode: [dcms_share])
-if ( ! function_exists( 'dcms_render_share_button' ) ) {
-    /**
-     * Retorna el HTML del botón.
-     * @param string $custom_class Clase CSS extra opcional.
-     * @param bool $echo Si debe imprimir o retornar.
-     */
-    function dcms_render_share_button( $custom_class = '', $echo = true ) {
-
-        $classes = trim( 'mu-share-btn dcms-share-btn ' . $custom_class );
-
-        $icon_share = function_exists( 'mu_get_icon' ) ? mu_get_icon( 'share' ) : '';
-        $icon_check = function_exists( 'mu_get_icon' ) ? mu_get_icon( 'check' ) : '';
-
-        $html = sprintf(
-            '<button class="%s" type="button" title="Compartir" aria-label="Compartir">' .
-            '<span class="dcms-share-icon dcms-share-icon--share" aria-hidden="true">%s</span>' .
-            '<span class="dcms-share-icon dcms-share-icon--check" aria-hidden="true">%s</span>' .
-            '</button>',
-            esc_attr( $classes ),
-            $icon_share,
-            $icon_check
-        );
-
-        if ( $echo ) {
-            echo $html;
-        } else {
-            return $html;
-        }
-    }
-}
-
 add_shortcode( 'dcms_share', function( $atts ) {
     return dcms_render_share_button( 'dcms-share-btn--shortcode', false );
 });
