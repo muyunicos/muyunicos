@@ -47,7 +47,7 @@ Documento vivo que rastrea la migración progresiva desde **Code Snippets** haci
 | Move Category Description | PHP | ✅ Migrado | `functions.php` | ~0.4 KB | `woocommerce_after_shop_loop` |
 | Google Site Kit Canonical | PHP | ✅ Migrado | `functions.php` | ~0.3 KB | Filter `googlesitekit_canonical_home_url` |
 | **RESTRICCIÓN DIGITAL** |  |  |  |  |  |
-| Sistema de Restricción Digital v2.2 | PHP (Clase) | ✅ Migrado | `functions.php` | ~18.5 KB | `MUYU_Digital_Restriction_System` |
+| Sistema de Restricción Digital v2.2 | PHP (Clase) | ✅ Migrado/Refactorizado | `functions.php` | ~18.5 KB | `MUYU_Digital_Restriction_System`, optimizado uso multi-país core |
 | **HOME** |  |  |  |  |  |
 | Estilos Home | CSS | ✅ Migrado | `css/home.css` | 5.8 KB | Hero, featured products |
 | **SHOP** |  |  |  |  |  |
