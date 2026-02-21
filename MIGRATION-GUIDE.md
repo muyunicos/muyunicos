@@ -40,7 +40,7 @@ Documento vivo que rastrea la migración progresiva desde **Code Snippets** haci
 | Lógica Carrito | JS | ✅ Migrado | `js/cart.js` | 4.2 KB | Update quantities, remove items |
 | **OTROS** |  |  |  |  |  |
 | Repositorio de Iconos SVG | PHP | ✅ Migrado | `functions.php` | ~1.5 KB | `mu_get_icon()`, 10+ iconos |
-| Botón Compartir (Share) | PHP+CSS+JS | ✅ Migrado | `functions.php` + `css/components/share-button.css` + `js/share-button.js` | ~4.5 KB | Shortcode `[dcms_share]`, Native Share API + clipboard |
+| Botón Compartir (Share) | PHP+CSS+JS | ✅ Migrado | `functions.php` + `css/components/share-button.css` + `js/share-button.js` | ~4.5 KB | Shortcode `[dcms_share]`, Native Share API + fallback clipboard 
 | Botón Flotante WhatsApp | PHP+CSS | ✅ Migrado | `functions.php` + `style.css` | ~1.2 KB | `wp_footer` hook |
 | Formulario Búsqueda Custom | PHP+CSS | ✅ Migrado | `functions.php` + `style.css` | ~2.1 KB | `get_product_search_form` filter |
 | Add Multiple Products to Cart | PHP | ✅ Migrado | `functions.php` | ~0.9 KB | `?add-multiple=1,2,3` |
