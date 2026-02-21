@@ -6,7 +6,7 @@ Documento vivo que rastrea la migración progresiva desde **Code Snippets** haci
 
 ## 📊 SECCIÓN 0: ESTADO DE MIGRACIÓN
 
-### Tabla de Progreso (Actualizado: 20/02/2026)
+### Tabla de Progreso (Actualizado: 21/02/2026)
 
 | Snippet Original | Tipo | Estado | Archivo Destino | Tamaño | Notas |
 |---|---|---|---|---|---|
@@ -15,6 +15,7 @@ Documento vivo que rastrea la migración progresiva desde **Code Snippets** haci
 | Shortcode País de Facturación | PHP | ✅ Migrado | `functions.php` | ~0.5 KB | `[mi_pais_facturacion]` |
 | Funciones Auxiliares Multi-País (CORE) | PHP | ✅ Migrado | `functions.php` | ~2.1 KB | `muyu_get_countries_data()`, `muyu_clean_uri()`, etc. |
 | Selector de País en Header | PHP+CSS+JS | ✅ Migrado | `functions.php` + `css/components/header.css` + `js/mu-ui-scripts.js` | ~8.5 KB | Dropdown con banderas, ya existía |
+| **Modal de Sugerencia de País** | **PHP+CSS+JS** | **✅ Migrado** | **`functions.php` + `css/components/country-modal.css` + `js/country-modal.js`** | **~7.2 KB** | **Geolocalización WC, cookie 1 año, multi-idioma** |
 | **CHECKOUT** |  |  |  |  |  |
 | Campos Checkout Optimizados | PHP | ✅ Migrado | `functions.php` | ~4.5 KB | Lógica condicional físico/digital |
 | Validación Checkout | PHP | ✅ Migrado | `functions.php` | ~1.8 KB | `woocommerce_checkout_process` |
@@ -57,11 +58,11 @@ Documento vivo que rastrea la migración progresiva desde **Code Snippets** haci
 
 ### Estadísticas
 
-- **Total Snippets Migrados**: 38+
-- **Total CSS Modularizado**: ~80 KB
-- **Total JS Modularizado**: ~25 KB
-- **Total PHP en functions.php**: ~60 KB (incluyendo clase restricción digital)
-- **Última Actualización**: 20 de febrero de 2026
+- **Total Snippets Migrados**: 39+
+- **Total CSS Modularizado**: ~84 KB
+- **Total JS Modularizado**: ~29 KB
+- **Total PHP en functions.php**: ~62 KB (incluyendo clase restricción digital)
+- **Última Actualización**: 21 de febrero de 2026
 
 ---
 
@@ -87,6 +88,7 @@ muyunicos/  (= generatepress-child)
 │   │   ├── header.css
 │   │   ├── footer.css
 │   │   ├── modal-auth.css
+│   │   ├── country-modal.css       # NUEVO: Modal sugerencia de país
 │   │   └── share-button.css
 │   ├── cart.css                # Página carrito
 │   ├── checkout.css            # Página checkout
@@ -97,6 +99,7 @@ muyunicos/  (= generatepress-child)
 │   ├── header.js
 │   ├── footer.js
 │   ├── modal-auth.js
+│   ├── country-modal.js        # NUEVO: Lógica del modal de país
 │   ├── cart.js
 │   ├── checkout.js
 │   └── mu-ui-scripts.js       # Country selector + WPLingua toggle
@@ -144,8 +147,8 @@ Si GeneratePress ya provee el estilo:
 
 /* Después (modular) */
 .mu-mi-clase {
-    color: var(--mu-primary);  /* ✅ Variable */
-    padding: var(--spacing-lg);
+    color: var(--primario);  /* ✅ Variable */
+    padding: var(--mu-space-md);
 }
 ```
 
@@ -246,6 +249,7 @@ if ( !function_exists('mu_auto_detect_country_by_domain') ) {
 - `muyu_get_countries_data()` - Array completo de países
 - `muyu_get_current_country_from_subdomain()` - País actual por subdominio
 - `muyu_clean_uri($prefix, $uri)` - Normaliza URIs con prefijo de idioma
+- `muyu_country_modal_text($code, $type)` - Textos localizados para modal
 
 ### 3.2 Iconos SVG
 
@@ -292,6 +296,26 @@ if ( muyu_is_restricted_user() ) {
 $country = muyu_get_user_country_code();  // 'AR', 'MX', 'BR', etc.
 ```
 
+### 3.5 Modal de Sugerencia de País
+
+**Nuevo componente migrado** (21/02/2026):
+
+- **Función**: Detecta el país del usuario mediante `wc_get_customer_geolocation()` y sugiere el sitio correcto
+- **Cookie**: `muyu_stay_here` - Persiste 1 año en `.muyunicos.com`
+- **Multi-idioma**: Usa `muyu_country_modal_text()` para textos localizados (es/pt/en)
+- **Enqueue condicional**: Solo se carga si debe mostrarse (optimización)
+- **Archivos**:
+  - `css/components/country-modal.css` - Estilos con variables CSS
+  - `js/country-modal.js` - Lógica IIFE + event listeners
+  - `functions.php` - Funciones `mu_should_show_country_modal()` y `mu_country_modal_html()`
+
+**Ejemplo de uso**:
+```php
+// El modal se renderiza automáticamente en wp_footer
+// No requiere shortcode ni invocación manual
+// Solo se muestra si el usuario está en dominio incorrecto
+```
+
 ---
 
 ## ✅ SECCIÓN 4: CHECKLIST DE MIGRACIÓN
@@ -314,19 +338,26 @@ Antes de marcar un snippet como "Migrado":
 ### Variables CSS Disponibles (style.css)
 
 ```css
---mu-primary: #2B9FCF;
---mu-secondary: #FFD77A;
---mu-text: #277292;
---mu-success: #a3ffbc;
---spacing-xs: 8px;
---spacing-sm: 12px;
---spacing-md: 16px;
---spacing-lg: 24px;
---spacing-xl: 32px;
---radius-sm: 12px;
---radius-md: 16px;
---radius-lg: 24px;
---radius-xl: 32px;
+--primario: #2B9FCF;
+--secundario: #FFD77A;
+--texto: #277292;
+--exito: #a3ffbc;
+--mu-space-xs: 5px;
+--mu-space-sm: 10px;
+--mu-space-md: 20px;
+--mu-space-lg: 40px;
+--mu-space-xl: 40px;
+--mu-radius-sm: 6px;
+--mu-radius: 12px;
+--mu-radius-md: 16px;
+--mu-radius-lg: 20px;
+--mu-radius-xl: 32px;
+--mu-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+--mu-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+--mu-shadow-md: 0 8px 16px rgba(0, 0, 0, 0.15);
+--mu-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.15);
+--mu-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+--mu-transition-fast: all 0.2s ease;
 ```
 
 ### Breakpoints Mobile-First
@@ -379,6 +410,6 @@ Cuando hagas un Pull Request de migración, usar este template:
 
 ---
 
-**Última Revisión**: 20 de febrero de 2026  
+**Última Revisión**: 21 de febrero de 2026  
 **Mantenedor**: Jonatan Pintos  
 **Repositorio**: [github.com/muyunicos/muyunicos](https://github.com/muyunicos/muyunicos)
