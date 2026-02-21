@@ -42,6 +42,9 @@ function mu_enqueue_assets() {
     wp_enqueue_style( 'mu-header', "$uri/css/components/header.css", [ 'mu-base' ], $ver );
     wp_enqueue_style( 'mu-footer', "$uri/css/components/footer.css", [ 'mu-base' ], $ver );
     wp_enqueue_style( 'mu-share', "$uri/css/components/share-button.css", [ 'mu-base' ], $ver );
+    wp_enqueue_style( 'mu-whatsapp', "$uri/css/components/whatsapp.css", [ 'mu-base' ], $ver );
+    wp_enqueue_style( 'mu-search', "$uri/css/components/search.css", [ 'mu-base' ], $ver );
+    wp_enqueue_style( 'mu-country-selector', "$uri/css/components/country-selector.css", [ 'mu-base' ], $ver );
     
     // JavaScript global
     wp_enqueue_script( 'mu-share-js', "$uri/js/share-button.js", [], $ver, true );
@@ -91,6 +94,7 @@ function mu_enqueue_assets() {
     wp_enqueue_script( 'mu-header-js', "$uri/js/header.js", [], $ver, true );
     wp_enqueue_script( 'mu-footer-js', "$uri/js/footer.js", [], $ver, true );
     wp_enqueue_script( 'mu-ui-scripts', "$uri/js/mu-ui-scripts.js", [], $ver, true );
+    wp_enqueue_script( 'mu-country-selector-js', "$uri/js/country-selector.js", [], $ver, true );
 }
 add_action( 'wp_enqueue_scripts', 'mu_enqueue_assets', 20 );
 
@@ -98,15 +102,20 @@ add_action( 'wp_enqueue_scripts', 'mu_enqueue_assets', 20 );
 // CSS CONDICIONAL - WPLingua Switcher
 // ============================================
 
-function mu_hide_wplingua_switcher() {
+function mu_manage_wplingua_assets() {
     if ( is_admin() ) return;
     
     $host = $_SERVER['HTTP_HOST'] ?? '';
     if ( ! in_array( $host, [ 'us.muyunicos.com', 'br.muyunicos.com' ], true ) ) {
         wp_add_inline_style( 'mu-base', '.wplng-switcher { display: none !important; }' );
+    } else {
+        $ver = wp_get_theme()->get( 'Version' );
+        $uri = get_stylesheet_directory_uri();
+        wp_enqueue_style( 'mu-wplingua', "$uri/css/components/wplingua.css", [ 'mu-base' ], $ver );
+        wp_enqueue_script( 'mu-wplingua-js', "$uri/js/wplingua-switcher.js", [], $ver, true );
     }
 }
-add_action( 'wp_enqueue_scripts', 'mu_hide_wplingua_switcher', 25 );
+add_action( 'wp_enqueue_scripts', 'mu_manage_wplingua_assets', 25 );
 
 // ============================================
 // CARGA DE MÓDULOS
