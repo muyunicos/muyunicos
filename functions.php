@@ -49,12 +49,27 @@ function mu_enqueue_assets() {
     );
 
     // Share button (global; liviano)
-    wp_enqueue_style(
-        'mu-share',
-        $theme_uri . '/css/components/share-button.css',
-        array('mu-base'),
-        $theme_version
-    );
+wp_enqueue_style(
+    'mu-share',
+    $theme_uri . '/css/components/share-button.css',
+    array('mu-base'),
+    $theme_version
+);
+
+// AGREGAR ESTAS LÍNEAS:
+wp_enqueue_script(
+    'mu-share-js',
+    $theme_uri . '/js/share-button.js',
+    array(),
+    $theme_version,
+    true // Footer
+);
+
+// Localize icon para feedback visual
+wp_localize_script('mu-share-js', 'muShareVars', array(
+    'checkIcon' => function_exists('mu_get_icon') ? mu_get_icon('check') : ''
+));
+
     
     // Modal de Autenticación (solo si no está logueado)
     if (!is_user_logged_in()) {
