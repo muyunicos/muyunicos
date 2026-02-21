@@ -1,0 +1,172 @@
+/* ============================================
+   COUNTRY MODAL - Sugerencia de País
+   Versión: 2.0.0 (Migrado desde snippet)
+   Detecta país del usuario y sugiere sitio correcto
+   ============================================ */
+
+/* Overlay */
+#muyu-country-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.32);
+    z-index: 99999;
+    align-items: center;
+    justify-content: center;
+    display: none; /* Controlado por JS */
+}
+
+#muyu-country-modal-overlay.is-visible {
+    display: flex;
+}
+
+/* Container Principal */
+#muyu-country-modal {
+    position: relative;
+    background: var(--blanco);
+    border-radius: var(--mu-radius-md);
+    box-shadow: var(--mu-shadow-lg);
+    width: 92vw;
+    max-width: 370px;
+    padding: 50px 16px 17px 16px;
+    text-align: center;
+    margin: auto;
+    animation: modalSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Botón Cerrar */
+#muyu-country-close {
+    position: absolute;
+    top: 0px;
+    right: 0px;
+    padding: 19px;
+    font-size: 1.6em;
+    line-height: 1em;
+    color: #bbb;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: var(--mu-transition-fast);
+}
+
+#muyu-country-close:hover {
+    color: var(--texto);
+    transform: rotate(90deg);
+}
+
+#muyu-country-close:focus {
+    outline: 2px solid var(--primario);
+    outline-offset: 2px;
+    border-radius: var(--mu-radius-sm);
+}
+
+/* Contenido del Modal */
+#muyu-country-modal > div {
+    margin-bottom: 18px;
+}
+
+#muyu-country-modal > div > div:first-child {
+    font-size: 1.18em;
+    margin-bottom: 22px;
+    color: var(--texto);
+    line-height: 1.5;
+}
+
+#muyu-country-modal img {
+    width: 20px;
+    vertical-align: middle;
+    border-radius: 3px;
+    margin-left: 7px;
+}
+
+/* Botón Principal (Ir a otro país) */
+.muyu-country-btn {
+    display: inline-block;
+    margin: 0 auto;
+    padding: 11px 1.3em;
+    background: var(--secundario);
+    color: var(--texto);
+    font-weight: bold;
+    text-decoration: none;
+    border-radius: var(--mu-radius-sm);
+    font-size: 1.12em;
+    border: none;
+    transition: var(--mu-transition-fast);
+    box-shadow: var(--mu-shadow-sm);
+    cursor: pointer;
+}
+
+.muyu-country-btn:hover {
+    background: #ffe17c;
+    transform: translateY(-2px);
+    box-shadow: var(--mu-shadow);
+}
+
+/* Botón Secundario (Quedarme aquí) */
+.muyu-country-stay-btn {
+    cursor: pointer;
+    display: inline-block;
+    margin: 0 auto;
+    padding: 11px 1.3em;
+    background: #92f0ff;
+    color: var(--texto);
+    text-decoration: none;
+    border-radius: var(--mu-radius-sm);
+    border: none;
+    transition: var(--mu-transition-fast);
+    box-shadow: var(--mu-shadow-sm);
+    font-size: 1em;
+}
+
+.muyu-country-stay-btn:hover {
+    background: #7de6f5;
+    transform: translateY(-2px);
+}
+
+/* Mobile Responsive */
+@media (max-width: 600px) {
+    #muyu-country-modal {
+        max-width: 95vw;
+        padding: 17px 4vw;
+    }
+
+    #muyu-country-modal > div > div:first-child {
+        font-size: 1.05em;
+        margin-bottom: 18px;
+    }
+
+    .muyu-country-btn,
+    .muyu-country-stay-btn {
+        width: 100%;
+        padding: 13px 1em;
+    }
+}
+
+/* Accesibilidad: Reducir movimiento */
+@media (prefers-reduced-motion: reduce) {
+    #muyu-country-modal {
+        animation: none;
+    }
+    
+    #muyu-country-close:hover {
+        transform: none;
+    }
+
+    .muyu-country-btn:hover,
+    .muyu-country-stay-btn:hover {
+        transform: none;
+    }
+}
