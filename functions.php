@@ -1069,6 +1069,1062 @@ function mu_inject_country_selector_header() {
 }
 add_action( 'generate_header', 'mu_inject_country_selector_header', 1 );
 
-/* El resto del código de functions.php continúa sin cambios... */
-/* (Incluye Footer, Checkout, BACS, Restricción Digital, etc.) */
-/* Por brevedad, se omite el resto del código existente que no fue modificado */
+/* ============================================
+   FOOTER - ESTRUCTURA CUSTOM
+   HTML/PHP puro, CSS migrado a /css/components/footer.css
+   ============================================ */
+
+add_action('generate_before_footer', 'muyunicos_custom_footer_structure');
+function muyunicos_custom_footer_structure() {
+    // Definición de redes sociales
+    $social_networks = [
+        ['name' => 'Instagram', 'url' => 'https://www.instagram.com/muyunicos', 'id' => 'instagram'],
+        ['name' => 'Facebook',  'url' => 'https://www.facebook.com/muyunicos',  'id' => 'facebook'],
+        ['name' => 'TikTok',    'url' => 'https://www.tiktok.com/@muyunicos',   'id' => 'tiktok'],
+        ['name' => 'YouTube',   'url' => 'https://www.youtube.com/@muyunicos',  'id' => 'youtube'],
+        ['name' => 'Pinterest', 'url' => 'https://www.pinterest.com/muyunicos', 'id' => 'pinterest'], 
+    ];
+    ?>
+    
+    <footer class="mu-custom-footer site-footer">
+        <div class="mu-container">
+            <div class="mu-footer-grid">
+                
+                <!-- Columna: Marca -->
+                <div class="mu-footer-col mu-col-brand">
+                    <h3 class="mu-footer-title">Muy Únicos</h3>
+                    <p style="opacity: 0.8; line-height: 1.6; margin-bottom: 15px;">
+                        Diseños exclusivos y productos personalizados hechos con pasión en Mar del Plata.
+                    </p>
+                    <div class="mu-trust-wrapper">
+                        <a href="https://www.trustindex.io/reviews/muyunicos.com" target="_blank" class="mu-trust-badge">
+                             <span class="ti-stars">★★★★★</span>
+                             <span class="ti-text">4.9/5 en Trustindex</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Columna: Enlaces -->
+                <div class="mu-footer-col mu-col-links">
+                    <details class="mu-accordion">
+                        <summary class="mu-footer-title">
+                            Te ayudamos
+                            <span class="gp-icon mu-arrow-icon">
+                                <?php echo mu_get_icon('arrow'); ?>
+                            </span>
+                        </summary>
+                        
+                        <div class="mu-accordion-content">
+                            <ul class="mu-footer-links">
+                                <li><a href="/mi-cuenta/">Mi Cuenta</a></li>
+                                <li><a href="/mi-cuenta/downloads/">Mis Descargas</a></li>
+                                <li><a href="/envios/">Información de Envíos</a></li>
+                                <li><a href="/privacy-policy/">Políticas</a></li>
+                                <li><a href="/reembolso_devoluciones/" class="mu-regret-btn">Botón de arrepentimiento</a></li>
+                            </ul>
+                        </div>
+                    </details>
+                </div>
+
+                <!-- Columna: Medios de Pago -->
+                <div class="mu-footer-col mu-col-pay">
+                    <h3 class="mu-footer-title">Pagá seguro</h3>
+                    <div class="mu-payment-icons">
+                        <img decoding="async" src="https://muyunicos.com/wp-content/uploads/2026/01/medios.png" alt="Medios de Pago" width="200">
+                    </div>
+                    <div class="mu-secure-badge">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        Compra 100% Protegida
+                    </div>
+                </div>
+
+                <!-- Columna: Buscador -->
+                <div class="mu-footer-col mu-col-search">
+                    <h3 class="mu-footer-title">¿Buscás algo?</h3>
+                    <div class="mu-footer-search">
+                        <?php if(function_exists('get_product_search_form')) { 
+                            get_product_search_form(); 
+                        } else { ?>
+                            <form role="search" method="get" class="woocommerce-product-search" action="<?php echo esc_url( home_url( '/' ) ); ?>">
+                                <input type="search" class="search-field" placeholder="Buscar productos..." value="<?php echo get_search_query(); ?>" name="s" />
+                                <button type="submit">Buscar</button>
+                                <input type="hidden" name="post_type" value="product" />
+                            </form>
+                        <?php } ?>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Socket (Barra Inferior) -->
+        <div class="mu-socket">
+            <div class="mu-container mu-socket-inner">
+                <div class="mu-copyright">
+                    © 2022-<?php echo date('Y'); ?> <strong>Muy Únicos</strong>. Mar del Plata.
+                </div>
+                
+                <div class="mu-social-icons">
+                    <?php foreach ($social_networks as $net): ?>
+                        <a href="<?php echo esc_url($net['url']); ?>" class="mu-social-link" target="_blank" aria-label="<?php echo esc_attr($net['name']); ?>">
+                            <?php echo mu_get_icon($net['id']); ?>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
+    </footer>
+    <?php
+}
+
+/* ============================================
+   WC CHECKOUT - OPTIMIZACIONES
+   Funciones de negocio (validaciones, UX, campos)
+   ============================================ */
+
+/* 1. CONFIGURACIÓN GENERAL (LIGHTWEIGHT) */
+add_filter( 'woocommerce_enable_checkout_login_reminder', '__return_false' );
+add_filter( 'woocommerce_checkout_registration_enabled', '__return_true' );
+add_filter( 'woocommerce_checkout_registration_required', '__return_false' );
+add_filter( 'woocommerce_create_account_default_checked', '__return_true' );
+add_filter( 'woocommerce_terms_is_checked_default', '__return_true' );
+add_filter( 'woocommerce_get_terms_and_conditions_checkbox_text', function($text) {
+    return 'He leído y acepto los <a href="/terminos/" target="_blank">términos y condiciones</a> de la web.';
+});
+
+/* 2. HELPERS */
+if ( ! function_exists( 'muyunicos_has_physical_products' ) ) {
+    /**
+     * Verifica si hay productos físicos en el carrito.
+     * USO DE STATIC: Evita recorrer el array del carrito múltiples veces.
+     */
+    function muyunicos_has_physical_products() {
+        static $has_physical = null;
+        
+        if ( $has_physical !== null ) {
+            return $has_physical;
+        }
+
+        $has_physical = false;
+        if ( WC()->cart ) {
+            foreach ( WC()->cart->get_cart() as $cart_item ) {
+                if ( ! $cart_item['data']->is_virtual() && ! $cart_item['data']->is_downloadable() ) {
+                    $has_physical = true;
+                    break;
+                }
+            }
+        }
+        return $has_physical;
+    }
+}
+
+/* 3. MANIPULACIÓN DE CAMPOS */
+if ( ! function_exists( 'muyunicos_optimize_checkout_fields' ) ) {
+    add_filter( 'woocommerce_checkout_fields', 'muyunicos_optimize_checkout_fields', 9999 );
+    function muyunicos_optimize_checkout_fields( $fields ) {
+        
+        // 1. Unificar Nombre
+        $fields['billing']['billing_full_name'] = array(
+            'label'       => 'Nombre y Apellido',
+            'placeholder' => 'Ej: Juan Pérez',
+            'required'    => true,
+            'class'       => array('form-row-wide', 'mu-smart-field'),
+            'clear'       => true,
+            'priority'    => 10, 
+        );
+
+        // 2. Ajustes de Prioridad y Clases
+        if ( isset( $fields['billing']['billing_country'] ) ) {
+            $fields['billing']['billing_country']['priority'] = 20;
+            $fields['billing']['billing_country']['class']    = array('form-row-wide');
+        }
+
+        $fields['billing']['billing_contact_header'] = array(
+            'type'     => 'text',
+            'label'    => '', 
+            'required' => false,
+            'class'    => array('form-row-wide'),
+            'priority' => 25,
+        );
+
+        $fields['billing']['billing_email']['priority'] = 30;
+        $fields['billing']['billing_email']['class']    = array('form-row-wide', 'mu-contact-field');
+        $fields['billing']['billing_email']['label']    = '<span class="mu-verified-badge" style="display:none;">✓</span> E-Mail';
+
+        $fields['billing']['billing_phone']['priority']    = 40;
+        $fields['billing']['billing_phone']['label']       = 'WhatsApp';
+        $fields['billing']['billing_phone']['required']    = false; // Siempre opcional, JS decide
+        $fields['billing']['billing_phone']['placeholder'] = 'Ej: 9 223 123 4567';
+        $fields['billing']['billing_phone']['class']       = array('form-row-wide', 'mu-contact-field');
+
+        // 3. Lógica Condicional Físico vs Digital
+        $is_physical = muyunicos_has_physical_products();
+        $address_fields = ['billing_address_1', 'billing_address_2', 'billing_city', 'billing_postcode', 'billing_state'];
+
+        // Eliminamos Company siempre
+        unset( $fields['billing']['billing_company'] );
+
+        if ( ! $is_physical ) {
+            // MODO DIGITAL: Limpieza total
+            foreach ( $address_fields as $key ) unset( $fields['billing'][$key] );
+            add_filter( 'woocommerce_cart_needs_shipping', '__return_false' );
+        } else {
+            // MODO FÍSICO: Toggle y ocultar campos por defecto
+            $fields['billing']['billing_shipping_toggle'] = array(
+                'type'     => 'text', 
+                'label'    => '',
+                'required' => false,
+                'class'    => array('form-row-wide'),
+                'priority' => 45,
+            );
+            
+            foreach ( $address_fields as $index => $field_key ) {
+                if ( isset( $fields['billing'][$field_key] ) ) {
+                    $fields['billing'][$field_key]['required'] = false; 
+                    $fields['billing'][$field_key]['class'][]  = 'mu-hidden'; 
+                    $fields['billing'][$field_key]['class'][]  = 'mu-physical-address-field'; 
+                    $fields['billing'][$field_key]['priority'] = 90 + $index;
+                }
+            }
+        }
+
+        return $fields;
+    }
+}
+
+/* 4. RENDERIZADO VISUAL (VISTA) */
+if ( ! function_exists( 'muyunicos_render_html_fragments' ) ) {
+    add_filter( 'woocommerce_form_field', 'muyunicos_render_html_fragments', 10, 4 );
+    function muyunicos_render_html_fragments( $field, $key, $args, $value ) {
+        if ( $key === 'billing_contact_header' ) {
+            return '<div class="form-row form-row-wide" id="muyunicos_header_row" style="margin-bottom:0;">\n                        <div class="mu-contact-header">Te contactamos por:</div>\n                        <div id="mu-email-exists-notice"></div>\n                    </div>';
+        }
+        
+        if ( $key === 'billing_shipping_toggle' ) {
+            return '<div class="form-row form-row-wide" id="muyunicos_toggle_row">\n                        <div class="mu-shipping-toggle-wrapper">\n                            <label style="cursor:pointer;">\n                                <input type="checkbox" id="muyunicos-toggle-shipping" name="muyunicos_shipping_toggle" value="1"> \n                                <b>Ingresar datos para envío</b> (Opcional)\n                            </label>\n                        </div>\n                    </div>';
+        }
+
+        return $field;
+    }
+}
+
+/* 5. PROCESAMIENTO Y VALIDACIÓN (BACKEND) */
+if ( ! function_exists( 'muyunicos_sanitize_posted_data' ) ) {
+    add_filter( 'woocommerce_checkout_posted_data', 'muyunicos_sanitize_posted_data' );
+    function muyunicos_sanitize_posted_data( $data ) {
+        // Split Nombre Completo
+        if ( ! empty( $data['billing_full_name'] ) ) {
+            $parts = explode( ' ', trim( $data['billing_full_name'] ), 2 );
+            $data['billing_first_name'] = $parts[0];
+            $data['billing_last_name']  = isset( $parts[1] ) ? $parts[1] : '.'; 
+        }
+
+        // Limpieza de Teléfono: Si es muy corto, lo vaciamos para que pase como "vacío opcional"
+        if ( ! empty( $data['billing_phone'] ) ) {
+            $digits = preg_replace('/\D/', '', $data['billing_phone']);
+            if ( strlen( $digits ) <= 6 ) {
+                $data['billing_phone'] = '';
+            }
+        }
+
+        return $data;
+    }
+}
+
+if ( ! function_exists( 'muyunicos_validate_checkout' ) ) {
+    add_action( 'woocommerce_checkout_process', 'muyunicos_validate_checkout' );
+    function muyunicos_validate_checkout() {
+        // Validar Nombre
+        if ( empty( $_POST['billing_full_name'] ) ) {
+            wc_add_notice( __( 'Por favor, completa tu Nombre y Apellido.' ), 'error' );
+        }
+        
+        // Validación WhatsApp (Confianza en JS)
+        if ( ! empty( $_POST['billing_phone'] ) ) {
+            if ( isset($_POST['muyunicos_wa_valid']) && $_POST['muyunicos_wa_valid'] === '0' ) {
+                 wc_add_notice( __( 'El número de WhatsApp parece incompleto o inválido.' ), 'error' );
+            }
+        }
+
+        // Validación Dirección (Solo si el toggle está activo)
+        if ( isset( $_POST['muyunicos_shipping_toggle'] ) && $_POST['muyunicos_shipping_toggle'] == '1' ) {
+            if ( empty( $_POST['billing_address_1'] ) ) wc_add_notice( __( 'La <strong>Dirección</strong> es necesaria para el envío.' ), 'error' );
+            if ( empty( $_POST['billing_city'] ) ) wc_add_notice( __( 'La <strong>Ciudad</strong> es necesaria.' ), 'error' );
+            if ( empty( $_POST['billing_postcode'] ) ) wc_add_notice( __( 'El <strong>Código Postal</strong> es necesario.' ), 'error' );
+            
+            if ( empty( $_POST['billing_state'] ) && WC()->countries->get_states( $_POST['billing_country'] ) ) {
+                 wc_add_notice( __( 'La <strong>Provincia/Estado</strong> es necesaria.' ), 'error' );
+            }
+        }
+    }
+}
+
+/* 6. AJAX HANDLER (Backend) */
+if ( ! function_exists( 'muyunicos_ajax_check_email_optimized' ) ) {
+    add_action( 'wc_ajax_mu_check_email', 'muyunicos_ajax_check_email_optimized' );
+    function muyunicos_ajax_check_email_optimized() {
+        // 1. Verificación de seguridad
+        check_ajax_referer( 'check-email-nonce', 'security' );
+        
+        // 2. Sanitización
+        $email = isset($_POST['email']) ? sanitize_email( $_POST['email'] ) : '';
+        
+        // 3. Respuesta rápida JSON
+        if ( ! empty($email) && email_exists( $email ) ) {
+            wp_send_json( array( 'exists' => true ) );
+        } else {
+            wp_send_json( array( 'exists' => false ) );
+        }
+    }
+}
+
+/* 7. EXTRAS UI */
+add_filter( 'the_title', function( $title, $id ) {
+    if ( is_order_received_page() && get_the_ID() === $id && in_the_loop() ) {
+        return '¡Pedido Recibido! 🎉';
+    }
+    return $title;
+}, 10, 2 );
+
+
+/* ============================================
+   MIGRADO (Snippets varios)
+   Canonical Site Kit + Share + Add-multiple + BACS + Category description
+   ============================================ */
+
+// 1) Google Site Kit: canonical fijo de home
+if ( ! function_exists( 'mu_googlesitekit_canonical_home_url' ) ) {
+    function mu_googlesitekit_canonical_home_url( $url ) {
+        return 'https://muyunicos.com';
+    }
+}
+add_filter( 'googlesitekit_canonical_home_url', 'mu_googlesitekit_canonical_home_url' );
+
+// 2) Botón compartir (shortcode: [dcms_share])
+if ( ! function_exists( 'dcms_render_share_button' ) ) {
+    /**
+     * Retorna el HTML del botón.
+     * @param string $custom_class Clase CSS extra opcional.
+     * @param bool $echo Si debe imprimir o retornar.
+     */
+    function dcms_render_share_button( $custom_class = '', $echo = true ) {
+
+        $classes = trim( 'mu-share-btn dcms-share-btn ' . $custom_class );
+
+        $icon_share = function_exists( 'mu_get_icon' ) ? mu_get_icon( 'share' ) : '';
+        $icon_check = function_exists( 'mu_get_icon' ) ? mu_get_icon( 'check' ) : '';
+
+        $html = sprintf(
+            '<button class="%s" type="button" title="Compartir" aria-label="Compartir">' .
+            '<span class="dcms-share-icon dcms-share-icon--share" aria-hidden="true">%s</span>' .
+            '<span class="dcms-share-icon dcms-share-icon--check" aria-hidden="true">%s</span>' .
+            '</button>',
+            esc_attr( $classes ),
+            $icon_share,
+            $icon_check
+        );
+
+        if ( $echo ) {
+            echo $html;
+        } else {
+            return $html;
+        }
+    }
+}
+
+add_shortcode( 'dcms_share', function( $atts ) {
+    return dcms_render_share_button( 'dcms-share-btn--shortcode', false );
+});
+
+// 3) WooCommerce: agregar múltiples productos al carrito por URL (?add-multiple=1,2,3)
+add_action( 'wp_loaded', 'woo_add_multiple_products_to_cart' );
+if ( ! function_exists( 'woo_add_multiple_products_to_cart' ) ) {
+    function woo_add_multiple_products_to_cart() {
+        if ( ! isset( $_GET['add-multiple'] ) || empty( $_GET['add-multiple'] ) ) {
+            return;
+        }
+
+        if ( ! function_exists( 'WC' ) ) {
+            return;
+        }
+
+        if ( null === WC()->cart && function_exists( 'wc_load_cart' ) ) {
+            wc_load_cart();
+        }
+
+        if ( null === WC()->cart ) {
+            return;
+        }
+
+        $product_ids = explode( ',', sanitize_text_field( wp_unslash( $_GET['add-multiple'] ) ) );
+        $productos_agregados = false;
+
+        foreach ( $product_ids as $product_id ) {
+            $product_id = absint( $product_id );
+            if ( $product_id > 0 ) {
+                WC()->cart->add_to_cart( $product_id );
+                $productos_agregados = true;
+            }
+        }
+
+        if ( $productos_agregados ) {
+            wp_safe_redirect( wc_get_cart_url() );
+            exit;
+        }
+    }
+}
+
+// 4) Reemplazar NUMERODEPEDIDO por el ID real en Transferencia Bancaria (BACS)
+if ( ! function_exists( 'bacs_buffer_start' ) ) {
+    function bacs_buffer_start() {
+        ob_start();
+    }
+}
+if ( ! function_exists( 'bacs_buffer_end' ) ) {
+    function bacs_buffer_end( $order_id ) {
+        $output = ob_get_clean();
+        if ( $order_id ) {
+            echo str_replace( 'NUMERODEPEDIDO', $order_id, $output );
+        } else {
+            echo $output;
+        }
+    }
+}
+add_action( 'woocommerce_thankyou_bacs', 'bacs_buffer_start', 1 );
+add_action( 'woocommerce_thankyou_bacs', 'bacs_buffer_end', 100, 1 );
+
+if ( ! function_exists( 'bacs_email_buffer_start' ) ) {
+    function bacs_email_buffer_start( $order, $sent_to_admin, $plain_text, $email ) {
+        if ( 'bacs' === $order->get_payment_method() && ! $plain_text ) {
+            ob_start();
+        }
+    }
+}
+if ( ! function_exists( 'bacs_email_buffer_end' ) ) {
+    function bacs_email_buffer_end( $order, $sent_to_admin, $plain_text, $email ) {
+        if ( 'bacs' === $order->get_payment_method() && ! $plain_text ) {
+            $output = ob_get_clean();
+            echo str_replace( 'NUMERODEPEDIDO', $order->get_id(), $output );
+        }
+    }
+}
+add_action( 'woocommerce_email_before_order_table', 'bacs_email_buffer_start', 1, 4 );
+add_action( 'woocommerce_email_before_order_table', 'bacs_email_buffer_end', 100, 4 );
+
+// 5) WooCommerce: mover descripción de categoría debajo del loop
+add_action( 'wp', 'muyunicos_move_category_description' );
+if ( ! function_exists( 'muyunicos_move_category_description' ) ) {
+    function muyunicos_move_category_description() {
+        if ( is_product_category() ) {
+            remove_action(
+                'woocommerce_archive_description',
+                'woocommerce_taxonomy_archive_description',
+                10
+            );
+
+            add_action(
+                'woocommerce_after_shop_loop',
+                'woocommerce_taxonomy_archive_description',
+                5
+            );
+        }
+    }
+}
+
+/* ============================================
+   MUY UNICOS - SISTEMA DE RESTRICCIÓN DE CONTENIDO DIGITAL v2.2
+   Migrado desde Snippets
+   Restringe productos físicos en subdominios (solo digital)
+   ============================================ */
+
+if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
+    class MUYU_Digital_Restriction_System {
+        private static $instance = null;
+        private $cache = [];
+        
+        const OPTION_PRODUCT_IDS     = 'muyu_digital_product_ids';
+        const OPTION_CATEGORY_IDS    = 'muyu_digital_category_ids';
+        const OPTION_TAG_IDS         = 'muyu_digital_tag_ids';
+        const OPTION_REDIRECT_MAP    = 'muyu_phys_to_dig_map';
+        const OPTION_LAST_UPDATE     = 'muyu_digital_list_updated';
+        const TRANSIENT_REBUILD      = 'muyu_rebuild_scheduled';
+        const PHYSICAL_FORMAT_ID     = 112; 
+        const DIGITAL_FORMAT_ID      = 111; 
+        
+        public static function get_instance() {
+            if ( null === self::$instance ) {
+                self::$instance = new self();
+            }
+            return self::$instance;
+        }
+        
+        private function __construct() {
+            $this->init_hooks();
+        }
+        
+        private function init_hooks() {
+            add_action( 'wp_ajax_muyu_rebuild_digital_list', [ $this, 'ajax_rebuild_indexes' ] );
+            add_action( 'woocommerce_update_product', [ $this, 'schedule_rebuild' ], 10, 1 );
+            
+            // Usar init en lugar de admin_init para asegurar que el índice se cree 
+            // si el primer hit post-deploy es del frontend.
+            add_action( 'init', [ $this, 'ensure_indexes_exist' ], 5 );
+            
+            add_action( 'admin_head-edit.php', [ $this, 'add_rebuild_button' ] );
+            
+            add_action( 'pre_get_posts', [ $this, 'filter_product_queries' ], 50 );
+            add_action( 'template_redirect', [ $this, 'handle_redirects' ], 20 );
+            add_action( 'wp', [ $this, 'init_frontend_filters' ], 5 );
+            
+            add_filter( 'woocommerce_variation_is_visible', [ $this, 'hide_physical_variation' ], 10, 4 );
+            add_filter( 'woocommerce_dropdown_variation_attribute_options_args', [ $this, 'clean_variation_dropdown' ], 10, 1 );
+            add_filter( 'woocommerce_variation_prices', [ $this, 'filter_variation_prices' ], 10, 3 );
+            
+            add_filter( 'woocommerce_product_get_default_attributes', [ $this, 'set_format_default' ], 20, 2 );
+            add_action( 'woocommerce_before_add_to_cart_button', [ $this, 'autoselect_format_variation' ], 5 );
+        }
+        
+        public function is_restricted_user() {
+            if ( isset( $this->cache['is_restricted'] ) ) return $this->cache['is_restricted'];
+            if ( current_user_can( 'manage_woocommerce' ) || is_admin() ) {
+                $this->cache['is_restricted'] = false;
+                return false;
+            }
+            $host = $this->get_clean_host();
+            $main_domain = function_exists('muyu_get_main_domain') ? muyu_get_main_domain() : 'muyunicos.com';
+            $this->cache['is_restricted'] = ( $main_domain !== $host );
+            return $this->cache['is_restricted'];
+        }
+        
+        public function get_user_country_code() {
+            if ( isset( $this->cache['country_code'] ) ) return $this->cache['country_code'];
+            
+            // Reusar la lógica CORE si existe
+            if ( function_exists('muyu_get_current_country_from_subdomain') ) {
+                $code = muyu_get_current_country_from_subdomain();
+            } else {
+                $host = isset( $_SERVER['HTTP_HOST'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ) ) : '';
+                $parts = explode( '.', $host );
+                
+                if ( count( $parts ) >= 3 ) {
+                    $subdomain = strtolower( $parts[0] );
+                    $subdomain_map = [ 'mexico' => 'MX', 'br' => 'BR', 'co' => 'CO', 'ec' => 'EC', 'cl' => 'CL', 'pe' => 'PE', 'ar' => 'AR', 'us' => 'US' ];
+                    
+                    if ( isset( $subdomain_map[ $subdomain ] ) ) {
+                        $code = $subdomain_map[ $subdomain ];
+                    } elseif ( 2 === strlen( $subdomain ) ) {
+                        $code = strtoupper( $subdomain );
+                    } else {
+                        $code = 'AR';
+                    }
+                } else {
+                    $code = 'AR';
+                }
+            }
+            
+            $this->cache['country_code'] = $code;
+            return $code;
+        }
+        
+        private function get_clean_host() {
+            if ( isset( $this->cache['clean_host'] ) ) return $this->cache['clean_host'];
+            $host = isset( $_SERVER['HTTP_HOST'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ) ) : '';
+            $host = str_replace( 'www.', '', trim($host, ':80') );
+            $this->cache['clean_host'] = $host;
+            return $host;
+        }
+        
+        public function rebuild_digital_indexes() {
+            global $wpdb;
+            $digital_product_ids = $this->get_digital_product_ids();
+            
+            if ( empty( $digital_product_ids ) ) {
+                $this->save_empty_indexes();
+                return 0;
+            }
+            
+            list( $category_ids, $tag_ids ) = $this->get_product_terms( $digital_product_ids );
+            $category_ids = $this->expand_category_hierarchy( $category_ids );
+            $redirect_map = $this->build_redirect_map( $digital_product_ids );
+            
+            $this->save_indexes( $digital_product_ids, $category_ids, $tag_ids, $redirect_map );
+            return count( $digital_product_ids );
+        }
+        
+        private function get_digital_product_ids() {
+            global $wpdb;
+            $sql = "
+                SELECT DISTINCT p.ID as product_id
+                FROM {$wpdb->posts} p
+                INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
+                WHERE p.post_type = 'product' 
+                AND p.post_status = 'publish'
+                AND pm.meta_key IN ('_virtual', '_downloadable')
+                AND pm.meta_value = 'yes'
+                UNION
+                SELECT DISTINCT p.post_parent as product_id
+                FROM {$wpdb->posts} p
+                INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
+                WHERE p.post_type = 'product_variation' 
+                AND p.post_status = 'publish'
+                AND pm.meta_key IN ('_virtual', '_downloadable')
+                AND pm.meta_value = 'yes'
+                AND p.post_parent > 0
+            ";
+            $ids = $wpdb->get_col( $sql );
+            return array_filter( array_unique( array_map( 'intval', $ids ) ) );
+        }
+        
+        private function get_product_terms( $product_ids ) {
+            global $wpdb;
+            $ids_string = implode( ',', $product_ids );
+            $sql = "
+                SELECT DISTINCT t.term_id, tt.taxonomy 
+                FROM {$wpdb->terms} t
+                INNER JOIN {$wpdb->term_taxonomy} tt ON t.term_id = tt.term_id
+                INNER JOIN {$wpdb->term_relationships} tr ON tt.term_taxonomy_id = tr.term_taxonomy_id
+                WHERE tr.object_id IN ($ids_string)
+                AND tt.taxonomy IN ('product_cat', 'product_tag')
+            ";
+            $terms = $wpdb->get_results( $sql );
+            $category_ids = [];
+            $tag_ids = [];
+            
+            foreach ( $terms as $term ) {
+                if ( 'product_cat' === $term->taxonomy ) $category_ids[] = (int) $term->term_id;
+                elseif ( 'product_tag' === $term->taxonomy ) $tag_ids[] = (int) $term->term_id;
+            }
+            return [ array_unique( $category_ids ), array_unique( $tag_ids ) ];
+        }
+        
+        private function expand_category_hierarchy( $category_ids ) {
+            $expanded = $category_ids;
+            foreach ( $category_ids as $cat_id ) {
+                $ancestors = get_ancestors( $cat_id, 'product_cat', 'taxonomy' );
+                if ( ! empty( $ancestors ) ) $expanded = array_merge( $expanded, $ancestors );
+            }
+            return array_unique( array_map( 'intval', $expanded ) );
+        }
+        
+        private function build_redirect_map( $digital_product_ids ) {
+            global $wpdb;
+            if ( empty( $digital_product_ids ) ) return [];
+            
+            $ids_string = implode( ',', $digital_product_ids );
+            $sql = "SELECT ID, post_name FROM {$wpdb->posts} WHERE ID IN ($ids_string)";
+            $digital_products = $wpdb->get_results( $sql );
+            $redirect_map = [];
+            
+            foreach ( $digital_products as $product ) {
+                if ( false !== strpos( $product->post_name, '-imprimible' ) ) {
+                    $base_slug = str_replace( '-imprimible', '', $product->post_name );
+                    $physical_id = $wpdb->get_var( 
+                        $wpdb->prepare(
+                            "SELECT ID FROM {$wpdb->posts} WHERE post_name = %s AND post_type = 'product' AND post_status = 'publish' LIMIT 1",
+                            $base_slug
+                        )
+                    );
+                    if ( $physical_id && ! in_array( (int) $physical_id, $digital_product_ids, true ) ) {
+                        $redirect_map[ (int) $physical_id ] = (int) $product->ID;
+                    }
+                }
+            }
+            return $redirect_map;
+        }
+        
+        private function save_indexes( $product_ids, $category_ids, $tag_ids, $redirect_map ) {
+            update_option( self::OPTION_PRODUCT_IDS, $product_ids, false );
+            update_option( self::OPTION_CATEGORY_IDS, $category_ids, false );
+            update_option( self::OPTION_TAG_IDS, $tag_ids, false );
+            update_option( self::OPTION_REDIRECT_MAP, $redirect_map, false );
+            update_option( self::OPTION_LAST_UPDATE, current_time( 'mysql' ), false );
+            delete_transient( self::TRANSIENT_REBUILD );
+        }
+        
+        private function save_empty_indexes() {
+            update_option( self::OPTION_PRODUCT_IDS, [], false );
+            update_option( self::OPTION_CATEGORY_IDS, [], false );
+            update_option( self::OPTION_TAG_IDS, [], false );
+            update_option( self::OPTION_REDIRECT_MAP, [], false );
+            update_option( self::OPTION_LAST_UPDATE, current_time( 'mysql' ), false );
+        }
+        
+        public function ajax_rebuild_indexes() {
+            check_ajax_referer( 'muyu-rebuild-nonce', 'nonce' );
+            if ( ! current_user_can( 'manage_woocommerce' ) ) wp_send_json_error( 'Permisos insuficientes' );
+            
+            $count = $this->rebuild_digital_indexes();
+            wp_send_json_success( sprintf( 'Índice reconstruido correctamente. Total productos digitales: %d', $count ) );
+        }
+        
+        public function schedule_rebuild( $product_id ) {
+            if ( get_transient( self::TRANSIENT_REBUILD ) ) return;
+            set_transient( self::TRANSIENT_REBUILD, true, 120 );
+            add_action( 'shutdown', [ $this, 'rebuild_digital_indexes' ] );
+        }
+        
+        public function ensure_indexes_exist() {
+            if ( false === get_option( self::OPTION_PRODUCT_IDS ) ) {
+                // Prevenir múltiples rebuilds simultáneos en el frontend (lock por 5 mins)
+                if ( get_transient( 'muyu_rebuild_lock' ) ) return;
+                set_transient( 'muyu_rebuild_lock', true, 300 );
+                
+                $this->rebuild_digital_indexes();
+            }
+        }
+        
+        public function filter_product_queries( $query ) {
+            if ( is_admin() || ! $query->is_main_query() ) return;
+            if ( $query->is_product() || ( $query->is_singular() && 'product' === $query->get( 'post_type' ) ) ) return;
+            
+            $is_shop_query = (
+                ( function_exists( 'is_shop' ) && is_shop() ) ||
+                ( function_exists( 'is_product_category' ) && is_product_category() ) ||
+                ( function_exists( 'is_product_tag' ) && is_product_tag() ) ||
+                is_search() ||
+                'product' === $query->get( 'post_type' )
+            );
+            
+            if ( ! $is_shop_query ) return;
+            
+            if ( $this->is_restricted_user() ) {
+                $digital_ids = get_option( self::OPTION_PRODUCT_IDS, [] );
+                $query->set( 'post__in', ! empty( $digital_ids ) ? $digital_ids : [ 0 ] );
+            }
+        }
+        
+        public function handle_redirects() {
+            if ( is_admin() || ! $this->is_restricted_user() ) return;
+            if ( ! is_product() && ! is_product_category() && ! is_product_tag() ) return;
+            
+            $target_url = '';
+            $should_redirect = false;
+            
+            if ( is_product_category() ) {
+                list( $should_redirect, $target_url ) = $this->handle_category_redirect();
+            } elseif ( is_product_tag() ) {
+                list( $should_redirect, $target_url ) = $this->handle_tag_redirect();
+            } elseif ( is_product() ) {
+                list( $should_redirect, $target_url ) = $this->handle_product_redirect();
+            }
+            
+            if ( $should_redirect ) $this->execute_redirect( $target_url );
+        }
+        
+        private function handle_category_redirect() {
+            $queried_object = get_queried_object();
+            $digital_cats = get_option( self::OPTION_CATEGORY_IDS, [] );
+            
+            if ( ! $queried_object || in_array( $queried_object->term_id, $digital_cats, true ) ) return [ false, '' ];
+            
+            $parent_id = $queried_object->parent;
+            while ( $parent_id ) {
+                if ( in_array( $parent_id, $digital_cats, true ) ) return [ true, get_term_link( $parent_id, 'product_cat' ) ];
+                $term = get_term( $parent_id, 'product_cat' );
+                $parent_id = ( $term && ! is_wp_error( $term ) ) ? $term->parent : 0;
+            }
+            return [ true, '' ];
+        }
+        
+        private function handle_tag_redirect() {
+            $queried_object = get_queried_object();
+            $digital_tags = get_option( self::OPTION_TAG_IDS, [] );
+            if ( ! $queried_object || in_array( $queried_object->term_id, $digital_tags, true ) ) return [ false, '' ];
+            return [ true, '' ];
+        }
+        
+        private function handle_product_redirect() {
+            global $post;
+            $digital_ids = get_option( self::OPTION_PRODUCT_IDS, [] );
+            
+            if ( ! $post || in_array( $post->ID, $digital_ids, true ) ) return [ false, '' ];
+            
+            $redirect_map = get_option( self::OPTION_REDIRECT_MAP, [] );
+            if ( isset( $redirect_map[ $post->ID ] ) ) return [ true, get_permalink( $redirect_map[ $post->ID ] ) ];
+            
+            $target_url = $this->find_digital_category_for_product( $post->ID );
+            return [ true, $target_url ];
+        }
+        
+        private function find_digital_category_for_product( $product_id ) {
+            $digital_cats = get_option( self::OPTION_CATEGORY_IDS, [] );
+            $product_cats = wp_get_post_terms( $product_id, 'product_cat', [ 'fields' => 'ids' ] );
+            
+            if ( empty( $product_cats ) || is_wp_error( $product_cats ) ) return '';
+            
+            foreach ( $product_cats as $cat_id ) {
+                if ( in_array( $cat_id, $digital_cats, true ) ) return get_term_link( $cat_id, 'product_cat' );
+            }
+            
+            foreach ( $product_cats as $cat_id ) {
+                $ancestors = get_ancestors( $cat_id, 'product_cat', 'taxonomy' );
+                foreach ( $ancestors as $ancestor_id ) {
+                    if ( in_array( $ancestor_id, $digital_cats, true ) ) return get_term_link( $ancestor_id, 'product_cat' );
+                }
+            }
+            return '';
+        }
+        
+        private function execute_redirect( $target_url ) {
+            global $post;
+            
+            if ( empty( $target_url ) || is_wp_error( $target_url ) ) {
+                if ( is_product() && isset( $post->post_title ) ) {
+                    $target_url = home_url( '/?s=' . urlencode( $post->post_title ) . '&post_type=product' );
+                } else {
+                    $target_url = wc_get_page_permalink( 'shop' );
+                }
+            }
+            
+            if ( function_exists( 'insertar_prefijo_idioma' ) && function_exists( 'muyu_country_language_prefix' ) ) {
+                $prefix = muyu_country_language_prefix( $this->get_user_country_code() );
+                if ( $prefix ) $target_url = insertar_prefijo_idioma( $target_url, $prefix );
+            }
+            
+            // Anti-loop preventivo: no redirigir a la misma URL
+            $current_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://{$_SERVER['HTTP_HOST']}{$_SERVER['REQUEST_URI']}";
+            if ( untrailingslashit($target_url) === untrailingslashit($current_url) ) {
+                return;
+            }
+            
+            wp_safe_redirect( $target_url, 302 );
+            exit;
+        }
+        
+        public function init_frontend_filters() {
+            add_filter( 'get_terms_args', [ $this, 'filter_category_terms' ], 10, 2 );
+            add_filter( 'wp_get_nav_menu_items', [ $this, 'filter_menu_items' ], 10, 3 );
+        }
+        
+        public function filter_category_terms( $args, $taxonomies ) {
+            if ( is_admin() || ( defined( 'DOING_AJAX' ) && DOING_AJAX && is_user_logged_in() ) ) return $args;
+            if ( ! in_array( 'product_cat', (array) $taxonomies, true ) || ! $this->is_restricted_user() ) return $args;
+            
+            $digital_cat_ids = get_option( self::OPTION_CATEGORY_IDS, [] );
+            
+            if ( ! empty( $args['include'] ) ) {
+                $current = array_map( 'intval', is_array( $args['include'] ) ? $args['include'] : explode( ',', $args['include'] ) );
+                $args['include'] = array_intersect( $current, $digital_cat_ids );
+            } else {
+                $args['include'] = empty( $digital_cat_ids ) ? [ 0 ] : $digital_cat_ids;
+            }
+            return $args;
+        }
+        
+        public function filter_menu_items( $items, $menu, $args ) {
+            if ( is_admin() || ! $this->is_restricted_user() ) return $items;
+            
+            $digital_cat_ids = get_option( self::OPTION_CATEGORY_IDS, [] );
+            return array_filter( $items, function( $item ) use ( $digital_cat_ids ) {
+                if ( isset( $item->object ) && 'product_cat' === $item->object ) {
+                    return in_array( (int) $item->object_id, $digital_cat_ids, true );
+                }
+                return true;
+            });
+        }
+        
+        public function hide_physical_variation( $visible, $variation_id, $product_id, $variation ) {
+            if ( ! $visible || ! $this->is_restricted_user() ) return $visible;
+            
+            $attributes = $variation->get_attributes();
+            $physical_slug = $this->get_physical_term_slug();
+            
+            if ( $physical_slug && isset( $attributes['pa_formato'] ) && $attributes['pa_formato'] === $physical_slug ) {
+                return false;
+            }
+            return $visible;
+        }
+        
+        public function clean_variation_dropdown( $args ) {
+            if ( ! $this->is_restricted_user() || ! isset( $args['attribute'] ) || 'pa_formato' !== $args['attribute'] ) return $args;
+            if ( empty( $args['options'] ) ) return $args;
+            
+            $physical_slug = $this->get_physical_term_slug();
+            if ( ! $physical_slug ) return $args;
+            
+            foreach ( $args['options'] as $key => $option ) {
+                if ( ( is_object( $option ) && isset( $option->term_id ) && $option->term_id == self::PHYSICAL_FORMAT_ID ) ||
+                     ( is_string( $option ) && $option === $physical_slug ) ) {
+                    unset( $args['options'][ $key ] );
+                }
+            }
+            return $args;
+        }
+        
+        public function filter_variation_prices( $prices_array, $product, $for_display ) {
+            if ( ! $this->is_restricted_user() || empty( $prices_array['price'] ) ) return $prices_array;
+            
+            $physical_slug = $this->get_physical_term_slug();
+            if ( ! $physical_slug ) return $prices_array;
+            
+            foreach ( $prices_array['price'] as $variation_id => $amount ) {
+                $format_slug = get_post_meta( $variation_id, 'attribute_pa_formato', true );
+                if ( $format_slug === $physical_slug ) {
+                    unset( $prices_array['price'][ $variation_id ] );
+                    unset( $prices_array['regular_price'][ $variation_id ] );
+                    unset( $prices_array['sale_price'][ $variation_id ] );
+                }
+            }
+            return $prices_array;
+        }
+        
+        private function get_physical_term_slug() {
+            if ( isset($this->cache['physical_term_slug']) ) return $this->cache['physical_term_slug'];
+            $term = get_term( self::PHYSICAL_FORMAT_ID, 'pa_formato' );
+            $this->cache['physical_term_slug'] = ( $term && ! is_wp_error( $term ) ) ? $term->slug : null;
+            return $this->cache['physical_term_slug'];
+        }
+        
+        public function set_format_default( $defaults, $product ) {
+            $is_restricted = $this->is_restricted_user();
+            $country       = $this->get_user_country_code();
+            
+            if ( $is_restricted ) $term_id = self::DIGITAL_FORMAT_ID;
+            elseif ( 'AR' === $country ) $term_id = self::PHYSICAL_FORMAT_ID;
+            else return $defaults;
+            
+            $term = get_term( $term_id, 'pa_formato' );
+            if ( $term && ! is_wp_error( $term ) ) $defaults['pa_formato'] = $term->slug;
+            return $defaults;
+        }
+        
+        public function autoselect_format_variation() {
+            global $product;
+            if ( ! $product || ! $product->is_type( 'variable' ) ) return;
+            
+            $is_restricted = $this->is_restricted_user();
+            $country       = $this->get_user_country_code();
+            
+            if ( $is_restricted ) {
+                $target_term_id = self::DIGITAL_FORMAT_ID;
+                $hide_row       = true; 
+            } elseif ( 'AR' === $country ) {
+                $target_term_id = self::PHYSICAL_FORMAT_ID;
+                $hide_row       = false; 
+            } else {
+                return;
+            }
+            
+            $attributes = $product->get_variation_attributes();
+            if ( ! isset( $attributes['pa_formato'] ) ) return;
+            
+            $target_term = get_term( $target_term_id, 'pa_formato' );
+            if ( ! $target_term || is_wp_error( $target_term ) ) return;
+            if ( ! in_array( $target_term->slug, $attributes['pa_formato'], true ) ) return;
+            
+            $target_slug = esc_js( $target_term->slug );
+            $hide_row_js = $hide_row ? 'true' : 'false';
+            
+            // Usando wc_enqueue_js para encolar de manera segura después de dependencias de WC
+            $script = "
+                var hide_row = {$hide_row_js};
+                var \$form = jQuery('form.variations_form');
+                if ( \$form.length ) {
+                    \$form.on('wc_variation_form', function() {
+                        setTimeout(autoSelectFormatVariation, 100);
+                    });
+                    setTimeout(autoSelectFormatVariation, 150);
+                    
+                    function autoSelectFormatVariation() {
+                        var \$select = \$form.find('#pa_formato');
+                        if ( ! \$select.length ) \$select = \$form.find('select[name=\"attribute_pa_formato\"]');
+                        if ( ! \$select.length ) return;
+                        
+                        if ( \$select.val() === '{$target_slug}' ) {
+                            if(hide_row) hideRowAndTable(\$select, \$form);
+                            return;
+                        }
+                        
+                        \$select.val('{$target_slug}').trigger('change');
+                        \$form.trigger('check_variations');
+                        if(hide_row) hideRowAndTable(\$select, \$form);
+                    }
+                    
+                    function hideRowAndTable(\$select, \$form) {
+                        var \$row = \$select.closest('tr');
+                        \$row.hide();
+                        if ( \$form.find('table.variations tr:visible').length === 0 ) {
+                            \$form.find('.variations').fadeOut(200);
+                        }
+                    }
+                }
+            ";
+            
+            wc_enqueue_js( $script );
+            
+            if ( $hide_row ) {
+                echo '<style>form.variations_form .variations, form.variations_form tr { transition: opacity 0.2s ease-out; }</style>';
+            }
+        }
+        
+        public function add_rebuild_button() {
+            global $typenow;
+            if ( 'product' !== $typenow ) return;
+            
+            $nonce = wp_create_nonce( 'muyu-rebuild-nonce' );
+            
+            // Usamos echo para scripts inline específicos del admin panel product_list
+            ?>
+            <script>
+            jQuery(document).ready(function($) {
+                $('.page-title-action').last().after(
+                    '<button id="muyu-rebuild" class="page-title-action mu-btn-rebuild" style="margin-left:10px" data-nonce="<?php echo esc_js( $nonce ); ?>">⚡ Reindexar Digitales</button>'
+                );
+                $('#muyu-rebuild').on('click', function(e) {
+                    e.preventDefault();
+                    var $btn = $(this);
+                    var originalText = $btn.text();
+                    $btn.prop('disabled', true).text('⏳ Procesando...');
+                    $.post(ajaxurl, {
+                        action: 'muyu_rebuild_digital_list',
+                        nonce: $btn.data('nonce')
+                    }, function(response) {
+                        if ( response.success ) {
+                            alert('✅ ' + response.data);
+                            location.reload();
+                        } else {
+                            alert('❌ Error: ' + (response.data || 'Desconocido'));
+                            $btn.prop('disabled', false).text(originalText);
+                        }
+                    }).fail(function() {
+                        alert('❌ Error de conexión con el servidor');
+                        $btn.prop('disabled', false).text(originalText);
+                    });
+                });
+            });
+            </script>
+            <style>
+                #muyu-rebuild { transition: all 0.2s ease; }
+                #muyu-rebuild:hover { background: #2271b1; border-color: #2271b1; color: #fff; }
+                #muyu-rebuild:disabled { opacity: 0.6; cursor: not-allowed; }
+            </style>
+            <?php
+        }
+    }
+}
+
+function muyu_digital_restriction_init() {
+    return MUYU_Digital_Restriction_System::get_instance();
+}
+add_action( 'plugins_loaded', 'muyu_digital_restriction_init', 5 );
+
+if ( ! function_exists( 'muyu_is_restricted_user' ) ) {
+    function muyu_is_restricted_user() {
+        return muyu_digital_restriction_init()->is_restricted_user();
+    }
+}
+
+if ( ! function_exists( 'muyu_get_user_country_code' ) ) {
+    function muyu_get_user_country_code() {
+        return muyu_digital_restriction_init()->get_user_country_code();
+    }
+}
+
+if ( ! function_exists( 'muyu_rebuild_digital_indexes_optimized' ) ) {
+    function muyu_rebuild_digital_indexes_optimized() {
+        return muyu_digital_restriction_init()->rebuild_digital_indexes();
+    }
+}
