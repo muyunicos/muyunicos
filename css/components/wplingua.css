@@ -1,0 +1,71 @@
+/* ========================================
+   WPLINGUA SWITCHER CUSTOMIZATION
+   ======================================== */
+
+/* Botón cerrar integrado como elemento idioma */
+.wplng-close-btn {
+    background-color: #fff;
+    color: #1d2327;
+    border: none;
+    border-radius: 9px;
+    margin: 0;
+    width: 30px;
+    height: 30px;
+    padding: 0px 0px;
+    display: inline-block;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    vertical-align: text-bottom;
+}
+.wplng-close-btn:hover {
+    background-color: #f0f0f1;
+}
+
+/* Ocultar/collapse switcher */
+.wplng-switcher.wplng-collapsed {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(20px);
+    transition: all 0.3s;
+}
+.wplng-switcher.theme-light-simple-smooth .switcher-content {
+    border: 0;
+    box-shadow: rgba(0, 0, 0, 0.19) 0px 10px 20px, rgba(0, 0, 0, 0.23) 0px 6px 6px;
+}
+
+/* Restaurar/Pestaña tipo solapa, pegado abajo a la derecha */
+.wplng-restore-tab {
+    position: fixed;
+    bottom: 0;
+    right: 18px;
+    background-color: #fff;
+    box-shadow: rgba(0, 0, 0, 0.19) 0px 10px 20px, rgba(0, 0, 0, 0.23) 0px 6px 6px;
+    border-radius: 9px 9px 0 0;
+    padding: 4px 10px 4px 10px;
+    cursor: pointer;
+    min-width: 50px;
+    min-height: 28px;
+    z-index: 10500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.wplng-restore-tab span {
+    font-size: 20px;
+    line-height: 20px;
+}
+.wplng-restore-tab span img.emoji {
+    display: inline !important;
+    border: none !important;
+    box-shadow: none !important;
+    height: 1em !important;
+    width: 1em !important;
+    margin: 0 0.07em !important;
+    vertical-align: -0.1em !important;
+    background: none !important;
+    padding: 0 !important;
+}
+.wplng-restore-tab:hover {
+    background: #f0f0f1;
+}

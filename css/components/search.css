@@ -1,0 +1,62 @@
+/* ========================================
+   FORMULARIO DE BÚSQUEDA
+   ======================================== */
+
+/* Contenedor relativo para posicionar el botón dentro */
+.mu-search-group {
+    display: flex;
+    width: 100%;
+    position: relative;
+    align-items: center;
+}
+
+/* Input de búsqueda */
+.mu-product-search .search-field {
+    width: 100%;
+    height: 40px;
+    padding: 0 15px;
+    padding-right: 50px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    background-color: var(--blanco, #ffffff);
+    color: var(--primario, #111111);
+    font-size: 14px;
+    box-shadow: none;
+    outline: none;
+}
+
+/* Botón de envío (Lupa) */
+.mu-product-search .mu-search-submit {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 45px; 
+    height: 40px; 
+    background-color: var(--secundario, #FFD77A);
+    color: var(--primario, #111111);
+    border: none;
+    border-radius: 0 4px 4px 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: background-color 0.2s ease;
+    line-height: 0; 
+}
+
+/* Efecto Hover */
+.mu-product-search .mu-search-submit:hover {
+    background-color: #ffe099; 
+    color: #000;
+}
+
+/* Ajuste del Icono SVG dentro del botón */
+.mu-product-search .mu-search-submit svg {
+    width: 18px;
+    height: 18px;
+    stroke-width: 2.5px;
+    fill: none;
+    stroke: currentColor;
+}
