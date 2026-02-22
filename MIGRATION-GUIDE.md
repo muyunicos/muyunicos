@@ -1,6 +1,6 @@
 MUY ÚNICOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v1.4.0 · Feb 22, 2026
+Estado: Refactor Modular Pragmático · v1.4.1 · Feb 22, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -40,7 +40,6 @@ muyunicos/ (generatepress-child)
 │   ├── auth-modal.php         # Modal Login/Registro + endpoints WC-AJAX
 │   ├── checkout.php           # ✅ Checkout Híbrido Optimizado (Físico/Digital) + Validación WA
 │   ├── cart.php               # Lógica de carrito, buffers BACS
-│   ├── product.php            # mu_render_linked_product, lógica físico/digital
 │   └── ui.php                 # Header, Footer, search form, WhatsApp btn, Canonical fix, WPLingua body class, Category Description Mover
 │
 ├── css/                       # 🎨 CSS MODULAR (Pragmático)
@@ -49,11 +48,10 @@ muyunicos/ (generatepress-child)
 │   │   ├── header.css         # Global: header, navegación, Country Selector
 │   │   ├── footer.css         # Global: footer y columnas
 │   │   ├── modal-auth.css     # ! is_user_logged_in()
-│   │   └── country-modal.css  # Condicional vía inc/geo.php (mu_should_show_country_modal)
+│   │   └── country-modal.css  # Condicional — encolado por inc/geo.php (mu_should_show_country_modal)
 │   ├── cart.css               # is_cart()
 │   ├── checkout.css           # ✅ Checkout Moderno (Grid Desktop + Mobile Fix)
 │   ├── home.css               # is_front_page()
-│   ├── product.css            # is_product()
 │   └── shop.css               # is_shop() || is_product_category() || is_product_tag()
 │
 └── js/                        # ⚡ JS MODULAR (IIFE + strict mode + DOMContentLoaded)
@@ -76,7 +74,6 @@ inc/geo.php | Detección de país, redirección de dominio, modal de país (enqu
 inc/auth-modal.php | HTML modal auth, endpoints wc_ajax_mu_*
 inc/checkout.php | Campos, validaciones, optimizaciones Checkout, Título "Pedido Recibido"
 inc/cart.php | Añadir múltiples ítems al carrito, buffers BACS
-inc/product.php | mu_render_linked_product(), lógica físico/digital
 inc/ui.php | Header icons, Cart badge fragment, WhatsApp btn, Custom Search form, Custom Footer, Share shortcode, Google Site Kit canonical, WPLingua body class, Category Description Mover
 
 CSS · css/
@@ -91,7 +88,6 @@ css/components/modal-auth.css | ! is_user_logged_in()
 css/components/country-modal.css | Condicional — encolado por inc/geo.php
 css/cart.css | is_cart()
 css/checkout.css | is_checkout() && ! is_order_received_page()
-css/product.css | is_product()
 css/home.css | is_front_page() (actualmente vacío)
 css/shop.css | is_shop() || is_product_category() || is_product_tag() (actualmente vacío)
 
@@ -130,7 +126,7 @@ Disponibles: arrow, search, help, account, cart, close, share, check, lock, inst
 5. ROUTING DE DESARROLLO — ¿Dónde va el código nuevo?
 
 ¿Qué necesitás agregar? | PHP (inc/) | CSS (css/) | JS (js/)
----|---|---|---
+---|---|---
 Ajuste UI pequeño (< 50 líneas) | ui.php | components/global-ui.css | global-ui.js
 Elemento pesado Header/Footer | ui.php | components/header.css o footer.css | header.js o footer.js
 Lógica multi-país | geo.php | components/country-modal.css | country-modal.js
