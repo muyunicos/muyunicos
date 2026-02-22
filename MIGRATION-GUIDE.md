@@ -1,6 +1,6 @@
 MUY ÚNICOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v1.3.8 · Feb 22, 2026
+Estado: Refactor Modular Pragmático · v1.3.9 · Feb 22, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -77,7 +77,7 @@ inc/auth-modal.php | HTML modal auth, endpoints wc_ajax_mu_*
 inc/checkout.php | Campos, validaciones, optimizaciones Checkout, Título "Pedido Recibido"
 inc/cart.php | Añadir múltiples ítems al carrito, buffers BACS
 inc/product.php | mu_render_linked_product(), lógica físico/digital
-inc/ui.php | Header icons, Cart badge fragment, WhatsApp btn, Custom Search form, Custom Footer, Share shortcode, Google Site Kit canonical, WPLingua body class (mu_wplng_body_class)
+inc/ui.php | Header icons, Cart badge fragment, WhatsApp btn, Custom Search form, Custom Footer, Share shortcode, Google Site Kit canonical, WPLingua body class, Category Description Mover
 
 CSS · css/
 
