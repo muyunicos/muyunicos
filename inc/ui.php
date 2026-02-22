@@ -215,7 +215,7 @@ if ( ! function_exists( 'muyunicos_custom_footer_structure' ) ) {
                             <img decoding="async" src="https://muyunicos.com/wp-content/uploads/2026/01/medios.png" alt="Medios de Pago" width="200">
                         </div>
                         <div class="mu-secure-badge">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> Compra 100% Protegida
+                            <?php echo function_exists( 'mu_get_icon' ) ? mu_get_icon( 'lock' ) : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>'; ?> Compra 100% Protegida
                         </div>
                     </div>
 
