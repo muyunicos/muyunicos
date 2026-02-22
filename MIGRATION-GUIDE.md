@@ -1,6 +1,6 @@
 MUY ÚNICOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v1.3.0 · Feb 2026
+Estado: Refactor Modular Pragmático · v1.3.1 · Feb 22, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -36,12 +36,12 @@ muyunicos/ (generatepress-child)
 │
 ├── inc/                       # ⚙️ MÓDULOS PHP (Lógica de negocio y hooks)
 │   ├── icons.php              # [CARGA PRIMERO] mu_get_icon() — repositorio de SVGs
-│   ├── geo.php                # Sistema multi-país: detección, routing, modal país (enqueue propio)
+│   ├── geo.php                # Sistema multi-país + Digital Restriction (detect, routing, modal)
 │   ├── auth-modal.php         # Modal Login/Registro + endpoints WC-AJAX
-│   ├── checkout.php           # Optimizaciones WC Checkout + validación
+│   ├── checkout.php           # Optimizaciones WC Checkout + validación + Title fix
 │   ├── cart.php               # Lógica de carrito, buffers BACS
 │   ├── product.php            # mu_render_linked_product, lógica físico/digital
-│   └── ui.php                 # Header, Footer, shortcodes (búsqueda, WhatsApp)
+│   └── ui.php                 # Header, Footer, search form, WhatsApp btn, Canonical fix
 │
 ├── css/                       # 🎨 CSS MODULAR (Pragmático)
 │   ├── components/            # Componentes compartidos
@@ -72,12 +72,12 @@ PHP · inc/
 Archivo | Responsabilidad principal
 ---|---
 inc/icons.php | mu_get_icon() — todos los SVGs del tema
-inc/geo.php | Detección de país, redirección de dominio, modal de país (enqueue propio en wp_enqueue_scripts prioridad 30 vía mu_country_modal_enqueue), MUYU_Digital_Restriction_System
+inc/geo.php | Detección de país, redirección de dominio, modal de país (enqueue propio), MUYU_Digital_Restriction_System
 inc/auth-modal.php | HTML modal auth, endpoints wc_ajax_mu_*
-inc/checkout.php | Campos, validaciones y optimizaciones de WC Checkout
+inc/checkout.php | Campos, validaciones, optimizaciones Checkout, Título "Pedido Recibido"
 inc/cart.php | Añadir múltiples ítems al carrito, buffers BACS
 inc/product.php | mu_render_linked_product(), lógica físico/digital
-inc/ui.php | Lógica para Header, footer, shortcodes
+inc/ui.php | Header, Footer, Custom Search, WhatsApp Float, Canonical Fix (Google Site Kit)
 
 CSS · css/
 
