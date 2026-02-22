@@ -8,7 +8,7 @@
  * - CSS/JS condicional por página
  * 
  * @package GeneratePress_Child
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
@@ -39,13 +39,13 @@ function mu_enqueue_assets() {
     wp_enqueue_style( 'mu-base', get_stylesheet_uri(), [], $ver );
     
     // Componentes globales
+    wp_enqueue_style( 'mu-global-ui', "$uri/css/components/global-ui.css", [ 'mu-base' ], $ver );
     wp_enqueue_style( 'mu-header', "$uri/css/components/header.css", [ 'mu-base' ], $ver );
     wp_enqueue_style( 'mu-footer', "$uri/css/components/footer.css", [ 'mu-base' ], $ver );
-    wp_enqueue_style( 'mu-share', "$uri/css/components/share-button.css", [ 'mu-base' ], $ver );
     
     // JavaScript global
-    wp_enqueue_script( 'mu-share-js', "$uri/js/share-button.js", [], $ver, true );
-    wp_localize_script( 'mu-share-js', 'muShareVars', [
+    wp_enqueue_script( 'mu-global-ui-js', "$uri/js/global-ui.js", [], $ver, true );
+    wp_localize_script( 'mu-global-ui-js', 'muGlobalVars', [
         'checkIcon' => function_exists( 'mu_get_icon' ) ? mu_get_icon( 'check' ) : ''
     ] );
 
@@ -87,10 +87,9 @@ function mu_enqueue_assets() {
         ] );
     }
     
-    // Scripts globales
+    // Scripts globales (Específicos)
     wp_enqueue_script( 'mu-header-js', "$uri/js/header.js", [], $ver, true );
     wp_enqueue_script( 'mu-footer-js', "$uri/js/footer.js", [], $ver, true );
-    wp_enqueue_script( 'mu-ui-scripts', "$uri/js/mu-ui-scripts.js", [], $ver, true );
 }
 add_action( 'wp_enqueue_scripts', 'mu_enqueue_assets', 20 );
 
