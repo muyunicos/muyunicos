@@ -6,12 +6,9 @@
 /* --- WPLingua Switcher — Ocultar en subdominios sin múltiples idiomas --- */
 /* override GP: WPLingua inyecta .wplng-switcher globalmente;
    solo es útil en us.muyunicos.com y br.muyunicos.com.
-   El selector de idioma se oculta para todos los demás subdominios
-   mediante la clase .mu-wplng-hidden inyectada por inc/geo.php (o body class). */
-/* Nota: La ocultación dinámica según host se gestiona en js/global-ui.js
-   (initWpLinguaSwitcherToggle). Este bloque actúa como fallback visual
-   antes de que JS corra, usando la clase .mu-wplng-hide que functions.php
-   inyecta en body si el host no requiere switcher. */
+   La clase .mu-wplng-hide es inyectada en <body> por inc/ui.php → mu_wplng_body_class()
+   vía add_filter('body_class'). Este bloque actúa como fallback visual
+   antes de que la clase esté disponible en los subdominios no multilingüe. */
 body.mu-wplng-hide .wplng-switcher {
     display: none !important;
 }
@@ -20,8 +17,8 @@ body.mu-wplng-hide .wplng-switcher {
    WPLINGUA SWITCHER UI (Toggle + Restore Tab)
    ============================================ */
 .wplng-close-btn {
-    background-color: #fff;
-    color: #1d2327;
+    background-color: var(--blanco, #fff);
+    color: var(--texto, #1d2327);
     border: none;
     border-radius: 9px;
     margin: 0;
@@ -54,7 +51,7 @@ body.mu-wplng-hide .wplng-switcher {
     position: fixed;
     bottom: 0;
     right: 18px;
-    background-color: #fff;
+    background-color: var(--blanco, #fff);
     box-shadow: rgba(0, 0, 0, 0.19) 0px 10px 20px, rgba(0, 0, 0, 0.23) 0px 6px 6px;
     border-radius: 9px 9px 0 0;
     padding: 4px 10px 4px 10px;
@@ -95,7 +92,7 @@ body.mu-wplng-hide .wplng-switcher {
     bottom: 82px;
     right: 25px;
     background-color: #25d366;
-    color: #FFF;
+    color: var(--blanco, #FFF);
     border-radius: 50px;
     text-align: center;
     font-size: 30px;
@@ -135,8 +132,8 @@ body.mu-wplng-hide .wplng-switcher {
     right: 0;
     top: 0;
     bottom: 0;
-    width: 45px; 
-    height: 40px; 
+    width: 45px;
+    height: 40px;
     background-color: var(--secundario, #FFD77A);
     color: var(--primario, #111111);
     border: none;
@@ -147,11 +144,11 @@ body.mu-wplng-hide .wplng-switcher {
     justify-content: center;
     padding: 0;
     transition: background-color 0.2s ease;
-    line-height: 0; 
+    line-height: 0;
 }
 
 .mu-product-search .mu-search-submit:hover {
-    background-color: #ffe099; 
+    background-color: #ffe099;
     color: #000;
 }
 
@@ -240,7 +237,7 @@ body.mu-wplng-hide .wplng-switcher {
     left: 50%;
     transform: translateX(-50%);
     background-color: #333;
-    color: #fff;
+    color: var(--blanco, #fff);
     padding: 5px 10px;
     border-radius: 8px;
     font-size: 12px;
