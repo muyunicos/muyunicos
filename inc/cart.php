@@ -5,7 +5,6 @@
  * Incluye:
  * - Add multiple products to cart
  * - BACS buffers (reemplazo de NUMERODEPEDIDO)
- * - Fragmentos AJAX del carrito
  * 
  * @package GeneratePress_Child
  * @since 1.0.0
@@ -46,8 +45,8 @@ if ( ! function_exists( 'woo_add_multiple_products_to_cart' ) ) {
             exit;
         }
     }
+    add_action( 'wp_loaded', 'woo_add_multiple_products_to_cart' );
 }
-add_action( 'wp_loaded', 'woo_add_multiple_products_to_cart' );
 
 // ============================================
 // BACS BUFFERS (Thank You Page)
@@ -57,6 +56,7 @@ if ( ! function_exists( 'bacs_buffer_start' ) ) {
     function bacs_buffer_start() {
         ob_start();
     }
+    add_action( 'woocommerce_thankyou_bacs', 'bacs_buffer_start', 1 );
 }
 
 if ( ! function_exists( 'bacs_buffer_end' ) ) {
@@ -64,10 +64,8 @@ if ( ! function_exists( 'bacs_buffer_end' ) ) {
         $out = ob_get_clean();
         echo $order_id ? str_replace( 'NUMERODEPEDIDO', $order_id, $out ) : $out;
     }
+    add_action( 'woocommerce_thankyou_bacs', 'bacs_buffer_end', 100, 1 );
 }
-
-add_action( 'woocommerce_thankyou_bacs', 'bacs_buffer_start', 1 );
-add_action( 'woocommerce_thankyou_bacs', 'bacs_buffer_end', 100, 1 );
 
 // ============================================
 // BACS BUFFERS (Email)
@@ -79,6 +77,7 @@ if ( ! function_exists( 'bacs_email_buffer_start' ) ) {
             ob_start();
         }
     }
+    add_action( 'woocommerce_email_before_order_table', 'bacs_email_buffer_start', 1, 4 );
 }
 
 if ( ! function_exists( 'bacs_email_buffer_end' ) ) {
@@ -87,7 +86,5 @@ if ( ! function_exists( 'bacs_email_buffer_end' ) ) {
             echo str_replace( 'NUMERODEPEDIDO', $o->get_id(), ob_get_clean() );
         }
     }
+    add_action( 'woocommerce_email_before_order_table', 'bacs_email_buffer_end', 100, 4 );
 }
-
-add_action( 'woocommerce_email_before_order_table', 'bacs_email_buffer_start', 1, 4 );
-add_action( 'woocommerce_email_before_order_table', 'bacs_email_buffer_end', 100, 4 );

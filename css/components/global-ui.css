@@ -173,7 +173,7 @@ body.mu-wplng-hide .wplng-switcher {
     border: none;
     padding: 6px;
     cursor: pointer;
-    border-radius: 999px;
+    border-radius: var(--mu-radius-full, 9999px); /* override GP: full pill — evita hardcode 999px */
     transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
     line-height: 0;
     vertical-align: middle;
@@ -239,7 +239,7 @@ body.mu-wplng-hide .wplng-switcher {
     background-color: #333;
     color: var(--blanco, #fff);
     padding: 5px 10px;
-    border-radius: 8px;
+    border-radius: var(--mu-radius-sm, 6px); /* override GP: tooltip compacto — evita hardcode 8px */
     font-size: 12px;
     white-space: nowrap;
     pointer-events: none;
