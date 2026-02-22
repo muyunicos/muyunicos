@@ -8,8 +8,9 @@
  * - Custom Footer
  * - Formulario de búsqueda customizado
  * - Botón flotante de WhatsApp
- * - Shortcode de compartir
+ * - Shortcode de compartir (refactorizado)
  * - Canonical URL para Google Site Kit
+ * - Mover descripción de categoría al final del loop
  *
  * @package GeneratePress_Child
  * @since 1.0.0
@@ -269,7 +270,17 @@ if ( ! function_exists( 'muyunicos_custom_footer_structure' ) ) {
 if ( ! function_exists( 'mu_dcms_share_shortcode' ) ) {
     function mu_dcms_share_shortcode( $atts ) {
         $icon_share = function_exists( 'mu_get_icon' ) ? mu_get_icon( 'share' ) : '';
-        return sprintf( '<button class="dcms-share-btn" type="button" title="Compartir" aria-label="Compartir">%s</button>', $icon_share );
+        $icon_check = function_exists( 'mu_get_icon' ) ? mu_get_icon( 'check' ) : '';
+
+        // Estructura HTML preparada para el cambio de icono por CSS (.is-copied)
+        return sprintf( 
+            '<button class="dcms-share-btn mu-share-btn" type="button" title="Compartir" aria-label="Compartir">
+                <span class="dcms-share-icon dcms-share-icon--share">%s</span>
+                <span class="dcms-share-icon dcms-share-icon--check">%s</span>
+            </button>', 
+            $icon_share,
+            $icon_check
+        );
     }
     add_shortcode( 'dcms_share', 'mu_dcms_share_shortcode' );
 }
@@ -283,4 +294,20 @@ if ( ! function_exists( 'mu_googlesitekit_canonical_home_url' ) ) {
         return 'https://muyunicos.com';
     }
     add_filter( 'googlesitekit_canonical_home_url', 'mu_googlesitekit_canonical_home_url' );
+}
+
+// ============================================
+// MOVER DESCRIPCIÓN DE CATEGORÍA
+// ============================================
+
+if ( ! function_exists( 'mu_move_category_description' ) ) {
+    function mu_move_category_description() {
+        if ( is_product_category() ) {
+            // Quita la descripción de arriba
+            remove_action( 'woocommerce_archive_description', 'woocommerce_taxonomy_archive_description', 10 );
+            // La agrega debajo del loop de productos
+            add_action( 'woocommerce_after_shop_loop', 'woocommerce_taxonomy_archive_description', 5 );
+        }
+    }
+    add_action( 'wp', 'mu_move_category_description' );
 }
