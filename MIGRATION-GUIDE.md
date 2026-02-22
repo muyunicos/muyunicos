@@ -1,6 +1,6 @@
 MUY ÚNICOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v1.1.0 · Feb 2026
+Estado: Refactor Modular Pragmático · v1.2.0 · Feb 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -8,21 +8,25 @@ Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
 1. REGLAS CORE DE ARQUITECTURA Y FLUJO DE TRABAJO
 
-Modularidad Pragmática (Regla "Goldilocks"): - NO a la micro-fragmentación. Pequeños ajustes de UI (botones flotantes, iconos, toggles < 50 líneas) DEBEN agruparse en css/components/global-ui.css y js/global-ui.js.
+Modularidad Pragmática (Regla "Goldilocks")
+- NO a la micro-fragmentación.
+- Ajustes pequeños de UI (botones, toggles, iconos, micro-interacciones < 50 líneas) DEBEN agruparse en:
+  - css/components/global-ui.css
+  - js/global-ui.js
 
-SÍ al aislamiento por contexto. Funcionalidades complejas (Checkout, Cart, Auth) deben tener sus propios archivos y cargarse condicionalmente.
+SÍ al aislamiento por contexto
+- Funcionalidades complejas (Checkout, Cart, Auth) deben tener sus propios archivos y cargarse condicionalmente.
 
-Carga Condicional Estricta: - Usa is_shop(), is_checkout(), is_cart(), is_user_logged_in() en functions.php para evitar bloquear el renderizado global (Render-blocking bloat).
+Carga Condicional Estricta
+- Nunca cargar assets globales si no aplican a header/footer o UI transversal.
+- Usar is_shop(), is_checkout(), is_cart(), is_user_logged_in(), etc. en functions.php.
 
-Flujo GitHub (PROHIBIDO COMMIT A MAIN):
+Flujo GitHub (PROHIBIDO COMMIT A MAIN)
+- Todo cambio debe ir en una rama semántica (perf/, refactor/, fix/, feat/).
+- Todo cambio requiere un Pull Request (PR). El título debe ser descriptivo.
+- Actualiza SIEMPRE este archivo en el PR, manteniendo el "System Map" como estado actual (no changelog).
 
-Todo cambio debe ir en una rama semántica (perf/, refactor/, fix/, feat/).
-
-Todo cambio requiere un Pull Request (PR). El título debe ser descriptivo.
-
-Actualiza SIEMPRE las tablas de este archivo al hacer un PR, modificando los tamaños o agregando nuevas rutas si es estrictamente necesario.
-
-2. ÁRBOL DE DIRECTORIOS
+2. ÁRBOL DE DIRECTORIOS (System Map)
 
 muyunicos/ (generatepress-child)
 │
@@ -40,202 +44,67 @@ muyunicos/ (generatepress-child)
 │
 ├── css/                       # 🎨 CSS MODULAR (Pragmático)
 │   ├── components/            # Componentes compartidos
-│   │   ├── global-ui.css      # [NUEVO] Agrupa: WhatsApp, Share, Search icon, WPLingua
-│   │   ├── header.css         # Estilos header, navegación, country selector
-│   │   ├── footer.css         # Estilos footer y columnas
-│   │   ├── modal-auth.css     # Modal login/registro (solo !is_user_logged_in)
-│   │   └── country-modal.css  # Modal de selección de país (geo)
+│   │   ├── global-ui.css      # Global: micro UI transversal (share, toggles, etc.)
+│   │   ├── header.css         # Global: header, navegación, country selector
+│   │   ├── footer.css         # Global: footer y columnas
+│   │   ├── modal-auth.css     # ! is_user_logged_in()
+│   │   └── country-modal.css  # (pendiente) si se usa, evaluar carga condicional
 │   ├── cart.css               # is_cart()
-│   ├── checkout.css           # is_checkout()
+│   ├── checkout.css           # is_checkout() && ! is_order_received_page()
 │   ├── home.css               # is_front_page()
 │   ├── product.css            # is_product()
-│   └── shop.css               # is_shop() || is_product_category()
+│   └── shop.css               # is_shop() || is_product_category() || is_product_tag()
 │
 └── js/                        # ⚡ JS MODULAR (IIFE + strict mode + DOMContentLoaded)
-    ├── global-ui.js           # [NUEVO] Agrupa: WPLingua toggle, Share button logic
-    ├── header.js              # Menú móvil, submenús, dropdown cuenta, country selector
-    ├── footer.js              # Comportamiento footer
-    ├── cart.js                # Interactividad carrito
-    ├── checkout.js            # Validación + libphonenumber
-    ├── modal-auth.js          # Flujo login/registro AJAX
-    └── country-modal.js       # Modal de cambio de país
-
+    ├── global-ui.js           # Global: UI transversal (country selector, WPLingua, share)
+    ├── header.js              # Global: menú móvil, submenús, dropdown cuenta
+    ├── footer.js              # Global: comportamiento footer
+    ├── cart.js                # is_cart()
+    ├── checkout.js            # is_checkout() && ! is_order_received_page()
+    ├── modal-auth.js          # ! is_user_logged_in()
+    └── country-modal.js       # (pendiente) si se usa, evaluar carga condicional
 
 3. INVENTARIO DE ARCHIVOS (Estado Actual)
 
 PHP · inc/
 
-Archivo
-
-Tamaño
-
-Responsabilidad principal
-
-inc/icons.php
-
-7.0 KB
-
-mu_get_icon() — todos los SVGs del tema
-
-inc/geo.php
-
-21.8 KB
-
-Detección de país, redirección de dominio
-
-inc/auth-modal.php
-
-12.1 KB
-
-HTML modal auth, endpoints wc_ajax_mu_*
-
-inc/checkout.php
-
-10.0 KB
-
-Campos, validaciones y optimizaciones de WC Checkout
-
-inc/cart.php
-
-2.9 KB
-
-Añadir múltiples ítems al carrito, buffers BACS
-
-inc/product.php
-
-4.9 KB
-
-mu_render_linked_product(), lógica físico/digital
-
-inc/ui.php
-
-12.5 KB
-
-Lógica para Header, footer, shortcodes
+Archivo | Responsabilidad principal
+---|---
+inc/icons.php | mu_get_icon() — todos los SVGs del tema
+inc/geo.php | Detección de país, redirección de dominio
+inc/auth-modal.php | HTML modal auth, endpoints wc_ajax_mu_*
+inc/checkout.php | Campos, validaciones y optimizaciones de WC Checkout
+inc/cart.php | Añadir múltiples ítems al carrito, buffers BACS
+inc/product.php | mu_render_linked_product(), lógica físico/digital
+inc/ui.php | Lógica para Header, footer, shortcodes
 
 CSS · css/
 
-Archivo
-
-Tamaño
-
-Condición de Carga en functions.php
-
-style.css (raíz)
-
-~9 KB
-
-Global (base)
-
-css/components/global-ui.css
-
-[COMPLETAR]
-
-Global
-
-css/components/header.css
-
-9.4 KB
-
-Global
-
-css/components/footer.css
-
-7.9 KB
-
-Global
-
-css/components/modal-auth.css
-
-8.3 KB
-
-! is_user_logged_in()
-
-css/components/country-modal.css
-
-3.7 KB
-
-Global (Evaluar condicional si geo está activo)
-
-css/cart.css
-
-9.7 KB
-
-is_cart()
-
-css/checkout.css
-
-9.4 KB
-
-is_checkout() && ! is_order_received_page()
-
-css/product.css
-
-0.6 KB
-
-is_product()
-
-css/home.css
-
-0 B
-
-is_front_page()
-
-css/shop.css
-
-0 B
-
-`is_shop()
+Archivo | Condición de carga en functions.php
+---|---
+style.css (raíz) | Global (base)
+css/components/global-ui.css | Global
+css/components/header.css | Global
+css/components/footer.css | Global
+css/components/modal-auth.css | ! is_user_logged_in()
+css/components/country-modal.css | No encolado actualmente (si se activa, evaluar condicional)
+css/cart.css | is_cart()
+css/checkout.css | is_checkout() && ! is_order_received_page()
+css/product.css | is_product()
+css/home.css | is_front_page() (actualmente vacío)
+css/shop.css | is_shop() || is_product_category() || is_product_tag() (actualmente vacío)
 
 JS · js/
 
-Archivo
-
-Tamaño
-
-Condición de Carga en functions.php
-
-js/global-ui.js
-
-[COMPLETAR]
-
-Global
-
-js/header.js
-
-4.9 KB
-
-Global
-
-js/footer.js
-
-0.9 KB
-
-Global
-
-js/modal-auth.js
-
-15.5 KB
-
-! is_user_logged_in()
-
-js/cart.js
-
-6.4 KB
-
-is_cart()
-
-js/checkout.js
-
-6.7 KB
-
-is_checkout() && ! is_order_received_page()
-
-js/country-modal.js
-
-3.5 KB
-
-Global
+Archivo | Condición de carga en functions.php
+---|---
+js/global-ui.js | Global
+js/header.js | Global
+js/footer.js | Global
+js/modal-auth.js | ! is_user_logged_in()
+js/cart.js | is_cart()
+js/checkout.js | is_checkout() && ! is_order_received_page()
+js/country-modal.js | No encolado actualmente (si se activa, evaluar condicional)
 
 4. SISTEMA DE DISEÑO (API Exclusiva)
 
@@ -243,131 +112,49 @@ Global
 
 Variables CSS (Extracto)
 
-Categoría
-
-Variables Clave
-
-Colores
-
---primario (#2B9FCF), --secundario (#FFD77A), --texto, --blanco, --fondo
-
-Spacing
-
---mu-space-xs (5px), --mu-space-sm (10px), --mu-space-md (20px), --mu-space-lg (40px)
-
-Radius
-
---mu-radius-sm (6px), --mu-radius (12px), --mu-radius-md, --mu-radius-full (9999px)
-
-Sombras
-
---mu-shadow-sm, --mu-shadow, --mu-shadow-md, --mu-shadow-lg
-
-Tipografía
-
---mu-font-display (Fredoka One), --mu-font-base (Inter)
+Categoría | Variables Clave
+---|---
+Colores | --primario (#2B9FCF), --secundario (#FFD77A), --texto, --blanco, --fondo
+Spacing | --mu-space-xs (5px), --mu-space-sm (10px), --mu-space-md (20px), --mu-space-lg (40px)
+Radius | --mu-radius-sm (6px), --mu-radius (12px), --mu-radius-md, --mu-radius-full (9999px)
+Sombras | --mu-shadow-sm, --mu-shadow, --mu-shadow-md, --mu-shadow-lg
+Tipografía | --mu-font-display (Fredoka One), --mu-font-base (Inter)
 
 API de Iconos SVG (inc/icons.php)
 
 echo mu_get_icon('name'); // NUNCA inline SVG directo
 
-
 Disponibles: arrow, search, close, share, check, instagram, facebook, pinterest, tiktok, youtube
 
 5. ROUTING DE DESARROLLO — ¿Dónde va el código nuevo?
 
-¿Qué necesitás agregar?
-
-PHP (inc/)
-
-CSS (css/)
-
-JS (js/)
-
-Ajuste UI pequeño (< 50 líneas)
-
-ui.php
-
-components/global-ui.css
-
-global-ui.js
-
-Elemento pesado Header/Footer
-
-ui.php
-
-components/header.css o footer.css
-
-header.js o footer.js
-
-Lógica multi-país
-
-geo.php
-
-components/country-modal.css
-
-country-modal.js
-
-Flujo de Carrito
-
-cart.php
-
-cart.css
-
-cart.js
-
-Login / Registro Modal
-
-auth-modal.php
-
-components/modal-auth.css
-
-modal-auth.js
-
-Flujo Checkout
-
-checkout.php
-
-checkout.css
-
-checkout.js
-
-Nuevo ícono SVG
-
-icons.php
-
-—
-
-—
+¿Qué necesitás agregar? | PHP (inc/) | CSS (css/) | JS (js/)
+---|---|---|---
+Ajuste UI pequeño (< 50 líneas) | ui.php | components/global-ui.css | global-ui.js
+Elemento pesado Header/Footer | ui.php | components/header.css o footer.css | header.js o footer.js
+Lógica multi-país | geo.php | components/country-modal.css | country-modal.js
+Flujo de Carrito | cart.php | cart.css | cart.js
+Login / Registro Modal | auth-modal.php | components/modal-auth.css | modal-auth.js
+Flujo Checkout | checkout.php | checkout.css | checkout.js
+Nuevo ícono SVG | icons.php | — | —
 
 6. CONVENCIONES DE CÓDIGO & RENDIMIENTO
 
 PHP
-
-Protección: if ( ! function_exists( 'mu_function_name' ) ) { ... }
-
-AJAX WC: Usar prefijo wc_ajax_mu_ (ej: wc_ajax_mu_check_email).
-
-Rendimiento: NUNCA usar hooks pesados como init o wp_loaded si se puede resolver con un hook específico de WooCommerce o cargarlo condicionalmente.
+- Protección: if ( ! function_exists( 'mu_function_name' ) ) { ... }
+- AJAX WC: Usar prefijo wc_ajax_mu_ (ej: wc_ajax_mu_check_email).
+- Rendimiento: Evitar hooks pesados (init/wp_loaded) si hay hooks específicos o carga condicional.
 
 JavaScript
-
-Aislamiento: Siempre encapsular en IIFE con 'use strict';.
-
-Ejecución: Escuchar DOMContentLoaded.
-
-Cero jQuery: Solo Vanilla JS (excepto si es obligación estricta de la API legacy de WooCommerce en cart/checkout).
+- Aislamiento: IIFE + 'use strict';.
+- Ejecución: DOMContentLoaded.
+- Cero jQuery salvo obligación de WooCommerce legacy (cart/checkout).
 
 CSS
-
-Prefijos: .mu-[componente]__[elemento]--[modificador] (BEM).
-
-Sobrescrituras: Si pisas un estilo del tema padre, añade /* override GP: [motivo] */.
+- Prefijos: .mu-[componente]__[elemento]--[modificador] (BEM).
+- Sobrescrituras: /* override GP: [motivo] */.
 
 7. PENDIENTES / DEUDA TÉCNICA
 
-Consolidar archivos minúsculos (share-button.css/js, fragmentos de mu-ui-scripts.js) dentro de la nueva estructura global-ui. (En proceso)
-
-Llenar archivos vacíos: css/home.css, css/shop.css.
-
-Revisar si country-modal.css/js debe cargarse condicionalmente.
+- Revisar si country-modal.css/js debe cargarse condicionalmente según geo.
+- Llenar archivos vacíos: css/home.css, css/shop.css.
