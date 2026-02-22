@@ -1,12 +1,12 @@
 <?php
 /**
  * Muy Únicos - GeneratePress Child Theme
- * 
+ *
  * Arquitectura modular:
  * - Enqueue system centralizado
  * - Módulos organizados en inc/
  * - CSS/JS condicional por página
- * 
+ *
  * @package GeneratePress_Child
  * @version 1.2.0
  */
@@ -34,15 +34,15 @@ add_filter( 'locale_stylesheet_uri', 'chld_thm_cfg_locale_css' );
 function mu_enqueue_assets() {
     $ver = wp_get_theme()->get( 'Version' );
     $uri = get_stylesheet_directory_uri();
-    
+
     // Base styles
     wp_enqueue_style( 'mu-base', get_stylesheet_uri(), [], $ver );
-    
+
     // Componentes globales
     wp_enqueue_style( 'mu-global-ui', "$uri/css/components/global-ui.css", [ 'mu-base' ], $ver );
     wp_enqueue_style( 'mu-header', "$uri/css/components/header.css", [ 'mu-base' ], $ver );
     wp_enqueue_style( 'mu-footer', "$uri/css/components/footer.css", [ 'mu-base' ], $ver );
-    
+
     // JavaScript global
     wp_enqueue_script( 'mu-global-ui-js', "$uri/js/global-ui.js", [], $ver, true );
     wp_localize_script( 'mu-global-ui-js', 'muGlobalVars', [
@@ -54,20 +54,20 @@ function mu_enqueue_assets() {
         wp_enqueue_style( 'mu-modal-auth', "$uri/css/components/modal-auth.css", [ 'mu-base' ], $ver );
         wp_enqueue_script( 'mu-modal-auth-js', "$uri/js/modal-auth.js", [], $ver, true );
     }
-    
+
     // Estilos condicionales por página
     if ( is_front_page() ) {
         wp_enqueue_style( 'mu-home', "$uri/css/home.css", [ 'mu-base' ], $ver );
     }
-    
+
     if ( is_shop() || is_product_category() || is_product_tag() ) {
         wp_enqueue_style( 'mu-shop', "$uri/css/shop.css", [ 'mu-base' ], $ver );
     }
-    
+
     if ( is_product() ) {
         wp_enqueue_style( 'mu-product', "$uri/css/product.css", [ 'mu-base' ], $ver );
     }
-    
+
     if ( is_cart() ) {
         wp_enqueue_style( 'mu-cart', "$uri/css/cart.css", [ 'mu-base' ], $ver );
         wp_enqueue_script( 'mu-cart-js', "$uri/js/cart.js", [ 'jquery' ], $ver, true );
@@ -86,20 +86,10 @@ function mu_enqueue_assets() {
             'nonce'      => wp_create_nonce( 'check-email-nonce' ),
         ] );
     }
-    
-    // Scripts globales (Específicos)
+
+    // Scripts globales
     wp_enqueue_script( 'mu-header-js', "$uri/js/header.js", [], $ver, true );
     wp_enqueue_script( 'mu-footer-js', "$uri/js/footer.js", [], $ver, true );
-
-    // WPLingua: agregar body class en subdominios sin switcher de idioma
-    // El CSS .wplng-switcher hide rule vive en css/components/global-ui.css
-    $host = $_SERVER['HTTP_HOST'] ?? '';
-    if ( ! is_admin() && ! in_array( $host, [ 'us.muyunicos.com', 'br.muyunicos.com' ], true ) ) {
-        add_filter( 'body_class', function( $classes ) {
-            $classes[] = 'mu-wplng-hide';
-            return $classes;
-        } );
-    }
 }
 add_action( 'wp_enqueue_scripts', 'mu_enqueue_assets', 20 );
 
@@ -109,12 +99,12 @@ add_action( 'wp_enqueue_scripts', 'mu_enqueue_assets', 20 );
 
 /**
  * Carga un módulo PHP si existe
- * 
+ *
  * @param string $module Nombre del módulo (sin extensión)
  */
 function mu_load_module( $module ) {
     $file = get_stylesheet_directory() . '/inc/' . $module . '.php';
-    
+
     if ( file_exists( $file ) ) {
         require_once $file;
     }
@@ -127,4 +117,4 @@ mu_load_module( 'auth-modal' );    // Authentication modal
 mu_load_module( 'checkout' );      // Checkout optimizations
 mu_load_module( 'cart' );          // Cart functionality
 mu_load_module( 'product' );       // Product UX (physical/digital linking)
-mu_load_module( 'ui' );            // UI components (header, footer, search)
+mu_load_module( 'ui' );            // UI components (header, footer, search, wplng body class)

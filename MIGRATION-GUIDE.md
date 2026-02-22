@@ -1,6 +1,6 @@
 MUY ÚNICOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v1.3.2 · Feb 22, 2026
+Estado: Refactor Modular Pragmático · v1.3.3 · Feb 22, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -41,7 +41,7 @@ muyunicos/ (generatepress-child)
 │   ├── checkout.php           # Optimizaciones WC Checkout + validación + Title fix
 │   ├── cart.php               # Lógica de carrito, buffers BACS
 │   ├── product.php            # mu_render_linked_product, lógica físico/digital
-│   └── ui.php                 # Header, Footer, search form, WhatsApp btn, Canonical fix
+│   └── ui.php                 # Header, Footer, search form, WhatsApp btn, Canonical fix, WPLingua body class
 │
 ├── css/                       # 🎨 CSS MODULAR (Pragmático)
 │   ├── components/            # Componentes compartidos
@@ -63,7 +63,7 @@ muyunicos/ (generatepress-child)
     ├── cart.js                # is_cart()
     ├── checkout.js            # is_checkout() && ! is_order_received_page()
     ├── modal-auth.js          # ! is_user_logged_in()
-    └── country-modal.js       # Condicional vía inc/geo.php (mu_should_show_country_modal)
+    └── country-modal.js       # Condicional — encolado por inc/geo.php
 
 3. INVENTARIO DE ARCHIVOS (Estado Actual)
 
@@ -77,7 +77,7 @@ inc/auth-modal.php | HTML modal auth, endpoints wc_ajax_mu_*
 inc/checkout.php | Campos, validaciones, optimizaciones Checkout, Título "Pedido Recibido"
 inc/cart.php | Añadir múltiples ítems al carrito, buffers BACS
 inc/product.php | mu_render_linked_product(), lógica físico/digital
-inc/ui.php | Header, Footer, Custom Search, WhatsApp Float, Canonical Fix (Google Site Kit)
+inc/ui.php | Header icons, Cart badge fragment, WhatsApp btn, Custom Search form, Custom Footer, Share shortcode, Google Site Kit canonical, WPLingua body class (mu_wplng_body_class)
 
 CSS · css/
 
@@ -142,10 +142,11 @@ Nuevo ícono SVG | icons.php | — | —
 6. CONVENCIONES DE CÓDIGO & RENDIMIENTO
 
 PHP
-- Protección: if ( ! function_exists( 'mu_function_name' ) ) { ... }
+- Protección: if ( ! function_exists( 'mu_function_name' ) ) { ... } incluyendo el add_action/add_filter correspondiente dentro del bloque.
 - AJAX WC: Usar prefijo wc_ajax_mu_
 - Rendimiento: Evitar hooks pesados (init/wp_loaded) si hay hooks específicos o carga condicional.
 - CSS: NUNCA usar wp_add_inline_style(). Todo estilo debe residir en un .css cacheable.
+- Hooks: NUNCA anidar add_filter/add_action dentro de otras funciones hookeadas (e.g., dentro de wp_enqueue_scripts). Cada hook debe declararse en el scope global del módulo.
 
 JavaScript
 - Aislamiento: IIFE + 'use strict';.
@@ -155,9 +156,11 @@ JavaScript
 CSS
 - Prefijos: .mu-[componente]__[elemento]--[modificador] (BEM).
 - Sobrescrituras: /* override GP: [motivo] */.
+- Variables: SIEMPRE usar variables CSS existentes (--primario, --blanco, --texto, etc.). NUNCA hardcodear colores que tengan variable disponible.
 
 7. PENDIENTES / DEUDA TÉCNICA
 
 - Evaluar auto-host de libphonenumber-js para eliminar dependencia CDN en checkout.
 - Llenar archivos vacíos: css/home.css, css/shop.css.
 - Refactor de componentes en style.css hacia global-ui.css completado (v1.3.2).
+- Snippet de Code Snippets (WPLingua + WhatsApp + Search) completamente migrado y eliminado (v1.3.3).
