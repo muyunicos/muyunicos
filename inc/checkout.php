@@ -24,22 +24,24 @@ add_filter( 'woocommerce_checkout_registration_required', '__return_false' );
 add_filter( 'woocommerce_create_account_default_checked', '__return_true' );
 add_filter( 'woocommerce_terms_is_checked_default', '__return_true' );
 
-function muyunicos_get_terms_and_conditions_checkbox_text( $text ) {
-    return 'He leído y acepto los <a href="/terminos/" target="_blank">términos y condiciones</a> de la web.';
+if ( ! function_exists( 'mu_get_terms_and_conditions_checkbox_text' ) ) {
+    function mu_get_terms_and_conditions_checkbox_text( $text ) {
+        return 'He leído y acepto los <a href="/terminos/" target="_blank">términos y condiciones</a> de la web.';
+    }
 }
-add_filter( 'woocommerce_get_terms_and_conditions_checkbox_text', 'muyunicos_get_terms_and_conditions_checkbox_text' );
+add_filter( 'woocommerce_get_terms_and_conditions_checkbox_text', 'mu_get_terms_and_conditions_checkbox_text' );
 
 // ============================================
 // HELPER FUNCTIONS
 // ============================================
 
-if ( ! function_exists( 'muyunicos_has_physical_products' ) ) {
+if ( ! function_exists( 'mu_has_physical_products' ) ) {
     /**
      * Verifica si el carrito contiene productos físicos
      * 
      * @return bool True si hay productos físicos
      */
-    function muyunicos_has_physical_products() {
+    function mu_has_physical_products() {
         static $has_physical = null;
         if ( $has_physical !== null ) return $has_physical;
 
@@ -60,8 +62,8 @@ if ( ! function_exists( 'muyunicos_has_physical_products' ) ) {
 // OPTIMIZACIÓN DE CAMPOS
 // ============================================
 
-if ( ! function_exists( 'muyunicos_optimize_checkout_fields' ) ) {
-    function muyunicos_optimize_checkout_fields( $fields ) {
+if ( ! function_exists( 'mu_optimize_checkout_fields' ) ) {
+    function mu_optimize_checkout_fields( $fields ) {
         // Campo Nombre y Apellido unificado
         $fields['billing']['billing_full_name'] = [
             'label'       => 'Nombre y Apellido',
@@ -95,12 +97,12 @@ if ( ! function_exists( 'muyunicos_optimize_checkout_fields' ) ) {
         if ( isset( $fields['billing']['billing_phone'] ) ) {
             $fields['billing']['billing_phone']['priority'] = 40;
             $fields['billing']['billing_phone']['label'] = 'WhatsApp';
-            $fields['billing']['billing_phone']['required'] = false;
+            $fields['billing']['billing_phone']['required'] = false; // Siempre opcional en PHP, validado en JS
             $fields['billing']['billing_phone']['placeholder'] = 'Ej: 9 223 123 4567';
             $fields['billing']['billing_phone']['class'] = [ 'form-row-wide', 'mu-contact-field' ];
         }
 
-        $is_physical = muyunicos_has_physical_products();
+        $is_physical = mu_has_physical_products();
         $address_fields = [ 'billing_address_1', 'billing_address_2', 'billing_city', 'billing_postcode', 'billing_state' ];
 
         unset( $fields['billing']['billing_company'] );
@@ -134,33 +136,33 @@ if ( ! function_exists( 'muyunicos_optimize_checkout_fields' ) ) {
         return $fields;
     }
 }
-add_filter( 'woocommerce_checkout_fields', 'muyunicos_optimize_checkout_fields', 9999 );
+add_filter( 'woocommerce_checkout_fields', 'mu_optimize_checkout_fields', 9999 );
 
 // ============================================
 // RENDERIZADO DE FRAGMENTOS HTML
 // ============================================
 
-if ( ! function_exists( 'muyunicos_render_html_fragments' ) ) {
-    function muyunicos_render_html_fragments( $field, $key, $args, $value ) {
+if ( ! function_exists( 'mu_render_html_fragments' ) ) {
+    function mu_render_html_fragments( $field, $key, $args, $value ) {
         if ( $key === 'billing_contact_header' ) {
-            return '<div class="form-row form-row-wide" id="muyunicos_header_row" style="margin-bottom:0;"><div class="mu-contact-header">Te contactamos por:</div><div id="mu-email-exists-notice"></div></div>';
+            return '<div class="form-row form-row-wide" id="mu_header_row" style="margin-bottom:0;"><div class="mu-contact-header">Te contactamos por:</div><div id="mu-email-exists-notice"></div></div>';
         }
         
         if ( $key === 'billing_shipping_toggle' ) {
-            return '<div class="form-row form-row-wide" id="muyunicos_toggle_row"><div class="mu-shipping-toggle-wrapper"><label style="cursor:pointer;"><input type="checkbox" id="muyunicos-toggle-shipping" name="muyunicos_shipping_toggle" value="1"> <b>Ingresar datos para envío</b> (Opcional)</label></div></div>';
+            return '<div class="form-row form-row-wide" id="mu_toggle_row"><div class="mu-shipping-toggle-wrapper"><label style="cursor:pointer;"><input type="checkbox" id="mu-toggle-shipping" name="mu_shipping_toggle" value="1"> <b>Ingresar datos para envío</b> (Opcional)</label></div></div>';
         }
         
         return $field;
     }
 }
-add_filter( 'woocommerce_form_field', 'muyunicos_render_html_fragments', 10, 4 );
+add_filter( 'woocommerce_form_field', 'mu_render_html_fragments', 10, 4 );
 
 // ============================================
 // SANITIZACIÓN
 // ============================================
 
-if ( ! function_exists( 'muyunicos_sanitize_posted_data' ) ) {
-    function muyunicos_sanitize_posted_data( $data ) {
+if ( ! function_exists( 'mu_sanitize_posted_data' ) ) {
+    function mu_sanitize_posted_data( $data ) {
         // Dividir nombre completo
         if ( ! empty( $data['billing_full_name'] ) ) {
             $parts = explode( ' ', trim( $data['billing_full_name'] ), 2 );
@@ -168,7 +170,7 @@ if ( ! function_exists( 'muyunicos_sanitize_posted_data' ) ) {
             $data['billing_last_name'] = $parts[1] ?? '.';
         }
         
-        // Validar longitud de teléfono
+        // Validar longitud de teléfono (eliminar si es muy corto, considerándolo opcional vacío)
         if ( ! empty( $data['billing_phone'] ) ) {
             $digits = preg_replace( '/\D/', '', $data['billing_phone'] );
             if ( strlen( $digits ) <= 6 ) {
@@ -179,25 +181,28 @@ if ( ! function_exists( 'muyunicos_sanitize_posted_data' ) ) {
         return $data;
     }
 }
-add_filter( 'woocommerce_checkout_posted_data', 'muyunicos_sanitize_posted_data' );
+add_filter( 'woocommerce_checkout_posted_data', 'mu_sanitize_posted_data' );
 
 // ============================================
 // VALIDACIÓN
 // ============================================
 
-if ( ! function_exists( 'muyunicos_validate_checkout' ) ) {
-    function muyunicos_validate_checkout() {
+if ( ! function_exists( 'mu_validate_checkout' ) ) {
+    function mu_validate_checkout() {
+        // Validar nombre completo
         if ( empty( $_POST['billing_full_name'] ) ) {
             wc_add_notice( __( 'Por favor, completa tu Nombre y Apellido.' ), 'error' );
         }
         
+        // Validar WhatsApp si se proporciona (dependiendo del estado JS inyectado)
         if ( ! empty( $_POST['billing_phone'] ) ) {
-            if ( isset( $_POST['muyunicos_wa_valid'] ) && $_POST['muyunicos_wa_valid'] === '0' ) {
+            if ( isset( $_POST['mu_wa_valid'] ) && $_POST['mu_wa_valid'] === '0' ) {
                 wc_add_notice( __( 'El número de WhatsApp parece incompleto o inválido.' ), 'error' );
             }
         }
         
-        if ( isset( $_POST['muyunicos_shipping_toggle'] ) && $_POST['muyunicos_shipping_toggle'] == '1' ) {
+        // Validar campos de envío físicos si el toggle está activo
+        if ( isset( $_POST['mu_shipping_toggle'] ) && $_POST['mu_shipping_toggle'] == '1' ) {
             if ( empty( $_POST['billing_address_1'] ) ) {
                 wc_add_notice( __( 'La <strong>Dirección</strong> es necesaria para el envío.' ), 'error' );
             }
@@ -213,14 +218,14 @@ if ( ! function_exists( 'muyunicos_validate_checkout' ) ) {
         }
     }
 }
-add_action( 'woocommerce_checkout_process', 'muyunicos_validate_checkout' );
+add_action( 'woocommerce_checkout_process', 'mu_validate_checkout' );
 
 // ============================================
 // AJAX CHECK EMAIL
 // ============================================
 
-if ( ! function_exists( 'muyunicos_ajax_check_email_optimized' ) ) {
-    function muyunicos_ajax_check_email_optimized() {
+if ( ! function_exists( 'mu_ajax_check_email_optimized' ) ) {
+    function mu_ajax_check_email_optimized() {
         check_ajax_referer( 'check-email-nonce', 'security' );
         
         $email = isset( $_POST['email'] ) ? sanitize_email( $_POST['email'] ) : '';
@@ -232,16 +237,19 @@ if ( ! function_exists( 'muyunicos_ajax_check_email_optimized' ) ) {
         }
     }
 }
-add_action( 'wc_ajax_mu_check_email', 'muyunicos_ajax_check_email_optimized' );
+// El hook wc_ajax_{action} captura endpoint wc-ajax={action} (no necesita nopriv/priv clásico)
+add_action( 'wc_ajax_mu_check_email', 'mu_ajax_check_email_optimized' );
 
 // ============================================
 // TÍTULO PÁGINA CONFIRMACIÓN
 // ============================================
 
-function mu_order_received_custom_title( $title, $id ) {
-    if ( is_order_received_page() && get_the_ID() === $id && in_the_loop() ) {
-        return '¡Pedido Recibido! 🎉';
+if ( ! function_exists( 'mu_order_received_custom_title' ) ) {
+    function mu_order_received_custom_title( $title, $id ) {
+        if ( is_order_received_page() && get_the_ID() === $id && in_the_loop() ) {
+            return '¡Pedido Recibido! 🎉';
+        }
+        return $title;
     }
-    return $title;
 }
 add_filter( 'the_title', 'mu_order_received_custom_title', 10, 2 );
