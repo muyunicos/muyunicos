@@ -1,6 +1,6 @@
 MUY ÚNICOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v1.3.9 · Feb 22, 2026
+Estado: Refactor Modular Pragmático · v1.4.0 · Feb 22, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -41,7 +41,7 @@ muyunicos/ (generatepress-child)
 │   ├── checkout.php           # ✅ Checkout Híbrido Optimizado (Físico/Digital) + Validación WA
 │   ├── cart.php               # Lógica de carrito, buffers BACS
 │   ├── product.php            # mu_render_linked_product, lógica físico/digital
-│   └── ui.php                 # Header, Footer, search form, WhatsApp btn, Canonical fix, WPLingua body class
+│   └── ui.php                 # Header, Footer, search form, WhatsApp btn, Canonical fix, WPLingua body class, Category Description Mover
 │
 ├── css/                       # 🎨 CSS MODULAR (Pragmático)
 │   ├── components/            # Componentes compartidos
@@ -156,7 +156,7 @@ JavaScript
 CSS
 - Prefijos: .mu-[componente]__[elemento]--[modificador] (BEM).
 - Sobrescrituras: /* override GP: [motivo] */.
-- Variables: SIEMPRE usar variables CSS existentes (--primario, --blanco, --texto, etc.). NUNCA hardcodear colores que tengan variable disponible.
+- Variables: SIEMPRE usar variables CSS existentes (--primario, --blanco, --texto, etc.). NUNCA hardcodear colores que tengan variable disponible. Esto aplica también a valores de design tokens como border-radius (--mu-radius-full, --mu-radius-sm, etc.).
 
 7. PENDIENTES / DEUDA TÉCNICA
 
