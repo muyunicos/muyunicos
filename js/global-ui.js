@@ -1,7 +1,7 @@
 /**
- * MUYUNICOS - UI Interactive Scripts
- * Country Selector + WPLingua Toggle
- * Version: 1.0.0
+ * MUYUNICOS - Global UI Scripts
+ * Consolidated: Country Selector, WPLingua Toggle, Share Button
+ * Version: 1.1.0
  */
 
 (function() {
@@ -134,7 +134,7 @@
      * Share button - Native Share API (mobile) + clipboard fallback (desktop)
      */
     function initShareButtons() {
-        const shareBtns = document.querySelectorAll('.dcms-share-btn');
+        const shareBtns = document.querySelectorAll('.dcms-share-btn, .mu-share-btn');
         if (!shareBtns.length) return;
 
         shareBtns.forEach((btn) => {
@@ -199,18 +199,40 @@
         }
 
         function showFeedback(btn) {
-            if (btn.classList.contains('is-copied')) return;
+            // Restore icon if previously changed (safety)
+            if (btn.dataset.originalHtml) {
+               // btn.innerHTML = btn.dataset.originalHtml; 
+            } else {
+               btn.dataset.originalHtml = btn.innerHTML;
+            }
 
+            if (btn.classList.contains('is-copied')) return;
             btn.classList.add('is-copied');
 
-            // Tooltip flotante
+            // Use localized check icon if available
+            if (typeof muGlobalVars !== 'undefined' && muGlobalVars.checkIcon) {
+                // If the button has an icon container, replace inside it
+                const iconContainer = btn.querySelector('.dcms-share-icon') || btn;
+                // If it's a simple button, replace content temporarily
+                // Implementation in share-button.js replaced innerHTML. Let's do that for consistency if desired.
+                // But mu-ui-scripts.js implementation used CSS classes to toggle icons.
+                // Let's stick to the CSS toggle approach from mu-ui-scripts (dcms-share-icon--check) if the HTML supports it.
+                // If not, use the innerHTML replacement.
+                
+                // Check if we have the specific structure for CSS toggling
+                if (!btn.querySelector('.dcms-share-icon--check')) {
+                     btn.innerHTML = muGlobalVars.checkIcon;
+                }
+            }
+
+            // Tooltip
             const tooltip = document.createElement('span');
-            tooltip.className = 'dcms-share-tooltip';
+            tooltip.className = 'dcms-share-tooltip'; // Use consistent class
             tooltip.textContent = '¡Enlace copiado!';
             tooltip.setAttribute('role', 'status');
             tooltip.setAttribute('aria-live', 'polite');
 
-            // Asegurar contexto
+            // Context
             const parent = btn.parentNode;
             if (parent && parent.style && parent.style.position !== 'relative') {
                 parent.style.position = 'relative';
@@ -222,6 +244,13 @@
 
             setTimeout(() => {
                 btn.classList.remove('is-copied');
+                if (btn.dataset.originalHtml) {
+                    // btn.innerHTML = btn.dataset.originalHtml;
+                    // If we replaced innerHTML, restore it. If we used CSS toggle, removing class is enough.
+                    if (!btn.querySelector('.dcms-share-icon--check') && typeof muGlobalVars !== 'undefined' && muGlobalVars.checkIcon) {
+                         btn.innerHTML = btn.dataset.originalHtml;
+                    }
+                }
                 if (tooltip && tooltip.parentNode) tooltip.parentNode.removeChild(tooltip);
             }, 2000);
         }

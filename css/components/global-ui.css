@@ -1,6 +1,9 @@
 /* ========================================
-   SHARE BUTTON - Native share + clipboard
+   MUYUNICOS - Global UI Components
+   Consolidated: Share Button, WPLingua (tbd), Others
    ======================================== */
+
+/* --- Share Button (Native + Fallback) --- */
 
 .mu-share-btn,
 .dcms-share-btn {
