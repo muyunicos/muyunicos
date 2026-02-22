@@ -1,6 +1,6 @@
 MUY ÚNICOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v1.5.0 · Feb 22, 2026
+Estado: Refactor Modular Pragmático · v1.6.0 · Feb 22, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -56,7 +56,7 @@ muyunicos/ (generatepress-child)
 │   └── shop.css               # is_shop() || is_product_category() || is_product_tag() || is_product()
 │
 └── js/                        # ⚡ JS MODULAR (IIFE + strict mode + DOMContentLoaded)
-    ├── admin.js               # is_admin() — Handlers de reindexado
+    ├── admin.js               # is_admin() — Crea botón + AJAX handler. Sin jQuery (fetch). Nonce vía muyuAdminData (wp_localize_script)
     ├── global-ui.js           # Global: country selector, WPLingua toggle, share button
     ├── header.js              # Global: menú móvil, submenús, dropdown cuenta
     ├── footer.js              # Global: comportamiento footer
@@ -73,7 +73,7 @@ PHP · inc/
 Archivo | Responsabilidad principal
 ---|---
 inc/icons.php | mu_get_icon() — todos los SVGs del tema
-inc/geo.php | Detección de país, redirección, modal de país, MUYU_Digital_Restriction_System (completo)
+inc/geo.php | Detección de país, redirección, modal de país, MUYU_Digital_Restriction_System (completo). add_rebuild_button() usa wp_localize_script, sin <script> inline.
 inc/auth-modal.php | HTML modal auth, endpoints wc_ajax_mu_*
 inc/checkout.php | Campos, validaciones, optimizaciones Checkout, Título "Pedido Recibido"
 inc/cart.php | Añadir múltiples ítems al carrito, buffers BACS
@@ -99,7 +99,7 @@ JS · js/
 
 Archivo | Condición de carga en functions.php
 ---|---
-js/admin.js | is_admin() && current_screen == 'product'
+js/admin.js | is_admin() — Crea botón #muyu-rebuild + AJAX handler. Sin jQuery, usa fetch(). Nonce vía wp_localize_script (muyuAdminData).
 js/global-ui.js | Global (country selector, WPLingua toggle, share button)
 js/header.js | Global
 js/footer.js | Global
@@ -107,7 +107,7 @@ js/modal-auth.js | ! is_user_logged_in()
 js/cart.js | is_cart() — depende de: jquery
 js/checkout.js | is_checkout() && ! is_order_received_page() — depende de: jquery, libphonenumber-js
 js/country-modal.js | Condicional — encolado por inc/geo.php
-js/shop.js | is_shop() || is_product_category() || is_product_tag() || is_product()
+js/shop.js | is_shop() || is_product_category() || is_product_tag() || is_product() — Autoselect form via data bridge (#mu-format-autoselect-data)
 
 4. SISTEMA DE DISEÑO (API Exclusiva)
 
@@ -155,6 +155,7 @@ JavaScript
 - Aislamiento: IIFE + 'use strict';.
 - Ejecución: DOMContentLoaded.
 - Cero jQuery salvo obligación de WooCommerce legacy (cart/checkout/shop).
+- Pasar datos PHP→JS vía wp_localize_script. NUNCA emitir <script> inline con lógica.
 
 CSS
 - Prefijos: .mu-[componente]__[elemento]--[modificador] (BEM).

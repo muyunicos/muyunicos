@@ -459,7 +459,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         public function rebuild_digital_indexes() {
             global $wpdb;
             
-            // 1. Obtener IDs de productos digitales
             $digital_product_ids = $this->get_digital_product_ids();
             
             if ( empty( $digital_product_ids ) ) {
@@ -467,16 +466,9 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 return 0;
             }
             
-            // 2. Obtener términos (categorías y tags)
             list( $category_ids, $tag_ids ) = $this->get_product_terms( $digital_product_ids );
-            
-            // 3. Expandir jerarquía de categorías
             $category_ids = $this->expand_category_hierarchy( $category_ids );
-            
-            // 4. Construir mapa de redirección
             $redirect_map = $this->build_redirect_map( $digital_product_ids );
-            
-            // 5. Guardar índices
             $this->save_indexes( $digital_product_ids, $category_ids, $tag_ids, $redirect_map );
             
             return count( $digital_product_ids );
@@ -640,17 +632,14 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         }
 
         public function filter_product_queries( $query ) {
-            // Solo queries principales del frontend
             if ( is_admin() || ! $query->is_main_query() ) {
                 return;
             }
             
-            // No filtrar páginas de producto individual
             if ( $query->is_product() || ( $query->is_singular() && 'product' === $query->get( 'post_type' ) ) ) {
                 return;
             }
             
-            // Detectar queries de tienda
             $is_shop_query = (
                 ( function_exists( 'is_shop' ) && is_shop() ) ||
                 ( function_exists( 'is_product_category' ) && is_product_category() ) ||
@@ -663,10 +652,8 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 return;
             }
             
-            // Aplicar restricción para usuarios de subdominios
             if ( $this->is_restricted_user() ) {
                 $digital_ids = get_option( self::OPTION_PRODUCT_IDS, [] );
-                
                 $query->set( 'post__in', ! empty( $digital_ids ) ? $digital_ids : [ 0 ] );
             }
         }
@@ -704,7 +691,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 return [ false, '' ];
             }
             
-            // Buscar categoría padre digital
             $parent_id = $queried_object->parent;
             while ( $parent_id ) {
                 if ( in_array( $parent_id, $digital_cats, true ) ) {
@@ -737,13 +723,11 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 return [ false, '' ];
             }
             
-            // Buscar en mapa de redirección
             $redirect_map = get_option( self::OPTION_REDIRECT_MAP, [] );
             if ( isset( $redirect_map[ $post->ID ] ) ) {
                 return [ true, get_permalink( $redirect_map[ $post->ID ] ) ];
             }
             
-            // Buscar categoría digital del producto
             $target_url = $this->find_digital_category_for_product( $post->ID );
             
             return [ true, $target_url ];
@@ -757,14 +741,12 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 return '';
             }
             
-            // Buscar categoría directa
             foreach ( $product_cats as $cat_id ) {
                 if ( in_array( $cat_id, $digital_cats, true ) ) {
                     return get_term_link( $cat_id, 'product_cat' );
                 }
             }
             
-            // Buscar en ancestros
             foreach ( $product_cats as $cat_id ) {
                 $ancestors = get_ancestors( $cat_id, 'product_cat', 'taxonomy' );
                 foreach ( $ancestors as $ancestor_id ) {
@@ -780,7 +762,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         private function execute_redirect( $target_url ) {
             global $post;
             
-            // Fallback
             if ( empty( $target_url ) || is_wp_error( $target_url ) ) {
                 if ( is_product() && isset( $post->post_title ) ) {
                     $target_url = home_url( '/?s=' . urlencode( $post->post_title ) . '&post_type=product' );
@@ -789,7 +770,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 }
             }
             
-            // Agregar prefijo de idioma si existe
             if ( function_exists( 'insertar_prefijo_idioma' ) && function_exists( 'muyu_country_language_prefix' ) ) {
                 $prefix = muyu_country_language_prefix( $this->get_user_country_code() );
                 if ( $prefix ) {
@@ -807,7 +787,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         }
 
         public function filter_category_terms( $args, $taxonomies ) {
-            // No filtrar en admin
             if ( is_admin() || ( defined( 'DOING_AJAX' ) && DOING_AJAX && is_user_logged_in() ) ) {
                 return $args;
             }
@@ -962,31 +941,24 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             );
         }
 
+        /**
+         * Inyecta el botón de reindexado en el listado de productos del admin.
+         * El nonce y label se pasan a js/admin.js vía wp_localize_script.
+         * No se emite ningún <script> inline.
+         */
         public function add_rebuild_button() {
             global $typenow;
             if ( 'product' !== $typenow ) return;
-            
-            $nonce     = wp_create_nonce( 'muyu-rebuild-nonce' );
+
             $theme_uri = get_stylesheet_directory_uri();
             $ver       = wp_get_theme()->get( 'Version' );
 
-            wp_enqueue_style(  'mu-admin', $theme_uri . '/css/admin.css', [], $ver );
-            wp_enqueue_script( 'mu-admin-js', $theme_uri . '/js/admin.js', [ 'jquery' ], $ver, true );
-            ?>
-            <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                var lastBtn = document.querySelectorAll('.page-title-action');
-                if ( lastBtn.length ) {
-                    var btn = document.createElement('button');
-                    btn.id = 'muyu-rebuild';
-                    btn.className = 'page-title-action';
-                    btn.dataset.nonce = '<?php echo esc_js( $nonce ); ?>';
-                    btn.textContent = '⚡ Reindexar Digitales';
-                    lastBtn[lastBtn.length - 1].after(btn);
-                }
-            });
-            </script>
-            <?php
+            wp_enqueue_style(  'mu-admin',    $theme_uri . '/css/admin.css', [], $ver );
+            wp_enqueue_script( 'mu-admin-js', $theme_uri . '/js/admin.js',  [], $ver, true );
+            wp_localize_script( 'mu-admin-js', 'muyuAdminData', [
+                'nonce' => wp_create_nonce( 'muyu-rebuild-nonce' ),
+                'label' => '⚡ Reindexar Digitales',
+            ] );
         }
     }
 }
