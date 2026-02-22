@@ -1,7 +1,20 @@
 /* ========================================
    MUYUNICOS - Global UI Components
-   Consolidated: Share Button, WPLingua (tbd), Others
+   Consolidated: Share Button, WPLingua Switcher Hide Rule
    ======================================== */
+
+/* --- WPLingua Switcher — Ocultar en subdominios sin múltiples idiomas --- */
+/* override GP: WPLingua inyecta .wplng-switcher globalmente;
+   solo es útil en us.muyunicos.com y br.muyunicos.com.
+   El selector de idioma se oculta para todos los demás subdominios
+   mediante la clase .mu-wplng-hidden inyectada por inc/geo.php (o body class). */
+/* Nota: La ocultación dinámica según host se gestiona en js/global-ui.js
+   (initWpLinguaSwitcherToggle). Este bloque actúa como fallback visual
+   antes de que JS corra, usando la clase .mu-wplng-hide que functions.php
+   inyecta en body si el host no requiere switcher. */
+body.mu-wplng-hide .wplng-switcher {
+    display: none !important;
+}
 
 /* --- Share Button (Native + Fallback) --- */
 

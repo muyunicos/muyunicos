@@ -1,6 +1,6 @@
 MUY ÚNICOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v1.2.0 · Feb 2026
+Estado: Refactor Modular Pragmático · v1.3.0 · Feb 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -20,6 +20,7 @@ SÍ al aislamiento por contexto
 Carga Condicional Estricta
 - Nunca cargar assets globales si no aplican a header/footer o UI transversal.
 - Usar is_shop(), is_checkout(), is_cart(), is_user_logged_in(), etc. en functions.php.
+- NUNCA usar wp_add_inline_style(). Todo CSS debe estar en archivos .css cacheables.
 
 Flujo GitHub (PROHIBIDO COMMIT A MAIN)
 - Todo cambio debe ir en una rama semántica (perf/, refactor/, fix/, feat/).
@@ -35,7 +36,7 @@ muyunicos/ (generatepress-child)
 │
 ├── inc/                       # ⚙️ MÓDULOS PHP (Lógica de negocio y hooks)
 │   ├── icons.php              # [CARGA PRIMERO] mu_get_icon() — repositorio de SVGs
-│   ├── geo.php                # Sistema multi-país: detección, routing
+│   ├── geo.php                # Sistema multi-país: detección, routing, modal país (enqueue propio)
 │   ├── auth-modal.php         # Modal Login/Registro + endpoints WC-AJAX
 │   ├── checkout.php           # Optimizaciones WC Checkout + validación
 │   ├── cart.php               # Lógica de carrito, buffers BACS
@@ -44,11 +45,11 @@ muyunicos/ (generatepress-child)
 │
 ├── css/                       # 🎨 CSS MODULAR (Pragmático)
 │   ├── components/            # Componentes compartidos
-│   │   ├── global-ui.css      # Global: micro UI transversal (share, toggles, etc.)
+│   │   ├── global-ui.css      # Global: micro UI transversal (share, WPLingua hide rule, toggles)
 │   │   ├── header.css         # Global: header, navegación, country selector
 │   │   ├── footer.css         # Global: footer y columnas
 │   │   ├── modal-auth.css     # ! is_user_logged_in()
-│   │   └── country-modal.css  # (pendiente) si se usa, evaluar carga condicional
+│   │   └── country-modal.css  # Condicional vía inc/geo.php (mu_should_show_country_modal)
 │   ├── cart.css               # is_cart()
 │   ├── checkout.css           # is_checkout() && ! is_order_received_page()
 │   ├── home.css               # is_front_page()
@@ -56,13 +57,13 @@ muyunicos/ (generatepress-child)
 │   └── shop.css               # is_shop() || is_product_category() || is_product_tag()
 │
 └── js/                        # ⚡ JS MODULAR (IIFE + strict mode + DOMContentLoaded)
-    ├── global-ui.js           # Global: UI transversal (country selector, WPLingua, share)
+    ├── global-ui.js           # Global: country selector, WPLingua toggle, share button
     ├── header.js              # Global: menú móvil, submenús, dropdown cuenta
     ├── footer.js              # Global: comportamiento footer
     ├── cart.js                # is_cart()
     ├── checkout.js            # is_checkout() && ! is_order_received_page()
     ├── modal-auth.js          # ! is_user_logged_in()
-    └── country-modal.js       # (pendiente) si se usa, evaluar carga condicional
+    └── country-modal.js       # Condicional vía inc/geo.php (mu_should_show_country_modal)
 
 3. INVENTARIO DE ARCHIVOS (Estado Actual)
 
@@ -71,7 +72,7 @@ PHP · inc/
 Archivo | Responsabilidad principal
 ---|---
 inc/icons.php | mu_get_icon() — todos los SVGs del tema
-inc/geo.php | Detección de país, redirección de dominio
+inc/geo.php | Detección de país, redirección de dominio, modal de país (enqueue propio en wp_enqueue_scripts prioridad 30 vía mu_country_modal_enqueue), MUYU_Digital_Restriction_System
 inc/auth-modal.php | HTML modal auth, endpoints wc_ajax_mu_*
 inc/checkout.php | Campos, validaciones y optimizaciones de WC Checkout
 inc/cart.php | Añadir múltiples ítems al carrito, buffers BACS
@@ -83,11 +84,11 @@ CSS · css/
 Archivo | Condición de carga en functions.php
 ---|---
 style.css (raíz) | Global (base)
-css/components/global-ui.css | Global
+css/components/global-ui.css | Global (incluye .wplng-switcher hide rule para subdominios y estilos Share Button)
 css/components/header.css | Global
 css/components/footer.css | Global
 css/components/modal-auth.css | ! is_user_logged_in()
-css/components/country-modal.css | No encolado actualmente (si se activa, evaluar condicional)
+css/components/country-modal.css | Condicional — encolado por inc/geo.php (mu_country_modal_enqueue, prioridad 30) solo cuando mu_should_show_country_modal() === true
 css/cart.css | is_cart()
 css/checkout.css | is_checkout() && ! is_order_received_page()
 css/product.css | is_product()
@@ -98,13 +99,13 @@ JS · js/
 
 Archivo | Condición de carga en functions.php
 ---|---
-js/global-ui.js | Global
+js/global-ui.js | Global (country selector, WPLingua toggle, share button)
 js/header.js | Global
 js/footer.js | Global
 js/modal-auth.js | ! is_user_logged_in()
-js/cart.js | is_cart()
-js/checkout.js | is_checkout() && ! is_order_received_page()
-js/country-modal.js | No encolado actualmente (si se activa, evaluar condicional)
+js/cart.js | is_cart() — depende de: jquery
+js/checkout.js | is_checkout() && ! is_order_received_page() — depende de: jquery, libphonenumber-js (CDN: unpkg.com/libphonenumber-js@1.10.49)
+js/country-modal.js | Condicional — encolado por inc/geo.php (mu_country_modal_enqueue, prioridad 30) solo cuando mu_should_show_country_modal() === true
 
 4. SISTEMA DE DISEÑO (API Exclusiva)
 
@@ -144,6 +145,7 @@ PHP
 - Protección: if ( ! function_exists( 'mu_function_name' ) ) { ... }
 - AJAX WC: Usar prefijo wc_ajax_mu_ (ej: wc_ajax_mu_check_email).
 - Rendimiento: Evitar hooks pesados (init/wp_loaded) si hay hooks específicos o carga condicional.
+- CSS: NUNCA usar wp_add_inline_style(). Todo estilo debe residir en un .css cacheable.
 
 JavaScript
 - Aislamiento: IIFE + 'use strict';.
@@ -156,5 +158,6 @@ CSS
 
 7. PENDIENTES / DEUDA TÉCNICA
 
-- Revisar si country-modal.css/js debe cargarse condicionalmente según geo.
+- Evaluar auto-host de libphonenumber-js para eliminar dependencia CDN en checkout.
 - Llenar archivos vacíos: css/home.css, css/shop.css.
+- country-modal.css/js ya tienen carga condicional correcta en inc/geo.php — sin pendientes.
