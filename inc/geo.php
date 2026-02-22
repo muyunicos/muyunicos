@@ -4,7 +4,7 @@
  * 
  * Incluye:
  * - Funciones auxiliares multi-país (CORE)
- * - Auto-detección de país por dominio
+ * - Auto-detección de país por dominio (Esencial para "WooCommerce Price Based on Country")
  * - Shortcode país de facturación
  * - Modal de sugerencia de país (geolocalización)
  * - Selector de país en header
@@ -85,7 +85,8 @@ if ( ! function_exists( 'muyu_get_current_country_from_subdomain' ) ) {
      * @return string Código de país (AR por defecto)
      */
     function muyu_get_current_country_from_subdomain() {
-        $current_host = trim( $_SERVER['HTTP_HOST'] ?? '', ':80' );
+        // Eliminar puerto si existe (ej: :80, :443, :8080)
+        $current_host = preg_replace( '/:\d+$/', '', trim( $_SERVER['HTTP_HOST'] ?? '' ) );
         $main_domain = muyu_get_main_domain();
         
         // Si es el dominio principal o no contiene el dominio base, es AR
@@ -94,16 +95,22 @@ if ( ! function_exists( 'muyu_get_current_country_from_subdomain' ) ) {
         }
         
         $subdomain = str_replace( '.' . $main_domain, '', $current_host );
-        $subdomain_map = [];
+        $subdomain = strtolower( $subdomain );
         
-        foreach ( muyu_get_countries_data() as $code => $data ) {
-            $host_parts = explode( '.', $data['host'] );
-            $sub = strtolower( $host_parts[0] );
-            if ( $data['host'] === $main_domain ) continue;
-            $subdomain_map[ $sub ] = $code;
+        // Construir mapa optimizado solo una vez por petición
+        static $subdomain_map = null;
+        if ( $subdomain_map === null ) {
+            $subdomain_map = [];
+            foreach ( muyu_get_countries_data() as $code => $data ) {
+                if ( $data['host'] === $main_domain ) continue;
+                $host_parts = explode( '.', $data['host'] );
+                $subdomain_map[ strtolower( $host_parts[0] ) ] = $code;
+            }
+            // Alias manuales históricos (compatibilidad hacia atrás)
+            $subdomain_map['mexico'] = 'MX';
         }
         
-        return $subdomain_map[ strtolower( $subdomain ) ] ?? 'AR';
+        return $subdomain_map[ $subdomain ] ?? 'AR';
     }
 }
 
@@ -159,26 +166,31 @@ if ( ! function_exists( 'muyu_country_modal_text' ) ) {
 
 if ( ! function_exists( 'mu_auto_detect_country_by_domain' ) ) {
     /**
-     * Detecta automáticamente el país según el dominio y actualiza WC Customer
+     * Detecta automáticamente el país según el dominio y actualiza WC Customer.
+     * Esencial para el funcionamiento de "WooCommerce Price Based on Country".
      */
     function mu_auto_detect_country_by_domain() {
         if ( is_admin() || ! function_exists( 'WC' ) || ! WC()->customer ) return;
+        
+        // Obtener el host actual limpiando el puerto
+        $current_host = preg_replace( '/:\d+$/', '', trim( $_SERVER['HTTP_HOST'] ?? '' ) );
         
         $host_to_country_map = [];
         foreach ( muyu_get_countries_data() as $code => $data ) {
             $host_to_country_map[ $data['host'] ] = $code;
         }
         
-        $current_host = $_SERVER['HTTP_HOST'] ?? '';
         if ( ! array_key_exists( $current_host, $host_to_country_map ) ) return;
         
         $detected_country_code = $host_to_country_map[ $current_host ];
         if ( $detected_country_code === WC()->customer->get_billing_country() ) return;
         
+        // Inicializar sesión si no existe (requerido para invitados)
         if ( WC()->session && ! WC()->session->has_session() ) {
             WC()->session->set_customer_session_cookie( true );
         }
         
+        // Actualizar país del cliente
         WC()->customer->set_billing_country( $detected_country_code );
         WC()->customer->set_shipping_country( $detected_country_code );
         WC()->customer->save();
@@ -219,7 +231,7 @@ if ( ! function_exists( 'mu_should_show_country_modal' ) ) {
      * @return bool True si debe mostrarse
      */
     function mu_should_show_country_modal() {
-        $current_domain = $_SERVER['HTTP_HOST'] ?? '';
+        $current_domain = preg_replace( '/:\d+$/', '', trim( $_SERVER['HTTP_HOST'] ?? '' ) );
         
         // Si ya eligió quedarse, no mostrar
         if ( isset( $_COOKIE['muyu_stay_here'] ) && $_COOKIE['muyu_stay_here'] == $current_domain ) {
@@ -269,7 +281,7 @@ function mu_country_modal_html() {
     
     $countries = muyu_get_countries_data();
     $request_uri = $_SERVER['REQUEST_URI'] ?? '/';
-    $current_domain = $_SERVER['HTTP_HOST'] ?? '';
+    $current_domain = preg_replace( '/:\d+$/', '', trim( $_SERVER['HTTP_HOST'] ?? '' ) );
     
     $geo = wc_get_customer_geolocation();
     $user_country = ! empty( $geo['country'] ) ? strtoupper( $geo['country'] ) : null;
@@ -426,7 +438,8 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             if ( current_user_can( 'manage_woocommerce' ) || is_admin() ) return ( $this->cache['is_restricted'] = false );
             
             $main_domain = function_exists( 'muyu_get_main_domain' ) ? muyu_get_main_domain() : 'muyunicos.com';
-            $host = isset( $_SERVER['HTTP_HOST'] ) ? str_replace( 'www.', '', trim( $_SERVER['HTTP_HOST'], ':80' ) ) : '';
+            $host = preg_replace( '/:\d+$/', '', trim( $_SERVER['HTTP_HOST'] ?? '' ) );
+            $host = str_replace( 'www.', '', $host );
             
             return ( $this->cache['is_restricted'] = ( $main_domain !== $host ) );
         }
