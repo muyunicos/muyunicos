@@ -1,6 +1,6 @@
 MUY ÚNICOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v1.3.1 · Feb 22, 2026
+Estado: Refactor Modular Pragmático · v1.3.2 · Feb 22, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -45,8 +45,8 @@ muyunicos/ (generatepress-child)
 │
 ├── css/                       # 🎨 CSS MODULAR (Pragmático)
 │   ├── components/            # Componentes compartidos
-│   │   ├── global-ui.css      # Global: micro UI transversal (share, WPLingua hide rule, toggles)
-│   │   ├── header.css         # Global: header, navegación, country selector
+│   │   ├── global-ui.css      # Global: micro UI (Share, WhatsApp flotante, Search, estilos de WPLingua)
+│   │   ├── header.css         # Global: header, navegación, Country Selector
 │   │   ├── footer.css         # Global: footer y columnas
 │   │   ├── modal-auth.css     # ! is_user_logged_in()
 │   │   └── country-modal.css  # Condicional vía inc/geo.php (mu_should_show_country_modal)
@@ -84,11 +84,11 @@ CSS · css/
 Archivo | Condición de carga en functions.php
 ---|---
 style.css (raíz) | Global (base)
-css/components/global-ui.css | Global (incluye .wplng-switcher hide rule para subdominios y estilos Share Button)
-css/components/header.css | Global
+css/components/global-ui.css | Global (Share Button, WhatsApp flotante, Search Form, WPLingua estilos)
+css/components/header.css | Global (Header, Navegación, Country Selector)
 css/components/footer.css | Global
 css/components/modal-auth.css | ! is_user_logged_in()
-css/components/country-modal.css | Condicional — encolado por inc/geo.php (mu_country_modal_enqueue, prioridad 30) solo cuando mu_should_show_country_modal() === true
+css/components/country-modal.css | Condicional — encolado por inc/geo.php
 css/cart.css | is_cart()
 css/checkout.css | is_checkout() && ! is_order_received_page()
 css/product.css | is_product()
@@ -104,8 +104,8 @@ js/header.js | Global
 js/footer.js | Global
 js/modal-auth.js | ! is_user_logged_in()
 js/cart.js | is_cart() — depende de: jquery
-js/checkout.js | is_checkout() && ! is_order_received_page() — depende de: jquery, libphonenumber-js (CDN: unpkg.com/libphonenumber-js@1.10.49)
-js/country-modal.js | Condicional — encolado por inc/geo.php (mu_country_modal_enqueue, prioridad 30) solo cuando mu_should_show_country_modal() === true
+js/checkout.js | is_checkout() && ! is_order_received_page() — depende de: jquery, libphonenumber-js
+js/country-modal.js | Condicional — encolado por inc/geo.php
 
 4. SISTEMA DE DISEÑO (API Exclusiva)
 
@@ -143,7 +143,7 @@ Nuevo ícono SVG | icons.php | — | —
 
 PHP
 - Protección: if ( ! function_exists( 'mu_function_name' ) ) { ... }
-- AJAX WC: Usar prefijo wc_ajax_mu_ (ej: wc_ajax_mu_check_email).
+- AJAX WC: Usar prefijo wc_ajax_mu_
 - Rendimiento: Evitar hooks pesados (init/wp_loaded) si hay hooks específicos o carga condicional.
 - CSS: NUNCA usar wp_add_inline_style(). Todo estilo debe residir en un .css cacheable.
 
@@ -160,4 +160,4 @@ CSS
 
 - Evaluar auto-host de libphonenumber-js para eliminar dependencia CDN en checkout.
 - Llenar archivos vacíos: css/home.css, css/shop.css.
-- country-modal.css/js ya tienen carga condicional correcta en inc/geo.php — sin pendientes.
+- Refactor de componentes en style.css hacia global-ui.css completado (v1.3.2).
