@@ -1,6 +1,6 @@
 MUY ÚNICOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v1.4.1 · Feb 22, 2026
+Estado: Refactor Modular Pragmático · v1.5.0 · Feb 22, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -43,6 +43,7 @@ muyunicos/ (generatepress-child)
 │   └── ui.php                 # Header, Footer, search form, WhatsApp btn, Canonical fix, WPLingua body class, Category Description Mover
 │
 ├── css/                       # 🎨 CSS MODULAR (Pragmático)
+│   ├── admin.css              # is_admin() — Botones reindex, tools internas
 │   ├── components/            # Componentes compartidos
 │   │   ├── global-ui.css      # Global: micro UI (Share, WhatsApp flotante, Search, estilos de WPLingua)
 │   │   ├── header.css         # Global: header, navegación, Country Selector
@@ -52,16 +53,18 @@ muyunicos/ (generatepress-child)
 │   ├── cart.css               # is_cart()
 │   ├── checkout.css           # ✅ Checkout Moderno (Grid Desktop + Mobile Fix)
 │   ├── home.css               # is_front_page()
-│   └── shop.css               # is_shop() || is_product_category() || is_product_tag()
+│   └── shop.css               # is_shop() || is_product_category() || is_product_tag() || is_product()
 │
 └── js/                        # ⚡ JS MODULAR (IIFE + strict mode + DOMContentLoaded)
+    ├── admin.js               # is_admin() — Handlers de reindexado
     ├── global-ui.js           # Global: country selector, WPLingua toggle, share button
     ├── header.js              # Global: menú móvil, submenús, dropdown cuenta
     ├── footer.js              # Global: comportamiento footer
     ├── cart.js                # is_cart()
     ├── checkout.js            # ✅ Validación WA (libphonenumber) + Toggle Dirección + Check Email
     ├── modal-auth.js          # ! is_user_logged_in()
-    └── country-modal.js       # Condicional — encolado por inc/geo.php
+    ├── country-modal.js       # Condicional — encolado por inc/geo.php
+    └── shop.js                # is_shop() || is_product_category() || is_product_tag() || is_product() — Autoselect form
 
 3. INVENTARIO DE ARCHIVOS (Estado Actual)
 
@@ -70,7 +73,7 @@ PHP · inc/
 Archivo | Responsabilidad principal
 ---|---
 inc/icons.php | mu_get_icon() — todos los SVGs del tema
-inc/geo.php | Detección de país, redirección de dominio, modal de país (enqueue propio), MUYU_Digital_Restriction_System
+inc/geo.php | Detección de país, redirección, modal de país, MUYU_Digital_Restriction_System (completo)
 inc/auth-modal.php | HTML modal auth, endpoints wc_ajax_mu_*
 inc/checkout.php | Campos, validaciones, optimizaciones Checkout, Título "Pedido Recibido"
 inc/cart.php | Añadir múltiples ítems al carrito, buffers BACS
@@ -81,6 +84,7 @@ CSS · css/
 Archivo | Condición de carga en functions.php
 ---|---
 style.css (raíz) | Global (base)
+css/admin.css | is_admin() && current_screen == 'product'
 css/components/global-ui.css | Global (Share Button, WhatsApp flotante, Search Form, WPLingua estilos)
 css/components/header.css | Global (Header, Navegación, Country Selector)
 css/components/footer.css | Global
@@ -89,12 +93,13 @@ css/components/country-modal.css | Condicional — encolado por inc/geo.php
 css/cart.css | is_cart()
 css/checkout.css | is_checkout() && ! is_order_received_page()
 css/home.css | is_front_page() (actualmente vacío)
-css/shop.css | is_shop() || is_product_category() || is_product_tag() (actualmente vacío)
+css/shop.css | is_shop() || is_product_category() || is_product_tag() || is_product()
 
 JS · js/
 
 Archivo | Condición de carga en functions.php
 ---|---
+js/admin.js | is_admin() && current_screen == 'product'
 js/global-ui.js | Global (country selector, WPLingua toggle, share button)
 js/header.js | Global
 js/footer.js | Global
@@ -102,6 +107,7 @@ js/modal-auth.js | ! is_user_logged_in()
 js/cart.js | is_cart() — depende de: jquery
 js/checkout.js | is_checkout() && ! is_order_received_page() — depende de: jquery, libphonenumber-js
 js/country-modal.js | Condicional — encolado por inc/geo.php
+js/shop.js | is_shop() || is_product_category() || is_product_tag() || is_product()
 
 4. SISTEMA DE DISEÑO (API Exclusiva)
 
@@ -133,6 +139,7 @@ Lógica multi-país | geo.php | components/country-modal.css | country-modal.js
 Flujo de Carrito | cart.php | cart.css | cart.js
 Login / Registro Modal | auth-modal.php | components/modal-auth.css | modal-auth.js
 Flujo Checkout | checkout.php | checkout.css | checkout.js
+Catálogo / Single Product | ui.php / geo.php | shop.css | shop.js
 Nuevo ícono SVG | icons.php | — | —
 
 6. CONVENCIONES DE CÓDIGO & RENDIMIENTO
@@ -147,7 +154,7 @@ PHP
 JavaScript
 - Aislamiento: IIFE + 'use strict';.
 - Ejecución: DOMContentLoaded.
-- Cero jQuery salvo obligación de WooCommerce legacy (cart/checkout).
+- Cero jQuery salvo obligación de WooCommerce legacy (cart/checkout/shop).
 
 CSS
 - Prefijos: .mu-[componente]__[elemento]--[modificador] (BEM).
@@ -157,5 +164,4 @@ CSS
 7. PENDIENTES / DEUDA TÉCNICA
 
 - Evaluar auto-host de libphonenumber-js para eliminar dependencia CDN en checkout.
-- Llenar archivos vacíos: css/home.css, css/shop.css.
-- Refactorización de Snippets en el Checkout completada: selectores y clases CSS de JS y PHP unificados y estandarizados.
+- Llenar archivos vacíos: css/home.css
