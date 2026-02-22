@@ -108,9 +108,10 @@ function mu_load_module( $module ) {
 }
 
 // Orden de carga (respetando dependencias)
-mu_load_module( 'icons' );         // SVG icons repository
-mu_load_module( 'geo' );           // Multi-country system + Digital Restriction
-mu_load_module( 'auth-modal' );    // Authentication modal
-mu_load_module( 'checkout' );      // Checkout optimizations
-mu_load_module( 'cart' );          // Cart functionality
-mu_load_module( 'ui' );            // UI components (header, footer, search, wplng body class)
+mu_load_module( 'icons' );               // SVG icons repository
+mu_load_module( 'geo' );                 // Multi-country system
+mu_load_module( 'digital-restriction' ); // Digital Restriction System
+mu_load_module( 'auth-modal' );          // Authentication modal
+mu_load_module( 'checkout' );            // Checkout optimizations
+mu_load_module( 'cart' );                // Cart functionality
+mu_load_module( 'ui' );                  // UI components (header, footer, search, wplng body class)
