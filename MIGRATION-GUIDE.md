@@ -1,6 +1,6 @@
 MUY ÚNICOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v1.6.0 · Feb 22, 2026
+Estado: Refactor Modular Pragmático · v1.7.0 · Feb 22, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -36,7 +36,7 @@ muyunicos/ (generatepress-child)
 │
 ├── inc/                       # ⚙️ MÓDULOS PHP (Lógica de negocio y hooks)
 │   ├── icons.php              # [CARGA PRIMERO] mu_get_icon() — repositorio de SVGs
-│   ├── geo.php                # Sistema multi-país + Digital Restriction (detect, routing, modal)
+│   ├── geo.php                # Sistema multi-país + Digital Restriction refactorizado funcional
 │   ├── auth-modal.php         # Modal Login/Registro + endpoints WC-AJAX
 │   ├── checkout.php           # ✅ Checkout Híbrido Optimizado (Físico/Digital) + Validación WA
 │   ├── cart.php               # Lógica de carrito, buffers BACS
@@ -73,7 +73,7 @@ PHP · inc/
 Archivo | Responsabilidad principal
 ---|---
 inc/icons.php | mu_get_icon() — todos los SVGs del tema
-inc/geo.php | Detección de país, redirección, modal de país, MUYU_Digital_Restriction_System (completo). add_rebuild_button() usa wp_localize_script, sin <script> inline.
+inc/geo.php | Detección de país, redirección, modal de país, Digital Restriction System refactorizado a módulos funcionales, uso de wp_localize_script y evitar hook nesting.
 inc/auth-modal.php | HTML modal auth, endpoints wc_ajax_mu_*
 inc/checkout.php | Campos, validaciones, optimizaciones Checkout, Título "Pedido Recibido"
 inc/cart.php | Añadir múltiples ítems al carrito, buffers BACS
