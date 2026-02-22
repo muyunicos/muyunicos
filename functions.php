@@ -8,7 +8,7 @@
  * - CSS/JS condicional por página
  * 
  * @package GeneratePress_Child
- * @version 1.1.0
+ * @version 1.2.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
@@ -90,22 +90,18 @@ function mu_enqueue_assets() {
     // Scripts globales (Específicos)
     wp_enqueue_script( 'mu-header-js', "$uri/js/header.js", [], $ver, true );
     wp_enqueue_script( 'mu-footer-js', "$uri/js/footer.js", [], $ver, true );
-}
-add_action( 'wp_enqueue_scripts', 'mu_enqueue_assets', 20 );
 
-// ============================================
-// CSS CONDICIONAL - WPLingua Switcher
-// ============================================
-
-function mu_hide_wplingua_switcher() {
-    if ( is_admin() ) return;
-    
+    // WPLingua: agregar body class en subdominios sin switcher de idioma
+    // El CSS .wplng-switcher hide rule vive en css/components/global-ui.css
     $host = $_SERVER['HTTP_HOST'] ?? '';
-    if ( ! in_array( $host, [ 'us.muyunicos.com', 'br.muyunicos.com' ], true ) ) {
-        wp_add_inline_style( 'mu-base', '.wplng-switcher { display: none !important; }' );
+    if ( ! is_admin() && ! in_array( $host, [ 'us.muyunicos.com', 'br.muyunicos.com' ], true ) ) {
+        add_filter( 'body_class', function( $classes ) {
+            $classes[] = 'mu-wplng-hide';
+            return $classes;
+        } );
     }
 }
-add_action( 'wp_enqueue_scripts', 'mu_hide_wplingua_switcher', 25 );
+add_action( 'wp_enqueue_scripts', 'mu_enqueue_assets', 20 );
 
 // ============================================
 // CARGA DE MÓDULOS
