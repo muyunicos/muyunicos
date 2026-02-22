@@ -1,6 +1,6 @@
 MUY ÚNICOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v1.3.5 · Feb 22, 2026
+Estado: Refactor Modular Pragmático · v1.3.6 · Feb 22, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -125,7 +125,7 @@ API de Iconos SVG (inc/icons.php)
 
 echo mu_get_icon('name'); // NUNCA inline SVG directo
 
-Disponibles: arrow, search, help, account, cart, close, share, check, instagram, facebook, pinterest, tiktok, youtube
+Disponibles: arrow, search, help, account, cart, close, share, check, lock, instagram, facebook, pinterest, tiktok, youtube
 
 5. ROUTING DE DESARROLLO — ¿Dónde va el código nuevo?
 
@@ -162,4 +162,4 @@ CSS
 
 - Evaluar auto-host de libphonenumber-js para eliminar dependencia CDN en checkout.
 - Llenar archivos vacíos: css/home.css, css/shop.css.
-- Refactor de SVGs en Header Icons hacia inc/icons.php y limpieza de Snippets migrados completada y validada (v1.3.5).
+- Refactor de SVGs en Header Icons hacia inc/icons.php y limpieza de Snippets migrados completada y validada (incluyendo Footer, v1.3.6).
