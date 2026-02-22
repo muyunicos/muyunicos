@@ -64,10 +64,6 @@ function mu_enqueue_assets() {
         wp_enqueue_style( 'mu-shop', "$uri/css/shop.css", [ 'mu-base' ], $ver );
     }
 
-    if ( is_product() ) {
-        wp_enqueue_style( 'mu-product', "$uri/css/product.css", [ 'mu-base' ], $ver );
-    }
-
     if ( is_cart() ) {
         wp_enqueue_style( 'mu-cart', "$uri/css/cart.css", [ 'mu-base' ], $ver );
         wp_enqueue_script( 'mu-cart-js', "$uri/js/cart.js", [ 'jquery' ], $ver, true );
@@ -116,5 +112,4 @@ mu_load_module( 'geo' );           // Multi-country system + Digital Restriction
 mu_load_module( 'auth-modal' );    // Authentication modal
 mu_load_module( 'checkout' );      // Checkout optimizations
 mu_load_module( 'cart' );          // Cart functionality
-mu_load_module( 'product' );       // Product UX (physical/digital linking)
 mu_load_module( 'ui' );            // UI components (header, footer, search, wplng body class)
