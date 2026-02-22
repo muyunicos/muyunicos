@@ -53,26 +53,20 @@ if ( ! function_exists( 'mu_header_icons' ) ) {
         <div class="mu-header-icons">
             <a class="mu-header-icon mu-icon-help" href="/terminos/" title="Ayuda">
                 <span class="mu-icon-wrapper">
-                    <svg class="mu-icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-                    </svg>
+                    <?php echo mu_get_icon( 'help' ); ?>
                 </span>
                 <span class="mu-icon-label"></span>
             </a>
             <a class="mu-header-icon mu-icon-search" href="#" role="button" aria-label="Buscar" data-gpmodal-trigger="gp-search">
                 <span class="mu-icon-wrapper">
-                    <svg class="mu-icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-                    </svg>
+                    <?php echo mu_get_icon( 'search' ); ?>
                 </span>
                 <span class="mu-icon-label">Buscar</span>
             </a>
             <div class="mu-account-dropdown-wrap">
                 <a class="mu-header-icon mu-icon-account mu-open-auth-modal" href="<?php echo esc_url( $my_account_url ); ?>" title="<?php echo esc_attr( $account_label ); ?>">
                     <span class="mu-icon-wrapper">
-                        <svg class="mu-icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-                        </svg>
+                        <?php echo mu_get_icon( 'account' ); ?>
                     </span>
                     <span class="mu-icon-label">
                         <?php echo esc_html( $account_label ); ?>
@@ -91,9 +85,7 @@ if ( ! function_exists( 'mu_header_icons' ) ) {
             </div>
             <a class="mu-header-icon mu-icon-cart" href="/carrito/" title="Carrito">
                 <span class="mu-icon-wrapper">
-                    <svg class="mu-icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                        <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
-                    </svg>
+                    <?php echo mu_get_icon( 'cart' ); ?>
                     <span class="mu-cart-badge <?php echo ( $cart_count > 0 ) ? 'is-visible' : ''; ?>">
                         <?php echo esc_html( $cart_count ); ?>
                     </span>
