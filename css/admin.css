@@ -1,0 +1,16 @@
+/**
+ * Muy Únicos - Estilos de Administración
+ */
+#muyu-rebuild {
+    transition: all 0.2s ease;
+    margin-left: 10px;
+}
+#muyu-rebuild:hover {
+    background: #2271b1;
+    border-color: #2271b1;
+    color: #fff;
+}
+#muyu-rebuild:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
