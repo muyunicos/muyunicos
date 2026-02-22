@@ -1,6 +1,6 @@
 MUY ÚNICOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v1.3.6 · Feb 22, 2026
+Estado: Refactor Modular Pragmático · v1.3.7 · Feb 22, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -162,4 +162,4 @@ CSS
 
 - Evaluar auto-host de libphonenumber-js para eliminar dependencia CDN en checkout.
 - Llenar archivos vacíos: css/home.css, css/shop.css.
-- Refactor de SVGs en Header Icons hacia inc/icons.php y limpieza de Snippets migrados completada y validada (incluyendo Footer, v1.3.6).
+- Refactorización de Snippets en el Checkout completada: selectores y clases CSS de JS y PHP unificados y estandarizados.
