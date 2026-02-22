@@ -1,6 +1,6 @@
 MUY ÚNICOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v1.3.7 · Feb 22, 2026
+Estado: Refactor Modular Pragmático · v1.3.8 · Feb 22, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -38,7 +38,7 @@ muyunicos/ (generatepress-child)
 │   ├── icons.php              # [CARGA PRIMERO] mu_get_icon() — repositorio de SVGs
 │   ├── geo.php                # Sistema multi-país + Digital Restriction (detect, routing, modal)
 │   ├── auth-modal.php         # Modal Login/Registro + endpoints WC-AJAX
-│   ├── checkout.php           # Optimizaciones WC Checkout + validación + Title fix
+│   ├── checkout.php           # ✅ Checkout Híbrido Optimizado (Físico/Digital) + Validación WA
 │   ├── cart.php               # Lógica de carrito, buffers BACS
 │   ├── product.php            # mu_render_linked_product, lógica físico/digital
 │   └── ui.php                 # Header, Footer, search form, WhatsApp btn, Canonical fix, WPLingua body class
@@ -51,7 +51,7 @@ muyunicos/ (generatepress-child)
 │   │   ├── modal-auth.css     # ! is_user_logged_in()
 │   │   └── country-modal.css  # Condicional vía inc/geo.php (mu_should_show_country_modal)
 │   ├── cart.css               # is_cart()
-│   ├── checkout.css           # is_checkout() && ! is_order_received_page()
+│   ├── checkout.css           # ✅ Checkout Moderno (Grid Desktop + Mobile Fix)
 │   ├── home.css               # is_front_page()
 │   ├── product.css            # is_product()
 │   └── shop.css               # is_shop() || is_product_category() || is_product_tag()
@@ -61,7 +61,7 @@ muyunicos/ (generatepress-child)
     ├── header.js              # Global: menú móvil, submenús, dropdown cuenta
     ├── footer.js              # Global: comportamiento footer
     ├── cart.js                # is_cart()
-    ├── checkout.js            # is_checkout() && ! is_order_received_page()
+    ├── checkout.js            # ✅ Validación WA (libphonenumber) + Toggle Dirección + Check Email
     ├── modal-auth.js          # ! is_user_logged_in()
     └── country-modal.js       # Condicional — encolado por inc/geo.php
 
