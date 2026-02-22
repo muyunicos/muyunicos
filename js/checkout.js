@@ -15,8 +15,8 @@ jQuery(document).ready(function ($) {
     if ($('#wa-status-msg').length === 0) {
         $('label[for="billing_phone"]').append('<span id="wa-status-msg"></span>');
     }
-    if ($('#muyunicos_wa_valid').length === 0) {
-        $('form.checkout').append('<input type="hidden" name="muyunicos_wa_valid" id="muyunicos_wa_valid" value="1">');
+    if ($('#mu_wa_valid').length === 0) {
+        $('form.checkout').append('<input type="hidden" name="mu_wa_valid" id="mu_wa_valid" value="1">');
     }
 
     // --- REFERENCIAS ---
@@ -44,7 +44,7 @@ jQuery(document).ready(function ($) {
         if (rawVal.trim().length === 0) {
             $phoneWrapper.removeClass('hide-optional');
             setVisualState('reset');
-            $('#muyunicos_wa_valid').val('1');
+            $('#mu_wa_valid').val('1');
             return;
         }
 
@@ -52,7 +52,7 @@ jQuery(document).ready(function ($) {
 
         if (cleanDigits.length < 6) {
             setVisualState('reset');
-            $('#muyunicos_wa_valid').val('0');
+            $('#mu_wa_valid').val('0');
             return;
         }
 
@@ -60,14 +60,14 @@ jQuery(document).ready(function ($) {
             const pn = libphonenumber.parsePhoneNumber(rawVal, countryCode);
             if (pn && pn.isValid()) {
                 setVisualState('valid', '✓ ' + pn.formatInternational());
-                $('#muyunicos_wa_valid').val('1');
+                $('#mu_wa_valid').val('1');
             } else {
                 setVisualState('error', 'Revisá el número');
-                $('#muyunicos_wa_valid').val('0');
+                $('#mu_wa_valid').val('0');
             }
         } catch (e) {
             setVisualState('error', 'Revisá el número');
-            $('#muyunicos_wa_valid').val('0');
+            $('#mu_wa_valid').val('0');
         }
     }
 
@@ -127,7 +127,7 @@ jQuery(document).ready(function ($) {
     // ================================================
     const $addrFields = $('.mu-physical-address-field');
 
-    $('#muyunicos-toggle-shipping').on('change', function () {
+    $('#mu-toggle-shipping').on('change', function () {
         if ($(this).is(':checked')) {
             $addrFields.removeClass('mu-hidden').hide().slideDown();
         } else {
@@ -135,7 +135,7 @@ jQuery(document).ready(function ($) {
         }
     });
     // Restaurar estado en recarga con error de validación
-    if ($('#muyunicos-toggle-shipping').is(':checked')) {
+    if ($('#mu-toggle-shipping').is(':checked')) {
         $addrFields.removeClass('mu-hidden');
     }
 
