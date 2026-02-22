@@ -42,16 +42,21 @@ if ( ! function_exists( 'mu_wplng_body_class' ) ) {
 
 if ( ! function_exists( 'mu_header_icons' ) ) {
     function mu_header_icons() {
-        $cart_count       = WC()->cart ? WC()->cart->get_cart_contents_count() : 0;
+        // Validación preventiva de WooCommerce
+        if ( ! function_exists( 'WC' ) ) return;
+
+        $cart_count       = ( null !== WC()->cart ) ? WC()->cart->get_cart_contents_count() : 0;
         $is_logged_in     = is_user_logged_in();
-        $my_account_url   = get_permalink( get_option( 'woocommerce_myaccount_page_id' ) );
+        
+        // Uso de endpoints de WC de forma segura
+        $my_account_url   = wc_get_page_permalink( 'myaccount' );
         $edit_account_url = wc_get_account_endpoint_url( 'edit-account' );
         $downloads_url    = wc_get_account_endpoint_url( 'downloads' );
         $logout_url       = wp_logout_url( home_url() );
         $account_label    = $is_logged_in ? 'Mi cuenta' : 'Ingresar';
         ?>
         <div class="mu-header-icons">
-            <a class="mu-header-icon mu-icon-help" href="/terminos/" title="Ayuda">
+            <a class="mu-header-icon mu-icon-help" href="<?php echo esc_url( home_url( '/terminos/' ) ); ?>" title="Ayuda">
                 <span class="mu-icon-wrapper">
                     <?php echo mu_get_icon( 'help' ); ?>
                 </span>
@@ -83,7 +88,7 @@ if ( ! function_exists( 'mu_header_icons' ) ) {
                 </ul>
                 <?php endif; ?>
             </div>
-            <a class="mu-header-icon mu-icon-cart" href="/carrito/" title="Carrito">
+            <a class="mu-header-icon mu-icon-cart" href="<?php echo esc_url( wc_get_cart_url() ); ?>" title="Carrito">
                 <span class="mu-icon-wrapper">
                     <?php echo mu_get_icon( 'cart' ); ?>
                     <span class="mu-cart-badge <?php echo ( $cart_count > 0 ) ? 'is-visible' : ''; ?>">
@@ -100,6 +105,11 @@ if ( ! function_exists( 'mu_header_icons' ) ) {
 
 if ( ! function_exists( 'mu_update_cart_badge' ) ) {
     function mu_update_cart_badge( $fragments ) {
+        // Prevención de error fatal si el carrito no está inicializado en la petición AJAX
+        if ( ! function_exists( 'WC' ) || null === WC()->cart ) {
+            return $fragments;
+        }
+
         $cart_count = WC()->cart->get_cart_contents_count();
         ob_start();
         ?>
@@ -136,7 +146,6 @@ if ( ! function_exists( 'mu_boton_flotante_whatsapp' ) ) {
 if ( ! function_exists( 'mu_custom_search_form_logic' ) ) {
     function mu_custom_search_form_logic( $form ) {
         $unique_id = uniqid( 'search-form-' );
-        // fix: esc_attr() on get_search_query() prevents XSS via crafted search queries
         $icon_html = function_exists( 'mu_get_icon' ) ? mu_get_icon( 'search' ) : '<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>';
 
         $form  = '<form role="search" method="get" class="woocommerce-product-search mu-product-search" action="' . esc_url( home_url( '/' ) ) . '">';
