@@ -1,1 +1,9 @@
+/**
+ * Muy Únicos - Estilos de Tienda y Producto Individual
+ */
 
+/* Auto-selección inteligente de variación: Transición suave para ocultar */
+form.variations_form .variations, 
+form.variations_form tr {
+    transition: opacity 0.2s ease-out;
+}

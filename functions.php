@@ -60,8 +60,9 @@ function mu_enqueue_assets() {
         wp_enqueue_style( 'mu-home', "$uri/css/home.css", [ 'mu-base' ], $ver );
     }
 
-    if ( is_shop() || is_product_category() || is_product_tag() ) {
+    if ( is_shop() || is_product_category() || is_product_tag() || is_product() ) {
         wp_enqueue_style( 'mu-shop', "$uri/css/shop.css", [ 'mu-base' ], $ver );
+        wp_enqueue_script( 'mu-shop-js', "$uri/js/shop.js", [ 'jquery' ], $ver, true );
     }
 
     if ( is_cart() ) {
