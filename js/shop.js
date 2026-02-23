@@ -12,7 +12,13 @@
     if ( 'undefined' === typeof $ || ! $.fn ) {
         return;
     }
-
+    $(document).ready(function() {
+        initAutoSelectFormat();
+        
+        // Inicializar funcionalidades UI
+        if (typeof initInfiniteScroll === 'function') initInfiniteScroll();
+        if (typeof initHybridCarousel === 'function') initHybridCarousel();
+    });
     // ============================================
     // 2. INFINITE SCROLL LIGERO
     // ============================================
