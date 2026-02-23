@@ -17,11 +17,10 @@
     // 1. AUTO-SELECCIÓN DE VARIACIÓN
     // ============================================
     
-    // Delegar evento en el document para soportar inicializaciones AJAX (ej: Quick Views)
     $(document).on('wc_variation_form', 'form.variations_form', function() {
         var $form = $(this);
         var $data = $('#mu-format-autoselect-data');
-        
+
         if ( ! $data.length ) {
             return;
         }
@@ -33,7 +32,7 @@
         // Ejecutar con un delay ligeramente mayor para asegurar que WC renderizó los options
         setTimeout(function() {
             autoSelectFormatVariation($form, targetSlug, hideRow);
-        }, 150);
+        }, 1500);
     });
 
     // Ejecutar fallback en page load por si el evento ya pasó
@@ -46,7 +45,7 @@
                     var targetSlug = $data.data('target-slug');
                     var hideRow = $data.data('hide-row') === true || $data.attr('data-hide-row') === 'true';
                     autoSelectFormatVariation($form, targetSlug, hideRow);
-                }, 200); // Un poco más de margen en el ready
+                }, 2000); // Un poco más de margen en el ready
             }
         }
         
