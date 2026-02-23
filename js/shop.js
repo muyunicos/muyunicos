@@ -1,8 +1,9 @@
 /**
  * Muy Únicos - Funcionalidad de Tienda y Producto (Shop/Single Product)
  * 
- * Auto-selección inteligente de variación:
- * Oculta o pre-selecciona variaciones basado en el formato y datos del servidor.
+ * Incluye:
+ * - Auto-selección inteligente de variación
+ * - Infinite Scroll Ligero (WooCommerce + GP Optimized)
  */
 
 (function($) {
@@ -12,6 +13,9 @@
         return;
     }
     
+    // ============================================
+    // 1. AUTO-SELECCIÓN DE VARIACIÓN
+    // ============================================
     // Delegar evento en el document para soportar inicializaciones AJAX (ej: Quick Views)
     $(document).on('wc_variation_form', 'form.variations_form', function() {
         var $form = $(this);
@@ -41,6 +45,9 @@
                 }, 150);
             }
         }
+        
+        // Inicializar Infinite Scroll al cargar el DOM
+        initInfiniteScroll();
     });
     
     function autoSelectFormatVariation($form, targetSlug, hideRow) {
@@ -79,6 +86,128 @@
         
         if ( $form.find('table.variations tr:visible').length === 0 ) {
             $form.find('.variations').fadeOut(200);
+        }
+    }
+
+    // ============================================
+    // 2. INFINITE SCROLL LIGERO
+    // ============================================
+    function initInfiniteScroll() {
+        // SELECTORES (Ajustados para GeneratePress + Woo)
+        const selectors = {
+            container: 'ul.products',        // Contenedor de la grilla
+            item: 'li.product',              // Items individuales
+            pagination: '.woocommerce-pagination', // Paginación nativa
+            nextLink: '.woocommerce-pagination a.next' // Botón siguiente
+        };
+
+        const container = document.querySelector(selectors.container);
+        const pagination = document.querySelector(selectors.pagination);
+        
+        // Si no hay contenedor o paginación, no hacemos nada
+        if (!container || !pagination) return;
+
+        let nextLink = pagination.querySelector('a.next');
+        if (!nextLink) return;
+
+        // 1. Ocultar paginación original (pero mantenerla en DOM por si acaso)
+        pagination.style.display = 'none';
+
+        // 2. Crear el "Centinela" (Elemento invisible que detecta cuando llegamos al fondo)
+        const sentinel = document.createElement('div');
+        sentinel.className = 'mu-scroll-sentinel';
+        sentinel.innerHTML = '<div class="mu-spinner"></div>';
+        container.parentNode.insertBefore(sentinel, container.nextSibling);
+
+        let isLoading = false;
+
+        // 3. Configurar IntersectionObserver (API nativa eficiente)
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && !isLoading && nextLink) {
+                loadNextPage();
+            }
+        }, {
+            rootMargin: '200px' // Cargar 200px antes de llegar al final
+        });
+
+        observer.observe(sentinel);
+
+        // 4. Función de Carga
+        async function loadNextPage() {
+            isLoading = true;
+            sentinel.classList.add('loading');
+            const url = nextLink.href;
+
+            try {
+                // Fetch de la siguiente página (Aprovecha LiteSpeed Cache)
+                const response = await fetch(url);
+                const text = await response.text();
+                
+                // Parsear HTML
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(text, 'text/html');
+                
+                // Extraer productos
+                const newProducts = doc.querySelectorAll(selectors.container + ' ' + selectors.item);
+                
+                if (newProducts.length > 0) {
+                    // Añadir productos al contenedor actual
+                    newProducts.forEach(product => {
+                        // Lógica de Imagen (Placeholder + FadeIn)
+                        const img = product.querySelector('img');
+                        if (img) {
+                            // Preparamos la imagen invisible
+                            img.style.opacity = '0';
+                            img.style.transition = 'opacity 0.6s ease-in-out';
+                            
+                            // Añadimos clase de carga al contenedor (para el placeholder dots)
+                            // GeneratePress suele poner la imagen dentro de un <a> o un wrapper
+                            const wrapper = img.parentElement; 
+                            wrapper.classList.add('mu-img-wrapper-loading');
+
+                            // Función para revelar imagen
+                            const revealImg = () => {
+                                img.style.opacity = '1';
+                                wrapper.classList.remove('mu-img-wrapper-loading');
+                            };
+
+                            if (img.complete) {
+                                revealImg();
+                            } else {
+                                img.addEventListener('load', revealImg);
+                                img.addEventListener('error', revealImg); // Fallback si falla
+                            }
+                        }
+
+                        container.appendChild(product);
+                    });
+
+                    // Actualizar enlace "Siguiente"
+                    const newNextLink = doc.querySelector(selectors.nextLink);
+                    if (newNextLink) {
+                        nextLink = newNextLink;
+                        // Actualizar URL del navegador (SEO friendly)
+                        window.history.replaceState(null, '', url);
+                    } else {
+                        // Fin de catálogo
+                        nextLink = null;
+                        sentinel.remove();
+                        observer.disconnect();
+                    }
+                    
+                    // Disparar evento para que otros plugins sepan que hay nuevos productos
+                    $(document.body).trigger('post-load');
+                }
+
+            } catch (error) {
+                console.error('Error Infinite Scroll:', error);
+                // Si falla, mostramos la paginación normal como fallback
+                pagination.style.display = 'block';
+                sentinel.remove();
+            }
+
+            isLoading = false;
+            sentinel.classList.remove('loading');
         }
     }
 
