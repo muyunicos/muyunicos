@@ -80,24 +80,10 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         // =====================================================================
         
         public function is_restricted_user() {
-            if ( isset( $this->cache['is_restricted'] ) ) {
-                return $this->cache['is_restricted'];
-            }
-            
-            // Solo permitir testing como admin si NO es una petición AJAX del frontend
-            if ( is_admin() && ! wp_doing_ajax() ) {
-                $this->cache['is_restricted'] = false;
-                return false;
-            }
-            
-            // Lógica robusta: Si el host no es EXACTAMENTE 'muyunicos.com', es restringido.
-            // Esto cubre subdominios de países, staging, localhost, etc.
             $host = isset( $_SERVER['HTTP_HOST'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ) ) : '';
             $host = preg_replace( '/:\d+$/', '', $host ); // Quitar puerto
             $host = str_replace( 'www.', '', $host );
-            
-            $this->cache['is_restricted'] = ( 'muyunicos.com' !== $host );
-            return $this->cache['is_restricted'];
+            return ( 'muyunicos.com' !== $host );
         }
         
         public function get_user_country_code() {
