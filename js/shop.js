@@ -17,89 +17,74 @@
     // 1. AUTO-SELECCIÓN DE VARIACIÓN
     // ============================================
     
-    $(document).on('wc_variation_form', 'form.variations_form', function() {
-        var $form = $(this);
+    function initAutoSelectFormat() {
+        var $form = $('form.variations_form');
         var $data = $('#mu-format-autoselect-data');
 
-        if ( ! $data.length ) {
+        if ( ! $form.length || ! $data.length ) {
             return;
         }
         
         var targetSlug = $data.data('target-slug');
-        // Fix: Asegurar la validación ya sea que jQuery lo lea como boolean o como string
         var hideRow = $data.data('hide-row') === true || $data.attr('data-hide-row') === 'true';
-        
-        // Ejecutar con un delay ligeramente mayor para asegurar que WC renderizó los options
-        setTimeout(function() {
-            autoSelectFormatVariation($form, targetSlug, hideRow);
-        }, 1500);
-    });
 
-    // Ejecutar fallback en page load por si el evento ya pasó
-    $(document).ready(function() {
-        var $form = $('form.variations_form');
-        if ( $form.length ) {
-            var $data = $('#mu-format-autoselect-data');
-            if ( $data.length ) {
-                setTimeout(function() {
-                    var targetSlug = $data.data('target-slug');
-                    var hideRow = $data.data('hide-row') === true || $data.attr('data-hide-row') === 'true';
-                    autoSelectFormatVariation($form, targetSlug, hideRow);
-                }, 2000); // Un poco más de margen en el ready
+        var enforceSelection = function() {
+            // Soportar atributos globales (#pa_formato) y locales (#formato)
+            var $select = $form.find('select[name="attribute_pa_formato"], select[name="attribute_formato"]').first();
+            
+            if ( ! $select.length ) {
+                return;
             }
-        }
-        
-        // Inicializar funcionalidades UI (Asegúrate de tener estas funciones definidas más abajo)
-        if (typeof initInfiniteScroll === 'function') initInfiniteScroll();
-        if (typeof initHybridCarousel === 'function') initHybridCarousel();
-    });
-    
-    function autoSelectFormatVariation($form, targetSlug, hideRow) {
-        // Fix: Soportar atributos globales (#pa_formato) y locales (#formato)
-        var $select = $form.find('#pa_formato, #formato');
-        
-        if ( ! $select.length ) {
-            // Fallback por name
-            $select = $form.find('select[name="attribute_pa_formato"], select[name="attribute_formato"]');
-        }
-        
-        if ( ! $select.length ) {
-            return;
-        }
-        
-        // Usar solo el primer select encontrado por si hay múltiples
-        $select = $select.first();
-        
-        // Si ya está seleccionado como queremos, ocultamos y salimos
-        if ( $select.val() === targetSlug ) {
+            
+            // Si ya está seleccionado como queremos, ocultamos y salimos para no crear loop infinito
+            if ( $select.val() === targetSlug ) {
+                if ( hideRow ) {
+                    hideRowAndTable($select, $form);
+                }
+                return;
+            }
+            
+            // Seleccionar el valor objetivo y disparar 'change' para que WC actualice precios
+            $select.val(targetSlug).trigger('change');
+            
             if ( hideRow ) {
                 hideRowAndTable($select, $form);
             }
-            return;
+        };
+
+        function hideRowAndTable($select, $form) {
+            var $row = $select.closest('tr');
+            $row.hide();
+            
+            // Si no quedan variaciones visibles, ocultar la tabla entera (con fade para que no sea tan brusco)
+            if ( $form.find('table.variations tr:visible').length === 0 ) {
+                $form.find('.variations').fadeOut(200);
+            }
         }
-        
-        // Seleccionar el valor objetivo
-        $select.val(targetSlug);
-        $select.trigger('change');
-        
-        // FIX CRÍTICO: Avisar a WooCommerce para que actualice el precio, la foto 
-        // y habilite el botón de "Añadir al carrito".
-        $form.trigger('check_variations'); 
-        
-        if ( hideRow ) {
-            hideRowAndTable($select, $form);
-        }
+
+        // 1. Evento nativo de WooCommerce cuando se inicializa o actualiza el form de variaciones
+        $form.on('wc_variation_form woocommerce_update_variation_values', function() {
+            // El timeout muy pequeño asegura que WC ya terminó de renderizar el dropdown
+            setTimeout(enforceSelection, 10);
+        });
+
+        // 2. Si el usuario le da a "Limpiar" y se resetean los valores, volvemos a aplicar
+        $form.on('reset_data', function() {
+            setTimeout(enforceSelection, 10);
+        });
+
+        // 3. Fallback inmediato por si la inicialización de WC ya ocurrió
+        enforceSelection();
     }
-    
-    function hideRowAndTable($select, $form) {
-        var $row = $select.closest('tr');
-        $row.hide();
+
+    $(document).ready(function() {
+        initAutoSelectFormat();
         
-        // Si no quedan variaciones visibles, ocultar la tabla entera (con fade para que no sea tan brusco)
-        if ( $form.find('table.variations tr:visible').length === 0 ) {
-            $form.find('.variations').fadeOut(200);
-        }
-    }
+        // Inicializar funcionalidades UI
+        if (typeof initInfiniteScroll === 'function') initInfiniteScroll();
+        if (typeof initHybridCarousel === 'function') initHybridCarousel();
+    });
+
     // ============================================
     // 2. INFINITE SCROLL LIGERO
     // ============================================
