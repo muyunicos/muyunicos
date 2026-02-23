@@ -1,6 +1,6 @@
 MUY ÚNICOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v1.9.0 · Feb 23, 2026
+Estado: Refactor Modular Pragmático · v1.9.1 · Feb 23, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -62,7 +62,7 @@ muyunicos/ (generatepress-child)
 │   └── account-downloads.css  # ✅ is_account_page() && is_wc_endpoint_url('downloads')
 │
 └── js/                        # ⚡ JS MODULAR (IIFE + strict mode + DOMContentLoaded)
-    ├── admin.js               # is_admin() — Crea botón #muyu-rebuild + WC-AJAX handler.
+    ├── admin.js               # is_admin() — Crea botón #muyu-rebuild + WC-AJAX handler. Sin jQuery, usa fetch(). Nonce y WC-AJAX URL vía wp_localize_script (muyuAdminData).
     ├── admin-order-files.js   # ✅ is_admin() && order_edit — Drag&Drop, Ajax Uploads
     ├── admin-orders.js        # ✅ is_admin() && order_edit — WhatsApp Link Replacement
     ├── global-ui.js           # ✅ Global: country selector (hover), WPLingua toggle, share button, Carrusel Híbrido Lógica
@@ -72,7 +72,7 @@ muyunicos/ (generatepress-child)
     ├── checkout.js            # ✅ Validación WA (libphonenumber) + Toggle Dirección + Check Email
     ├── modal-auth.js          # ! is_user_logged_in()
     ├── country-modal.js       # Condicional — encolado por inc/geo.php
-    └── shop.js                # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() — Autoselect form via data bridge (#mu-format-autoselect-data), Lógica de Infinite Scroll JS
+    └── shop.js                # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() — Lógica de Infinite Scroll JS (Optimized)
 
 3. INVENTARIO DE ARCHIVOS (Estado Actual)
 
@@ -123,7 +123,7 @@ js/modal-auth.js | ! is_user_logged_in()
 js/cart.js | is_cart() — depende de: jquery
 js/checkout.js | is_checkout() && ! is_order_received_page() — depende de: jquery, libphonenumber-js
 js/country-modal.js | Condicional — encolado por inc/geo.php
-js/shop.js | is_shop() || is_product_category() || is_product_tag() || is_product() — Autoselect form via data bridge (#mu-format-autoselect-data), Lógica de Infinite Scroll JS
+js/shop.js | is_shop() || is_product_category() || is_product_tag() || is_product() — Lógica de Infinite Scroll JS (Optimized). Carrusel Híbrido.
 
 4. SISTEMA DE DISEÑO (API Exclusiva)
 
