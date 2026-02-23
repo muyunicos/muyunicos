@@ -1,6 +1,6 @@
 MUY ÚNICOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v1.8.0 · Feb 22, 2026
+Estado: Refactor Modular Pragmático · v1.8.1 · Feb 22, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -37,7 +37,7 @@ muyunicos/ (generatepress-child)
 ├── inc/                       # ⚙️ MÓDULOS PHP (Lógica de negocio y hooks)
 │   ├── icons.php              # [CARGA PRIMERO] mu_get_icon() — repositorio de SVGs
 │   ├── geo.php                # Sistema multi-país + Auto-Detección + Modal + Selector Header
-│   ├── digital-restriction.php# ✅ Digital Restriction System (Lógica subdominios, pre_get_posts, redirects, autoselect JS bridges)
+│   ├── digital-restriction.php# ✅ Digital Restriction System (Singleton Class, pre_get_posts, redirects, autoselect JS bridges)
 │   ├── auth-modal.php         # Modal Login/Registro + endpoints WC-AJAX
 │   ├── checkout.php           # ✅ Checkout Híbrido Optimizado (Físico/Digital) + Validación WA
 │   ├── cart.php               # Lógica de carrito, buffers BACS
@@ -75,7 +75,7 @@ Archivo | Responsabilidad principal
 ---|---
 inc/icons.php | mu_get_icon() — todos los SVGs del tema
 inc/geo.php | Detección de país por dominio y geolocalización, redirect selector en header, modal sugerencia, prefijo idioma.
-inc/digital-restriction.php | Restricción de productos físicos en subdominios (pre_get_posts, filters), redirección de categorías/productos físicos a digitales, auto-selección de variaciones, botón de reindexado admin.
+inc/digital-restriction.php | Restricción de productos físicos en subdominios (Clase Singleton, pre_get_posts, filters), redirección de categorías/productos físicos a digitales, auto-selección de variaciones, botón de reindexado admin.
 inc/auth-modal.php | HTML modal auth, endpoints wc_ajax_mu_*
 inc/checkout.php | Campos, validaciones, optimizaciones Checkout, Título "Pedido Recibido"
 inc/cart.php | Añadir múltiples ítems al carrito, buffers BACS
@@ -161,7 +161,7 @@ JavaScript
 - Pasar datos PHP→JS vía wp_localize_script. NUNCA emitir <script> inline con lógica.
 
 CSS
-- Prefijos: .mu-[componente]__[elemento]--[modificador] (BEM).
+- Prefijos: .mu-[componente]__elem--[mod] (BEM).
 - Sobrescrituras: /* override GP: [motivo] */.
 - Variables: SIEMPRE usar variables CSS existentes (--primario, --blanco, --texto, etc.). NUNCA hardcodear colores que tengan variable disponible. Esto aplica también a valores de design tokens como border-radius (--mu-radius-full, --mu-radius-sm, etc.).
 
