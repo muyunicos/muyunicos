@@ -2,12 +2,12 @@
 /**
  * Muy Únicos - Digital Restriction System
  * 
- * Sistema de restricción de contenido digital v2.6.3 (Bugfix Índices y Admin Hook)
+ * Sistema de restricción de contenido digital v2.6.4 (Fix: Init hook after_setup_theme)
  * Propósito: Restringir productos físicos en subdominios, mostrando solo 
  * productos digitales. Optimizado para rendimiento y compatibilidad.
  * 
  * @package GeneratePress_Child
- * @since 2.6.3
+ * @since 2.6.4
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -636,8 +636,8 @@ if ( ! function_exists( 'muyu_digital_restriction_init' ) ) {
     function muyu_digital_restriction_init() {
         return MUYU_Digital_Restriction_System::get_instance();
     }
-    // Prioridad temprana para registrar hooks correctamente
-    add_action( 'plugins_loaded', 'muyu_digital_restriction_init', 5 );
+    // Prioridad temprana para registrar hooks correctamente (hook after_setup_theme porque este file se carga post-plugins_loaded)
+    add_action( 'after_setup_theme', 'muyu_digital_restriction_init', 5 );
 }
 
 /* --- Helpers Funcionales para Backward Compatibility --- */
