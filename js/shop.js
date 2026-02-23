@@ -18,8 +18,29 @@
     // ============================================
     
     function initAutoSelectFormat() {
-        var $form = $('form.variations_form');
+        // ---------------------------------------------------------
+        // GUARD DE SEGURIDAD (Caché vs Sesión)
+        // Detecta si el HTML sirvió un form simple para un producto variable
+        // ---------------------------------------------------------
         var $data = $('#mu-format-autoselect-data');
+        var $cartForm = $('form.cart');
+
+        if ( $data.length && $cartForm.length && ! $cartForm.hasClass('variations_form') ) {
+            // Interceptar el botón comprar del form simple incorrecto
+            $cartForm.on('submit', function(e) {
+                if ( ! $(this).find('input[name="variation_id"]').length ) {
+                    e.preventDefault();
+                    var $btn = $(this).find('button[type="submit"]');
+                    if ($btn.length) {
+                        $btn.css({'opacity': '0.7', 'pointer-events': 'none'}).text('Procesando...');
+                    }
+                    window.location.reload(); // Recarga silenciosa con sesión activa
+                }
+            });
+            return;
+        }
+
+        var $form = $('form.variations_form');
 
         if ( ! $form.length || ! $data.length ) {
             return;

@@ -65,7 +65,7 @@ muyunicos/ (generatepress-child)
     ├── checkout.js            # ✅ Validación WA (libphonenumber) + Toggle Dirección + Check Email
     ├── modal-auth.js          # ! is_user_logged_in()
     ├── country-modal.js       # Condicional — encolado por inc/geo.php
-    └── shop.js                # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() (Autoselect form + Infinite Scroll Lógica)
+    └── shop.js                # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() (Autoselect form + Cache Guard + Infinite Scroll Lógica)
 
 3. INVENTARIO DE ARCHIVOS (Estado Actual)
 
@@ -109,7 +109,7 @@ js/modal-auth.js | ! is_user_logged_in()
 js/cart.js | is_cart() — depende de: jquery
 js/checkout.js | is_checkout() && ! is_order_received_page() — depende de: jquery, libphonenumber-js
 js/country-modal.js | Condicional — encolado por inc/geo.php
-js/shop.js | is_shop() || is_product_category() || is_product_tag() || is_product() — Autoselect form via data bridge (#mu-format-autoselect-data), Lógica de Infinite Scroll JS
+js/shop.js | is_shop() || is_product_category() || is_product_tag() || is_product() — Autoselect form via data bridge (#mu-format-autoselect-data), Cache Guard, Lógica de Infinite Scroll JS
 
 4. SISTEMA DE DISEÑO (API Exclusiva)
 
