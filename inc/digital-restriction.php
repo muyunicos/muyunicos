@@ -2,12 +2,12 @@
 /**
  * Muy Únicos - Digital Restriction System
  * 
- * Sistema de restricción de contenido digital v2.7.2 (Fix: Variation Pricing & JSON Data)
+ * Sistema de restricción de contenido digital v2.7.3 (Fix: Autoselect format)
  * Propósito: Restringir productos físicos en subdominios, mostrando solo 
  * productos digitales. Optimizado para rendimiento y compatibilidad.
  * 
  * @package GeneratePress_Child
- * @since 2.7.2
+ * @since 2.7.3
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -632,17 +632,29 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             $is_restricted = $this->is_restricted_user();
             $country       = $this->get_user_country_code();
             
-            if ( $is_restricted ) {
+            if ( $is_restricted || 'AR' !== $country ) {
                 $term_id = MUYU_DIGITAL_FORMAT_ID;
-            } elseif ( 'AR' === $country ) {
-                $term_id = MUYU_PHYSICAL_FORMAT_ID;
             } else {
-                return $defaults;
+                $term_id = MUYU_PHYSICAL_FORMAT_ID;
             }
             
             $term = get_term( $term_id, 'pa_formato' );
             if ( $term && ! is_wp_error( $term ) ) {
-                $defaults['pa_formato'] = $term->slug;
+                // Fix: Asegurar de setear el valor default en la clave correcta (local o global)
+                if ( $product && is_a( $product, 'WC_Product_Variable' ) ) {
+                    $attributes = $product->get_variation_attributes();
+                    if ( isset( $attributes['pa_formato'] ) ) {
+                        $defaults['pa_formato'] = $term->slug;
+                    } elseif ( isset( $attributes['attribute_pa_formato'] ) ) {
+                        $defaults['attribute_pa_formato'] = $term->slug;
+                    } elseif ( isset( $attributes['formato'] ) ) {
+                        $defaults['formato'] = $term->slug;
+                    } else {
+                        $defaults['pa_formato'] = $term->slug;
+                    }
+                } else {
+                    $defaults['pa_formato'] = $term->slug;
+                }
             }
             return $defaults;
         }
@@ -654,14 +666,12 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             $is_restricted = $this->is_restricted_user();
             $country       = $this->get_user_country_code();
 
-            if ( $is_restricted ) {
+            if ( $is_restricted || 'AR' !== $country ) {
                 $target_term_id = MUYU_DIGITAL_FORMAT_ID;
-                $hide_row       = true;
-            } elseif ( 'AR' === $country ) {
+                $hide_row       = $is_restricted; // Ocultamos solo si el dominio está restringido.
+            } else {
                 $target_term_id = MUYU_PHYSICAL_FORMAT_ID;
                 $hide_row       = false;
-            } else {
-                return;
             }
 
             $attributes = $product->get_variation_attributes();
