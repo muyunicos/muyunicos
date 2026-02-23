@@ -356,6 +356,18 @@
     padding: var(--mu-space-xs) 0;
     margin: 0;
     text-align: left;
+    /* Transiciones suaves para hover */
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+}
+
+/* Estado visible del dropdown con animación */
+.country-selector-dropdown[style*="display: block"] {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
 }
 
 .country-selector-dropdown .dropdown-header {
@@ -492,5 +504,10 @@
     .mu-header-country-item {
         left: 20px;
         top: 20px;
+    }
+    
+    /* Dropdown más rápido en móvil */
+    .country-selector-dropdown {
+        transition: opacity 0.15s ease, transform 0.15s ease;
     }
 }
