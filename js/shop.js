@@ -133,22 +133,18 @@
         container.parentNode.insertBefore(sentinelWrapper, container.nextSibling);
 
         let isLoading = false;
-        let scrollTimeout;
+        let autoLoadCount = 0; // Contador de cargas automáticas
 
         // 3. Configurar IntersectionObserver (API nativa eficiente)
         const observer = new IntersectionObserver((entries) => {
-            if (entries[0].isIntersecting && !isLoading && nextLink && loadMoreBtn.style.display === 'none') {
+            // Solo carga automáticamente la primera vez (autoLoadCount === 0)
+            if (entries[0].isIntersecting && !isLoading && nextLink && autoLoadCount === 0) {
                 loadNextPage();
-            } else if (!entries[0].isIntersecting) {
-                 // Si el usuario sale del rango de intersección, reiniciamos el estado del botón a visible 
-                 // después de un tiempo prudencial si es que quedó pausado
-                 clearTimeout(scrollTimeout);
-                 scrollTimeout = setTimeout(() => {
-                     if (nextLink && !isLoading) {
-                         loadMoreBtn.style.display = 'block';
-                         sentinel.style.display = 'none';
-                     }
-                 }, 500); // Muestra el botón si el usuario se alejó y vuelve a acercarse.
+            } 
+            // Si entra en rango, ya cargó la primera vez y no está cargando: mostramos botón
+            else if (entries[0].isIntersecting && !isLoading && nextLink && autoLoadCount > 0) {
+                 loadMoreBtn.style.display = 'block';
+                 sentinel.style.display = 'none';
             }
         }, {
             rootMargin: '200px' // Cargar 200px antes de llegar al final
@@ -226,10 +222,19 @@
                         // Actualizar URL del navegador (SEO friendly)
                         window.history.replaceState(null, '', url);
                         
-                        // Si cargó exitosamente, forzamos la aparición del botón
-                        // para que el usuario tenga que interactuar en la próxima carga
-                        loadMoreBtn.style.display = 'block';
-                        sentinel.style.display = 'none';
+                        // Incrementamos el contador de cargas automáticas exitosas
+                        autoLoadCount++;
+                        
+                        // Ocultar spinner. El Observer volverá a disparar el botón si está en pantalla
+                        sentinelWrapper.classList.remove('loading');
+                        
+                        // Si ya está en pantalla, mostramos el botón directo (para evitar delay)
+                        const rect = sentinelWrapper.getBoundingClientRect();
+                        if (rect.top <= (window.innerHeight || document.documentElement.clientHeight) + 200) {
+                            loadMoreBtn.style.display = 'block';
+                            sentinel.style.display = 'none';
+                        }
+
                     } else {
                         // Fin de catálogo
                         nextLink = null;
