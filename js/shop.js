@@ -1,7 +1,6 @@
 /**
  * Muy Únicos - Funcionalidad de Tienda y Producto (Shop/Single Product)
- * 
- * Incluye:
+ * * Incluye:
  * - Auto-selección inteligente de variación
  * - Infinite Scroll Ligero (WooCommerce + GP Optimized)
  * - Carrusel Híbrido Global (Grilla Desktop / Drag Mobile)
@@ -17,6 +16,7 @@
     // ============================================
     // 1. AUTO-SELECCIÓN DE VARIACIÓN
     // ============================================
+    
     // Delegar evento en el document para soportar inicializaciones AJAX (ej: Quick Views)
     $(document).on('wc_variation_form', 'form.variations_form', function() {
         var $form = $(this);
@@ -27,12 +27,13 @@
         }
         
         var targetSlug = $data.data('target-slug');
-        var hideRow = $data.data('hide-row') === true;
+        // Fix: Asegurar la validación ya sea que jQuery lo lea como boolean o como string
+        var hideRow = $data.data('hide-row') === true || $data.attr('data-hide-row') === 'true';
         
-        // Ejecutar con un pequeño delay para asegurar que WC renderizó los options
+        // Ejecutar con un delay ligeramente mayor para asegurar que WC renderizó los options
         setTimeout(function() {
             autoSelectFormatVariation($form, targetSlug, hideRow);
-        }, 100);
+        }, 150);
     });
 
     // Ejecutar fallback en page load por si el evento ya pasó
@@ -42,14 +43,16 @@
             var $data = $('#mu-format-autoselect-data');
             if ( $data.length ) {
                 setTimeout(function() {
-                    autoSelectFormatVariation($form, $data.data('target-slug'), $data.data('hide-row') === true);
-                }, 150);
+                    var targetSlug = $data.data('target-slug');
+                    var hideRow = $data.data('hide-row') === true || $data.attr('data-hide-row') === 'true';
+                    autoSelectFormatVariation($form, targetSlug, hideRow);
+                }, 200); // Un poco más de margen en el ready
             }
         }
         
-        // Inicializar funcionalidades UI
-        initInfiniteScroll();
-        initHybridCarousel();
+        // Inicializar funcionalidades UI (Asegúrate de tener estas funciones definidas más abajo)
+        if (typeof initInfiniteScroll === 'function') initInfiniteScroll();
+        if (typeof initHybridCarousel === 'function') initHybridCarousel();
     });
     
     function autoSelectFormatVariation($form, targetSlug, hideRow) {
@@ -79,7 +82,10 @@
         // Seleccionar el valor objetivo
         $select.val(targetSlug);
         $select.trigger('change');
-        // $form.trigger('check_variations'); // Evitar loops si WC ya está chequeando
+        
+        // FIX CRÍTICO: Avisar a WooCommerce para que actualice el precio, la foto 
+        // y habilite el botón de "Añadir al carrito".
+        $form.trigger('check_variations'); 
         
         if ( hideRow ) {
             hideRowAndTable($select, $form);
@@ -90,11 +96,11 @@
         var $row = $select.closest('tr');
         $row.hide();
         
+        // Si no quedan variaciones visibles, ocultar la tabla entera (con fade para que no sea tan brusco)
         if ( $form.find('table.variations tr:visible').length === 0 ) {
             $form.find('.variations').fadeOut(200);
         }
     }
-
     // ============================================
     // 2. INFINITE SCROLL LIGERO
     // ============================================
