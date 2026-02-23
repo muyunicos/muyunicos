@@ -1,11 +1,11 @@
 <?php
 /**
  * Muy Únicos - Digital Restriction System
- * * Sistema de restricción de contenido digital v3.2.0 (Frontend Hiding & Price Fix)
+ * * Sistema de restricción de contenido digital v3.3.0 (Clean + Debug Mode)
  * Propósito: Restringir productos físicos en subdominios, mostrando solo 
  * productos digitales. Optimizado para rendimiento y compatibilidad.
  * * @package GeneratePress_Child
- * @since 3.2.0
+ * @since 3.3.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -29,6 +29,9 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         const OPTION_LAST_UPDATE  = 'muyu_digital_list_updated';
         const TRANSIENT_REBUILD   = 'muyu_rebuild_scheduled';
         
+        // VARIABLE DE DIAGNÓSTICO: Cambiar a 'false' cuando termines de revisar
+        private bool $debug_mode = true;
+        
         public static function get_instance(): self {
             if ( null === self::$instance ) {
                 self::$instance = new self();
@@ -41,30 +44,61 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         }
         
         private function init_hooks(): void {
-            // ---- Gestión de índices (Admin) ----
             add_action( 'wc_ajax_mu_rebuild_digital_list', [ $this, 'ajax_rebuild_indexes' ] );
             add_action( 'woocommerce_update_product', [ $this, 'schedule_rebuild' ] );
             add_action( 'admin_init', [ $this, 'ensure_indexes_exist' ], 5 );
             add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_admin_assets' ] );
             add_action( 'shutdown', [ $this, 'execute_scheduled_rebuild' ] );
             
-            // ---- Filtrado de contenido (Frontend) ----
             add_action( 'pre_get_posts', [ $this, 'filter_product_queries' ], 50 );
             add_action( 'template_redirect', [ $this, 'handle_redirects' ], 20 );
             add_filter( 'get_terms_args', [ $this, 'filter_category_terms' ], 10, 2 );
             add_filter( 'wp_get_nav_menu_items', [ $this, 'filter_menu_items' ], 10, 3 );
             
-            // ---- Variaciones y Precios ----
             add_filter( 'woocommerce_product_get_default_attributes', [ $this, 'set_format_default' ], 20, 2 );
-            
-            // FIX PRECIOS: Mostrar explícitamente el precio digital en los listados
             add_filter( 'woocommerce_variable_price_html', [ $this, 'display_digital_price_only' ], 99, 2 );
             add_filter( 'woocommerce_variable_sale_price_html', [ $this, 'display_digital_price_only' ], 99, 2 );
-            
-            // FIX SELECTOR: Ocultar visualmente la variante física en el frontend
             add_action( 'wp_footer', [ $this, 'frontend_variation_script' ], 99 );
+
+            // HOOK DE DIAGNÓSTICO
+            if ( $this->debug_mode ) {
+                add_action( 'woocommerce_before_single_product', [ $this, 'render_debug_panel' ] );
+            }
         }
         
+        // =====================================================================
+        // HERRAMIENTA DE DIAGNÓSTICO (Visible solo para administradores)
+        // =====================================================================
+        public function render_debug_panel(): void {
+            if ( ! current_user_can( 'administrator' ) ) return;
+            global $product;
+            if ( ! $product ) return;
+
+            echo '<div style="background:#111; color:#0f0; padding:20px; margin-bottom:20px; font-family:monospace; font-size:13px; border-left:5px solid #0f0; z-index:99999; position:relative;">';
+            echo '<h3 style="color:#fff; margin-top:0;">🔍 MUYU Debugger (Solo visible para ti)</h3>';
+            echo '<strong>Host actual:</strong> ' . $_SERVER['HTTP_HOST'] . '<br>';
+            echo '<strong>¿Es usuario restringido?</strong> ' . ($this->is_restricted_user() ? 'SÍ (Subdominio internacional)' : 'NO (Argentina)') . '<br>';
+            echo '<strong>Tipo de producto detectado por WC:</strong> <span style="color:yellow; font-size:16px;">' . strtoupper($product->get_type()) . '</span><br>';
+            
+            if ( $product->is_type('variable') ) {
+                $attrs = $product->get_variation_attributes();
+                echo '<strong>Atributos registrados en este producto (Nombres exactos):</strong><br>';
+                foreach ($attrs as $key => $val) {
+                    echo "- <code>" . esc_html($key) . "</code><br>";
+                }
+                
+                echo '<strong>Variaciones hijas activas (IDs):</strong> ';
+                $children = $product->get_children();
+                echo implode(', ', $children) . '<br>';
+            } else {
+                echo '<br><strong style="color:red;">⚠️ ALERTA: WooCommerce cree que esto es un producto SIMPLE.</strong><br>';
+                echo 'Posibles causas:<br>';
+                echo '1. El plugin "Price Based on Country" desactivó todas las variaciones porque no tienen precio en Euros (€).<br>';
+                echo '2. Tienes un "Code Snippet" antiguo aún activo que está filtrando el tipo de producto.<br>';
+            }
+            echo '</div>';
+        }
+
         // =====================================================================
         // HELPERS
         // =====================================================================
@@ -344,15 +378,20 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             
             if ( $term && ! is_wp_error( $term ) ) {
                 $attributes = ( $product && is_a( $product, 'WC_Product_Variable' ) ) ? $product->get_variation_attributes() : [];
-                $key = isset( $attributes['pa_formato'] ) ? 'pa_formato' : ( isset( $attributes['attribute_pa_formato'] ) ? 'attribute_pa_formato' : ( isset( $attributes['formato'] ) ? 'formato' : 'pa_formato' ) );
-                $defaults[$key] = $term->slug;
+                
+                // Limpieza: Ahora comprobamos de forma genérica cuál es el nombre real del atributo
+                $key = '';
+                if ( isset( $attributes['pa_formato'] ) ) $key = 'pa_formato';
+                elseif ( isset( $attributes['attribute_pa_formato'] ) ) $key = 'attribute_pa_formato';
+                elseif ( isset( $attributes['formato'] ) ) $key = 'formato';
+                
+                if ( !empty($key) ) {
+                    $defaults[$key] = $term->slug;
+                }
             }
             return $defaults;
         }
         
-        /**
-         * Fuerza a que en los listados y catálogo se muestre solo el precio de la versión digital.
-         */
         public function display_digital_price_only( $price, $product ) {
             if ( ! $this->is_restricted_user() ) return $price;
             
@@ -360,15 +399,15 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             if ( ! $digital_term || is_wp_error( $digital_term ) ) return $price;
 
             $digital_slug = $digital_term->slug;
-            
-            // Iterar sobre las variaciones para encontrar la digital y extraer su precio HTML
             $variations = $product->get_children();
+            
             foreach ( $variations as $variation_id ) {
                 $variation = wc_get_product( $variation_id );
                 if ( ! $variation ) continue;
                 
                 $attributes = $variation->get_attributes();
-                $format = $attributes['pa_formato'] ?? $attributes['formato'] ?? '';
+                // Limpieza: Buscar el valor del formato sin importar el prefijo
+                $format = $attributes['pa_formato'] ?? $attributes['attribute_pa_formato'] ?? $attributes['formato'] ?? '';
                 
                 if ( $format === $digital_slug ) {
                     return $variation->get_price_html();
@@ -378,10 +417,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             return $price;
         }
         
-        /**
-         * Inyecta CSS y JS para ocultar la opción física de cara al cliente,
-         * manteniendo la integridad del producto variable para WooCommerce.
-         */
         public function frontend_variation_script(): void {
             if ( ! $this->is_restricted_user() ) return;
             
@@ -391,12 +426,10 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             $phys_slug = $phys_term->slug;
             ?>
             <style>
-                /* Ocultar visualmente la opción física del selector para evitar destellos (flicker) */
                 select[name^="attribute_pa_formato"] option[value="<?php echo esc_attr($phys_slug); ?>"],
                 select[name^="attribute_formato"] option[value="<?php echo esc_attr($phys_slug); ?>"] {
                     display: none !important;
                 }
-                /* Ocultar el botón de limpiar variaciones para evitar deseleccionar la única opción */
                 .variations_form .reset_variations {
                     display: none !important;
                     visibility: hidden !important;
@@ -405,7 +438,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             <script type="text/javascript">
                 document.addEventListener('DOMContentLoaded', function() {
                     if (typeof jQuery !== 'undefined') {
-                        // Engancharnos al evento de actualización de WooCommerce
                         jQuery(document).on('woocommerce_update_variation_values', function(e) {
                             var $form = jQuery(e.target);
                             var $select = $form.find('select[name^="attribute_pa_formato"], select[name^="attribute_formato"]');
@@ -413,17 +445,12 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                             if ($select.length) {
                                 var $physOption = $select.find('option[value="<?php echo esc_js($phys_slug); ?>"]');
                                 if ($physOption.length) {
-                                    // Removemos la opción para que no se pueda seleccionar mediante el teclado o scripts de terceros
                                     $physOption.remove();
                                     $select.trigger('change');
                                 }
                                 
-                                // MEJORA: Si solo queda la opción Digital y la opción por defecto ("Elige una opción"),
-                                // ocultamos toda la fila (etiqueta + selector) para una UI más limpia.
                                 if ($select.find('option').length <= 2) {
                                     $select.closest('tr').hide();
-                                    
-                                    // Si no hay más selectores de variación visibles, ocultamos la tabla entera
                                     if ($form.find('table.variations tbody tr:visible').length === 0) {
                                         $form.find('table.variations').hide();
                                     }
