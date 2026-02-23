@@ -116,28 +116,63 @@
         pagination.style.display = 'none';
 
         // 2. Crear el "Centinela" (Elemento invisible que detecta cuando llegamos al fondo)
+        const sentinelWrapper = document.createElement('div');
+        sentinelWrapper.className = 'mu-scroll-sentinel-wrapper';
+        
         const sentinel = document.createElement('div');
         sentinel.className = 'mu-scroll-sentinel';
         sentinel.innerHTML = '<div class="mu-spinner"></div>';
-        container.parentNode.insertBefore(sentinel, container.nextSibling);
+        
+        const loadMoreBtn = document.createElement('button');
+        loadMoreBtn.className = 'mu-load-more-btn';
+        loadMoreBtn.innerText = 'Cargar más resultados';
+        loadMoreBtn.style.display = 'none'; // Inicialmente oculto
+
+        sentinelWrapper.appendChild(sentinel);
+        sentinelWrapper.appendChild(loadMoreBtn);
+        container.parentNode.insertBefore(sentinelWrapper, container.nextSibling);
 
         let isLoading = false;
+        let scrollTimeout;
 
         // 3. Configurar IntersectionObserver (API nativa eficiente)
         const observer = new IntersectionObserver((entries) => {
-            if (entries[0].isIntersecting && !isLoading && nextLink) {
+            if (entries[0].isIntersecting && !isLoading && nextLink && loadMoreBtn.style.display === 'none') {
                 loadNextPage();
+            } else if (!entries[0].isIntersecting) {
+                 // Si el usuario sale del rango de intersección, reiniciamos el estado del botón a visible 
+                 // después de un tiempo prudencial si es que quedó pausado
+                 clearTimeout(scrollTimeout);
+                 scrollTimeout = setTimeout(() => {
+                     if (nextLink && !isLoading) {
+                         loadMoreBtn.style.display = 'block';
+                         sentinel.style.display = 'none';
+                     }
+                 }, 500); // Muestra el botón si el usuario se alejó y vuelve a acercarse.
             }
         }, {
             rootMargin: '200px' // Cargar 200px antes de llegar al final
         });
 
-        observer.observe(sentinel);
+        observer.observe(sentinelWrapper);
+        
+        // Evento click para el botón "Cargar más"
+        loadMoreBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            loadMoreBtn.style.display = 'none';
+            sentinel.style.display = 'flex'; // Volver a mostrar el spinner
+            if (!isLoading && nextLink) {
+                loadNextPage();
+            }
+        });
 
         // 4. Función de Carga
         async function loadNextPage() {
             isLoading = true;
-            sentinel.classList.add('loading');
+            sentinelWrapper.classList.add('loading');
+            loadMoreBtn.style.display = 'none';
+            sentinel.style.display = 'flex';
+            
             const url = nextLink.href;
 
             try {
@@ -190,10 +225,15 @@
                         nextLink = newNextLink;
                         // Actualizar URL del navegador (SEO friendly)
                         window.history.replaceState(null, '', url);
+                        
+                        // Si cargó exitosamente, forzamos la aparición del botón
+                        // para que el usuario tenga que interactuar en la próxima carga
+                        loadMoreBtn.style.display = 'block';
+                        sentinel.style.display = 'none';
                     } else {
                         // Fin de catálogo
                         nextLink = null;
-                        sentinel.remove();
+                        sentinelWrapper.remove();
                         observer.disconnect();
                     }
                     
@@ -205,11 +245,11 @@
                 console.error('Error Infinite Scroll:', error);
                 // Si falla, mostramos la paginación normal como fallback
                 pagination.style.display = 'block';
-                sentinel.remove();
+                sentinelWrapper.remove();
             }
 
             isLoading = false;
-            sentinel.classList.remove('loading');
+            sentinelWrapper.classList.remove('loading');
         }
     }
 
