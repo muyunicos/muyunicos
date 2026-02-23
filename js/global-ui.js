@@ -1,14 +1,14 @@
 /**
  * MUYUNICOS - Global UI Scripts
  * Consolidated: Country Selector, WPLingua Toggle, Share Button
- * Version: 1.1.2
+ * Version: 1.2.0
  */
 
 (function() {
     'use strict';
 
     /**
-     * Country Selector - Dropdown functionality
+     * Country Selector - Dropdown functionality with hover support
      */
     function initCountrySelector() {
         var containers = document.querySelectorAll('.country-redirect-container'); 
@@ -20,32 +20,92 @@
             
             if (!trigger || !dropdown) return;
             
+            var closeTimeout = null;
+            
+            // Función para abrir el dropdown
+            function openDropdown() {
+                if (closeTimeout) {
+                    clearTimeout(closeTimeout);
+                    closeTimeout = null;
+                }
+                
+                // Cerrar otros dropdowns primero
+                document.querySelectorAll('.country-selector-dropdown').forEach(function(dd) {
+                    if (dd !== dropdown) {
+                        dd.style.display = 'none';
+                    }
+                });
+                document.querySelectorAll('.country-selector-trigger').forEach(function(tr) {
+                    if (tr !== trigger) {
+                        tr.setAttribute('aria-expanded', 'false');
+                    }
+                });
+                
+                dropdown.style.display = 'block';
+                trigger.setAttribute('aria-expanded', 'true');
+            }
+            
+            // Función para cerrar el dropdown con delay
+            function closeDropdown() {
+                closeTimeout = setTimeout(function() {
+                    dropdown.style.display = 'none';
+                    trigger.setAttribute('aria-expanded', 'false');
+                    closeTimeout = null;
+                }, 200); // Delay de 200ms antes de cerrar
+            }
+            
+            // Hover sobre el trigger (bandera)
+            trigger.addEventListener('mouseenter', function() {
+                openDropdown();
+            });
+            
+            trigger.addEventListener('mouseleave', function() {
+                closeDropdown();
+            });
+            
+            // Mantener abierto cuando el cursor está sobre el dropdown
+            dropdown.addEventListener('mouseenter', function() {
+                if (closeTimeout) {
+                    clearTimeout(closeTimeout);
+                    closeTimeout = null;
+                }
+            });
+            
+            dropdown.addEventListener('mouseleave', function() {
+                closeDropdown();
+            });
+            
+            // Mantener funcionalidad de click para accesibilidad
             trigger.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
                 var isVisible = dropdown.style.display === 'block';
                 
-                // Close any other open dropdowns first
-                document.querySelectorAll('.country-selector-dropdown').forEach(function(dd) {
-                    dd.style.display = 'none';
-                });
-                document.querySelectorAll('.country-selector-trigger').forEach(function(tr) {
-                    tr.setAttribute('aria-expanded', 'false');
-                });
-
-                dropdown.style.display = isVisible ? 'none' : 'block';
-                trigger.setAttribute('aria-expanded', isVisible ? 'false' : 'true');
+                if (isVisible) {
+                    dropdown.style.display = 'none';
+                    trigger.setAttribute('aria-expanded', 'false');
+                } else {
+                    openDropdown();
+                }
             });
             
+            // Cerrar al hacer click fuera
             document.addEventListener('click', function(e) {
                 if (!trigger.contains(e.target) && !dropdown.contains(e.target)) {
+                    if (closeTimeout) {
+                        clearTimeout(closeTimeout);
+                    }
                     dropdown.style.display = 'none';
                     trigger.setAttribute('aria-expanded', 'false');
                 }
             });
             
+            // Cerrar con tecla Escape
             document.addEventListener('keydown', function(e) {
                 if (e.key === 'Escape' && dropdown.style.display === 'block') {
+                    if (closeTimeout) {
+                        clearTimeout(closeTimeout);
+                    }
                     dropdown.style.display = 'none';
                     trigger.setAttribute('aria-expanded', 'false');
                     trigger.focus();
