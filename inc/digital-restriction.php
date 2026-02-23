@@ -1,25 +1,20 @@
 <?php
 /**
  * Muy Únicos - Digital Restriction System
- * 
- * Sistema de restricción de contenido digital v2.7.3 (Fix: Autoselect format)
+ * * Sistema de restricción de contenido digital v3.0.0 (Optimizada para PHP 8.3)
  * Propósito: Restringir productos físicos en subdominios, mostrando solo 
  * productos digitales. Optimizado para rendimiento y compatibilidad.
- * 
- * @package GeneratePress_Child
- * @since 2.7.3
+ * * @package GeneratePress_Child
+ * @since 3.0.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit; // Exit if accessed directly
 }
 
-if ( ! defined( 'MUYU_PHYSICAL_FORMAT_ID' ) ) {
-    define( 'MUYU_PHYSICAL_FORMAT_ID', 112 );
-}
-if ( ! defined( 'MUYU_DIGITAL_FORMAT_ID' ) ) {
-    define( 'MUYU_DIGITAL_FORMAT_ID', 111 );
-}
+// Constantes de entorno con fallback seguro
+defined( 'MUYU_PHYSICAL_FORMAT_ID' ) || define( 'MUYU_PHYSICAL_FORMAT_ID', 112 );
+defined( 'MUYU_DIGITAL_FORMAT_ID' )  || define( 'MUYU_DIGITAL_FORMAT_ID', 111 );
 
 if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
 
@@ -28,8 +23,8 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
      */
     class MUYU_Digital_Restriction_System {
         
-        private static $instance = null;
-        private $cache = [];
+        private static ?self $instance = null;
+        private array $cache = [];
         
         const OPTION_PRODUCT_IDS  = 'muyu_digital_product_ids';
         const OPTION_CATEGORY_IDS = 'muyu_digital_category_ids';
@@ -38,7 +33,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         const OPTION_LAST_UPDATE  = 'muyu_digital_list_updated';
         const TRANSIENT_REBUILD   = 'muyu_rebuild_scheduled';
         
-        public static function get_instance() {
+        public static function get_instance(): self {
             if ( null === self::$instance ) {
                 self::$instance = new self();
             }
@@ -49,10 +44,10 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             $this->init_hooks();
         }
         
-        private function init_hooks() {
+        private function init_hooks(): void {
             // ---- Gestión de índices (Admin) ----
             add_action( 'wc_ajax_mu_rebuild_digital_list', [ $this, 'ajax_rebuild_indexes' ] );
-            add_action( 'woocommerce_update_product', [ $this, 'schedule_rebuild' ], 10, 1 );
+            add_action( 'woocommerce_update_product', [ $this, 'schedule_rebuild' ] );
             add_action( 'admin_init', [ $this, 'ensure_indexes_exist' ], 5 );
             add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_admin_assets' ] );
             add_action( 'shutdown', [ $this, 'execute_scheduled_rebuild' ] );
@@ -69,9 +64,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             add_filter( 'woocommerce_variation_is_visible', [ $this, 'hide_physical_variation' ], 10, 4 );
             add_filter( 'woocommerce_dropdown_variation_attribute_options_args', [ $this, 'clean_variation_dropdown' ], 10, 1 );
             add_filter( 'woocommerce_variation_prices', [ $this, 'filter_variation_prices' ], 10, 3 );
-            // Fix crítico: filtra el JSON de variaciones disponibles que WC manda al JS.
-            // Sin este hook, el JS recibe datos de variaciones físicas y no puede matchear
-            // la selección automática "Digital", causando el error 'Elige las opciones'.
             add_filter( 'woocommerce_available_variation', [ $this, 'filter_available_variation_data' ], 10, 3 );
             
             // ---- Auto-selección inteligente de variación ----
@@ -80,17 +72,28 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         }
         
         // =====================================================================
-        // DETECCIÓN DE USUARIOS Y CONTEXTO
+        // HELPERS: DETECCIÓN Y UTILIDADES
         // =====================================================================
         
-        public function is_restricted_user() {
-            $host = isset( $_SERVER['HTTP_HOST'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ) ) : '';
-            $host = preg_replace( '/:\d+$/', '', $host ); // Quitar puerto
+        /**
+         * Helper centralizado para extraer el slug del formato (PHP 8.3 null coalescing)
+         */
+        private function extract_format( array $attributes ): string {
+            return $attributes['pa_formato'] 
+                ?? $attributes['attribute_pa_formato'] 
+                ?? $attributes['formato'] 
+                ?? $attributes['attribute_formato'] 
+                ?? '';
+        }
+
+        public function is_restricted_user(): bool {
+            $host = sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ?? '' ) );
+            $host = preg_replace( '/:\d+$/', '', $host );
             $host = str_replace( 'www.', '', $host );
-            return ( 'muyunicos.com' !== $host );
+            return 'muyunicos.com' !== $host;
         }
         
-        public function get_user_country_code() {
+        public function get_user_country_code(): string {
             if ( isset( $this->cache['country_code'] ) ) {
                 return $this->cache['country_code'];
             }
@@ -99,28 +102,29 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 $code = muyu_get_current_country_from_subdomain();
             } else {
                 $host = preg_replace( '/:\d+$/', '', trim( $_SERVER['HTTP_HOST'] ?? '' ) );
-                $parts = explode( '.', $host );
-                if ( count( $parts ) >= 3 ) {
-                    $subdomain = strtolower( $parts[0] );
-                    $subdomain_map = [
-                        'mexico' => 'MX', 'br' => 'BR', 'co' => 'CO', 'ec' => 'EC',
-                        'cl' => 'CL', 'pe' => 'PE', 'ar' => 'AR'
-                    ];
-                    $code = $subdomain_map[ $subdomain ] ?? ( 2 === strlen( $subdomain ) ? strtoupper( $subdomain ) : 'AR' );
-                } else {
-                    $code = 'AR';
-                }
+                $subdomain = strtolower( explode( '.', $host )[0] ?? '' );
+                
+                // Match expression (PHP 8.0+)
+                $code = match ( $subdomain ) {
+                    'mexico' => 'MX',
+                    'br'     => 'BR',
+                    'co'     => 'CO',
+                    'ec'     => 'EC',
+                    'cl'     => 'CL',
+                    'pe'     => 'PE',
+                    'ar'     => 'AR',
+                    default  => ( 2 === strlen( $subdomain ) ) ? strtoupper( $subdomain ) : 'AR',
+                };
             }
             
-            $this->cache['country_code'] = $code;
-            return $code;
+            return $this->cache['country_code'] = $code;
         }
 
         // =====================================================================
         // GESTIÓN DE ÍNDICES (REBUILD OPTIMIZADO)
         // =====================================================================
         
-        public function rebuild_digital_indexes() {
+        public function rebuild_digital_indexes(): int {
             $digital_product_ids = $this->get_digital_product_ids();
             
             if ( empty( $digital_product_ids ) ) {
@@ -136,7 +140,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             return count( $digital_product_ids );
         }
         
-        private function get_digital_product_ids() {
+        private function get_digital_product_ids(): array {
             global $wpdb;
             $sql = "
                 SELECT DISTINCT p.ID as product_id
@@ -146,9 +150,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 AND p.post_status = 'publish'
                 AND pm.meta_key IN ('_virtual', '_downloadable')
                 AND pm.meta_value = 'yes'
-                
                 UNION
-                
                 SELECT DISTINCT p.post_parent as product_id
                 FROM {$wpdb->posts} p
                 INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
@@ -163,11 +165,11 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             return array_filter( array_unique( array_map( 'intval', $ids ) ) );
         }
         
-        private function get_product_terms( $product_ids ) {
+        private function get_product_terms( array $product_ids ): array {
             global $wpdb;
-            $ids_string = implode( ',', array_map( 'intval', $product_ids ) );
-            if ( empty( $ids_string ) ) return [ [], [] ];
+            if ( empty( $product_ids ) ) return [ [], [] ];
 
+            $ids_string = implode( ',', array_map( 'intval', $product_ids ) );
             $sql = "
                 SELECT DISTINCT t.term_id, tt.taxonomy 
                 FROM {$wpdb->terms} t
@@ -192,49 +194,59 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             return [ array_unique( $category_ids ), array_unique( $tag_ids ) ];
         }
         
-        private function expand_category_hierarchy( $category_ids ) {
+        private function expand_category_hierarchy( array $category_ids ): array {
             $expanded = $category_ids;
             foreach ( $category_ids as $cat_id ) {
                 $ancestors = get_ancestors( $cat_id, 'product_cat', 'taxonomy' );
                 if ( ! empty( $ancestors ) ) {
-                    $expanded = array_merge( $expanded, $ancestors );
+                    array_push($expanded, ...$ancestors); // PHP 8+ spread operator
                 }
             }
             return array_unique( array_map( 'intval', $expanded ) );
         }
         
-        private function build_redirect_map( $digital_product_ids ) {
+        /**
+         * Optimizada: Resuelve N+1 Queries haciendo una sola consulta de mapeo
+         */
+        private function build_redirect_map( array $digital_product_ids ): array {
             global $wpdb;
             if ( empty( $digital_product_ids ) ) return [];
             
             $ids_string = implode( ',', array_map( 'intval', $digital_product_ids ) );
-            $sql = "SELECT ID, post_name FROM {$wpdb->posts} WHERE ID IN ($ids_string)";
+            // Filtrar directamente en SQL los productos imprimibles
+            $sql = "SELECT ID, post_name FROM {$wpdb->posts} WHERE ID IN ($ids_string) AND post_name LIKE '%-imprimible%'";
             $digital_products = $wpdb->get_results( $sql );
             
-            $redirect_map = [];
+            if ( empty( $digital_products ) ) return [];
+
+            $base_slugs_map = [];
             foreach ( $digital_products as $product ) {
-                if ( false !== strpos( $product->post_name, '-imprimible' ) ) {
-                    $base_slug = str_replace( '-imprimible', '', $product->post_name );
-                    $physical_id = $wpdb->get_var( 
-                        $wpdb->prepare(
-                            "SELECT ID FROM {$wpdb->posts} 
-                            WHERE post_name = %s 
-                            AND post_type = 'product' 
-                            AND post_status = 'publish' 
-                            LIMIT 1",
-                            $base_slug
-                        )
-                    );
-                    
-                    if ( $physical_id && ! in_array( (int) $physical_id, $digital_product_ids, true ) ) {
-                        $redirect_map[ (int) $physical_id ] = (int) $product->ID;
-                    }
+                $base_slug = str_replace( '-imprimible', '', $product->post_name );
+                $base_slugs_map[$base_slug] = (int) $product->ID;
+            }
+
+            // Una única consulta para encontrar todos los físicos equivalentes
+            $slugs_in = "'" . implode( "','", array_map( 'esc_sql', array_keys( $base_slugs_map ) ) ) . "'";
+            $physical_sql = "
+                SELECT ID, post_name FROM {$wpdb->posts} 
+                WHERE post_name IN ($slugs_in) 
+                AND post_type = 'product' 
+                AND post_status = 'publish'
+            ";
+            $physical_products = $wpdb->get_results( $physical_sql );
+
+            $redirect_map = [];
+            foreach ( $physical_products as $phys ) {
+                $phys_id = (int) $phys->ID;
+                if ( ! in_array( $phys_id, $digital_product_ids, true ) ) {
+                    $redirect_map[ $phys_id ] = $base_slugs_map[ $phys->post_name ];
                 }
             }
+
             return $redirect_map;
         }
         
-        private function save_indexes( $product_ids, $category_ids, $tag_ids, $redirect_map ) {
+        private function save_indexes( array $product_ids, array $category_ids, array $tag_ids, array $redirect_map ): void {
             update_option( self::OPTION_PRODUCT_IDS, $product_ids, false );
             update_option( self::OPTION_CATEGORY_IDS, $category_ids, false );
             update_option( self::OPTION_TAG_IDS, $tag_ids, false );
@@ -243,19 +255,15 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             delete_transient( self::TRANSIENT_REBUILD );
         }
         
-        private function save_empty_indexes() {
-            update_option( self::OPTION_PRODUCT_IDS, [], false );
-            update_option( self::OPTION_CATEGORY_IDS, [], false );
-            update_option( self::OPTION_TAG_IDS, [], false );
-            update_option( self::OPTION_REDIRECT_MAP, [], false );
-            update_option( self::OPTION_LAST_UPDATE, current_time( 'mysql' ), false );
+        private function save_empty_indexes(): void {
+            $this->save_indexes( [], [], [], [] );
         }
 
         // =====================================================================
         // HANDLERS DE EVENTOS Y ADMIN UI
         // =====================================================================
         
-        public function ajax_rebuild_indexes() {
+        public function ajax_rebuild_indexes(): void {
             check_ajax_referer( 'muyu-rebuild-nonce', 'nonce' );
             if ( ! current_user_can( 'manage_woocommerce' ) ) {
                 wp_send_json_error( 'Permisos insuficientes' );
@@ -265,29 +273,29 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             wp_send_json_success( sprintf( 'Índice reconstruido correctamente. Total productos digitales: %d', $count ) );
         }
         
-        public function schedule_rebuild( $product_id ) {
+        public function schedule_rebuild(): void {
             if ( ! get_transient( self::TRANSIENT_REBUILD ) ) {
                 set_transient( self::TRANSIENT_REBUILD, true, 120 );
             }
         }
         
-        public function execute_scheduled_rebuild() {
+        public function execute_scheduled_rebuild(): void {
             if ( get_transient( self::TRANSIENT_REBUILD ) ) {
                 $this->rebuild_digital_indexes();
             }
         }
         
-        public function ensure_indexes_exist() {
+        public function ensure_indexes_exist(): void {
             if ( false === get_option( self::OPTION_PRODUCT_IDS, false ) ) {
                 $this->rebuild_digital_indexes();
             }
         }
         
-        public function enqueue_admin_assets( $hook ) {
+        public function enqueue_admin_assets( string $hook ): void {
             if ( 'edit.php' !== $hook ) return;
 
             $screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
-            $is_product = ( $screen && 'edit-product' === $screen->id ) || ( isset( $_GET['post_type'] ) && 'product' === $_GET['post_type'] );
+            $is_product = ( $screen?->id === 'edit-product' ) || ( ($_GET['post_type'] ?? '') === 'product' );
             
             if ( ! $is_product ) return;
 
@@ -307,7 +315,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         // FILTRADO DE QUERIES (PRE_GET_POSTS)
         // =====================================================================
         
-        public function filter_product_queries( $query ) {
+        public function filter_product_queries( $query ): void {
             if ( is_admin() || ! $query->is_main_query() ) return;
             if ( $query->is_product() || ( $query->is_singular() && 'product' === $query->get( 'post_type' ) ) ) return;
             
@@ -319,43 +327,32 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 'product' === $query->get( 'post_type' )
             );
             
-            if ( ! $is_shop_query ) return;
+            if ( ! $is_shop_query || ! $this->is_restricted_user() ) return;
             
-            if ( $this->is_restricted_user() ) {
-                $digital_ids = get_option( self::OPTION_PRODUCT_IDS, false );
-                
-                if ( false === $digital_ids ) {
-                    $this->rebuild_digital_indexes();
-                    $digital_ids = get_option( self::OPTION_PRODUCT_IDS, [] );
-                }
-                
-                if ( empty( $digital_ids ) ) {
-                    $digital_ids = [ 0 ];
-                } else {
-                    $digital_ids = array_map( 'intval', (array) $digital_ids );
-                }
-                
-                $query->set( 'post__in', $digital_ids );
+            $digital_ids = get_option( self::OPTION_PRODUCT_IDS, false );
+            
+            if ( false === $digital_ids ) {
+                $this->rebuild_digital_indexes();
+                $digital_ids = get_option( self::OPTION_PRODUCT_IDS, [] );
             }
+            
+            $digital_ids = empty( $digital_ids ) ? [ 0 ] : array_map( 'intval', (array) $digital_ids );
+            $query->set( 'post__in', $digital_ids );
         }
 
         // =====================================================================
         // FILTROS FRONTEND (MENÚS Y TAXONOMÍAS)
         // =====================================================================
         
-        public function filter_category_terms( $args, $taxonomies ) {
+        public function filter_category_terms( array $args, array $taxonomies ): array {
             if ( is_admin() || wp_is_json_request() ) return $args;
-            if ( ! in_array( 'product_cat', (array) $taxonomies, true ) || ! $this->is_restricted_user() ) return $args;
+            if ( ! in_array( 'product_cat', $taxonomies, true ) || ! $this->is_restricted_user() ) return $args;
             
-            $digital_cat_ids = get_option( self::OPTION_CATEGORY_IDS, [] );
-            $digital_cat_ids = array_map( 'intval', (array) $digital_cat_ids );
+            $digital_cat_ids = array_map( 'intval', (array) get_option( self::OPTION_CATEGORY_IDS, [] ) );
             
             if ( ! empty( $args['include'] ) ) {
                 $current = array_map( 'intval', is_array( $args['include'] ) ? $args['include'] : explode( ',', $args['include'] ) );
-                $args['include'] = array_intersect( $current, $digital_cat_ids );
-                if ( empty( $args['include'] ) ) {
-                    $args['include'] = [ 0 ];
-                }
+                $args['include'] = array_intersect( $current, $digital_cat_ids ) ?: [ 0 ];
             } else {
                 $args['include'] = empty( $digital_cat_ids ) ? [ 0 ] : $digital_cat_ids;
             }
@@ -363,25 +360,21 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             return $args;
         }
         
-        public function filter_menu_items( $items, $menu, $args ) {
+        public function filter_menu_items( array $items, $menu, array $args ): array {
             if ( is_admin() || wp_is_json_request() || ! $this->is_restricted_user() ) return $items;
             
-            $digital_cat_ids = get_option( self::OPTION_CATEGORY_IDS, [] );
-            $digital_cat_ids = array_map( 'intval', (array) $digital_cat_ids );
+            $digital_cat_ids = array_map( 'intval', (array) get_option( self::OPTION_CATEGORY_IDS, [] ) );
             
-            return array_filter( $items, function( $item ) use ( $digital_cat_ids ) {
-                if ( isset( $item->object ) && 'product_cat' === $item->object ) {
-                    return in_array( (int) $item->object_id, $digital_cat_ids, true );
-                }
-                return true;
-            });
+            return array_filter( $items, fn($item) => 
+                ! (isset($item->object) && 'product_cat' === $item->object) || in_array((int)$item->object_id, $digital_cat_ids, true)
+            );
         }
 
         // =====================================================================
         // REDIRECCIONES
         // =====================================================================
         
-        public function handle_redirects() {
+        public function handle_redirects(): void {
             if ( is_admin() || ! $this->is_restricted_user() ) return;
             if ( ! is_product() && ! is_product_category() && ! is_product_tag() ) return;
             
@@ -401,10 +394,9 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             }
         }
         
-        private function handle_category_redirect() {
+        private function handle_category_redirect(): array {
             $queried_object = get_queried_object();
-            $digital_cats = get_option( self::OPTION_CATEGORY_IDS, [] );
-            $digital_cats = array_map( 'intval', (array) $digital_cats );
+            $digital_cats = array_map( 'intval', (array) get_option( self::OPTION_CATEGORY_IDS, [] ) );
             
             if ( ! $queried_object || in_array( (int) $queried_object->term_id, $digital_cats, true ) ) {
                 return [ false, '' ];
@@ -422,22 +414,19 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             return [ true, '' ];
         }
         
-        private function handle_tag_redirect() {
+        private function handle_tag_redirect(): array {
             $queried_object = get_queried_object();
-            $digital_tags = get_option( self::OPTION_TAG_IDS, [] );
-            $digital_tags = array_map( 'intval', (array) $digital_tags );
+            $digital_tags = array_map( 'intval', (array) get_option( self::OPTION_TAG_IDS, [] ) );
             
-            if ( ! $queried_object || in_array( (int) $queried_object->term_id, $digital_tags, true ) ) {
-                return [ false, '' ];
-            }
-            
-            return [ true, '' ];
+            return [ 
+                ( $queried_object && ! in_array( (int) $queried_object->term_id, $digital_tags, true ) ), 
+                '' 
+            ];
         }
         
-        private function handle_product_redirect() {
+        private function handle_product_redirect(): array {
             global $post;
-            $digital_ids = get_option( self::OPTION_PRODUCT_IDS, [] );
-            $digital_ids = array_map( 'intval', (array) $digital_ids );
+            $digital_ids = array_map( 'intval', (array) get_option( self::OPTION_PRODUCT_IDS, [] ) );
             
             if ( ! $post || in_array( (int) $post->ID, $digital_ids, true ) ) {
                 return [ false, '' ];
@@ -448,25 +437,23 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 return [ true, get_permalink( $redirect_map[ $post->ID ] ) ];
             }
             
-            $target_url = $this->find_digital_category_for_product( $post->ID );
-            return [ true, $target_url ];
+            return [ true, $this->find_digital_category_for_product( $post->ID ) ];
         }
         
-        private function find_digital_category_for_product( $product_id ) {
-            $digital_cats = get_option( self::OPTION_CATEGORY_IDS, [] );
-            $digital_cats = array_map( 'intval', (array) $digital_cats );
+        private function find_digital_category_for_product( int $product_id ): string {
+            $digital_cats = array_map( 'intval', (array) get_option( self::OPTION_CATEGORY_IDS, [] ) );
             $product_cats = wp_get_post_terms( $product_id, 'product_cat', [ 'fields' => 'ids' ] );
             
-            if ( empty( $product_cats ) || is_wp_error( $product_cats ) ) {
-                return '';
-            }
+            if ( empty( $product_cats ) || is_wp_error( $product_cats ) ) return '';
             
+            // Prioridad a la categoría directa
             foreach ( $product_cats as $cat_id ) {
                 if ( in_array( (int) $cat_id, $digital_cats, true ) ) {
                     return get_term_link( (int) $cat_id, 'product_cat' );
                 }
             }
             
+            // Fallback a los ancestros
             foreach ( $product_cats as $cat_id ) {
                 $ancestors = get_ancestors( $cat_id, 'product_cat', 'taxonomy' );
                 foreach ( $ancestors as $ancestor_id ) {
@@ -479,15 +466,13 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             return '';
         }
         
-        private function execute_redirect( $target_url ) {
+        private function execute_redirect( string $target_url ): void {
             global $post;
             
             if ( empty( $target_url ) || is_wp_error( $target_url ) ) {
-                if ( is_product() && isset( $post->post_title ) ) {
-                    $target_url = home_url( '/?s=' . urlencode( $post->post_title ) . '&post_type=product' );
-                } else {
-                    $target_url = wc_get_page_permalink( 'shop' );
-                }
+                $target_url = ( is_product() && isset( $post->post_title ) ) 
+                    ? home_url( '/?s=' . urlencode( $post->post_title ) . '&post_type=product' )
+                    : wc_get_page_permalink( 'shop' );
             }
             
             if ( function_exists( 'insertar_prefijo_idioma' ) && function_exists( 'muyu_country_language_prefix' ) ) {
@@ -505,33 +490,23 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         // GESTIÓN DE VARIACIONES (pa_formato)
         // =====================================================================
         
-        public function hide_physical_variation( $visible, $variation_id, $product_id, $variation ) {
+        public function hide_physical_variation( bool $visible, $variation_id, $product_id, $variation ): bool {
             if ( ! $visible || ! $this->is_restricted_user() ) return $visible;
             
-            $attributes = $variation->get_attributes();
             $physical_term = get_term( MUYU_PHYSICAL_FORMAT_ID, 'pa_formato' );
+            if ( ! $physical_term || is_wp_error( $physical_term ) ) return $visible;
             
-            if ( $physical_term && ! is_wp_error( $physical_term ) ) {
-                // Fix: Soporta pa_formato (global), attribute_pa_formato y atributo local 'formato'
-                $value = isset( $attributes['pa_formato'] ) ? $attributes['pa_formato'] : 
-                         ( isset( $attributes['attribute_pa_formato'] ) ? $attributes['attribute_pa_formato'] : 
-                         ( isset( $attributes['formato'] ) ? $attributes['formato'] : '' ) );
-                
-                if ( $value === $physical_term->slug ) {
-                    return false;
-                }
-            }
-            return $visible;
+            $format_slug = $this->extract_format( $variation->get_attributes() );
+            return $format_slug !== $physical_term->slug;
         }
         
-        public function clean_variation_dropdown( $args ) {
-            if ( ! $this->is_restricted_user() ) return $args;
+        public function clean_variation_dropdown( array $args ): array {
+            if ( ! $this->is_restricted_user() || empty( $args['options'] ) ) return $args;
             
-            // Fix: Soporta pa_formato global y atributo local 'formato' (con o sin prefijo 'attribute_')
-            $attr_name = isset( $args['attribute'] ) ? $args['attribute'] : '';
-            if ( 'pa_formato' !== $attr_name && 'attribute_pa_formato' !== $attr_name && 'formato' !== $attr_name && 'attribute_formato' !== $attr_name ) return $args;
-            
-            if ( empty( $args['options'] ) ) return $args;
+            $attr_name = $args['attribute'] ?? '';
+            if ( ! in_array( $attr_name, ['pa_formato', 'attribute_pa_formato', 'formato', 'attribute_formato'], true ) ) {
+                return $args;
+            }
             
             $physical_term = get_term( MUYU_PHYSICAL_FORMAT_ID, 'pa_formato' );
             if ( ! $physical_term || is_wp_error( $physical_term ) ) return $args;
@@ -545,7 +520,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             return $args;
         }
         
-        public function filter_variation_prices( $prices_array, $product, $for_display ) {
+        public function filter_variation_prices( array $prices_array, $product, $for_display ): array {
             if ( ! $this->is_restricted_user() || empty( $prices_array['price'] ) ) return $prices_array;
             
             $physical_term = get_term( MUYU_PHYSICAL_FORMAT_ID, 'pa_formato' );
@@ -554,21 +529,13 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             $removed = false;
             
             foreach ( $prices_array['price'] as $variation_id => $amount ) {
-                // Fix: Intentar meta global (attribute_pa_formato) primero, luego atributo local (attribute_formato)
-                $format_slug = get_post_meta( $variation_id, 'attribute_pa_formato', true );
-                if ( empty( $format_slug ) ) {
-                    $format_slug = get_post_meta( $variation_id, 'attribute_formato', true );
-                }
+                // Fallback ágil a la BBDD
+                $format_slug = get_post_meta( $variation_id, 'attribute_pa_formato', true ) ?: get_post_meta( $variation_id, 'attribute_formato', true );
                 
-                // Fallback: leer del objeto WC_Product_Variation para máxima compatibilidad
+                // Fallback usando el objeto de WC (lento pero seguro)
                 if ( empty( $format_slug ) ) {
                     $variation_obj = wc_get_product( $variation_id );
-                    if ( $variation_obj ) {
-                        $attrs = $variation_obj->get_attributes();
-                        $format_slug = isset( $attrs['pa_formato'] ) ? $attrs['pa_formato'] : 
-                                       ( isset( $attrs['attribute_pa_formato'] ) ? $attrs['attribute_pa_formato'] : 
-                                       ( isset( $attrs['formato'] ) ? $attrs['formato'] : '' ) );
-                    }
+                    $format_slug = $variation_obj ? $this->extract_format( $variation_obj->get_attributes() ) : '';
                 }
                 
                 if ( $format_slug === $physical_term->slug ) {
@@ -581,9 +548,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 }
             }
             
-            // Fix crítico: WooCommerce llama current() y end() sobre estos arrays tras filtrarlos.
-            // Si los punteros internos del array quedan corruptos (claves discontinuas), min/max
-            // de precios en listados y product page se calcula mal. asort() resetea punteros.
+            // Reparación de punteros tras alterar el array (Crítico para que Min/Max Price funcione en WC)
             if ( $removed ) {
                 if ( ! empty( $prices_array['price'] ) )         asort( $prices_array['price'] );
                 if ( ! empty( $prices_array['regular_price'] ) ) asort( $prices_array['regular_price'] );
@@ -593,103 +558,67 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             return $prices_array;
         }
         
-        /**
-         * Fix crítico: woocommerce_available_variation
-         *
-         * WC serializa TODAS las variaciones visibles a un JSON inline (<script>)
-         * que usa el JS del frontend para hacer matching al seleccionar opciones.
-         * Si una variación física llega a ese JSON (aunque esté oculta del dropdown),
-         * WC no puede resolver el match y lanza: "Error: Elige las opciones del producto".
-         *
-         * Este hook retorna false para las variaciones físicas, lo que hace que WC
-         * las excluya completamente del array de datos JS.
-         *
-         * @param array|false          $data      Datos de la variación o false para excluir.
-         * @param WC_Product_Variable  $product   Producto padre.
-         * @param WC_Product_Variation $variation Variación actual.
-         * @return array|false
-         */
         public function filter_available_variation_data( $data, $product, $variation ) {
             if ( ! $this->is_restricted_user() ) return $data;
             
             $physical_term = get_term( MUYU_PHYSICAL_FORMAT_ID, 'pa_formato' );
             if ( ! $physical_term || is_wp_error( $physical_term ) ) return $data;
             
-            $attributes = $variation->get_attributes();
-            $format_slug = isset( $attributes['pa_formato'] ) ? $attributes['pa_formato'] : 
-                           ( isset( $attributes['attribute_pa_formato'] ) ? $attributes['attribute_pa_formato'] : 
-                           ( isset( $attributes['formato'] ) ? $attributes['formato'] : '' ) );
-            
-            if ( $format_slug === $physical_term->slug ) {
-                // Retornar false excluye la variación del array JSON que recibe el JS de WC
-                return false;
-            }
-            
-            return $data;
+            $format_slug = $this->extract_format( $variation->get_attributes() );
+            return ( $format_slug === $physical_term->slug ) ? false : $data;
         }
         
-        public function set_format_default( $defaults, $product ) {
+        public function set_format_default( array $defaults, $product ): array {
             $is_restricted = $this->is_restricted_user();
             $country       = $this->get_user_country_code();
             
-            if ( $is_restricted || 'AR' !== $country ) {
-                $term_id = MUYU_DIGITAL_FORMAT_ID;
-            } else {
-                $term_id = MUYU_PHYSICAL_FORMAT_ID;
-            }
-            
+            $term_id = ( $is_restricted || 'AR' !== $country ) ? MUYU_DIGITAL_FORMAT_ID : MUYU_PHYSICAL_FORMAT_ID;
             $term = get_term( $term_id, 'pa_formato' );
+            
             if ( $term && ! is_wp_error( $term ) ) {
-                // Fix: Asegurar de setear el valor default en la clave correcta (local o global)
-                if ( $product && is_a( $product, 'WC_Product_Variable' ) ) {
-                    $attributes = $product->get_variation_attributes();
-                    if ( isset( $attributes['pa_formato'] ) ) {
-                        $defaults['pa_formato'] = $term->slug;
-                    } elseif ( isset( $attributes['attribute_pa_formato'] ) ) {
-                        $defaults['attribute_pa_formato'] = $term->slug;
-                    } elseif ( isset( $attributes['formato'] ) ) {
-                        $defaults['formato'] = $term->slug;
-                    } else {
-                        $defaults['pa_formato'] = $term->slug;
-                    }
-                } else {
+                $attributes = ( $product && is_a( $product, 'WC_Product_Variable' ) ) ? $product->get_variation_attributes() : [];
+                
+                if ( isset( $attributes['pa_formato'] ) ) {
                     $defaults['pa_formato'] = $term->slug;
+                } elseif ( isset( $attributes['attribute_pa_formato'] ) ) {
+                    $defaults['attribute_pa_formato'] = $term->slug;
+                } elseif ( isset( $attributes['formato'] ) ) {
+                    $defaults['formato'] = $term->slug;
+                } else {
+                    $defaults['pa_formato'] = $term->slug; // Fallback default
                 }
             }
             return $defaults;
         }
         
-        public function autoselect_format_variation_bridge() {
+        public function autoselect_format_variation_bridge(): void {
             global $product;
             if ( ! $product || ! $product->is_type( 'variable' ) ) return;
 
             $is_restricted = $this->is_restricted_user();
             $country       = $this->get_user_country_code();
 
-            if ( $is_restricted || 'AR' !== $country ) {
-                $target_term_id = MUYU_DIGITAL_FORMAT_ID;
-                $hide_row       = $is_restricted; // Ocultamos solo si el dominio está restringido.
-            } else {
-                $target_term_id = MUYU_PHYSICAL_FORMAT_ID;
-                $hide_row       = false;
-            }
+            $target_term_id = ( $is_restricted || 'AR' !== $country ) ? MUYU_DIGITAL_FORMAT_ID : MUYU_PHYSICAL_FORMAT_ID;
+            $hide_row       = ( $is_restricted || 'AR' !== $country ) ? $is_restricted : false;
 
             $attributes = $product->get_variation_attributes();
-            // Fix: Soportar pa_formato (global), attribute_pa_formato y atributo local 'formato'
-            if ( ! isset( $attributes['pa_formato'] ) && ! isset( $attributes['attribute_pa_formato'] ) && ! isset( $attributes['formato'] ) ) return;
+            $has_format_attr = isset( $attributes['pa_formato'] ) || isset( $attributes['attribute_pa_formato'] ) || isset( $attributes['formato'] );
+            
+            if ( ! $has_format_attr ) return;
 
             $target_term = get_term( $target_term_id, 'pa_formato' );
             if ( ! $target_term || is_wp_error( $target_term ) ) return;
             
-            // Verificar que la variación exista en el producto
-            $has_variation = false;
-            if ( isset( $attributes['pa_formato'] ) && in_array( $target_term->slug, $attributes['pa_formato'], true ) ) $has_variation = true;
-            if ( isset( $attributes['attribute_pa_formato'] ) && in_array( $target_term->slug, $attributes['attribute_pa_formato'], true ) ) $has_variation = true;
-            if ( isset( $attributes['formato'] ) && in_array( $target_term->slug, $attributes['formato'], true ) ) $has_variation = true;
+            // Verificar si el atributo objetivo está entre las variaciones disponibles (PHP 8 arrays intersecion)
+            $available_slugs = array_merge(
+                $attributes['pa_formato'] ?? [],
+                $attributes['attribute_pa_formato'] ?? [],
+                $attributes['formato'] ?? []
+            );
             
-            if ( ! $has_variation ) return;
+            if ( ! in_array( $target_term->slug, $available_slugs, true ) ) return;
 
-            // Bridge para js/shop.js
+            // Bridge HTML oculto para el JS (shop.js)
             printf(
                 '<span id="mu-format-autoselect-data" style="display:none" data-target-slug="%s" data-hide-row="%s"></span>',
                 esc_attr( $target_term->slug ),
@@ -701,34 +630,34 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
 
 /**
  * ============================================================================
- * INICIALIZACIÓN Y COMPATIBILIDAD
+ * INICIALIZACIÓN Y COMPATIBILIDAD GLOBAL
  * ============================================================================
  */
 
 if ( ! function_exists( 'muyu_digital_restriction_init' ) ) {
-    function muyu_digital_restriction_init() {
+    function muyu_digital_restriction_init(): MUYU_Digital_Restriction_System {
         return MUYU_Digital_Restriction_System::get_instance();
     }
-    // Prioridad temprana para registrar hooks correctamente
+    // Setup en priority 5 para registrar todo antes que WooCommerce renderice vistas
     add_action( 'after_setup_theme', 'muyu_digital_restriction_init', 5 );
 }
 
 /* --- Helpers Funcionales para Backward Compatibility --- */
 
 if ( ! function_exists( 'muyu_is_restricted_user' ) ) {
-    function muyu_is_restricted_user() {
+    function muyu_is_restricted_user(): bool {
         return muyu_digital_restriction_init()->is_restricted_user();
     }
 }
 
 if ( ! function_exists( 'muyu_get_digital_product_ids' ) ) {
-    function muyu_get_digital_product_ids() {
-        return get_option( MUYU_Digital_Restriction_System::OPTION_PRODUCT_IDS, [] );
+    function muyu_get_digital_product_ids(): array {
+        return (array) get_option( MUYU_Digital_Restriction_System::OPTION_PRODUCT_IDS, [] );
     }
 }
 
 if ( ! function_exists( 'muyu_rebuild_digital_indexes_optimized' ) ) {
-    function muyu_rebuild_digital_indexes_optimized() {
+    function muyu_rebuild_digital_indexes_optimized(): int {
         return muyu_digital_restriction_init()->rebuild_digital_indexes();
     }
 }
