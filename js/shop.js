@@ -57,9 +57,9 @@
                 return;
             }
             
-            // Si el select ya tiene el valor correcto, solo validamos con WC
+            // Si el select ya tiene el valor correcto, no hacemos NADA. 
+            // FIX: No usar .trigger('check_variations') aquí, ya que eso relanza woocommerce_update_variation_values y crea un infinite loop visual ("titila").
             if ( $select.val() === targetSlug ) {
-                $form.trigger('check_variations');
                 return;
             }
             
