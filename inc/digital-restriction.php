@@ -2,12 +2,12 @@
 /**
  * Muy Únicos - Digital Restriction System
  * 
- * Sistema de restricción de contenido digital v2.6.2 (Bugfix WC-AJAX)
+ * Sistema de restricción de contenido digital v2.6.3 (Bugfix Índices y Admin Hook)
  * Propósito: Restringir productos físicos en subdominios, mostrando solo 
  * productos digitales. Optimizado para rendimiento y compatibilidad.
  * 
  * @package GeneratePress_Child
- * @since 2.6.2
+ * @since 2.6.3
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -288,14 +288,19 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         }
         
         public function ensure_indexes_exist() {
-            if ( false === get_option( self::OPTION_PRODUCT_IDS ) ) {
+            if ( false === get_option( self::OPTION_PRODUCT_IDS, false ) ) {
                 $this->rebuild_digital_indexes();
             }
         }
         
         public function enqueue_admin_assets( $hook ) {
-            global $typenow;
-            if ( 'edit.php' !== $hook || 'product' !== $typenow ) return;
+            if ( 'edit.php' !== $hook ) return;
+
+            // Failsafe: uso de screen en lugar del frágil global $typenow
+            $screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+            $is_product = ( $screen && 'edit-product' === $screen->id ) || ( isset( $_GET['post_type'] ) && 'product' === $_GET['post_type'] );
+            
+            if ( ! $is_product ) return;
 
             $theme_uri = get_stylesheet_directory_uri();
             $ver       = wp_get_theme()->get( 'Version' );
@@ -328,9 +333,21 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             if ( ! $is_shop_query ) return;
             
             if ( $this->is_restricted_user() ) {
-                $digital_ids = get_option( self::OPTION_PRODUCT_IDS, [] );
+                $digital_ids = get_option( self::OPTION_PRODUCT_IDS, false );
+                
+                // Si el índice no existe o está vacío (sin reconstrucción programada), intentar regenerarlo
+                if ( false === $digital_ids || ( empty( $digital_ids ) && ! get_transient( self::TRANSIENT_REBUILD ) ) ) {
+                    $this->rebuild_digital_indexes();
+                    $digital_ids = get_option( self::OPTION_PRODUCT_IDS, [] );
+                }
+                
+                // Si realmente no hay IDs, no forzamos [0] para evitar un white-screen del catálogo
+                if ( empty( $digital_ids ) ) {
+                    return;
+                }
+                
                 $digital_ids = array_map( 'intval', (array) $digital_ids );
-                $query->set( 'post__in', ! empty( $digital_ids ) ? $digital_ids : [ 0 ] );
+                $query->set( 'post__in', $digital_ids );
             }
         }
 
@@ -342,14 +359,19 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             if ( is_admin() || wp_is_json_request() ) return $args;
             if ( ! in_array( 'product_cat', (array) $taxonomies, true ) || ! $this->is_restricted_user() ) return $args;
             
-            $digital_cat_ids = get_option( self::OPTION_CATEGORY_IDS, [] );
+            $digital_cat_ids = get_option( self::OPTION_CATEGORY_IDS, false );
+            
+            if ( empty( $digital_cat_ids ) ) {
+                return $args; // Fallback de seguridad, no ocultamos todo
+            }
+            
             $digital_cat_ids = array_map( 'intval', (array) $digital_cat_ids );
             
             if ( ! empty( $args['include'] ) ) {
                 $current = array_map( 'intval', is_array( $args['include'] ) ? $args['include'] : explode( ',', $args['include'] ) );
                 $args['include'] = array_intersect( $current, $digital_cat_ids );
             } else {
-                $args['include'] = empty( $digital_cat_ids ) ? [ 0 ] : $digital_cat_ids;
+                $args['include'] = $digital_cat_ids;
             }
             
             return $args;
@@ -358,7 +380,12 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         public function filter_menu_items( $items, $menu, $args ) {
             if ( is_admin() || wp_is_json_request() || ! $this->is_restricted_user() ) return $items;
             
-            $digital_cat_ids = get_option( self::OPTION_CATEGORY_IDS, [] );
+            $digital_cat_ids = get_option( self::OPTION_CATEGORY_IDS, false );
+            
+            if ( empty( $digital_cat_ids ) ) {
+                return $items; // Fallback de seguridad
+            }
+            
             $digital_cat_ids = array_map( 'intval', (array) $digital_cat_ids );
             
             return array_filter( $items, function( $item ) use ( $digital_cat_ids ) {
