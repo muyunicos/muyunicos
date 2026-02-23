@@ -1,0 +1,4 @@
+.mu-custom-downloads { margin-bottom: 30px; }
+/* Oculta "No downloads available" de WC nativo si es necesario, 
+   ya que estamos mostrando una lista custom */
+.woocommerce-account .woocommerce-info { display: none; }
