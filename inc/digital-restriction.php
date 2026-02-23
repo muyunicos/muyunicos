@@ -2,12 +2,12 @@
 /**
  * Muy Únicos - Digital Restriction System
  * 
- * Sistema de restricción de contenido digital v2.7.0
+ * Sistema de restricción de contenido digital v2.7.1 (Fix: Variations & Domain Logic)
  * Propósito: Restringir productos físicos en subdominios, mostrando solo 
  * productos digitales. Optimizado para rendimiento y compatibilidad.
  * 
  * @package GeneratePress_Child
- * @since 2.7.0
+ * @since 2.7.1
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -84,16 +84,19 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 return $this->cache['is_restricted'];
             }
             
+            // Solo permitir testing como admin si NO es una petición AJAX del frontend
             if ( is_admin() && ! wp_doing_ajax() ) {
                 $this->cache['is_restricted'] = false;
                 return false;
             }
             
-            $main_domain = function_exists( 'muyu_get_main_domain' ) ? muyu_get_main_domain() : 'muyunicos.com';
-            $host = preg_replace( '/:\d+$/', '', trim( $_SERVER['HTTP_HOST'] ?? '' ) );
+            // Lógica robusta: Si el host no es EXACTAMENTE 'muyunicos.com', es restringido.
+            // Esto cubre subdominios de países, staging, localhost, etc.
+            $host = isset( $_SERVER['HTTP_HOST'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ) ) : '';
+            $host = preg_replace( '/:\d+$/', '', $host ); // Quitar puerto
             $host = str_replace( 'www.', '', $host );
             
-            $this->cache['is_restricted'] = ( $main_domain !== $host );
+            $this->cache['is_restricted'] = ( 'muyunicos.com' !== $host );
             return $this->cache['is_restricted'];
         }
         
@@ -331,15 +334,11 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             if ( $this->is_restricted_user() ) {
                 $digital_ids = get_option( self::OPTION_PRODUCT_IDS, false );
                 
-                // Si el índice no existe (false), intentar regenerarlo
-                // Si está vacío ([]), NO regeneramos en cada visita para evitar bucle de performance
                 if ( false === $digital_ids ) {
                     $this->rebuild_digital_indexes();
                     $digital_ids = get_option( self::OPTION_PRODUCT_IDS, [] );
                 }
                 
-                // Aplicar restricción estricta. Si está vacío (no hay productos digitales), forzar [0] para mostrar tienda vacía
-                // y evitar que devuelva todos los productos físicos por defecto.
                 if ( empty( $digital_ids ) ) {
                     $digital_ids = [ 0 ];
                 } else {
@@ -361,7 +360,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             $digital_cat_ids = get_option( self::OPTION_CATEGORY_IDS, [] );
             $digital_cat_ids = array_map( 'intval', (array) $digital_cat_ids );
             
-            // Restricción estricta: Si hay categorías ya pedidas en "include", intersecamos
             if ( ! empty( $args['include'] ) ) {
                 $current = array_map( 'intval', is_array( $args['include'] ) ? $args['include'] : explode( ',', $args['include'] ) );
                 $args['include'] = array_intersect( $current, $digital_cat_ids );
@@ -383,7 +381,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             
             return array_filter( $items, function( $item ) use ( $digital_cat_ids ) {
                 if ( isset( $item->object ) && 'product_cat' === $item->object ) {
-                    // Si no hay categorías digitales o la actual no está, la ocultamos
                     return in_array( (int) $item->object_id, $digital_cat_ids, true );
                 }
                 return true;
@@ -391,7 +388,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         }
 
         // =====================================================================
-        // REDIRECCIONES (REFACTORIZADO)
+        // REDIRECCIONES
         // =====================================================================
         
         public function handle_redirects() {
@@ -525,7 +522,10 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             $physical_term = get_term( MUYU_PHYSICAL_FORMAT_ID, 'pa_formato' );
             
             if ( $physical_term && ! is_wp_error( $physical_term ) ) {
-                if ( isset( $attributes['pa_formato'] ) && $attributes['pa_formato'] === $physical_term->slug ) {
+                // Fix: Comprobar tanto 'pa_formato' como 'attribute_pa_formato'
+                $value = isset( $attributes['pa_formato'] ) ? $attributes['pa_formato'] : ( isset( $attributes['attribute_pa_formato'] ) ? $attributes['attribute_pa_formato'] : '' );
+                
+                if ( $value === $physical_term->slug ) {
                     return false;
                 }
             }
@@ -533,7 +533,12 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         }
         
         public function clean_variation_dropdown( $args ) {
-            if ( ! $this->is_restricted_user() || ! isset( $args['attribute'] ) || 'pa_formato' !== $args['attribute'] ) return $args;
+            if ( ! $this->is_restricted_user() ) return $args;
+            
+            // Fix: Comprobar si el atributo es pa_formato (puede venir con o sin prefijo)
+            $attr_name = isset( $args['attribute'] ) ? $args['attribute'] : '';
+            if ( 'pa_formato' !== $attr_name && 'attribute_pa_formato' !== $attr_name ) return $args;
+            
             if ( empty( $args['options'] ) ) return $args;
             
             $physical_term = get_term( MUYU_PHYSICAL_FORMAT_ID, 'pa_formato' );
@@ -555,6 +560,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             if ( ! $physical_term || is_wp_error( $physical_term ) ) return $prices_array;
             
             foreach ( $prices_array['price'] as $variation_id => $amount ) {
+                // Meta siempre se guarda con prefijo 'attribute_'
                 $format_slug = get_post_meta( $variation_id, 'attribute_pa_formato', true );
                 if ( $format_slug === $physical_term->slug ) {
                     unset( 
@@ -604,13 +610,20 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             }
 
             $attributes = $product->get_variation_attributes();
-            if ( ! isset( $attributes['pa_formato'] ) ) return;
+            // Fix: Comprobar ambas keys por si acaso
+            if ( ! isset( $attributes['pa_formato'] ) && ! isset( $attributes['attribute_pa_formato'] ) ) return;
 
             $target_term = get_term( $target_term_id, 'pa_formato' );
             if ( ! $target_term || is_wp_error( $target_term ) ) return;
-            if ( ! in_array( $target_term->slug, $attributes['pa_formato'], true ) ) return;
+            
+            // Verificar que la variación exista en el producto
+            $has_variation = false;
+            if ( isset( $attributes['pa_formato'] ) && in_array( $target_term->slug, $attributes['pa_formato'], true ) ) $has_variation = true;
+            if ( isset( $attributes['attribute_pa_formato'] ) && in_array( $target_term->slug, $attributes['attribute_pa_formato'], true ) ) $has_variation = true;
+            
+            if ( ! $has_variation ) return;
 
-            // Bridge para js/shop.js (Evita <script> inline según MIGRATION-GUIDE.md)
+            // Bridge para js/shop.js
             printf(
                 '<span id="mu-format-autoselect-data" style="display:none" data-target-slug="%s" data-hide-row="%s"></span>',
                 esc_attr( $target_term->slug ),
@@ -630,7 +643,7 @@ if ( ! function_exists( 'muyu_digital_restriction_init' ) ) {
     function muyu_digital_restriction_init() {
         return MUYU_Digital_Restriction_System::get_instance();
     }
-    // Prioridad temprana para registrar hooks correctamente (hook after_setup_theme porque este file se carga post-plugins_loaded)
+    // Prioridad temprana para registrar hooks correctamente
     add_action( 'after_setup_theme', 'muyu_digital_restriction_init', 5 );
 }
 
