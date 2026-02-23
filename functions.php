@@ -69,6 +69,11 @@ function mu_enqueue_assets() {
             'nonce'      => wp_create_nonce( 'check-email-nonce' ),
         ] );
     }
+    
+    // Mi Cuenta > Descargas (Custom Styles)
+    if ( is_account_page() && is_wc_endpoint_url( 'downloads' ) ) {
+        wp_enqueue_style( 'mu-account-downloads', "$uri/css/account-downloads.css", [ 'mu-base' ], $ver );
+    }
 
     // Scripts globales
     wp_enqueue_script( 'mu-header-js', "$uri/js/header.js", [], $ver, true );
@@ -101,3 +106,5 @@ mu_load_module( 'auth-modal' );          // Authentication modal
 mu_load_module( 'checkout' );            // Checkout optimizations
 mu_load_module( 'cart' );                // Cart functionality
 mu_load_module( 'ui' );                  // UI components (header, footer, search, wplng body class)
+mu_load_module( 'orders-files' );        // Order File Manager (Admin/Frontend)
+mu_load_module( 'orders-workflow' );     // Order Workflow (Status, Email, WhatsApp)

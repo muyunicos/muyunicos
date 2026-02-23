@@ -1,0 +1,11 @@
+.muyunicos-dropzone { border: 1px dashed #ccc; padding: 4px; background: #fff; border-radius: 3px; transition: 0.2s; }
+.muyunicos-dropzone:hover, .muyunicos-dropzone.dragover { border-color: #2271b1; background-color: #f0f6fc; }
+
+/* Modal Minimalista */
+.mu-modal { display: none; position: fixed; z-index: 99999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(2px); }
+.mu-modal-box { background: #fff; margin: 10vh auto; padding: 20px; border-radius: 5px; width: 90%; max-width: 500px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative; }
+.mu-file-list { list-style: none; margin: 10px 0 0; padding: 0; max-height: 60vh; overflow-y: auto; }
+.mu-file-list li { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #eee; align-items: center; font-size: 12px; }
+.mu-file-list li:last-child { border-bottom: none; }
+.mu-close { position: absolute; top: 10px; right: 15px; cursor: pointer; font-size: 20px; font-weight: bold; color: #777; }
+.mu-close:hover { color: #000; }
