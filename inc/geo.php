@@ -122,7 +122,7 @@ if ( ! function_exists( 'muyu_clean_uri' ) ) {
      * @return string URI normalizada
      */
     function muyu_clean_uri( $prefix, $uri ) {
-        $uri = '/' . ltrim( preg_replace( '#/+#', '/', $uri ), '/' );
+        $uri = '/' . ltrim( preg_replace( '#/+#', '/' , $uri ), '/' );
         if ( $prefix && strpos( $uri, $prefix ) === 0 ) return $uri;
         return $prefix . $uri;
     }
