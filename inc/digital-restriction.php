@@ -2,12 +2,12 @@
 /**
  * Muy Únicos - Digital Restriction System
  * 
- * Sistema de restricción de contenido digital v2.7.1 (Fix: Variations & Domain Logic)
+ * Sistema de restricción de contenido digital v2.7.2 (Fix: Variation Pricing & JSON Data)
  * Propósito: Restringir productos físicos en subdominios, mostrando solo 
  * productos digitales. Optimizado para rendimiento y compatibilidad.
  * 
  * @package GeneratePress_Child
- * @since 2.7.1
+ * @since 2.7.2
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -69,6 +69,10 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             add_filter( 'woocommerce_variation_is_visible', [ $this, 'hide_physical_variation' ], 10, 4 );
             add_filter( 'woocommerce_dropdown_variation_attribute_options_args', [ $this, 'clean_variation_dropdown' ], 10, 1 );
             add_filter( 'woocommerce_variation_prices', [ $this, 'filter_variation_prices' ], 10, 3 );
+            // Fix crítico: filtra el JSON de variaciones disponibles que WC manda al JS.
+            // Sin este hook, el JS recibe datos de variaciones físicas y no puede matchear
+            // la selección automática "Digital", causando el error 'Elige las opciones'.
+            add_filter( 'woocommerce_available_variation', [ $this, 'filter_available_variation_data' ], 10, 3 );
             
             // ---- Auto-selección inteligente de variación ----
             add_filter( 'woocommerce_product_get_default_attributes', [ $this, 'set_format_default' ], 20, 2 );
@@ -508,8 +512,10 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             $physical_term = get_term( MUYU_PHYSICAL_FORMAT_ID, 'pa_formato' );
             
             if ( $physical_term && ! is_wp_error( $physical_term ) ) {
-                // Fix: Comprobar tanto 'pa_formato' como 'attribute_pa_formato'
-                $value = isset( $attributes['pa_formato'] ) ? $attributes['pa_formato'] : ( isset( $attributes['attribute_pa_formato'] ) ? $attributes['attribute_pa_formato'] : '' );
+                // Fix: Soporta pa_formato (global), attribute_pa_formato y atributo local 'formato'
+                $value = isset( $attributes['pa_formato'] ) ? $attributes['pa_formato'] : 
+                         ( isset( $attributes['attribute_pa_formato'] ) ? $attributes['attribute_pa_formato'] : 
+                         ( isset( $attributes['formato'] ) ? $attributes['formato'] : '' ) );
                 
                 if ( $value === $physical_term->slug ) {
                     return false;
@@ -521,9 +527,9 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         public function clean_variation_dropdown( $args ) {
             if ( ! $this->is_restricted_user() ) return $args;
             
-            // Fix: Comprobar si el atributo es pa_formato (puede venir con o sin prefijo)
+            // Fix: Soporta pa_formato global y atributo local 'formato' (con o sin prefijo 'attribute_')
             $attr_name = isset( $args['attribute'] ) ? $args['attribute'] : '';
-            if ( 'pa_formato' !== $attr_name && 'attribute_pa_formato' !== $attr_name ) return $args;
+            if ( 'pa_formato' !== $attr_name && 'attribute_pa_formato' !== $attr_name && 'formato' !== $attr_name && 'attribute_formato' !== $attr_name ) return $args;
             
             if ( empty( $args['options'] ) ) return $args;
             
@@ -545,18 +551,81 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             $physical_term = get_term( MUYU_PHYSICAL_FORMAT_ID, 'pa_formato' );
             if ( ! $physical_term || is_wp_error( $physical_term ) ) return $prices_array;
             
+            $removed = false;
+            
             foreach ( $prices_array['price'] as $variation_id => $amount ) {
-                // Meta siempre se guarda con prefijo 'attribute_'
+                // Fix: Intentar meta global (attribute_pa_formato) primero, luego atributo local (attribute_formato)
                 $format_slug = get_post_meta( $variation_id, 'attribute_pa_formato', true );
+                if ( empty( $format_slug ) ) {
+                    $format_slug = get_post_meta( $variation_id, 'attribute_formato', true );
+                }
+                
+                // Fallback: leer del objeto WC_Product_Variation para máxima compatibilidad
+                if ( empty( $format_slug ) ) {
+                    $variation_obj = wc_get_product( $variation_id );
+                    if ( $variation_obj ) {
+                        $attrs = $variation_obj->get_attributes();
+                        $format_slug = isset( $attrs['pa_formato'] ) ? $attrs['pa_formato'] : 
+                                       ( isset( $attrs['attribute_pa_formato'] ) ? $attrs['attribute_pa_formato'] : 
+                                       ( isset( $attrs['formato'] ) ? $attrs['formato'] : '' ) );
+                    }
+                }
+                
                 if ( $format_slug === $physical_term->slug ) {
-                    unset( 
-                        $prices_array['price'][ $variation_id ], 
-                        $prices_array['regular_price'][ $variation_id ], 
-                        $prices_array['sale_price'][ $variation_id ] 
+                    unset(
+                        $prices_array['price'][ $variation_id ],
+                        $prices_array['regular_price'][ $variation_id ],
+                        $prices_array['sale_price'][ $variation_id ]
                     );
+                    $removed = true;
                 }
             }
+            
+            // Fix crítico: WooCommerce llama current() y end() sobre estos arrays tras filtrarlos.
+            // Si los punteros internos del array quedan corruptos (claves discontinuas), min/max
+            // de precios en listados y product page se calcula mal. asort() resetea punteros.
+            if ( $removed ) {
+                if ( ! empty( $prices_array['price'] ) )         asort( $prices_array['price'] );
+                if ( ! empty( $prices_array['regular_price'] ) ) asort( $prices_array['regular_price'] );
+                if ( ! empty( $prices_array['sale_price'] ) )    asort( $prices_array['sale_price'] );
+            }
+            
             return $prices_array;
+        }
+        
+        /**
+         * Fix crítico: woocommerce_available_variation
+         *
+         * WC serializa TODAS las variaciones visibles a un JSON inline (<script>)
+         * que usa el JS del frontend para hacer matching al seleccionar opciones.
+         * Si una variación física llega a ese JSON (aunque esté oculta del dropdown),
+         * WC no puede resolver el match y lanza: "Error: Elige las opciones del producto".
+         *
+         * Este hook retorna false para las variaciones físicas, lo que hace que WC
+         * las excluya completamente del array de datos JS.
+         *
+         * @param array|false          $data      Datos de la variación o false para excluir.
+         * @param WC_Product_Variable  $product   Producto padre.
+         * @param WC_Product_Variation $variation Variación actual.
+         * @return array|false
+         */
+        public function filter_available_variation_data( $data, $product, $variation ) {
+            if ( ! $this->is_restricted_user() ) return $data;
+            
+            $physical_term = get_term( MUYU_PHYSICAL_FORMAT_ID, 'pa_formato' );
+            if ( ! $physical_term || is_wp_error( $physical_term ) ) return $data;
+            
+            $attributes = $variation->get_attributes();
+            $format_slug = isset( $attributes['pa_formato'] ) ? $attributes['pa_formato'] : 
+                           ( isset( $attributes['attribute_pa_formato'] ) ? $attributes['attribute_pa_formato'] : 
+                           ( isset( $attributes['formato'] ) ? $attributes['formato'] : '' ) );
+            
+            if ( $format_slug === $physical_term->slug ) {
+                // Retornar false excluye la variación del array JSON que recibe el JS de WC
+                return false;
+            }
+            
+            return $data;
         }
         
         public function set_format_default( $defaults, $product ) {
@@ -596,8 +665,8 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             }
 
             $attributes = $product->get_variation_attributes();
-            // Fix: Comprobar ambas keys por si acaso
-            if ( ! isset( $attributes['pa_formato'] ) && ! isset( $attributes['attribute_pa_formato'] ) ) return;
+            // Fix: Soportar pa_formato (global), attribute_pa_formato y atributo local 'formato'
+            if ( ! isset( $attributes['pa_formato'] ) && ! isset( $attributes['attribute_pa_formato'] ) && ! isset( $attributes['formato'] ) ) return;
 
             $target_term = get_term( $target_term_id, 'pa_formato' );
             if ( ! $target_term || is_wp_error( $target_term ) ) return;
@@ -606,6 +675,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             $has_variation = false;
             if ( isset( $attributes['pa_formato'] ) && in_array( $target_term->slug, $attributes['pa_formato'], true ) ) $has_variation = true;
             if ( isset( $attributes['attribute_pa_formato'] ) && in_array( $target_term->slug, $attributes['attribute_pa_formato'], true ) ) $has_variation = true;
+            if ( isset( $attributes['formato'] ) && in_array( $target_term->slug, $attributes['formato'], true ) ) $has_variation = true;
             
             if ( ! $has_variation ) return;
 
