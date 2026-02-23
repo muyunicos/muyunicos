@@ -1,6 +1,6 @@
 MUY ÚNICOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v1.8.9 · Feb 23, 2026
+Estado: Refactor Modular Pragmático · v1.9.0 · Feb 23, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -15,7 +15,7 @@ Modularidad Pragmática (Regla "Goldilocks")
   - js/global-ui.js
 
 SÍ al aislamiento por contexto
-- Funcionalidades complejas (Checkout, Cart, Auth, Shop) deben tener sus propios archivos y cargarse condicionalmente.
+- Funcionalidades complejas (Checkout, Cart, Auth, Shop, Orders) deben tener sus propios archivos y cargarse condicionalmente.
 
 Carga Condicional Estricta
 - Nunca cargar assets globales si no aplican a header/footer o UI transversal.
@@ -41,10 +41,14 @@ muyunicos/ (generatepress-child)
 │   ├── auth-modal.php         # Modal Login/Registro + endpoints WC-AJAX
 │   ├── checkout.php           # ✅ Checkout Híbrido Optimizado (Físico/Digital) + Validación WA
 │   ├── cart.php               # Lógica de carrito, buffers BACS
-│   └── ui.php                 # ✅ Header, Footer, search form, WhatsApp btn, Canonical fix, WPLingua body class, Category Description Mover, Texto productos Gratis, Quitar GP Featured Image
+│   ├── ui.php                 # ✅ Header, Footer, search form, WhatsApp btn, Canonical fix, WPLingua body class
+│   ├── orders-files.php       # ✅ File Manager (Admin/Frontend): Uploads, PDF gen, Downloads endpoint
+│   └── orders-workflow.php    # ✅ Workflow: Status 'Production', Smart Emails, Admin WhatsApp link
 │
 ├── css/                       # 🎨 CSS MODULAR (Pragmático)
 │   ├── admin.css              # is_admin() — Botones reindex, tools internas
+│   ├── admin-order-files.css  # ✅ is_admin() && order_edit — Dropzone, Modal Files
+│   ├── admin-orders.css       # ✅ is_admin() && order_edit — Status Badge
 │   ├── components/            # Componentes compartidos
 │   │   ├── global-ui.css      # ✅ Global: micro UI (Share, WhatsApp flotante, Search, estilos de WPLingua, Carrusel Híbrido)
 │   │   ├── header.css         # Global: header, navegación, Country Selector (con hover automático v1.8.7)
@@ -54,10 +58,13 @@ muyunicos/ (generatepress-child)
 │   ├── cart.css               # is_cart()
 │   ├── checkout.css           # ✅ Checkout Moderno (Grid Desktop + Mobile Fix)
 │   ├── home.css               # is_front_page()
-│   └── shop.css               # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() (Infinite Scroll estilos)
+│   ├── shop.css               # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() (Infinite Scroll estilos)
+│   └── account-downloads.css  # ✅ is_account_page() && is_wc_endpoint_url('downloads')
 │
 └── js/                        # ⚡ JS MODULAR (IIFE + strict mode + DOMContentLoaded)
-    ├── admin.js               # is_admin() — Crea botón #muyu-rebuild + WC-AJAX handler. Sin jQuery (fetch) vía nativo WC-AJAX. Nonce vía muyuAdminData
+    ├── admin.js               # is_admin() — Crea botón #muyu-rebuild + WC-AJAX handler.
+    ├── admin-order-files.js   # ✅ is_admin() && order_edit — Drag&Drop, Ajax Uploads
+    ├── admin-orders.js        # ✅ is_admin() && order_edit — WhatsApp Link Replacement
     ├── global-ui.js           # ✅ Global: country selector (hover), WPLingua toggle, share button, Carrusel Híbrido Lógica
     ├── header.js              # Global: menú móvil, submenús, dropdown cuenta
     ├── footer.js              # Global: comportamiento footer
@@ -80,6 +87,8 @@ inc/auth-modal.php | HTML modal auth, endpoints wc_ajax_mu_*
 inc/checkout.php | Campos, validaciones, optimizaciones Checkout, Título "Pedido Recibido"
 inc/cart.php | Añadir múltiples ítems al carrito, buffers BACS
 inc/ui.php | Header icons, Cart badge fragment, WhatsApp btn, Custom Search form, Custom Footer, Share shortcode, Google Site Kit canonical, WPLingua body class, Category Description Mover, Reemplazo precio $0 a "Gratis", Disable GP Featured image HTML
+inc/orders-files.php | Gestor de archivos: Hooks Admin (Upload/Delete/PDF), Hooks Email (Links), Hook Account (Tabla Descargas).
+inc/orders-workflow.php | Flujo de pedidos: Estado 'wc-production', Filtro virtual no-descargable, Emails inteligentes (Físico/Digital), Admin UI (WhatsApp link).
 
 CSS · css/
 
@@ -87,6 +96,9 @@ Archivo | Condición de carga en functions.php
 ---|---
 style.css (raíz) | Global (base)
 css/admin.css | is_admin() && current_screen == 'product'
+css/admin-order-files.css | is_admin() && order_edit (Dropzone styles)
+css/admin-orders.css | is_admin() && order_edit (Badge styles)
+css/account-downloads.css | is_account_page() && is_wc_endpoint_url('downloads')
 css/components/global-ui.css | Global (Share Button, WhatsApp flotante, Search Form, WPLingua estilos, Carrusel Híbrido CSS)
 css/components/header.css | Global (Header, Navegación, Country Selector con hover v1.8.7)
 css/components/footer.css | Global
@@ -102,6 +114,8 @@ JS · js/
 Archivo | Condición de carga en functions.php
 ---|---
 js/admin.js | is_admin() — Crea botón #muyu-rebuild + WC-AJAX handler. Sin jQuery, usa fetch(). Nonce y WC-AJAX URL vía wp_localize_script (muyuAdminData).
+js/admin-order-files.js | is_admin() && order_edit — Lógica Drag&Drop, Ajax Uploads, Modal Manager.
+js/admin-orders.js | is_admin() && order_edit — Reemplazo link teléfono por API WhatsApp.
 js/global-ui.js | Global (country selector, WPLingua toggle, share button, lógica drag Carrusel Híbrido)
 js/header.js | Global
 js/footer.js | Global
@@ -143,6 +157,8 @@ Flujo de Carrito | cart.php | cart.css | cart.js
 Login / Registro Modal | auth-modal.php | components/modal-auth.css | modal-auth.js
 Flujo Checkout | checkout.php | checkout.css | checkout.js
 Catálogo / Single Product | ui.php / geo.php | shop.css | shop.js
+Gestor Archivos Pedido | orders-files.php | admin-order-files.css | admin-order-files.js
+Workflow Pedidos | orders-workflow.php | admin-orders.css | admin-orders.js
 Nuevo ícono SVG | icons.php | — | —
 
 6. CONVENCIONES DE CÓDIGO & RENDIMIENTO
@@ -169,3 +185,4 @@ CSS
 
 - Evaluar auto-host de libphonenumber-js para eliminar dependencia CDN en checkout.
 - Llenar archivos vacíos: css/home.css
+- Migrar bulk actions de Legacy a HPOS (woocommerce_order_list_table_bulk_actions).
