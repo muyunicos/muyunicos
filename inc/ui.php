@@ -11,6 +11,8 @@
  * - Shortcode de compartir (refactorizado)
  * - Canonical URL para Google Site Kit
  * - Mover descripción de categoría al final del loop
+ * - Mostrar "¡Gratis!" en productos con precio $0
+ * - Desactivar Imagen Destacada en cabecera
  *
  * @package GeneratePress_Child
  * @since 1.0.0
@@ -310,4 +312,54 @@ if ( ! function_exists( 'mu_move_category_description' ) ) {
         }
     }
     add_action( 'wp', 'mu_move_category_description' );
+}
+
+// ============================================
+// MOSTRAR "¡GRATIS!" EN PRODUCTOS $0 (OFERTA)
+// ============================================
+
+if ( ! function_exists( 'mu_opt_mostrar_gratis_si_precio_cero' ) ) {
+    function mu_opt_mostrar_gratis_si_precio_cero( $price, $product ) {
+        // Salir si estamos en el admin y no es ajax
+        if ( is_admin() && ! wp_doing_ajax() ) {
+            return $price;
+        }
+
+        if ( ! $product->is_on_sale() ) {
+            return $price;
+        }
+
+        $sale_price = (float) $product->get_sale_price();
+
+        if ( $sale_price !== 0.0 ) {
+            return $price;
+        }
+
+        // Mostrar precio regular tachado y texto Gratis
+        $regular_price_html = wc_price( $product->get_regular_price() );
+        $free_text = __( '¡Gratis!', 'woocommerce' );
+
+        $price = sprintf( '<del aria-hidden="true">%s</del> <ins>%s</ins>', $regular_price_html, $free_text );
+
+        return $price;
+    }
+    add_filter( 'woocommerce_get_price_html', 'mu_opt_mostrar_gratis_si_precio_cero', 100, 2 );
+}
+
+// ============================================
+// DESACTIVAR IMAGEN DESTACADA (PERFORMANCE)
+// ============================================
+
+if ( ! function_exists( 'mu_desactivar_imagen_destacada_html' ) ) {
+    function mu_desactivar_imagen_destacada_html() {
+        // Salir si estamos en el admin para no afectar la edición
+        if ( is_admin() ) return;
+
+        // Elimina la función de GeneratePress que inyecta la imagen destacada después del header
+        remove_action( 'generate_after_header', 'generate_featured_page_header_area', 10 );
+        
+        // Opcional: Si en algunas versiones de GP la imagen aparece antes del contenido
+        remove_action( 'generate_before_content', 'generate_featured_page_header_area', 10 );
+    }
+    add_action( 'wp', 'mu_desactivar_imagen_destacada_html' );
 }
