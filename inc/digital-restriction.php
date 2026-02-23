@@ -2,12 +2,12 @@
 /**
  * Muy Únicos - Digital Restriction System
  * 
- * Sistema de restricción de contenido digital v2.5 (Refactorizado con Singleton)
+ * Sistema de restricción de contenido digital v2.6 (Refactor Limpio)
  * Propósito: Restringir productos físicos en subdominios, mostrando solo 
  * productos digitales. Optimizado para rendimiento y compatibilidad.
  * 
  * @package GeneratePress_Child
- * @since 2.5.0
+ * @since 2.6.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -28,19 +28,9 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
      */
     class MUYU_Digital_Restriction_System {
         
-        /**
-         * Instancia única
-         */
         private static $instance = null;
-        
-        /**
-         * Caché en memoria para evitar recálculos
-         */
         private $cache = [];
         
-        /**
-         * Constantes de configuración
-         */
         const OPTION_PRODUCT_IDS  = 'muyu_digital_product_ids';
         const OPTION_CATEGORY_IDS = 'muyu_digital_category_ids';
         const OPTION_TAG_IDS      = 'muyu_digital_tag_ids';
@@ -48,9 +38,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         const OPTION_LAST_UPDATE  = 'muyu_digital_list_updated';
         const TRANSIENT_REBUILD   = 'muyu_rebuild_scheduled';
         
-        /**
-         * Obtener instancia única
-         */
         public static function get_instance() {
             if ( null === self::$instance ) {
                 self::$instance = new self();
@@ -58,16 +45,10 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             return self::$instance;
         }
         
-        /**
-         * Constructor privado
-         */
         private function __construct() {
             $this->init_hooks();
         }
         
-        /**
-         * Inicializar hooks con prioridades optimizadas
-         */
         private function init_hooks() {
             // ---- Gestión de índices (Admin) ----
             add_action( 'wp_ajax_muyu_rebuild_digital_list', [ $this, 'ajax_rebuild_indexes' ] );
@@ -98,45 +79,44 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         // DETECCIÓN DE USUARIOS Y CONTEXTO
         // =====================================================================
         
-        /**
-         * Verificar si el usuario actual está restringido
-         * @return bool True si está restringido (subdominio), false si no
-         */
         public function is_restricted_user() {
             if ( isset( $this->cache['is_restricted'] ) ) {
                 return $this->cache['is_restricted'];
             }
             
-            // Admins no están restringidos, excepto si están en requests AJAX frontend
             if ( current_user_can( 'manage_woocommerce' ) || ( is_admin() && ! wp_doing_ajax() ) ) {
                 $this->cache['is_restricted'] = false;
                 return false;
             }
             
             $main_domain = function_exists( 'muyu_get_main_domain' ) ? muyu_get_main_domain() : 'muyunicos.com';
-            $host = preg_replace( '/:\\d+$/', '', trim( $_SERVER['HTTP_HOST'] ?? '' ) );
+            $host = preg_replace( '/:\d+$/', '', trim( $_SERVER['HTTP_HOST'] ?? '' ) );
             $host = str_replace( 'www.', '', $host );
             
-            // Solo restringir si NO es el dominio principal
             $this->cache['is_restricted'] = ( $main_domain !== $host );
-            
             return $this->cache['is_restricted'];
         }
         
-        /**
-         * Obtener código de país del usuario basado en subdominio
-         * @return string Código ISO 3166-1 alpha-2
-         */
         public function get_user_country_code() {
             if ( isset( $this->cache['country_code'] ) ) {
                 return $this->cache['country_code'];
             }
             
-            // Delegar a geo.php si está disponible
             if ( function_exists( 'muyu_get_current_country_from_subdomain' ) ) {
                 $code = muyu_get_current_country_from_subdomain();
             } else {
-                $code = 'AR';
+                $host = preg_replace( '/:\d+$/', '', trim( $_SERVER['HTTP_HOST'] ?? '' ) );
+                $parts = explode( '.', $host );
+                if ( count( $parts ) >= 3 ) {
+                    $subdomain = strtolower( $parts[0] );
+                    $subdomain_map = [
+                        'mexico' => 'MX', 'br' => 'BR', 'co' => 'CO', 'ec' => 'EC',
+                        'cl' => 'CL', 'pe' => 'PE', 'ar' => 'AR'
+                    ];
+                    $code = $subdomain_map[ $subdomain ] ?? ( 2 === strlen( $subdomain ) ? strtoupper( $subdomain ) : 'AR' );
+                } else {
+                    $code = 'AR';
+                }
             }
             
             $this->cache['country_code'] = $code;
@@ -147,10 +127,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         // GESTIÓN DE ÍNDICES (REBUILD OPTIMIZADO)
         // =====================================================================
         
-        /**
-         * Reconstruir índices de productos digitales
-         * @return int Cantidad de productos digitales encontrados
-         */
         public function rebuild_digital_indexes() {
             $digital_product_ids = $this->get_digital_product_ids();
             
@@ -164,7 +140,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             $redirect_map = $this->build_redirect_map( $digital_product_ids );
             
             $this->save_indexes( $digital_product_ids, $category_ids, $tag_ids, $redirect_map );
-            
             return count( $digital_product_ids );
         }
         
@@ -198,7 +173,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         private function get_product_terms( $product_ids ) {
             global $wpdb;
             $ids_string = implode( ',', array_map( 'intval', $product_ids ) );
-            
             if ( empty( $ids_string ) ) return [ [], [] ];
 
             $sql = "
@@ -392,7 +366,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         }
 
         // =====================================================================
-        // REDIRECCIONES
+        // REDIRECCIONES (REFACTORIZADO)
         // =====================================================================
         
         public function handle_redirects() {
@@ -403,90 +377,116 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             $should_redirect = false;
             
             if ( is_product_category() ) {
-                $queried_object = get_queried_object();
-                $digital_cats = get_option( self::OPTION_CATEGORY_IDS, [] );
-                $digital_cats = array_map( 'intval', (array) $digital_cats );
-                
-                if ( $queried_object && ! in_array( (int) $queried_object->term_id, $digital_cats, true ) ) {
-                    $parent_id = $queried_object->parent;
-                    while ( $parent_id ) {
-                        if ( in_array( (int) $parent_id, $digital_cats, true ) ) {
-                            $should_redirect = true;
-                            $target_url = get_term_link( $parent_id, 'product_cat' );
-                            break;
-                        }
-                        $term = get_term( $parent_id, 'product_cat' );
-                        $parent_id = ( $term && ! is_wp_error( $term ) ) ? $term->parent : 0;
-                    }
-                    if ( ! $should_redirect ) $should_redirect = true;
-                }
+                list( $should_redirect, $target_url ) = $this->handle_category_redirect();
             } elseif ( is_product_tag() ) {
-                $queried_object = get_queried_object();
-                $digital_tags = get_option( self::OPTION_TAG_IDS, [] );
-                $digital_tags = array_map( 'intval', (array) $digital_tags );
-                
-                if ( $queried_object && ! in_array( (int) $queried_object->term_id, $digital_tags, true ) ) {
-                    $should_redirect = true;
-                }
+                list( $should_redirect, $target_url ) = $this->handle_tag_redirect();
             } elseif ( is_product() ) {
-                global $post;
-                $digital_ids = get_option( self::OPTION_PRODUCT_IDS, [] );
-                $digital_ids = array_map( 'intval', (array) $digital_ids );
-                
-                if ( $post && ! in_array( (int) $post->ID, $digital_ids, true ) ) {
-                    $should_redirect = true;
-                    $redirect_map = get_option( self::OPTION_REDIRECT_MAP, [] );
-                    
-                    if ( isset( $redirect_map[ $post->ID ] ) ) {
-                        $target_url = get_permalink( $redirect_map[ $post->ID ] );
-                    } else {
-                        $digital_cats = get_option( self::OPTION_CATEGORY_IDS, [] );
-                        $digital_cats = array_map( 'intval', (array) $digital_cats );
-                        $product_cats = wp_get_post_terms( $post->ID, 'product_cat', [ 'fields' => 'ids' ] );
-                        
-                        if ( ! empty( $product_cats ) && ! is_wp_error( $product_cats ) ) {
-                            foreach ( $product_cats as $cat_id ) {
-                                if ( in_array( (int) $cat_id, $digital_cats, true ) ) {
-                                    $target_url = get_term_link( (int) $cat_id, 'product_cat' );
-                                    break;
-                                }
-                            }
-                            if ( empty( $target_url ) ) {
-                                foreach ( $product_cats as $cat_id ) {
-                                    $ancestors = get_ancestors( $cat_id, 'product_cat', 'taxonomy' );
-                                    foreach ( $ancestors as $ancestor_id ) {
-                                        if ( in_array( (int) $ancestor_id, $digital_cats, true ) ) {
-                                            $target_url = get_term_link( (int) $ancestor_id, 'product_cat' );
-                                            break 2;
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                list( $should_redirect, $target_url ) = $this->handle_product_redirect();
+            }
+            
+            if ( $should_redirect ) {
+                $this->execute_redirect( $target_url );
+            }
+        }
+        
+        private function handle_category_redirect() {
+            $queried_object = get_queried_object();
+            $digital_cats = get_option( self::OPTION_CATEGORY_IDS, [] );
+            $digital_cats = array_map( 'intval', (array) $digital_cats );
+            
+            if ( ! $queried_object || in_array( (int) $queried_object->term_id, $digital_cats, true ) ) {
+                return [ false, '' ];
+            }
+            
+            $parent_id = $queried_object->parent;
+            while ( $parent_id ) {
+                if ( in_array( (int) $parent_id, $digital_cats, true ) ) {
+                    return [ true, get_term_link( $parent_id, 'product_cat' ) ];
+                }
+                $term = get_term( $parent_id, 'product_cat' );
+                $parent_id = ( $term && ! is_wp_error( $term ) ) ? $term->parent : 0;
+            }
+            
+            return [ true, '' ];
+        }
+        
+        private function handle_tag_redirect() {
+            $queried_object = get_queried_object();
+            $digital_tags = get_option( self::OPTION_TAG_IDS, [] );
+            $digital_tags = array_map( 'intval', (array) $digital_tags );
+            
+            if ( ! $queried_object || in_array( (int) $queried_object->term_id, $digital_tags, true ) ) {
+                return [ false, '' ];
+            }
+            
+            return [ true, '' ];
+        }
+        
+        private function handle_product_redirect() {
+            global $post;
+            $digital_ids = get_option( self::OPTION_PRODUCT_IDS, [] );
+            $digital_ids = array_map( 'intval', (array) $digital_ids );
+            
+            if ( ! $post || in_array( (int) $post->ID, $digital_ids, true ) ) {
+                return [ false, '' ];
+            }
+            
+            $redirect_map = get_option( self::OPTION_REDIRECT_MAP, [] );
+            if ( isset( $redirect_map[ $post->ID ] ) ) {
+                return [ true, get_permalink( $redirect_map[ $post->ID ] ) ];
+            }
+            
+            $target_url = $this->find_digital_category_for_product( $post->ID );
+            return [ true, $target_url ];
+        }
+        
+        private function find_digital_category_for_product( $product_id ) {
+            $digital_cats = get_option( self::OPTION_CATEGORY_IDS, [] );
+            $digital_cats = array_map( 'intval', (array) $digital_cats );
+            $product_cats = wp_get_post_terms( $product_id, 'product_cat', [ 'fields' => 'ids' ] );
+            
+            if ( empty( $product_cats ) || is_wp_error( $product_cats ) ) {
+                return '';
+            }
+            
+            foreach ( $product_cats as $cat_id ) {
+                if ( in_array( (int) $cat_id, $digital_cats, true ) ) {
+                    return get_term_link( (int) $cat_id, 'product_cat' );
+                }
+            }
+            
+            foreach ( $product_cats as $cat_id ) {
+                $ancestors = get_ancestors( $cat_id, 'product_cat', 'taxonomy' );
+                foreach ( $ancestors as $ancestor_id ) {
+                    if ( in_array( (int) $ancestor_id, $digital_cats, true ) ) {
+                        return get_term_link( (int) $ancestor_id, 'product_cat' );
                     }
                 }
             }
             
-            if ( $should_redirect ) {
-                global $post;
-                if ( empty( $target_url ) || is_wp_error( $target_url ) ) {
-                    if ( is_product() && isset( $post->post_title ) ) {
-                        $target_url = home_url( '/?s=' . urlencode( $post->post_title ) . '&post_type=product' );
-                    } else {
-                        $target_url = wc_get_page_permalink( 'shop' );
-                    }
+            return '';
+        }
+        
+        private function execute_redirect( $target_url ) {
+            global $post;
+            
+            if ( empty( $target_url ) || is_wp_error( $target_url ) ) {
+                if ( is_product() && isset( $post->post_title ) ) {
+                    $target_url = home_url( '/?s=' . urlencode( $post->post_title ) . '&post_type=product' );
+                } else {
+                    $target_url = wc_get_page_permalink( 'shop' );
                 }
-                
-                if ( function_exists( 'insertar_prefijo_idioma' ) && function_exists( 'muyu_country_language_prefix' ) ) {
-                    $prefix = muyu_country_language_prefix( $this->get_user_country_code() );
-                    if ( $prefix ) {
-                        $target_url = insertar_prefijo_idioma( $target_url, $prefix );
-                    }
-                }
-                
-                wp_redirect( $target_url, 302 );
-                exit;
             }
+            
+            if ( function_exists( 'insertar_prefijo_idioma' ) && function_exists( 'muyu_country_language_prefix' ) ) {
+                $prefix = muyu_country_language_prefix( $this->get_user_country_code() );
+                if ( $prefix ) {
+                    $target_url = insertar_prefijo_idioma( $target_url, $prefix );
+                }
+            }
+            
+            wp_redirect( $target_url, 302 );
+            exit;
         }
 
         // =====================================================================
@@ -599,14 +599,9 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
  * ============================================================================
  * INICIALIZACIÓN Y COMPATIBILIDAD
  * ============================================================================
- * Cumpliendo con MIGRATION-GUIDE.md: 
- * if ( ! function_exists( 'mu_function_name' ) ) { ... } incluyendo el add_action
  */
 
 if ( ! function_exists( 'muyu_digital_restriction_init' ) ) {
-    /**
-     * Inicializa el sistema de restricción digital
-     */
     function muyu_digital_restriction_init() {
         return MUYU_Digital_Restriction_System::get_instance();
     }

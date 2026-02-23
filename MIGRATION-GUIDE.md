@@ -1,10 +1,10 @@
 MUY ÚNICOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v1.8.1 · Feb 22, 2026
+Estado: Refactor Modular Pragmático · v1.8.2 · Feb 22, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
-⚠️ IA / LLM DIRECTIVE: Read this document carefully before suggesting architecture changes. Strict compliance with "Pragmatic Modularity" and "Pull Request Workflow" is required.
+⚠️ IA / LLM DIRECTIVE: Read this document carefully before suggesting architecture changes. Strict compliance con "Pragmatic Modularity" y "Pull Request Workflow" is required.
 
 1. REGLAS CORE DE ARQUITECTURA Y FLUJO DE TRABAJO
 
@@ -37,7 +37,7 @@ muyunicos/ (generatepress-child)
 ├── inc/                       # ⚙️ MÓDULOS PHP (Lógica de negocio y hooks)
 │   ├── icons.php              # [CARGA PRIMERO] mu_get_icon() — repositorio de SVGs
 │   ├── geo.php                # Sistema multi-país + Auto-Detección + Modal + Selector Header
-│   ├── digital-restriction.php# ✅ Digital Restriction System (Singleton Class, pre_get_posts, redirects, autoselect JS bridges)
+│   ├── digital-restriction.php# ✅ Digital Restriction System (Singleton Class, pre_get_posts, redirects modulares, autoselect JS bridges)
 │   ├── auth-modal.php         # Modal Login/Registro + endpoints WC-AJAX
 │   ├── checkout.php           # ✅ Checkout Híbrido Optimizado (Físico/Digital) + Validación WA
 │   ├── cart.php               # Lógica de carrito, buffers BACS
