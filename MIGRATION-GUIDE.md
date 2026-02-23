@@ -1,6 +1,6 @@
 MUY ÚNICOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v1.8.8 · Feb 22, 2026
+Estado: Refactor Modular Pragmático · v1.8.9 · Feb 23, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -37,7 +37,7 @@ muyunicos/ (generatepress-child)
 ├── inc/                       # ⚙️ MÓDULOS PHP (Lógica de negocio y hooks)
 │   ├── icons.php              # [CARGA PRIMERO] mu_get_icon() — repositorio de SVGs
 │   ├── geo.php                # Sistema multi-país + Auto-Detección + Decimales + Modal + Selector
-│   ├── digital-restriction.php# ✅ Digital Restriction System v2.7 (Singleton Class, pre_get_posts estricto, redirects modulares, endpoints WC-AJAX, autoselect JS bridges)
+│   ├── digital-restriction.php# ✅ Digital Restriction System v3.1.1 (Hotfix Index Rebuild, Redirect Protection)
 │   ├── auth-modal.php         # Modal Login/Registro + endpoints WC-AJAX
 │   ├── checkout.php           # ✅ Checkout Híbrido Optimizado (Físico/Digital) + Validación WA
 │   ├── cart.php               # Lógica de carrito, buffers BACS
@@ -57,15 +57,15 @@ muyunicos/ (generatepress-child)
 │   └── shop.css               # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() (Infinite Scroll estilos)
 │
 └── js/                        # ⚡ JS MODULAR (IIFE + strict mode + DOMContentLoaded)
-    ├── admin.js               # is_admin() — Crea botón + AJAX handler. Sin jQuery (fetch) vía nativo WC-AJAX. Nonce vía muyuAdminData
+    ├── admin.js               # is_admin() — Crea botón #muyu-rebuild + WC-AJAX handler. Sin jQuery (fetch) vía nativo WC-AJAX. Nonce vía muyuAdminData
     ├── global-ui.js           # ✅ Global: country selector (hover), WPLingua toggle, share button, Carrusel Híbrido Lógica
     ├── header.js              # Global: menú móvil, submenús, dropdown cuenta
     ├── footer.js              # Global: comportamiento footer
-    ├── cart.js                # is_cart()
+    ├── cart.js                # is_cart() — depende de: jquery
     ├── checkout.js            # ✅ Validación WA (libphonenumber) + Toggle Dirección + Check Email
     ├── modal-auth.js          # ! is_user_logged_in()
     ├── country-modal.js       # Condicional — encolado por inc/geo.php
-    └── shop.js                # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() (Autoselect form + Infinite Scroll Lógica)
+    └── shop.js                # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() — Autoselect form via data bridge (#mu-format-autoselect-data), Lógica de Infinite Scroll JS
 
 3. INVENTARIO DE ARCHIVOS (Estado Actual)
 
@@ -75,7 +75,7 @@ Archivo | Responsabilidad principal
 ---|---
 inc/icons.php | mu_get_icon() — todos los SVGs del tema
 inc/geo.php | Detección de país por dominio, control de decimales por moneda (0 para AR/CL/CO), redirect selector en header, modal sugerencia, prefijo idioma.
-inc/digital-restriction.php | Restricción de productos físicos en subdominios (Clase Singleton v2.7, pre_get_posts, filters), redirección de categorías/productos físicos a digitales, auto-selección de variaciones, botón de reindexado admin (vía WC-AJAX).
+inc/digital-restriction.php | Restricción de productos físicos en subdominios v3.1.1. Auto-Rebuild en fallo de índice, Protección de loops.
 inc/auth-modal.php | HTML modal auth, endpoints wc_ajax_mu_*
 inc/checkout.php | Campos, validaciones, optimizaciones Checkout, Título "Pedido Recibido"
 inc/cart.php | Añadir múltiples ítems al carrito, buffers BACS
