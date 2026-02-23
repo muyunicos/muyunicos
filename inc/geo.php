@@ -5,6 +5,7 @@
  * Incluye:
  * - Funciones auxiliares multi-país (CORE)
  * - Auto-detección de país por dominio (Esencial para "WooCommerce Price Based on Country")
+ * - Configuración de decimales según el país
  * - Shortcode país de facturación
  * - Modal de sugerencia de país (geolocalización)
  * - Selector de país en header
@@ -177,6 +178,34 @@ if ( ! function_exists( 'muyu_country_modal_text' ) ) {
         return $text[ $lang ][ $type ] ?? $text['es'][ $type ];
     }
 }
+
+// ============================================
+// DECIMALES DE PRECIO POR PAÍS
+// ============================================
+
+if ( ! function_exists( 'mu_custom_price_decimals' ) ) {
+    /**
+     * Ajusta el número de decimales según el país detectado por URL.
+     * AR, CL y CO no usan decimales en la práctica.
+     * Los demás (MX, ES, PE, BR, EC, US, CR) usan 2 decimales de forma predeterminada.
+     * 
+     * @param int $decimals Cantidad de decimales configurada en WooCommerce.
+     * @return int Cantidad de decimales adaptada al país actual.
+     */
+    function mu_custom_price_decimals( $decimals ) {
+        $country = muyu_get_current_country_from_subdomain();
+        
+        // Países que no utilizan decimales en su e-commerce
+        $zero_decimals_countries = [ 'AR', 'CL', 'CO' ];
+        
+        if ( in_array( $country, $zero_decimals_countries, true ) ) {
+            return 0;
+        }
+        
+        return 2;
+    }
+}
+add_filter( 'wc_get_price_decimals', 'mu_custom_price_decimals' );
 
 // ============================================
 // AUTO-DETECCIÓN DE PAÍS POR DOMINIO
