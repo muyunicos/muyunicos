@@ -27,28 +27,45 @@
         
         var targetSlug = $data.data('target-slug');
         var hideRow = $data.data('hide-row') === true || $data.attr('data-hide-row') === 'true';
+        var userChanged = false; // Flag para detectar intención manual del usuario
+
+        // Inyectar CSS para ocultar el enlace "Limpiar" y evitar FOUC
+        if ( ! $('#mu-hide-reset-css').length ) {
+            $('<style id="mu-hide-reset-css">.variations_form .reset_variations { display: none !important; visibility: hidden !important; pointer-events: none; }</style>').appendTo('head');
+        }
+
+        // Detectar si el usuario cambia el selector manualmente
+        $form.on('change', 'select[name="attribute_pa_formato"], select[name="attribute_formato"]', function(e) {
+            if ( e.originalEvent ) { // Si existe originalEvent, fue una interacción humana
+                userChanged = true;
+            }
+        });
 
         var enforceSelection = function() {
-            // Soportar atributos globales (#pa_formato) y locales (#formato)
             var $select = $form.find('select[name="attribute_pa_formato"], select[name="attribute_formato"]').first();
             
             if ( ! $select.length ) {
                 return;
             }
+
+            if ( hideRow ) {
+                hideRowAndTable($select, $form);
+            }
             
-            // Si ya está seleccionado como queremos, ocultamos y salimos para no crear loop infinito
-            if ( $select.val() === targetSlug ) {
-                if ( hideRow ) {
-                    hideRowAndTable($select, $form);
-                }
+            // Si el usuario ya eligió manualmente y no estamos forzando ocultamiento, respetamos su decisión
+            if ( userChanged && ! hideRow ) {
                 return;
             }
             
-            // Seleccionar el valor objetivo y disparar 'change' para que WC actualice precios
-            $select.val(targetSlug).trigger('change');
+            // Si el select ya tiene el valor correcto, solo validamos con WC
+            if ( $select.val() === targetSlug ) {
+                $form.trigger('check_variations');
+                return;
+            }
             
-            if ( hideRow ) {
-                hideRowAndTable($select, $form);
+            // Autoseleccionar si la opción existe en el DOM
+            if ( $select.find('option[value="' + targetSlug + '"]').length ) {
+                $select.val(targetSlug).trigger('change');
             }
         };
 
@@ -56,24 +73,31 @@
             var $row = $select.closest('tr');
             $row.hide();
             
-            // Si no quedan variaciones visibles, ocultar la tabla entera (con fade para que no sea tan brusco)
-            if ( $form.find('table.variations tr:visible').length === 0 ) {
-                $form.find('.variations').fadeOut(200);
+            // Contar si hay otras variaciones visibles (excluyendo la oculta)
+            var visibleRows = 0;
+            $form.find('table.variations tbody tr').each(function() {
+                if ( $(this).css('display') !== 'none' ) {
+                    visibleRows++;
+                }
+            });
+            
+            if ( visibleRows === 0 ) {
+                $form.find('.variations').hide();
             }
         }
 
-        // 1. Evento nativo de WooCommerce cuando se inicializa o actualiza el form de variaciones
+        // Eventos de sincronización con WooCommerce
         $form.on('wc_variation_form woocommerce_update_variation_values', function() {
-            // El timeout muy pequeño asegura que WC ya terminó de renderizar el dropdown
-            setTimeout(enforceSelection, 10);
+            setTimeout(enforceSelection, 50); // Pequeño buffer para que WC termine de manipular el DOM
         });
 
-        // 2. Si el usuario le da a "Limpiar" y se resetean los valores, volvemos a aplicar
+        // Resetear intenciones si el form se vacía por completo
         $form.on('reset_data', function() {
-            setTimeout(enforceSelection, 10);
+            userChanged = false;
+            setTimeout(enforceSelection, 50);
         });
 
-        // 3. Fallback inmediato por si la inicialización de WC ya ocurrió
+        // Ejecución inmediata
         enforceSelection();
     }
 
