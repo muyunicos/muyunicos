@@ -2,12 +2,12 @@
 /**
  * Muy Únicos - Digital Restriction System
  * 
- * Sistema de restricción de contenido digital v2.6 (Refactor Limpio)
+ * Sistema de restricción de contenido digital v2.6.1 (Refactor WC-AJAX)
  * Propósito: Restringir productos físicos en subdominios, mostrando solo 
  * productos digitales. Optimizado para rendimiento y compatibilidad.
  * 
  * @package GeneratePress_Child
- * @since 2.6.0
+ * @since 2.6.1
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -51,7 +51,10 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         
         private function init_hooks() {
             // ---- Gestión de índices (Admin) ----
-            add_action( 'wp_ajax_muyu_rebuild_digital_list', [ $this, 'ajax_rebuild_indexes' ] );
+            
+            // Refactorizado a Endpoint WC-AJAX
+            add_action( 'wc_ajax_mu_rebuild_digital_list', [ $this, 'ajax_rebuild_indexes' ] );
+            
             add_action( 'woocommerce_update_product', [ $this, 'schedule_rebuild' ], 10, 1 );
             add_action( 'admin_init', [ $this, 'ensure_indexes_exist' ], 5 );
             add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_admin_assets' ] );
@@ -300,8 +303,9 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             wp_enqueue_style( 'mu-admin', $theme_uri . '/css/admin.css', [], $ver );
             wp_enqueue_script( 'mu-admin-js', $theme_uri . '/js/admin.js', [], $ver, true );
             wp_localize_script( 'mu-admin-js', 'muyuAdminData', [
-                'nonce' => wp_create_nonce( 'muyu-rebuild-nonce' ),
-                'label' => '⚡ Reindexar Digitales',
+                'nonce'       => wp_create_nonce( 'muyu-rebuild-nonce' ),
+                'label'       => '⚡ Reindexar Digitales',
+                'wc_ajax_url' => \WC_AJAX::get_endpoint( '%%endpoint%%' )
             ] );
         }
 

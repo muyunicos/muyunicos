@@ -29,10 +29,12 @@
             btn.textContent = '⏳ Procesando...';
 
             var formData = new FormData();
-            formData.append( 'action', 'muyu_rebuild_digital_list' );
             formData.append( 'nonce',  muyuAdminData.nonce );
 
-            fetch( ajaxurl, { method: 'POST', body: formData } )
+            // Usamos endpoint nativo de WooCommerce en vez del admin-ajax normal
+            var ajaxUrl = muyuAdminData.wc_ajax_url + '&action=mu_rebuild_digital_list';
+
+            fetch( ajaxUrl, { method: 'POST', body: formData } )
                 .then( function ( res ) { return res.json(); } )
                 .then( function ( response ) {
                     if ( response.success ) {
