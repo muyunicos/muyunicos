@@ -50,16 +50,14 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             add_filter( 'get_terms_args', [ $this, 'filter_category_terms' ], 10, 2 );
             add_filter( 'wp_get_nav_menu_items', [ $this, 'filter_menu_items' ], 10, 3 );
             
+            // ---- Auto-selección Global (Para todos los países) ----
+            add_filter( 'woocommerce_product_get_default_attributes', [ $this, 'set_format_default' ], 20, 2 );
+            add_action( 'woocommerce_before_add_to_cart_button', [ $this, 'autoselect_format_variation' ], 5 );
+            
             // ---- Variaciones y Precios (Solo en subdominios restringidos) ----
             if ( $this->is_restricted_user() ) {
                 // 1. Ocultar del HTML la opción Impresas (Método seguro de la v2.2)
                 add_filter( 'woocommerce_dropdown_variation_attribute_options_args', [ $this, 'clean_variation_dropdown' ], 10, 1 );
-                
-                // 2. Pre-seleccionar Digital en PHP
-                add_filter( 'woocommerce_product_get_default_attributes', [ $this, 'set_format_default' ], 20, 2 );
-                
-                // 3. Forzar Selección Digital en JS (Método de la v2.2)
-                add_action( 'woocommerce_before_add_to_cart_button', [ $this, 'autoselect_format_variation' ], 5 );
                 
                 // 4. Arreglar Precio en Catálogos (Puedes comentarlo si prefieres desactivarlo)
                 add_filter( 'woocommerce_variable_price_html', [ $this, 'display_digital_price_in_catalog' ], 99, 2 );
@@ -367,10 +365,10 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         }
         
         /**
-         * 2. Pre-selecciona la variante digital.
+         * 2. Pre-selecciona la variante según el país.
          */
         public function set_format_default( array $defaults, $product ): array {
-            $defaults['pa_formato'] = 'digitales';
+            $defaults['pa_formato'] = $this->is_restricted_user() ? 'digitales' : 'impresas';
             return $defaults;
         }
         
@@ -393,11 +391,14 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         }
         
         /**
-         * 4. Script exacto de la v2.2 que fuerza la selección y oculta suavemente la tabla
+         * 4. Script exacto de la v2.2 que fuerza la selección y oculta suavemente la tabla (si es exterior)
          */
         public function autoselect_format_variation() {
             global $product;
             if ( ! $product || ! $product->is_type( 'variable' ) ) return;
+            
+            $is_restricted = $this->is_restricted_user();
+            $target_slug   = $is_restricted ? 'digitales' : 'impresas';
             ?>
             <script type="text/javascript">
             (function($) {
@@ -418,14 +419,18 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                         var $select = $form.find('select[name^="attribute_pa_formato"], select[name^="attribute_formato"]');
                         if ( ! $select.length ) return;
                         
-                        if ( $select.val() === 'digitales' ) {
-                            hideRowAndTable($select, $form);
+                        var targetSlug = '<?php echo esc_js($target_slug); ?>';
+                        var isRestricted = <?php echo $is_restricted ? 'true' : 'false'; ?>;
+                        
+                        if ( $select.val() === targetSlug ) {
+                            if (isRestricted) hideRowAndTable($select, $form);
                             return;
                         }
                         
-                        $select.val('digitales').trigger('change');
+                        $select.val(targetSlug).trigger('change');
                         $form.trigger('check_variations');
-                        hideRowAndTable($select, $form);
+                        
+                        if (isRestricted) hideRowAndTable($select, $form);
                     }
                     
                     function hideRowAndTable($select, $form) {
@@ -441,6 +446,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 });
             })(jQuery);
             </script>
+            <?php if ( $is_restricted ) : ?>
             <style>
                 form.variations_form .variations, form.variations_form tr {
                     transition: opacity 0.2s ease-out;
@@ -450,6 +456,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                     visibility: hidden !important;
                 }
             </style>
+            <?php endif; ?>
             <?php
         }
     }
