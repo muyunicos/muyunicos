@@ -53,16 +53,20 @@
     });
     
     function autoSelectFormatVariation($form, targetSlug, hideRow) {
-        var $select = $form.find('#pa_formato');
+        // Fix: Soportar atributos globales (#pa_formato) y locales (#formato)
+        var $select = $form.find('#pa_formato, #formato');
         
         if ( ! $select.length ) {
             // Fallback por name
-            $select = $form.find('select[name="attribute_pa_formato"]');
+            $select = $form.find('select[name="attribute_pa_formato"], select[name="attribute_formato"]');
         }
         
         if ( ! $select.length ) {
             return;
         }
+        
+        // Usar solo el primer select encontrado por si hay múltiples
+        $select = $select.first();
         
         // Si ya está seleccionado como queremos, ocultamos y salimos
         if ( $select.val() === targetSlug ) {
