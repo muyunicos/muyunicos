@@ -1,11 +1,11 @@
 <?php
 /**
  * Muy Únicos - Digital Restriction System
- * * Sistema de restricción de contenido digital v3.1.0 (Refactorizado y Optimizado)
+ * * Sistema de restricción de contenido digital v3.1.1 (Hotfix: Empty Index & Redirect Loop)
  * Propósito: Restringir productos físicos en subdominios, mostrando solo 
  * productos digitales. Optimizado para rendimiento y compatibilidad.
  * * @package GeneratePress_Child
- * @since 3.1.0
+ * @since 3.1.1
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -197,7 +197,11 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         }
         
         public function ensure_indexes_exist(): void {
-            if ( false === get_option( self::OPTION_PRODUCT_IDS, false ) ) $this->rebuild_digital_indexes();
+            // FIX: Reconstruir si no existe O si está vacío (prevención de corrupción)
+            $ids = get_option( self::OPTION_PRODUCT_IDS, false );
+            if ( false === $ids || empty( $ids ) ) {
+                $this->rebuild_digital_indexes();
+            }
         }
         
         public function enqueue_admin_assets( string $hook ): void {
@@ -286,11 +290,28 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         
         private function handle_product_redirect(): array {
             global $post;
-            $digital_ids = array_map( 'intval', (array) get_option( self::OPTION_PRODUCT_IDS, [] ) );
-            if ( ! $post || in_array( (int) $post->ID, $digital_ids, true ) ) return [ false, '' ];
+            
+            // FIX: Recuperar índice. Si está vacío o no existe, reconstruir forzosamente.
+            $digital_ids = (array) get_option( self::OPTION_PRODUCT_IDS, [] );
+            if ( empty( $digital_ids ) ) {
+                $this->rebuild_digital_indexes();
+                $digital_ids = (array) get_option( self::OPTION_PRODUCT_IDS, [] );
+            }
+            
+            // Si el producto actual (Variable o Simple) ya está en la lista permitida, NO redirigir.
+            if ( ! $post || in_array( (int) $post->ID, array_map( 'intval', $digital_ids ), true ) ) {
+                return [ false, '' ];
+            }
             
             $redirect_map = get_option( self::OPTION_REDIRECT_MAP, [] );
-            if ( isset( $redirect_map[ $post->ID ] ) ) return [ true, get_permalink( $redirect_map[ $post->ID ] ) ];
+            if ( isset( $redirect_map[ $post->ID ] ) ) {
+                // Validar destino
+                $target_id = $redirect_map[ $post->ID ];
+                if ( 'publish' === get_post_status( $target_id ) ) {
+                    return [ true, get_permalink( $target_id ) ];
+                }
+            }
+            
             return [ true, $this->find_digital_category_for_product( $post->ID ) ];
         }
         
