@@ -1,6 +1,6 @@
 MUY ÚNICOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v1.8.6 · Feb 22, 2026
+Estado: Refactor Modular Pragmático · v1.8.7 · Feb 22, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -47,7 +47,7 @@ muyunicos/ (generatepress-child)
 │   ├── admin.css              # is_admin() — Botones reindex, tools internas
 │   ├── components/            # Componentes compartidos
 │   │   ├── global-ui.css      # Global: micro UI (Share, WhatsApp flotante, Search, estilos de WPLingua)
-│   │   ├── header.css         # Global: header, navegación, Country Selector
+│   │   ├── header.css         # Global: header, navegación, Country Selector (con hover automático v1.8.7)
 │   │   ├── footer.css         # Global: footer y columnas
 │   │   ├── modal-auth.css     # ! is_user_logged_in()
 │   │   └── country-modal.css  # Condicional — encolado por inc/geo.php (mu_should_show_country_modal)
@@ -58,7 +58,7 @@ muyunicos/ (generatepress-child)
 │
 └── js/                        # ⚡ JS MODULAR (IIFE + strict mode + DOMContentLoaded)
     ├── admin.js               # is_admin() — Crea botón + AJAX handler. Sin jQuery (fetch) vía nativo WC-AJAX. Nonce vía muyuAdminData
-    ├── global-ui.js           # Global: country selector, WPLingua toggle, share button
+    ├── global-ui.js           # Global: country selector (hover automático v1.2.0), WPLingua toggle, share button
     ├── header.js              # Global: menú móvil, submenús, dropdown cuenta
     ├── footer.js              # Global: comportamiento footer
     ├── cart.js                # is_cart()
@@ -88,7 +88,7 @@ Archivo | Condición de carga en functions.php
 style.css (raíz) | Global (base)
 css/admin.css | is_admin() && current_screen == 'product'
 css/components/global-ui.css | Global (Share Button, WhatsApp flotante, Search Form, WPLingua estilos)
-css/components/header.css | Global (Header, Navegación, Country Selector)
+css/components/header.css | Global (Header, Navegación, Country Selector con hover v1.8.7)
 css/components/footer.css | Global
 css/components/modal-auth.css | ! is_user_logged_in()
 css/components/country-modal.css | Condicional — encolado por inc/geo.php
@@ -102,7 +102,7 @@ JS · js/
 Archivo | Condición de carga en functions.php
 ---|---
 js/admin.js | is_admin() — Crea botón #muyu-rebuild + WC-AJAX handler. Sin jQuery, usa fetch(). Nonce y WC-AJAX URL vía wp_localize_script (muyuAdminData).
-js/global-ui.js | Global (country selector, WPLingua toggle, share button)
+js/global-ui.js | Global (country selector con hover v1.2.0, WPLingua toggle, share button)
 js/header.js | Global
 js/footer.js | Global
 js/modal-auth.js | ! is_user_logged_in()
