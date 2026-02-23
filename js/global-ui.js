@@ -1,7 +1,7 @@
 /**
  * MUYUNICOS - Global UI Scripts
  * Consolidated: Country Selector, WPLingua Toggle, Share Button
- * Version: 1.1.1
+ * Version: 1.1.2
  */
 
 (function() {
@@ -11,35 +11,46 @@
      * Country Selector - Dropdown functionality
      */
     function initCountrySelector() {
-        var container = document.querySelector('.mu-header-country-item'); 
-        if(!container) return;
+        var containers = document.querySelectorAll('.country-redirect-container'); 
+        if(!containers.length) return;
 
-        var trigger = container.querySelector('.country-selector-trigger');
-        var dropdown = container.querySelector('.country-selector-dropdown');
-        
-        if (!trigger || !dropdown) return;
-        
-        trigger.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            var isVisible = dropdown.style.display === 'block';
-            dropdown.style.display = isVisible ? 'none' : 'block';
-            trigger.setAttribute('aria-expanded', isVisible ? 'false' : 'true');
-        });
-        
-        document.addEventListener('click', function(e) {
-            if (!trigger.contains(e.target) && !dropdown.contains(e.target)) {
-                dropdown.style.display = 'none';
-                trigger.setAttribute('aria-expanded', 'false');
-            }
-        });
-        
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && dropdown.style.display === 'block') {
-                dropdown.style.display = 'none';
-                trigger.setAttribute('aria-expanded', 'false');
-                trigger.focus();
-            }
+        containers.forEach(function(container) {
+            var trigger = container.querySelector('.country-selector-trigger');
+            var dropdown = container.querySelector('.country-selector-dropdown');
+            
+            if (!trigger || !dropdown) return;
+            
+            trigger.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var isVisible = dropdown.style.display === 'block';
+                
+                // Close any other open dropdowns first
+                document.querySelectorAll('.country-selector-dropdown').forEach(function(dd) {
+                    dd.style.display = 'none';
+                });
+                document.querySelectorAll('.country-selector-trigger').forEach(function(tr) {
+                    tr.setAttribute('aria-expanded', 'false');
+                });
+
+                dropdown.style.display = isVisible ? 'none' : 'block';
+                trigger.setAttribute('aria-expanded', isVisible ? 'false' : 'true');
+            });
+            
+            document.addEventListener('click', function(e) {
+                if (!trigger.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.style.display = 'none';
+                    trigger.setAttribute('aria-expanded', 'false');
+                }
+            });
+            
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && dropdown.style.display === 'block') {
+                    dropdown.style.display = 'none';
+                    trigger.setAttribute('aria-expanded', 'false');
+                    trigger.focus();
+                }
+            });
         });
     }
 
