@@ -2,12 +2,12 @@
 /**
  * Muy Únicos - Digital Restriction System
  * 
- * Sistema de restricción de contenido digital v2.6.5 (Fix: Admin testing frontend & Domain logic)
+ * Sistema de restricción de contenido digital v2.7.0
  * Propósito: Restringir productos físicos en subdominios, mostrando solo 
  * productos digitales. Optimizado para rendimiento y compatibilidad.
  * 
  * @package GeneratePress_Child
- * @since 2.6.5
+ * @since 2.7.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -51,10 +51,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         
         private function init_hooks() {
             // ---- Gestión de índices (Admin) ----
-            
-            // Refactorizado a Endpoint WC-AJAX
             add_action( 'wc_ajax_mu_rebuild_digital_list', [ $this, 'ajax_rebuild_indexes' ] );
-            
             add_action( 'woocommerce_update_product', [ $this, 'schedule_rebuild' ], 10, 1 );
             add_action( 'admin_init', [ $this, 'ensure_indexes_exist' ], 5 );
             add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_admin_assets' ] );
@@ -87,8 +84,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 return $this->cache['is_restricted'];
             }
             
-            // Solo restringir accesos en el dashboard backend de WordPress o en Ajax del admin, 
-            // permitiendo que los administradores experimenten y validen la restricción en el frontend!
             if ( is_admin() && ! wp_doing_ajax() ) {
                 $this->cache['is_restricted'] = false;
                 return false;
@@ -298,7 +293,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         public function enqueue_admin_assets( $hook ) {
             if ( 'edit.php' !== $hook ) return;
 
-            // Failsafe: uso de screen en lugar del frágil global $typenow
             $screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
             $is_product = ( $screen && 'edit-product' === $screen->id ) || ( isset( $_GET['post_type'] ) && 'product' === $_GET['post_type'] );
             
@@ -337,18 +331,21 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             if ( $this->is_restricted_user() ) {
                 $digital_ids = get_option( self::OPTION_PRODUCT_IDS, false );
                 
-                // Si el índice no existe o está vacío (sin reconstrucción programada), intentar regenerarlo
-                if ( false === $digital_ids || ( empty( $digital_ids ) && ! get_transient( self::TRANSIENT_REBUILD ) ) ) {
+                // Si el índice no existe (false), intentar regenerarlo
+                // Si está vacío ([]), NO regeneramos en cada visita para evitar bucle de performance
+                if ( false === $digital_ids ) {
                     $this->rebuild_digital_indexes();
                     $digital_ids = get_option( self::OPTION_PRODUCT_IDS, [] );
                 }
                 
-                // Si realmente no hay IDs, no forzamos [0] para evitar un white-screen del catálogo
+                // Aplicar restricción estricta. Si está vacío (no hay productos digitales), forzar [0] para mostrar tienda vacía
+                // y evitar que devuelva todos los productos físicos por defecto.
                 if ( empty( $digital_ids ) ) {
-                    return;
+                    $digital_ids = [ 0 ];
+                } else {
+                    $digital_ids = array_map( 'intval', (array) $digital_ids );
                 }
                 
-                $digital_ids = array_map( 'intval', (array) $digital_ids );
                 $query->set( 'post__in', $digital_ids );
             }
         }
@@ -361,19 +358,18 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             if ( is_admin() || wp_is_json_request() ) return $args;
             if ( ! in_array( 'product_cat', (array) $taxonomies, true ) || ! $this->is_restricted_user() ) return $args;
             
-            $digital_cat_ids = get_option( self::OPTION_CATEGORY_IDS, false );
-            
-            if ( empty( $digital_cat_ids ) ) {
-                return $args; // Fallback de seguridad, no ocultamos todo
-            }
-            
+            $digital_cat_ids = get_option( self::OPTION_CATEGORY_IDS, [] );
             $digital_cat_ids = array_map( 'intval', (array) $digital_cat_ids );
             
+            // Restricción estricta: Si hay categorías ya pedidas en "include", intersecamos
             if ( ! empty( $args['include'] ) ) {
                 $current = array_map( 'intval', is_array( $args['include'] ) ? $args['include'] : explode( ',', $args['include'] ) );
                 $args['include'] = array_intersect( $current, $digital_cat_ids );
+                if ( empty( $args['include'] ) ) {
+                    $args['include'] = [ 0 ];
+                }
             } else {
-                $args['include'] = $digital_cat_ids;
+                $args['include'] = empty( $digital_cat_ids ) ? [ 0 ] : $digital_cat_ids;
             }
             
             return $args;
@@ -382,16 +378,12 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         public function filter_menu_items( $items, $menu, $args ) {
             if ( is_admin() || wp_is_json_request() || ! $this->is_restricted_user() ) return $items;
             
-            $digital_cat_ids = get_option( self::OPTION_CATEGORY_IDS, false );
-            
-            if ( empty( $digital_cat_ids ) ) {
-                return $items; // Fallback de seguridad
-            }
-            
+            $digital_cat_ids = get_option( self::OPTION_CATEGORY_IDS, [] );
             $digital_cat_ids = array_map( 'intval', (array) $digital_cat_ids );
             
             return array_filter( $items, function( $item ) use ( $digital_cat_ids ) {
                 if ( isset( $item->object ) && 'product_cat' === $item->object ) {
+                    // Si no hay categorías digitales o la actual no está, la ocultamos
                     return in_array( (int) $item->object_id, $digital_cat_ids, true );
                 }
                 return true;
