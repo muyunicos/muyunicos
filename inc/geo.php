@@ -22,6 +22,8 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 if ( ! function_exists( 'muyu_get_main_domain' ) ) {
     /**
      * Obtiene el dominio principal (cacheado)
+     * Extrae de forma robusta el dominio base limpiando subdominios conocidos,
+     * previniendo fallos en entornos donde siteurl es dinámico (ej: Price Based on Country).
      * 
      * @return string Dominio principal (ej: 'muyunicos.com')
      */
@@ -29,9 +31,24 @@ if ( ! function_exists( 'muyu_get_main_domain' ) ) {
         static $main_domain = null;
         
         if ( $main_domain === null ) {
-            $siteurl = get_option( 'siteurl' );
-            $main_domain = wp_parse_url( $siteurl, PHP_URL_HOST );
-            if ( empty( $main_domain ) ) $main_domain = 'muyunicos.com';
+            $host = preg_replace( '/:\d+$/', '', trim( $_SERVER['HTTP_HOST'] ?? '' ) );
+            $host = str_replace( 'www.', '', $host );
+            
+            // Subdominios de países conocidos
+            $known_subs = ['mexico.', 'co.', 'es.', 'cl.', 'pe.', 'br.', 'ec.', 'us.', 'cr.'];
+            
+            foreach ( $known_subs as $sub ) {
+                if ( strpos( $host, $sub ) === 0 ) {
+                    $main_domain = substr( $host, strlen( $sub ) );
+                    return $main_domain;
+                }
+            }
+            
+            // Si no tiene prefijo conocido, el host actual es el dominio principal
+            $main_domain = $host;
+            if ( empty( $main_domain ) ) {
+                $main_domain = 'muyunicos.com'; // fallback extremo
+            }
         }
         
         return $main_domain;
@@ -86,10 +103,11 @@ if ( ! function_exists( 'muyu_get_current_country_from_subdomain' ) ) {
     function muyu_get_current_country_from_subdomain() {
         // Eliminar puerto si existe (ej: :80, :443, :8080)
         $current_host = preg_replace( '/:\d+$/', '', trim( $_SERVER['HTTP_HOST'] ?? '' ) );
+        $current_host = str_replace( 'www.', '', $current_host );
         $main_domain = muyu_get_main_domain();
         
-        // Si es el dominio principal o no contiene el dominio base, es AR
-        if ( $current_host === $main_domain || strpos( $current_host, $main_domain ) === false ) {
+        // Si es el dominio principal, es AR
+        if ( $current_host === $main_domain ) {
             return 'AR';
         }
         
@@ -101,9 +119,10 @@ if ( ! function_exists( 'muyu_get_current_country_from_subdomain' ) ) {
         if ( $subdomain_map === null ) {
             $subdomain_map = [];
             foreach ( muyu_get_countries_data() as $code => $data ) {
-                if ( $data['host'] === $main_domain ) continue;
                 $host_parts = explode( '.', $data['host'] );
-                $subdomain_map[ strtolower( $host_parts[0] ) ] = $code;
+                if ( $host_parts[0] !== 'muyunicos' ) { // Ignorar el main_domain que es 'muyunicos.com'
+                    $subdomain_map[ strtolower( $host_parts[0] ) ] = $code;
+                }
             }
             // Alias manuales históricos (compatibilidad hacia atrás)
             $subdomain_map['mexico'] = 'MX';
