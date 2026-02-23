@@ -1,20 +1,16 @@
 <?php
 /**
  * Muy Únicos - Digital Restriction System
- * * Sistema de restricción de contenido digital v3.3.1 (JS Race Condition Fix)
+ * * Sistema de restricción de contenido digital v4.0.1 (Category Filter Fix)
  * Propósito: Restringir productos físicos en subdominios, mostrando solo 
  * productos digitales. Optimizado para rendimiento y compatibilidad.
  * * @package GeneratePress_Child
- * @since 3.3.1
+ * @since 4.0.1
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit; // Exit if accessed directly
 }
-
-// Constantes de entorno con fallback seguro
-defined( 'MUYU_PHYSICAL_FORMAT_ID' ) || define( 'MUYU_PHYSICAL_FORMAT_ID', 112 );
-defined( 'MUYU_DIGITAL_FORMAT_ID' )  || define( 'MUYU_DIGITAL_FORMAT_ID', 111 );
 
 if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
 
@@ -29,9 +25,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         const OPTION_LAST_UPDATE  = 'muyu_digital_list_updated';
         const TRANSIENT_REBUILD   = 'muyu_rebuild_scheduled';
         
-        // VARIABLE DE DIAGNÓSTICO: Apagado por defecto para la versión en vivo
-        private bool $debug_mode = false;
-        
         public static function get_instance(): self {
             if ( null === self::$instance ) {
                 self::$instance = new self();
@@ -44,57 +37,34 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         }
         
         private function init_hooks(): void {
+            // ---- Gestión de índices (Admin) ----
             add_action( 'wc_ajax_mu_rebuild_digital_list', [ $this, 'ajax_rebuild_indexes' ] );
             add_action( 'woocommerce_update_product', [ $this, 'schedule_rebuild' ] );
             add_action( 'admin_init', [ $this, 'ensure_indexes_exist' ], 5 );
             add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_admin_assets' ] );
             add_action( 'shutdown', [ $this, 'execute_scheduled_rebuild' ] );
             
+            // ---- Filtrado de contenido (Frontend) ----
             add_action( 'pre_get_posts', [ $this, 'filter_product_queries' ], 50 );
             add_action( 'template_redirect', [ $this, 'handle_redirects' ], 20 );
             add_filter( 'get_terms_args', [ $this, 'filter_category_terms' ], 10, 2 );
             add_filter( 'wp_get_nav_menu_items', [ $this, 'filter_menu_items' ], 10, 3 );
             
-            add_filter( 'woocommerce_product_get_default_attributes', [ $this, 'set_format_default' ], 20, 2 );
-            add_filter( 'woocommerce_variable_price_html', [ $this, 'display_digital_price_only' ], 99, 2 );
-            add_filter( 'woocommerce_variable_sale_price_html', [ $this, 'display_digital_price_only' ], 99, 2 );
-            add_action( 'wp_footer', [ $this, 'frontend_variation_script' ], 99 );
-
-            add_filter( 'woocommerce_get_variation_prices_hash', [ $this, 'price_hash_cache_bust' ], 10, 1 );
-
-            if ( $this->debug_mode ) {
-                add_action( 'woocommerce_before_single_product', [ $this, 'render_debug_panel' ] );
-            }
-        }
-        
-        // =====================================================================
-        // HERRAMIENTA DE DIAGNÓSTICO (Visible solo para administradores)
-        // =====================================================================
-        public function render_debug_panel(): void {
-            if ( ! current_user_can( 'administrator' ) ) return;
-            global $product;
-            if ( ! $product ) return;
-
-            echo '<div style="background:#111; color:#0f0; padding:20px; margin-bottom:20px; font-family:monospace; font-size:13px; border-left:5px solid #0f0; z-index:99999; position:relative;">';
-            echo '<h3 style="color:#fff; margin-top:0;">🔍 MUYU Debugger (Solo visible para ti)</h3>';
-            echo '<strong>Host actual:</strong> ' . $_SERVER['HTTP_HOST'] . '<br>';
-            echo '<strong>¿Es usuario restringido?</strong> ' . ($this->is_restricted_user() ? 'SÍ (Subdominio internacional)' : 'NO (Argentina)') . '<br>';
-            echo '<strong>Tipo de producto detectado por WC:</strong> <span style="color:yellow; font-size:16px;">' . strtoupper($product->get_type()) . '</span><br>';
-            
-            if ( $product->is_type('variable') ) {
-                $attrs = $product->get_variation_attributes();
-                echo '<strong>Atributos registrados en este producto (Nombres exactos):</strong><br>';
-                foreach ($attrs as $key => $val) {
-                    echo "- <code>" . esc_html($key) . "</code><br>";
-                }
+            // ---- Variaciones y Precios (Solo en subdominios restringidos) ----
+            if ( $this->is_restricted_user() ) {
+                // 1. Ocultar del HTML la opción Impresas (Método seguro de la v2.2)
+                add_filter( 'woocommerce_dropdown_variation_attribute_options_args', [ $this, 'clean_variation_dropdown' ], 10, 1 );
                 
-                echo '<strong>Variaciones hijas activas (IDs):</strong> ';
-                $children = $product->get_children();
-                echo implode(', ', $children) . '<br>';
-            } else {
-                echo '<br><strong style="color:red;">⚠️ ALERTA: WooCommerce cree que esto es un producto SIMPLE.</strong><br>';
+                // 2. Pre-seleccionar Digital en PHP
+                add_filter( 'woocommerce_product_get_default_attributes', [ $this, 'set_format_default' ], 20, 2 );
+                
+                // 3. Forzar Selección Digital en JS (Método de la v2.2)
+                add_action( 'woocommerce_before_add_to_cart_button', [ $this, 'autoselect_format_variation' ], 5 );
+                
+                // 4. Arreglar Precio en Catálogos (Puedes comentarlo si prefieres desactivarlo)
+                add_filter( 'woocommerce_variable_price_html', [ $this, 'display_digital_price_in_catalog' ], 99, 2 );
+                add_filter( 'woocommerce_variable_sale_price_html', [ $this, 'display_digital_price_in_catalog' ], 99, 2 );
             }
-            echo '</div>';
         }
 
         // =====================================================================
@@ -105,10 +75,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             $host = sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ?? '' ) );
             $host = preg_replace( '/:\d+$/', '', $host );
             return 'muyunicos.com' !== str_replace( 'www.', '', $host );
-        }
-
-        public function price_hash_cache_bust( $hash ) {
-            return $hash . ( $this->is_restricted_user() ? '_dig_v3' : '_full_v3' );
         }
 
         // =====================================================================
@@ -261,7 +227,13 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         }
 
         public function filter_category_terms( array $args, array $taxonomies ): array {
-            if ( is_admin() || wp_is_json_request() ) return $args;
+            // No interferir en el admin o llamadas AJAX nativas
+            if ( is_admin() || wp_doing_ajax() || wp_is_json_request() ) return $args;
+            
+            // ¡LA CLAVE DEL FIX! Si WP está preguntando "qué categorías tiene este producto específico", NO interferir.
+            // Interrumpir esta consulta es lo que rompía "Price Based on Country" y escondía las variaciones.
+            if ( ! empty( $args['object_ids'] ) ) return $args;
+            
             if ( ! in_array( 'product_cat', $taxonomies, true ) || ! $this->is_restricted_user() ) return $args;
             
             $digital_cat_ids = array_map( 'intval', (array) get_option( self::OPTION_CATEGORY_IDS, [] ) );
@@ -371,141 +343,113 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         }
 
         // =====================================================================
-        // VARIACIONES Y FRONTEND JS BRIDGE
+        // VARIACIONES FRONTEND Y PRECIOS
         // =====================================================================
         
-        public function set_format_default( array $defaults, $product ): array {
-            $term_id = $this->is_restricted_user() ? MUYU_DIGITAL_FORMAT_ID : MUYU_PHYSICAL_FORMAT_ID;
-            $term = get_term( $term_id, 'pa_formato' );
-            
-            if ( $term && ! is_wp_error( $term ) ) {
-                $attributes = ( $product && is_a( $product, 'WC_Product_Variable' ) ) ? $product->get_variation_attributes() : [];
-                
-                $key = '';
-                if ( isset( $attributes['pa_formato'] ) ) $key = 'pa_formato';
-                elseif ( isset( $attributes['attribute_pa_formato'] ) ) $key = 'attribute_pa_formato';
-                elseif ( isset( $attributes['formato'] ) ) $key = 'formato';
-                
-                if ( !empty($key) ) {
-                    $defaults[$key] = $term->slug;
-                } else {
-                    // Fallback extra de seguridad
-                    $defaults['pa_formato'] = $term->slug;
+        /**
+         * 1. Elimina la opción "impresas" directamente desde el HTML generado por PHP.
+         * Seguro para navegadores y permite que el JS nativo de WC funcione impecable.
+         */
+        public function clean_variation_dropdown( $args ) {
+            $attribute = $args['attribute'] ?? '';
+            if ( ! in_array( $attribute, ['pa_formato', 'formato', 'attribute_pa_formato'], true ) ) return $args;
+
+            if ( ! empty( $args['options'] ) ) {
+                foreach ( $args['options'] as $key => $option ) {
+                    if ( is_string( $option ) && 'impresas' === strtolower( $option ) ) {
+                        unset( $args['options'][ $key ] );
+                    } elseif ( is_object( $option ) && isset( $option->slug ) && 'impresas' === strtolower( $option->slug ) ) {
+                        unset( $args['options'][ $key ] );
+                    }
                 }
             }
+            return $args;
+        }
+        
+        /**
+         * 2. Pre-selecciona la variante digital.
+         */
+        public function set_format_default( array $defaults, $product ): array {
+            $defaults['pa_formato'] = 'digitales';
             return $defaults;
         }
         
-        public function display_digital_price_only( $price, $product ) {
-            if ( ! $this->is_restricted_user() ) return $price;
+        /**
+         * 3. Corrige el precio en el listado para no mostrar el valor barato físico.
+         * Solo opera en el loop de catálogo, evitando colapsar la página del producto.
+         */
+        public function display_digital_price_in_catalog( $price, $product ) {
+            if ( is_product() ) return $price;
             
-            $digital_term = get_term( MUYU_DIGITAL_FORMAT_ID, 'pa_formato' );
-            if ( ! $digital_term || is_wp_error( $digital_term ) ) return $price;
-
-            $digital_slug = $digital_term->slug;
             $variations = $product->get_children();
-            
-            foreach ( $variations as $variation_id ) {
-                $variation = wc_get_product( $variation_id );
-                if ( ! $variation ) continue;
-                
-                $attributes = $variation->get_attributes();
-                $format = $attributes['pa_formato'] ?? $attributes['attribute_pa_formato'] ?? $attributes['formato'] ?? '';
-                
-                if ( $format === $digital_slug ) {
-                    return $variation->get_price_html();
+            foreach ( $variations as $var_id ) {
+                $format = get_post_meta( $var_id, 'attribute_pa_formato', true ) ?: get_post_meta( $var_id, 'attribute_formato', true );
+                if ( 'digitales' === $format ) {
+                    $var_product = wc_get_product( $var_id );
+                    if ( $var_product ) return $var_product->get_price_html();
                 }
             }
-            
             return $price;
         }
         
-        public function frontend_variation_script(): void {
-            if ( ! $this->is_restricted_user() ) return;
-            
-            $phys_term = get_term( MUYU_PHYSICAL_FORMAT_ID, 'pa_formato' );
-            $dig_term  = get_term( MUYU_DIGITAL_FORMAT_ID, 'pa_formato' );
-            
-            if ( ! $phys_term || is_wp_error( $phys_term ) || ! $dig_term || is_wp_error( $dig_term ) ) return;
-            
-            $phys_slug = $phys_term->slug;
-            $dig_slug  = $dig_term->slug;
+        /**
+         * 4. Script exacto de la v2.2 que fuerza la selección y oculta suavemente la tabla
+         */
+        public function autoselect_format_variation() {
+            global $product;
+            if ( ! $product || ! $product->is_type( 'variable' ) ) return;
             ?>
+            <script type="text/javascript">
+            (function($) {
+                'use strict';
+                if ( 'undefined' === typeof $ || ! $.fn ) return;
+                
+                $(document).ready(function() {
+                    var $form = $('form.variations_form');
+                    if ( ! $form.length ) return;
+                    
+                    $form.on('wc_variation_form woocommerce_update_variation_values', function() {
+                        setTimeout(autoSelectFormatVariation, 100);
+                    });
+                    
+                    setTimeout(autoSelectFormatVariation, 150);
+                    
+                    function autoSelectFormatVariation() {
+                        var $select = $form.find('select[name^="attribute_pa_formato"], select[name^="attribute_formato"]');
+                        if ( ! $select.length ) return;
+                        
+                        if ( $select.val() === 'digitales' ) {
+                            hideRowAndTable($select, $form);
+                            return;
+                        }
+                        
+                        $select.val('digitales').trigger('change');
+                        $form.trigger('check_variations');
+                        hideRowAndTable($select, $form);
+                    }
+                    
+                    function hideRowAndTable($select, $form) {
+                        var $row = $select.closest('tr');
+                        $row.hide();
+                        
+                        if ( $form.find('table.variations tr:visible').length === 0 ) {
+                            $form.find('.variations').fadeOut(200);
+                        }
+                        // Ocultar botón de limpiar opciones
+                        $form.find('.reset_variations').hide();
+                    }
+                });
+            })(jQuery);
+            </script>
             <style>
-                select[name^="attribute_pa_formato"] option[value="<?php echo esc_attr($phys_slug); ?>"],
-                select[name^="attribute_formato"] option[value="<?php echo esc_attr($phys_slug); ?>"] {
-                    display: none !important;
+                form.variations_form .variations, form.variations_form tr {
+                    transition: opacity 0.2s ease-out;
                 }
                 .variations_form .reset_variations {
                     display: none !important;
                     visibility: hidden !important;
                 }
             </style>
-            <script type="text/javascript">
-                document.addEventListener('DOMContentLoaded', function() {
-                    if (typeof jQuery !== 'undefined') {
-                        var physSlug = '<?php echo esc_js($phys_slug); ?>';
-                        var digSlug  = '<?php echo esc_js($dig_slug); ?>';
-
-                        // 1. Escuchar los eventos de WooCommerce de forma pasiva
-                        jQuery(document).on('wc_variation_form woocommerce_update_variation_values', function(e) {
-                            var $form = jQuery(e.target);
-                            if (!$form.is('form.variations_form')) $form = $form.closest('form.variations_form');
-                            if (!$form.length) return;
-                            
-                            var $select = $form.find('select[name^="attribute_pa_formato"], select[name^="attribute_formato"]');
-                            if (!$select.length) return;
-                            
-                            var needsUpdate = false;
-                            var $physOption = $select.find('option[value="' + physSlug + '"]');
-                            
-                            // Si encontramos la opción física, la eliminamos y pedimos actualizar
-                            if ($physOption.length) {
-                                $physOption.remove();
-                                needsUpdate = true;
-                            }
-                            
-                            // Aseguramos que la digital esté elegida
-                            if ($select.val() !== digSlug) {
-                                $select.val(digSlug);
-                                needsUpdate = true;
-                            }
-                            
-                            // FIX IMPORTANTE: Evitamos el Race Condition. 
-                            // Solo forzamos un 'change' escapando del loop actual (esperamos 50ms)
-                            if (needsUpdate) {
-                                setTimeout(function() {
-                                    $select.trigger('change');
-                                }, 50);
-                            }
-                            
-                            // Ocultamos la fila entera si solo queda la digital
-                            if ($select.find('option').length <= 2) {
-                                $select.closest('tr').hide();
-                                if ($form.find('table.variations tbody tr:visible').length === 0) {
-                                    $form.find('table.variations').hide();
-                                }
-                            }
-                        });
-                        
-                        // 2. FALLBACK DE SEGURIDAD PARA CHILE/INTERNACIONAL:
-                        // Si WooCommerce inició tan rápido que nuestro evento llegó tarde
-                        // y el input oculto de ID sigue vacío (""), forzamos manualmente la validación.
-                        setTimeout(function() {
-                            var $form = jQuery('form.variations_form');
-                            var $select = $form.find('select[name^="attribute_pa_formato"], select[name^="attribute_formato"]');
-                            var $varInput = $form.find('input.variation_id');
-                            
-                            if ($select.length && $varInput.length) {
-                                // Si visualmente está en digital, pero internamente WC no registró el ID
-                                if ($select.val() === digSlug && !$varInput.val()) {
-                                    $select.trigger('change');
-                                }
-                            }
-                        }, 500); // Dar medio segundo de gracia asegura que todos los plugins hayan cargado
-                    }
-                });
-            </script>
             <?php
         }
     }
