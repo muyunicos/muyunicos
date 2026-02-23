@@ -36,7 +36,7 @@ muyunicos/ (generatepress-child)
 │
 ├── inc/                       # ⚙️ MÓDULOS PHP (Lógica de negocio y hooks)
 │   ├── icons.php              # [CARGA PRIMERO] mu_get_icon() — repositorio de SVGs
-│   ├── geo.php                # Sistema multi-país + Auto-Detección + Modal + Selector Header
+│   ├── geo.php                # Sistema multi-país + Auto-Detección + Decimales + Modal + Selector
 │   ├── digital-restriction.php# ✅ Digital Restriction System v2.7 (Singleton Class, pre_get_posts estricto, redirects modulares, endpoints WC-AJAX, autoselect JS bridges)
 │   ├── auth-modal.php         # Modal Login/Registro + endpoints WC-AJAX
 │   ├── checkout.php           # ✅ Checkout Híbrido Optimizado (Físico/Digital) + Validación WA
@@ -74,7 +74,7 @@ PHP · inc/
 Archivo | Responsabilidad principal
 ---|---
 inc/icons.php | mu_get_icon() — todos los SVGs del tema
-inc/geo.php | Detección de país por dominio y geolocalización, redirect selector en header, modal sugerencia, prefijo idioma.
+inc/geo.php | Detección de país por dominio, control de decimales por moneda (0 para AR/CL/CO), redirect selector en header, modal sugerencia, prefijo idioma.
 inc/digital-restriction.php | Restricción de productos físicos en subdominios (Clase Singleton v2.7, pre_get_posts, filters), redirección de categorías/productos físicos a digitales, auto-selección de variaciones, botón de reindexado admin (vía WC-AJAX).
 inc/auth-modal.php | HTML modal auth, endpoints wc_ajax_mu_*
 inc/checkout.php | Campos, validaciones, optimizaciones Checkout, Título "Pedido Recibido"
