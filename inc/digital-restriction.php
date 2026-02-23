@@ -654,4 +654,15 @@ if ( ! function_exists( 'muyu_is_restricted_user' ) ) {
         return muyu_digital_restriction_init()->is_restricted_user();
     }
 }
-// Helpers restantes...
+
+if ( ! function_exists( 'muyu_get_digital_product_ids' ) ) {
+    function muyu_get_digital_product_ids() {
+        return get_option( MUYU_Digital_Restriction_System::OPTION_PRODUCT_IDS, [] );
+    }
+}
+
+if ( ! function_exists( 'muyu_rebuild_digital_indexes_optimized' ) ) {
+    function muyu_rebuild_digital_indexes_optimized() {
+        return muyu_digital_restriction_init()->rebuild_digital_indexes();
+    }
+}
