@@ -2,12 +2,12 @@
 /**
  * Muy Únicos - Digital Restriction System
  * 
- * Sistema de restricción de contenido digital v2.6.4 (Fix: Init hook after_setup_theme)
+ * Sistema de restricción de contenido digital v2.6.5 (Fix: Admin testing frontend & Domain logic)
  * Propósito: Restringir productos físicos en subdominios, mostrando solo 
  * productos digitales. Optimizado para rendimiento y compatibilidad.
  * 
  * @package GeneratePress_Child
- * @since 2.6.4
+ * @since 2.6.5
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -87,7 +87,9 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 return $this->cache['is_restricted'];
             }
             
-            if ( current_user_can( 'manage_woocommerce' ) || ( is_admin() && ! wp_doing_ajax() ) ) {
+            // Solo restringir accesos en el dashboard backend de WordPress o en Ajax del admin, 
+            // permitiendo que los administradores experimenten y validen la restricción en el frontend!
+            if ( is_admin() && ! wp_doing_ajax() ) {
                 $this->cache['is_restricted'] = false;
                 return false;
             }
