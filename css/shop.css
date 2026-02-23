@@ -7,3 +7,179 @@ form.variations_form .variations,
 form.variations_form tr {
     transition: opacity 0.2s ease-out;
 }
+
+/* ============================================
+   INFINITE SCROLL
+   ============================================ */
+/* Sentinel Spinner (Abajo de todo) */
+.mu-scroll-sentinel {
+    width: 100%;
+    text-align: center;
+    padding: 40px 0;
+    clear: both;
+    display: flex;
+    justify-content: center;
+}
+.mu-scroll-sentinel .mu-spinner {
+    display: none;
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid var(--primario, #2b9fcf);
+    border-radius: 50%;
+    animation: muSpin 1s linear infinite;
+}
+.mu-scroll-sentinel.loading .mu-spinner {
+    display: block;
+}
+@keyframes muSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Placeholder dots para las imagenes nuevas */
+.mu-img-wrapper-loading {
+    position: relative;
+    min-height: 200px; /* Evita colapso total si la imagen tarda */
+    background-color: var(--fondo, #f9f9f9);
+    display: block;
+}
+/* Puntos parpadeantes centrados */
+.mu-img-wrapper-loading::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 10px;
+    height: 10px;
+    border-radius: 5px;
+    background-color: var(--primario, #2b9fcf);
+    color: var(--primario, #2b9fcf);
+    transform: translate(-50%, -50%);
+    animation: muDotFlashing 1s infinite linear alternate;
+    animation-delay: 0.5s;
+    z-index: 10;
+}
+
+/* Puntos laterales usando box-shadow para replicar 'dot-flashing' simple o pseudo elementos extra */
+.mu-img-wrapper-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 10px;
+    height: 10px;
+    border-radius: 5px;
+    transform: translate(-50%, -50%);
+    /* Simulamos los puntos izq/der con box-shadow para no usar más elementos */
+    box-shadow: -20px 0 0 0 var(--primario, #2b9fcf), 20px 0 0 0 var(--primario, #2b9fcf);
+    animation: muDotFlashingShadow 1s infinite linear alternate;
+}
+
+/* Animación Dot Flashing Central */
+@keyframes muDotFlashing {
+    0% { background-color: var(--primario, #2b9fcf); }
+    50%, 100% { background-color: color-mix(in srgb, var(--primario, #2b9fcf) 20%, transparent); }
+}
+/* Animación Dot Flashing Laterales (Shadow) */
+@keyframes muDotFlashingShadow {
+    0% { box-shadow: -20px 0 0 0 var(--primario, #2b9fcf), 20px 0 0 0 var(--primario, #2b9fcf); }
+    50%, 100% { box-shadow: -20px 0 0 0 color-mix(in srgb, var(--primario, #2b9fcf) 20%, transparent), 20px 0 0 0 color-mix(in srgb, var(--primario, #2b9fcf) 20%, transparent); }
+}
+
+/* ============================================
+   SISTEMA DE CARRUSEL HÍBRIDO (Grilla / Carrusel)
+   ============================================ */
+.mu-carousel-wrapper {
+    position: relative;
+    max-width: 100%;
+    margin: 0 auto;
+}
+
+/* --- ESTADO DESKTOP (>968px): Grilla Estática --- */
+.mu-carousel-track {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); /* 4 columnas iguales */
+    gap: var(--mu-space-md, 20px);
+    width: 100%;
+    padding: 10px 0 20px 0;
+}
+
+/* Items del carrusel */
+.mu-carousel-item {
+    user-select: none; /* Mejor experiencia para el drag futuro */
+}
+
+/* Botones Navegación (Ocultos en Desktop) */
+.mu-nav-btn {
+    display: none;
+    position: absolute;
+    top: 40%;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--mu-radius-full, 9999px);
+    background: var(--primario, #2b9fcf);
+    border: none;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    z-index: 20;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease;
+}
+
+.mu-nav-btn:active { transform: translateY(-50%) scale(0.95); }
+.mu-nav-btn.prev { left: -10px; }
+.mu-nav-btn.next { right: -10px; }
+
+/* Icono SVG Universal en carrusel */
+.mu-nav-btn svg {
+    fill: none;
+    stroke: var(--blanco, #fff);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    width: 24px;
+    height: 24px;
+}
+
+/* --- MODO CARRUSEL (Tablets y Móviles <= 968px) --- */
+@media (max-width: 968px) {
+    .mu-carousel-track {
+        display: flex; /* Cambia Grid a Flex */
+        overflow-x: auto; /* Habilita scroll horizontal */
+        scroll-snap-type: x mandatory; /* Efecto magnético */
+        scroll-behavior: smooth;
+        padding-bottom: 40px; /* Espacio para scroll/sombras */
+        
+        /* Ocultar barra de scroll nativa */
+        scrollbar-width: none; 
+        -ms-overflow-style: none;
+    }
+    
+    .mu-carousel-track::-webkit-scrollbar { display: none; }
+
+    /* Ajuste de Items para Carrusel */
+    .mu-carousel-item {
+        flex: 0 0 auto;
+        width: 260px; /* Ancho fijo para ver parcialmente el siguiente */
+        scroll-snap-align: center;
+    }
+
+    /* Mostrar botones */
+    .mu-nav-btn { display: flex; }
+}
+
+/* --- MODO MÓVIL PEQUEÑO (< 480px) --- */
+@media (max-width: 480px) {
+    .mu-carousel-track { gap: 15px; }
+    
+    /* Item ocupa todo el ancho */
+    .mu-carousel-item {
+        width: 100%;
+        margin-right: 0;
+    }
+    
+    /* Botones más discretos */
+    .mu-nav-btn { width: 32px; height: 32px; }
+}

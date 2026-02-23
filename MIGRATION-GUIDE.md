@@ -1,6 +1,6 @@
 MUY ÚNICOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v1.8.7 · Feb 22, 2026
+Estado: Refactor Modular Pragmático · v1.8.8 · Feb 22, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -15,12 +15,12 @@ Modularidad Pragmática (Regla "Goldilocks")
   - js/global-ui.js
 
 SÍ al aislamiento por contexto
-- Funcionalidades complejas (Checkout, Cart, Auth) deben tener sus propios archivos y cargarse condicionalmente.
+- Funcionalidades complejas (Checkout, Cart, Auth, Shop) deben tener sus propios archivos y cargarse condicionalmente.
 
 Carga Condicional Estricta
 - Nunca cargar assets globales si no aplican a header/footer o UI transversal.
 - Usar is_shop(), is_checkout(), is_cart(), is_user_logged_in(), etc. en functions.php.
-- NUNCA usar wp_add_inline_style(). Todo CSS debe estar en archivos .css cacheables.
+- NUNCA usar wp_add_inline_style() o wp_add_inline_script(). Todo CSS/JS debe estar en archivos cacheables.
 
 Flujo GitHub (PROHIBIDO COMMIT A MAIN)
 - Todo cambio debe ir en una rama semántica (perf/, refactor/, fix/, feat/).
@@ -41,12 +41,12 @@ muyunicos/ (generatepress-child)
 │   ├── auth-modal.php         # Modal Login/Registro + endpoints WC-AJAX
 │   ├── checkout.php           # ✅ Checkout Híbrido Optimizado (Físico/Digital) + Validación WA
 │   ├── cart.php               # Lógica de carrito, buffers BACS
-│   └── ui.php                 # Header, Footer, search form, WhatsApp btn, Canonical fix, WPLingua body class, Category Description Mover
+│   └── ui.php                 # ✅ Header, Footer, search form, WhatsApp btn, Canonical fix, WPLingua body class, Category Description Mover, Texto productos Gratis, Quitar GP Featured Image
 │
 ├── css/                       # 🎨 CSS MODULAR (Pragmático)
 │   ├── admin.css              # is_admin() — Botones reindex, tools internas
 │   ├── components/            # Componentes compartidos
-│   │   ├── global-ui.css      # Global: micro UI (Share, WhatsApp flotante, Search, estilos de WPLingua)
+│   │   ├── global-ui.css      # ✅ Global: micro UI (Share, WhatsApp flotante, Search, estilos de WPLingua, Carrusel Híbrido)
 │   │   ├── header.css         # Global: header, navegación, Country Selector (con hover automático v1.8.7)
 │   │   ├── footer.css         # Global: footer y columnas
 │   │   ├── modal-auth.css     # ! is_user_logged_in()
@@ -54,18 +54,18 @@ muyunicos/ (generatepress-child)
 │   ├── cart.css               # is_cart()
 │   ├── checkout.css           # ✅ Checkout Moderno (Grid Desktop + Mobile Fix)
 │   ├── home.css               # is_front_page()
-│   └── shop.css               # is_shop() || is_product_category() || is_product_tag() || is_product()
+│   └── shop.css               # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() (Infinite Scroll estilos)
 │
 └── js/                        # ⚡ JS MODULAR (IIFE + strict mode + DOMContentLoaded)
     ├── admin.js               # is_admin() — Crea botón + AJAX handler. Sin jQuery (fetch) vía nativo WC-AJAX. Nonce vía muyuAdminData
-    ├── global-ui.js           # Global: country selector (hover automático v1.2.0), WPLingua toggle, share button
+    ├── global-ui.js           # ✅ Global: country selector (hover), WPLingua toggle, share button, Carrusel Híbrido Lógica
     ├── header.js              # Global: menú móvil, submenús, dropdown cuenta
     ├── footer.js              # Global: comportamiento footer
     ├── cart.js                # is_cart()
     ├── checkout.js            # ✅ Validación WA (libphonenumber) + Toggle Dirección + Check Email
     ├── modal-auth.js          # ! is_user_logged_in()
     ├── country-modal.js       # Condicional — encolado por inc/geo.php
-    └── shop.js                # is_shop() || is_product_category() || is_product_tag() || is_product() — Autoselect form via data bridge (#mu-format-autoselect-data)
+    └── shop.js                # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() (Autoselect form + Infinite Scroll Lógica)
 
 3. INVENTARIO DE ARCHIVOS (Estado Actual)
 
@@ -79,7 +79,7 @@ inc/digital-restriction.php | Restricción de productos físicos en subdominios 
 inc/auth-modal.php | HTML modal auth, endpoints wc_ajax_mu_*
 inc/checkout.php | Campos, validaciones, optimizaciones Checkout, Título "Pedido Recibido"
 inc/cart.php | Añadir múltiples ítems al carrito, buffers BACS
-inc/ui.php | Header icons, Cart badge fragment, WhatsApp btn, Custom Search form, Custom Footer, Share shortcode, Google Site Kit canonical, WPLingua body class, Category Description Mover
+inc/ui.php | Header icons, Cart badge fragment, WhatsApp btn, Custom Search form, Custom Footer, Share shortcode, Google Site Kit canonical, WPLingua body class, Category Description Mover, Reemplazo precio $0 a "Gratis", Disable GP Featured image HTML
 
 CSS · css/
 
@@ -87,7 +87,7 @@ Archivo | Condición de carga en functions.php
 ---|---
 style.css (raíz) | Global (base)
 css/admin.css | is_admin() && current_screen == 'product'
-css/components/global-ui.css | Global (Share Button, WhatsApp flotante, Search Form, WPLingua estilos)
+css/components/global-ui.css | Global (Share Button, WhatsApp flotante, Search Form, WPLingua estilos, Carrusel Híbrido CSS)
 css/components/header.css | Global (Header, Navegación, Country Selector con hover v1.8.7)
 css/components/footer.css | Global
 css/components/modal-auth.css | ! is_user_logged_in()
@@ -95,21 +95,21 @@ css/components/country-modal.css | Condicional — encolado por inc/geo.php
 css/cart.css | is_cart()
 css/checkout.css | is_checkout() && ! is_order_received_page()
 css/home.css | is_front_page() (actualmente vacío)
-css/shop.css | is_shop() || is_product_category() || is_product_tag() || is_product()
+css/shop.css | is_shop() || is_product_category() || is_product_tag() || is_product() (Auto-variaciones, Infinite Scroll)
 
 JS · js/
 
 Archivo | Condición de carga en functions.php
 ---|---
 js/admin.js | is_admin() — Crea botón #muyu-rebuild + WC-AJAX handler. Sin jQuery, usa fetch(). Nonce y WC-AJAX URL vía wp_localize_script (muyuAdminData).
-js/global-ui.js | Global (country selector con hover v1.2.0, WPLingua toggle, share button)
+js/global-ui.js | Global (country selector, WPLingua toggle, share button, lógica drag Carrusel Híbrido)
 js/header.js | Global
 js/footer.js | Global
 js/modal-auth.js | ! is_user_logged_in()
 js/cart.js | is_cart() — depende de: jquery
 js/checkout.js | is_checkout() && ! is_order_received_page() — depende de: jquery, libphonenumber-js
 js/country-modal.js | Condicional — encolado por inc/geo.php
-js/shop.js | is_shop() || is_product_category() || is_product_tag() || is_product() — Autoselect form via data bridge (#mu-format-autoselect-data)
+js/shop.js | is_shop() || is_product_category() || is_product_tag() || is_product() — Autoselect form via data bridge (#mu-format-autoselect-data), Lógica de Infinite Scroll JS
 
 4. SISTEMA DE DISEÑO (API Exclusiva)
 
@@ -151,7 +151,7 @@ PHP
 - Protección: if ( ! function_exists( 'mu_function_name' ) ) { ... } incluyendo el add_action/add_filter correspondiente dentro del bloque.
 - AJAX WC: Usar prefijo wc_ajax_mu_
 - Rendimiento: Evitar hooks pesados (init/wp_loaded) si hay hooks específicos o carga condicional.
-- CSS: NUNCA usar wp_add_inline_style(). Todo estilo debe residir en un .css cacheable.
+- CSS: NUNCA usar wp_add_inline_style() o wp_add_inline_script(). Todo estilo debe residir en un .css/.js cacheable.
 - Hooks: NUNCA anidar add_filter/add_action dentro de otras funciones hookeadas (e.g., dentro de wp_enqueue_scripts). Cada hook debe declararse en el scope global del módulo.
 
 JavaScript
