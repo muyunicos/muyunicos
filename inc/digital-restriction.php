@@ -396,6 +396,11 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 select[name^="attribute_formato"] option[value="<?php echo esc_attr($phys_slug); ?>"] {
                     display: none !important;
                 }
+                /* Ocultar el botón de limpiar variaciones para evitar deseleccionar la única opción */
+                .variations_form .reset_variations {
+                    display: none !important;
+                    visibility: hidden !important;
+                }
             </style>
             <script type="text/javascript">
                 document.addEventListener('DOMContentLoaded', function() {
@@ -411,6 +416,17 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                                     // Removemos la opción para que no se pueda seleccionar mediante el teclado o scripts de terceros
                                     $physOption.remove();
                                     $select.trigger('change');
+                                }
+                                
+                                // MEJORA: Si solo queda la opción Digital y la opción por defecto ("Elige una opción"),
+                                // ocultamos toda la fila (etiqueta + selector) para una UI más limpia.
+                                if ($select.find('option').length <= 2) {
+                                    $select.closest('tr').hide();
+                                    
+                                    // Si no hay más selectores de variación visibles, ocultamos la tabla entera
+                                    if ($form.find('table.variations tbody tr:visible').length === 0) {
+                                        $form.find('table.variations').hide();
+                                    }
                                 }
                             }
                         });
