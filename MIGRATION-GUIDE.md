@@ -1,6 +1,6 @@
 MUY ÚNICOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v1.8.2 · Feb 22, 2026
+Estado: Refactor Modular Pragmático · v1.8.3 · Feb 22, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -37,7 +37,7 @@ muyunicos/ (generatepress-child)
 ├── inc/                       # ⚙️ MÓDULOS PHP (Lógica de negocio y hooks)
 │   ├── icons.php              # [CARGA PRIMERO] mu_get_icon() — repositorio de SVGs
 │   ├── geo.php                # Sistema multi-país + Auto-Detección + Modal + Selector Header
-│   ├── digital-restriction.php# ✅ Digital Restriction System (Singleton Class, pre_get_posts, redirects modulares, autoselect JS bridges)
+│   ├── digital-restriction.php# ✅ Digital Restriction System (Singleton Class, pre_get_posts, redirects modulares, endpoints WC-AJAX, autoselect JS bridges)
 │   ├── auth-modal.php         # Modal Login/Registro + endpoints WC-AJAX
 │   ├── checkout.php           # ✅ Checkout Híbrido Optimizado (Físico/Digital) + Validación WA
 │   ├── cart.php               # Lógica de carrito, buffers BACS
@@ -57,7 +57,7 @@ muyunicos/ (generatepress-child)
 │   └── shop.css               # is_shop() || is_product_category() || is_product_tag() || is_product()
 │
 └── js/                        # ⚡ JS MODULAR (IIFE + strict mode + DOMContentLoaded)
-    ├── admin.js               # is_admin() — Crea botón + AJAX handler. Sin jQuery (fetch). Nonce vía muyuAdminData (wp_localize_script)
+    ├── admin.js               # is_admin() — Crea botón + AJAX handler. Sin jQuery (fetch) vía nativo WC-AJAX. Nonce vía muyuAdminData
     ├── global-ui.js           # Global: country selector, WPLingua toggle, share button
     ├── header.js              # Global: menú móvil, submenús, dropdown cuenta
     ├── footer.js              # Global: comportamiento footer
@@ -75,7 +75,7 @@ Archivo | Responsabilidad principal
 ---|---
 inc/icons.php | mu_get_icon() — todos los SVGs del tema
 inc/geo.php | Detección de país por dominio y geolocalización, redirect selector en header, modal sugerencia, prefijo idioma.
-inc/digital-restriction.php | Restricción de productos físicos en subdominios (Clase Singleton, pre_get_posts, filters), redirección de categorías/productos físicos a digitales, auto-selección de variaciones, botón de reindexado admin.
+inc/digital-restriction.php | Restricción de productos físicos en subdominios (Clase Singleton, pre_get_posts, filters), redirección de categorías/productos físicos a digitales, auto-selección de variaciones, botón de reindexado admin (vía WC-AJAX).
 inc/auth-modal.php | HTML modal auth, endpoints wc_ajax_mu_*
 inc/checkout.php | Campos, validaciones, optimizaciones Checkout, Título "Pedido Recibido"
 inc/cart.php | Añadir múltiples ítems al carrito, buffers BACS
@@ -101,7 +101,7 @@ JS · js/
 
 Archivo | Condición de carga en functions.php
 ---|---
-js/admin.js | is_admin() — Crea botón #muyu-rebuild + AJAX handler. Sin jQuery, usa fetch(). Nonce vía wp_localize_script (muyuAdminData).
+js/admin.js | is_admin() — Crea botón #muyu-rebuild + WC-AJAX handler. Sin jQuery, usa fetch(). Nonce y WC-AJAX URL vía wp_localize_script (muyuAdminData).
 js/global-ui.js | Global (country selector, WPLingua toggle, share button)
 js/header.js | Global
 js/footer.js | Global
