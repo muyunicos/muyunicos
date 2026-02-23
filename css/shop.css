@@ -7,3 +7,82 @@ form.variations_form .variations,
 form.variations_form tr {
     transition: opacity 0.2s ease-out;
 }
+
+/* ============================================
+   INFINITE SCROLL
+   ============================================ */
+/* Sentinel Spinner (Abajo de todo) */
+.mu-scroll-sentinel {
+    width: 100%;
+    text-align: center;
+    padding: 40px 0;
+    clear: both;
+    display: flex;
+    justify-content: center;
+}
+.mu-scroll-sentinel .mu-spinner {
+    display: none;
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid var(--primario, #2b9fcf);
+    border-radius: 50%;
+    animation: muSpin 1s linear infinite;
+}
+.mu-scroll-sentinel.loading .mu-spinner {
+    display: block;
+}
+@keyframes muSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Placeholder dots para las imagenes nuevas */
+.mu-img-wrapper-loading {
+    position: relative;
+    min-height: 200px; /* Evita colapso total si la imagen tarda */
+    background-color: var(--fondo, #f9f9f9);
+    display: block;
+}
+/* Puntos parpadeantes centrados */
+.mu-img-wrapper-loading::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 10px;
+    height: 10px;
+    border-radius: 5px;
+    background-color: var(--primario, #2b9fcf);
+    color: var(--primario, #2b9fcf);
+    transform: translate(-50%, -50%);
+    animation: muDotFlashing 1s infinite linear alternate;
+    animation-delay: 0.5s;
+    z-index: 10;
+}
+
+/* Puntos laterales usando box-shadow para replicar 'dot-flashing' simple o pseudo elementos extra */
+.mu-img-wrapper-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 10px;
+    height: 10px;
+    border-radius: 5px;
+    transform: translate(-50%, -50%);
+    /* Simulamos los puntos izq/der con box-shadow para no usar más elementos */
+    box-shadow: -20px 0 0 0 var(--primario, #2b9fcf), 20px 0 0 0 var(--primario, #2b9fcf);
+    animation: muDotFlashingShadow 1s infinite linear alternate;
+}
+
+/* Animación Dot Flashing Central */
+@keyframes muDotFlashing {
+    0% { background-color: var(--primario, #2b9fcf); }
+    50%, 100% { background-color: color-mix(in srgb, var(--primario, #2b9fcf) 20%, transparent); }
+}
+/* Animación Dot Flashing Laterales (Shadow) */
+@keyframes muDotFlashingShadow {
+    0% { box-shadow: -20px 0 0 0 var(--primario, #2b9fcf), 20px 0 0 0 var(--primario, #2b9fcf); }
+    50%, 100% { box-shadow: -20px 0 0 0 color-mix(in srgb, var(--primario, #2b9fcf) 20%, transparent), 20px 0 0 0 color-mix(in srgb, var(--primario, #2b9fcf) 20%, transparent); }
+}
