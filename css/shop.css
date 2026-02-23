@@ -12,13 +12,20 @@ form.variations_form tr {
    INFINITE SCROLL
    ============================================ */
 /* Sentinel Spinner (Abajo de todo) */
-.mu-scroll-sentinel {
+.mu-scroll-sentinel-wrapper {
     width: 100%;
     text-align: center;
     padding: 40px 0;
     clear: both;
     display: flex;
+    flex-direction: column;
+    align-items: center;
     justify-content: center;
+}
+.mu-scroll-sentinel {
+    display: flex;
+    justify-content: center;
+    width: 100%;
 }
 .mu-scroll-sentinel .mu-spinner {
     display: none;
@@ -29,12 +36,34 @@ form.variations_form tr {
     border-radius: 50%;
     animation: muSpin 1s linear infinite;
 }
-.mu-scroll-sentinel.loading .mu-spinner {
+.mu-scroll-sentinel-wrapper.loading .mu-spinner {
     display: block;
 }
 @keyframes muSpin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+/* Botón de "Cargar más" */
+.mu-load-more-btn {
+    background-color: var(--primario, #2b9fcf);
+    color: var(--blanco, #ffffff);
+    border: none;
+    border-radius: var(--mu-radius-sm, 6px);
+    padding: 12px 24px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    margin-top: 10px;
+}
+.mu-load-more-btn:hover {
+    background-color: color-mix(in srgb, var(--primario, #2b9fcf) 80%, black);
+    transform: translateY(-2px);
+}
+.mu-load-more-btn:active {
+    transform: translateY(0);
 }
 
 /* Placeholder dots para las imagenes nuevas */
