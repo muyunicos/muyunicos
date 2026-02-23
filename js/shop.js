@@ -1,7 +1,6 @@
 /**
  * Muy Únicos - Funcionalidad de Tienda y Producto (Shop/Single Product)
  * * Incluye:
- * - Auto-selección inteligente de variación
  * - Infinite Scroll Ligero (WooCommerce + GP Optimized)
  * - Carrusel Híbrido Global (Grilla Desktop / Drag Mobile)
  */
@@ -12,15 +11,15 @@
     if ( 'undefined' === typeof $ || ! $.fn ) {
         return;
     }
+    
+    // Ejecución Principal
     $(document).ready(function() {
-        initAutoSelectFormat();
-        
-        // Inicializar funcionalidades UI
-        if (typeof initInfiniteScroll === 'function') initInfiniteScroll();
-        if (typeof initHybridCarousel === 'function') initHybridCarousel();
+        initInfiniteScroll();
+        initHybridCarousel();
     });
+
     // ============================================
-    // 2. INFINITE SCROLL LIGERO
+    // 1. INFINITE SCROLL LIGERO
     // ============================================
     function initInfiniteScroll() {
         // SELECTORES (Ajustados para GeneratePress + Woo)
@@ -114,32 +113,28 @@
                 if (newProducts.length > 0) {
                     // Añadir productos al contenedor actual
                     newProducts.forEach(product => {
-                        // Lógica de Imagen (Placeholder + FadeIn)
                         const img = product.querySelector('img');
-                        if (img) {
-                            // Preparamos la imagen invisible
-                            img.style.opacity = '0';
-                            img.style.transition = 'opacity 0.6s ease-in-out';
-                            
-                            // Añadimos clase de carga al contenedor (para el placeholder dots)
-                            // GeneratePress suele poner la imagen dentro de un <a> o un wrapper
-                            const wrapper = img.parentElement; 
-                            wrapper.classList.add('mu-img-wrapper-loading');
+                        const wrapper = img ? img.parentElement : null;
 
-                            // Función para revelar imagen
-                            const revealImg = () => {
-                                img.style.opacity = '1';
-                                wrapper.classList.remove('mu-img-wrapper-loading');
-                            };
-
+                        if (img && wrapper) {
+                            // Lógica de Imagen optimizada (Evita flash si ya está en cache)
                             if (img.complete) {
-                                revealImg();
+                                img.style.opacity = '1';
                             } else {
+                                // Solo si NO está completa, preparamos la animación
+                                img.style.opacity = '0';
+                                img.style.transition = 'opacity 0.6s ease-in-out';
+                                wrapper.classList.add('mu-img-wrapper-loading');
+                                
+                                const revealImg = () => {
+                                    img.style.opacity = '1';
+                                    wrapper.classList.remove('mu-img-wrapper-loading');
+                                };
+                                
                                 img.addEventListener('load', revealImg);
-                                img.addEventListener('error', revealImg); // Fallback si falla
+                                img.addEventListener('error', revealImg);
                             }
                         }
-
                         container.appendChild(product);
                     });
 
@@ -187,7 +182,7 @@
     }
 
     // ============================================
-    // 3. CARRUSEL HÍBRIDO (Drag/Grid)
+    // 2. CARRUSEL HÍBRIDO (Drag/Grid)
     // ============================================
     function initHybridCarousel() {
         const carousels = document.querySelectorAll('.mu-carousel-wrapper');
@@ -207,7 +202,11 @@
                 if(!item) return;
                 
                 const itemWidth = item.offsetWidth;
-                const gap = 20; // Valor aproximado del CSS
+                
+                // Leemos el gap real del CSS en lugar de hardcodearlo
+                const trackStyle = window.getComputedStyle(track);
+                const gap = parseFloat(trackStyle.gap) || 20; 
+
                 const scrollAmount = (direction === 'left') 
                     ? -(itemWidth + gap) 
                     : (itemWidth + gap);
