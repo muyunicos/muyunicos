@@ -31,8 +31,8 @@
             var formData = new FormData();
             formData.append( 'nonce',  muyuAdminData.nonce );
 
-            // Usamos endpoint nativo de WooCommerce en vez del admin-ajax normal
-            var ajaxUrl = muyuAdminData.wc_ajax_url + '&action=mu_rebuild_digital_list';
+            // Endpoint nativo de WooCommerce (URL completa desde PHP)
+            var ajaxUrl = muyuAdminData.wc_ajax_url;
 
             fetch( ajaxUrl, { method: 'POST', body: formData } )
                 .then( function ( res ) { return res.json(); } )

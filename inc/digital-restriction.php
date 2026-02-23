@@ -2,12 +2,12 @@
 /**
  * Muy Únicos - Digital Restriction System
  * 
- * Sistema de restricción de contenido digital v2.6.1 (Refactor WC-AJAX)
+ * Sistema de restricción de contenido digital v2.6.2 (Bugfix WC-AJAX)
  * Propósito: Restringir productos físicos en subdominios, mostrando solo 
  * productos digitales. Optimizado para rendimiento y compatibilidad.
  * 
  * @package GeneratePress_Child
- * @since 2.6.1
+ * @since 2.6.2
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -305,7 +305,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             wp_localize_script( 'mu-admin-js', 'muyuAdminData', [
                 'nonce'       => wp_create_nonce( 'muyu-rebuild-nonce' ),
                 'label'       => '⚡ Reindexar Digitales',
-                'wc_ajax_url' => \WC_AJAX::get_endpoint( '%%endpoint%%' )
+                'wc_ajax_url' => \WC_AJAX::get_endpoint( 'mu_rebuild_digital_list' )
             ] );
         }
 
