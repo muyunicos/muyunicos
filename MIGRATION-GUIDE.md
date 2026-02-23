@@ -1,6 +1,6 @@
 MUY ÚNICOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v1.8.4 · Feb 22, 2026
+Estado: Refactor Modular Pragmático · v1.8.5 · Feb 22, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -65,7 +65,7 @@ muyunicos/ (generatepress-child)
     ├── checkout.js            # ✅ Validación WA (libphonenumber) + Toggle Dirección + Check Email
     ├── modal-auth.js          # ! is_user_logged_in()
     ├── country-modal.js       # Condicional — encolado por inc/geo.php
-    └── shop.js                # is_shop() || is_product_category() || is_product_tag() || is_product() — Autoselect form
+    └── shop.js                # is_shop() || is_product_category() || is_product_tag() || is_product() — Autoselect form via data bridge (#mu-format-autoselect-data)
 
 3. INVENTARIO DE ARCHIVOS (Estado Actual)
 
