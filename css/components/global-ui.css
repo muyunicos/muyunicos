@@ -1,6 +1,6 @@
 /* ========================================
    MUYUNICOS - Global UI Components
-   Consolidated: Share Button, WPLingua Switcher, WhatsApp Button, Search Form
+   Consolidated: Share Button, WPLingua Switcher, WhatsApp Button, Search Form, Carousel
    ======================================== */
 
 /* --- WPLingua Switcher — Ocultar en subdominios sin múltiples idiomas --- */
@@ -160,8 +160,95 @@ body.mu-wplng-hide .wplng-switcher {
     stroke: currentColor;
 }
 
-/* --- Share Button (Native + Fallback) --- */
+/* ============================================
+   SISTEMA DE CARRUSEL HÍBRIDO GLOBAL
+   ============================================ */
+.mu-carousel-wrapper {
+    position: relative;
+    max-width: 100%;
+    margin: 0 auto;
+}
 
+/* --- ESTADO DESKTOP (>968px): Grilla Estática --- */
+.mu-carousel-track {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); /* 4 columnas iguales */
+    gap: 20px;
+    width: 100%;
+    padding: 10px 0 20px 0;
+}
+
+/* Items del carrusel */
+.mu-carousel-item {
+    user-select: none; /* Mejor experiencia para el drag futuro */
+}
+
+/* Botones Navegación (Ocultos en Desktop) */
+.mu-nav-btn {
+    display: none;
+    position: absolute;
+    top: 40%;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--primario, #ff5e57);
+    border: none;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    z-index: 20;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease;
+}
+
+.mu-nav-btn:active { transform: translateY(-50%) scale(0.95); }
+.mu-nav-btn.prev { left: -10px; }
+.mu-nav-btn.next { right: -10px; }
+
+/* --- MODO CARRUSEL (Tablets y Móviles <= 968px) --- */
+@media (max-width: 968px) {
+    .mu-carousel-track {
+        display: flex; /* Cambia Grid a Flex */
+        overflow-x: auto; /* Habilita scroll horizontal */
+        scroll-snap-type: x mandatory; /* Efecto magnético */
+        scroll-behavior: smooth;
+        padding-bottom: 40px; /* Espacio para scroll/sombras */
+        
+        /* Ocultar barra de scroll nativa */
+        scrollbar-width: none; 
+        -ms-overflow-style: none;
+    }
+    
+    .mu-carousel-track::-webkit-scrollbar { display: none; }
+
+    /* Ajuste de Items para Carrusel */
+    .mu-carousel-item {
+        flex: 0 0 auto;
+        width: 260px; /* Ancho fijo para ver parcialmente el siguiente */
+        scroll-snap-align: center;
+    }
+
+    /* Mostrar botones */
+    .mu-nav-btn { display: flex; }
+}
+
+/* --- MODO MÓVIL PEQUEÑO (< 480px) --- */
+@media (max-width: 480px) {
+    .mu-carousel-track { gap: 15px; }
+    
+    /* Item ocupa todo el ancho */
+    .mu-carousel-item {
+        width: 100%;
+        margin-right: 0;
+    }
+    
+    /* Botones más discretos */
+    .mu-nav-btn { width: 32px; height: 32px; }
+}
+
+/* ============================================
+   SHARE BUTTON (Native + Fallback)
+   ============================================ */
 .mu-share-btn,
 .dcms-share-btn {
     display: inline-flex;
