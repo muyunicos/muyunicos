@@ -295,6 +295,8 @@
 /* ============================================
    COUNTRY SELECTOR (Header Left)
    ============================================ */
+
+/* Envoltorio inyectado por GeneratePress al inicio del header */
 .mu-header-country-item {
     position: absolute;
     left: 30px;
@@ -302,11 +304,13 @@
     z-index: 1000;
 }
 
+/* Contenedor relativo para el dropdown */
 .country-redirect-container {
     position: relative;
     display: inline-block;
 }
 
+/* Botón disparador */
 .country-selector-trigger {
     cursor: pointer;
     padding: 0;
@@ -321,7 +325,8 @@
     height: 45px;
 }
 
-.country-selector-trigger:hover {
+.country-selector-trigger:hover,
+.country-selector-trigger[aria-expanded="true"] {
     background: rgba(0,0,0,0.03);
     border-color: rgba(0,0,0,0.1);
 }
@@ -332,10 +337,10 @@
     border-radius: var(--mu-radius-full);
     object-fit: cover;
     display: block;
-    border-style: solid;
-    border-color: var(--primario);
+    border: 2px solid var(--primario);
 }
 
+/* Dropdown / Lista de países */
 .country-selector-dropdown {
     display: none;
     position: absolute;
@@ -362,22 +367,33 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
-.country-selector-dropdown .dropdown-header p { margin: 0; }
+
+.country-selector-dropdown .dropdown-header p {
+    margin: 0;
+    line-height: 1;
+}
+
+.country-selector-dropdown li {
+    margin: 0;
+    padding: 0;
+}
 
 .country-selector-dropdown li a {
-    display: flex;
+    display: flex !important;
     align-items: center;
     gap: var(--mu-space-sm);
-    padding: 8px 15px;
-    color: var(--texto);
+    padding: 10px 15px;
+    color: var(--texto) !important;
     text-decoration: none;
     font-size: 14px;
     transition: var(--mu-transition-fast);
+    border-radius: 0;
+    background: transparent;
 }
 
 .country-selector-dropdown li a:hover {
-    background-color: var(--fondo);
-    color: var(--primario);
+    background-color: var(--fondo) !important;
+    color: var(--primario) !important;
 }
 
 .country-selector-dropdown li img {
@@ -385,6 +401,7 @@
     height: auto;
     border-radius: 2px;
     box-shadow: var(--mu-shadow-sm);
+    display: inline-block;
 }
 
 /* ========================================
@@ -471,6 +488,7 @@
         transform: none;
     }
 
+    /* Country selector Mobile Override */
     .mu-header-country-item {
         left: 20px;
         top: 20px;
