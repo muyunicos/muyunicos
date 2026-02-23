@@ -1,11 +1,11 @@
 <?php
 /**
  * Muy Únicos - Digital Restriction System
- * * Sistema de restricción de contenido digital v4.0.1 (Category Filter Fix)
+ * * Sistema de restricción de contenido digital v4.0.2 (Fix Auto-Select Bounce)
  * Propósito: Restringir productos físicos en subdominios, mostrando solo 
  * productos digitales. Optimizado para rendimiento y compatibilidad.
  * * @package GeneratePress_Child
- * @since 4.0.1
+ * @since 4.0.2
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -59,7 +59,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 // 1. Ocultar del HTML la opción Impresas (Método seguro de la v2.2)
                 add_filter( 'woocommerce_dropdown_variation_attribute_options_args', [ $this, 'clean_variation_dropdown' ], 10, 1 );
                 
-                // 4. Arreglar Precio en Catálogos (Puedes comentarlo si prefieres desactivarlo)
+                // 4. Arreglar Precio en Catálogos
                 add_filter( 'woocommerce_variable_price_html', [ $this, 'display_digital_price_in_catalog' ], 99, 2 );
                 add_filter( 'woocommerce_variable_sale_price_html', [ $this, 'display_digital_price_in_catalog' ], 99, 2 );
             }
@@ -225,11 +225,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         }
 
         public function filter_category_terms( array $args, array $taxonomies ): array {
-            // No interferir en el admin o llamadas AJAX nativas
             if ( is_admin() || wp_doing_ajax() || wp_is_json_request() ) return $args;
-            
-            // ¡LA CLAVE DEL FIX! Si WP está preguntando "qué categorías tiene este producto específico", NO interferir.
-            // Interrumpir esta consulta es lo que rompía "Price Based on Country" y escondía las variaciones.
             if ( ! empty( $args['object_ids'] ) ) return $args;
             
             if ( ! in_array( 'product_cat', $taxonomies, true ) || ! $this->is_restricted_user() ) return $args;
@@ -344,10 +340,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         // VARIACIONES FRONTEND Y PRECIOS
         // =====================================================================
         
-        /**
-         * 1. Elimina la opción "impresas" directamente desde el HTML generado por PHP.
-         * Seguro para navegadores y permite que el JS nativo de WC funcione impecable.
-         */
         public function clean_variation_dropdown( $args ) {
             $attribute = $args['attribute'] ?? '';
             if ( ! in_array( $attribute, ['pa_formato', 'formato', 'attribute_pa_formato'], true ) ) return $args;
@@ -364,18 +356,11 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             return $args;
         }
         
-        /**
-         * 2. Pre-selecciona la variante según el país.
-         */
         public function set_format_default( array $defaults, $product ): array {
             $defaults['pa_formato'] = $this->is_restricted_user() ? 'digitales' : 'impresas';
             return $defaults;
         }
         
-        /**
-         * 3. Corrige el precio en el listado para no mostrar el valor barato físico.
-         * Solo opera en el loop de catálogo, evitando colapsar la página del producto.
-         */
         public function display_digital_price_in_catalog( $price, $product ) {
             if ( is_product() ) return $price;
             
@@ -391,14 +376,24 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         }
         
         /**
-         * 4. Script exacto de la v2.2 que fuerza la selección y oculta suavemente la tabla (si es exterior)
+         * 4. Script exacto de la v2.2 que fuerza la selección y oculta suavemente la tabla
+         * CORRECCIÓN: Ahora SOLO aplica para usuarios restringidos.
          */
         public function autoselect_format_variation() {
             global $product;
             if ( ! $product || ! $product->is_type( 'variable' ) ) return;
             
             $is_restricted = $this->is_restricted_user();
-            $target_slug   = $is_restricted ? 'digitales' : 'impresas';
+            
+            // FIX: Si el usuario NO está restringido (ej. Argentina), abandonamos la función.
+            // WooCommerce simplemente mostrará 'impresas' por defecto (establecido arriba)
+            // y permitirá al usuario cambiar a "digitales/pdf" sin forzarlo a volver.
+            if ( ! $is_restricted ) {
+                return;
+            }
+
+            // Si llegamos aquí, el usuario ESTÁ restringido (ej. México, Chile, etc.)
+            $target_slug = 'digitales'; 
             ?>
             <script type="text/javascript">
             (function($) {
@@ -420,17 +415,16 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                         if ( ! $select.length ) return;
                         
                         var targetSlug = '<?php echo esc_js($target_slug); ?>';
-                        var isRestricted = <?php echo $is_restricted ? 'true' : 'false'; ?>;
                         
                         if ( $select.val() === targetSlug ) {
-                            if (isRestricted) hideRowAndTable($select, $form);
+                            hideRowAndTable($select, $form);
                             return;
                         }
                         
                         $select.val(targetSlug).trigger('change');
                         $form.trigger('check_variations');
                         
-                        if (isRestricted) hideRowAndTable($select, $form);
+                        hideRowAndTable($select, $form);
                     }
                     
                     function hideRowAndTable($select, $form) {
@@ -446,7 +440,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 });
             })(jQuery);
             </script>
-            <?php if ( $is_restricted ) : ?>
             <style>
                 form.variations_form .variations, form.variations_form tr {
                     transition: opacity 0.2s ease-out;
@@ -456,7 +449,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                     visibility: hidden !important;
                 }
             </style>
-            <?php endif; ?>
             <?php
         }
     }
