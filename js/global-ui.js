@@ -1,7 +1,7 @@
 /**
  * MUYUNICOS - Global UI Scripts
- * Consolidated: Country Selector, WPLingua Toggle, Share Button
- * Version: 1.2.0
+ * Consolidated: Country Selector, WPLingua Toggle, Share Button, Hybrid Carousel
+ * Version: 1.3.0
  */
 
 (function() {
@@ -299,12 +299,111 @@
     }
 
     /**
+     * Sistema Global de Carruseles Muy Únicos (Grilla Desktop / Carousel Móvil)
+     */
+    function initCarousels() {
+        const carousels = document.querySelectorAll('.mu-carousel-wrapper');
+        if (!carousels.length) return;
+
+        carousels.forEach(wrapper => {
+            const track = wrapper.querySelector('.mu-carousel-track');
+            const prevBtn = wrapper.querySelector('.prev');
+            const nextBtn = wrapper.querySelector('.next');
+            
+            if (!track) return;
+
+            // 1. FLECHAS DE NAVEGACIÓN
+            const moveTrack = (direction) => {
+                // Buscamos el primer item para saber su ancho real actual
+                const item = track.querySelector('.mu-carousel-item');
+                if(!item) return;
+                
+                const itemWidth = item.offsetWidth;
+                const gap = 20; // Valor aproximado del CSS
+                const scrollAmount = (direction === 'left') 
+                    ? -(itemWidth + gap) 
+                    : (itemWidth + gap);
+                
+                track.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+            };
+
+            if(prevBtn) prevBtn.addEventListener('click', (e) => {
+                e.preventDefault(); moveTrack('left');
+            });
+
+            if(nextBtn) nextBtn.addEventListener('click', (e) => {
+                e.preventDefault(); moveTrack('right');
+            });
+
+            // 2. ARRASTRE (DRAG & DROP)
+            let isDown = false;
+            let startX;
+            let scrollLeft;
+            let isDragging = false; 
+
+            track.addEventListener('mousedown', (e) => {
+                // Protección: Solo drag si es < 968px (Modo Carrusel)
+                if (window.innerWidth > 968) return;
+
+                isDown = true;
+                isDragging = false;
+                track.style.cursor = 'grabbing';
+                startX = e.pageX - track.offsetLeft;
+                scrollLeft = track.scrollLeft;
+                track.style.scrollSnapType = 'none'; // Desactivar snap para fluidez
+            });
+
+            track.addEventListener('mouseleave', () => {
+                isDown = false;
+                track.style.cursor = 'default';
+                // Reactivar snap si estamos en modo móvil
+                if (window.innerWidth <= 968) track.style.scrollSnapType = 'x mandatory';
+            });
+
+            track.addEventListener('mouseup', () => {
+                isDown = false;
+                track.style.cursor = 'default';
+                if (window.innerWidth <= 968) track.style.scrollSnapType = 'x mandatory';
+                
+                // Si arrastró, evitar click accidental en enlaces
+                if (isDragging) {
+                    const links = track.querySelectorAll('a');
+                    links.forEach(l => l.style.pointerEvents = 'none');
+                    setTimeout(() => links.forEach(l => l.style.pointerEvents = 'auto'), 100);
+                }
+            });
+
+            track.addEventListener('mousemove', (e) => {
+                if (!isDown) return;
+                e.preventDefault();
+                const x = e.pageX - track.offsetLeft;
+                const walk = (x - startX) * 2; // Velocidad del arrastre
+                
+                if (Math.abs(walk) > 5) {
+                    isDragging = true;
+                    // Quitar efecto hover visual mientras se arrastra
+                    const items = track.querySelectorAll('.can-hover');
+                    items.forEach(c => c.classList.remove('can-hover'));
+                }
+                track.scrollLeft = scrollLeft - walk;
+            });
+            
+            // Restaurar efectos hover al soltar
+            track.addEventListener('mouseup', () => {
+                 const items = track.querySelectorAll('.mu-carousel-item');
+                 items.forEach(c => c.classList.add('can-hover'));
+            });
+        });
+    }
+
+    /**
      * Initialize all UI components
      */
     function init() {
         initCountrySelector();
         initWpLinguaSwitcherToggle();
         initShareButtons();
+        initCarousels();
     }
 
     // Run on DOM ready
