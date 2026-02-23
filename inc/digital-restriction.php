@@ -1,11 +1,11 @@
 <?php
 /**
  * Muy Únicos - Digital Restriction System
- * * Sistema de restricción de contenido digital v3.1.1 (Hotfix: Empty Index & Redirect Loop)
+ * * Sistema de restricción de contenido digital v3.2.0 (Frontend Hiding & Price Fix)
  * Propósito: Restringir productos físicos en subdominios, mostrando solo 
  * productos digitales. Optimizado para rendimiento y compatibilidad.
  * * @package GeneratePress_Child
- * @since 3.1.1
+ * @since 3.2.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -55,34 +55,24 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             add_filter( 'wp_get_nav_menu_items', [ $this, 'filter_menu_items' ], 10, 3 );
             
             // ---- Variaciones y Precios ----
-            add_filter( 'woocommerce_variation_is_visible', [ $this, 'hide_physical_variation' ], 10, 4 );
-            add_filter( 'woocommerce_dropdown_variation_attribute_options_args', [ $this, 'clean_variation_dropdown' ], 10, 1 );
-            add_filter( 'woocommerce_available_variation', [ $this, 'filter_available_variation_data' ], 10, 3 );
             add_filter( 'woocommerce_product_get_default_attributes', [ $this, 'set_format_default' ], 20, 2 );
-            add_action( 'woocommerce_before_add_to_cart_button', [ $this, 'autoselect_format_variation_bridge' ], 5 );
             
-            // FIX PRECIOS: Prioridad altísima para sobreescribir Price Based on Country y Cache Busting
-            add_filter( 'woocommerce_variation_prices', [ $this, 'filter_variation_prices' ], 999, 3 );
-            add_filter( 'woocommerce_get_variation_prices_hash', [ $this, 'price_hash_cache_bust' ], 10, 1 );
+            // FIX PRECIOS: Mostrar explícitamente el precio digital en los listados
+            add_filter( 'woocommerce_variable_price_html', [ $this, 'display_digital_price_only' ], 99, 2 );
+            add_filter( 'woocommerce_variable_sale_price_html', [ $this, 'display_digital_price_only' ], 99, 2 );
+            
+            // FIX SELECTOR: Ocultar visualmente la variante física en el frontend
+            add_action( 'wp_footer', [ $this, 'frontend_variation_script' ], 99 );
         }
         
         // =====================================================================
         // HELPERS
         // =====================================================================
-        
-        private function extract_format( array $attributes ): string {
-            return $attributes['pa_formato'] ?? $attributes['attribute_pa_formato'] ?? $attributes['formato'] ?? $attributes['attribute_formato'] ?? '';
-        }
 
         public function is_restricted_user(): bool {
             $host = sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ?? '' ) );
             $host = preg_replace( '/:\d+$/', '', $host );
             return 'muyunicos.com' !== str_replace( 'www.', '', $host );
-        }
-
-        // Cache bust para aislar los precios de Price Based on Country según el dominio
-        public function price_hash_cache_bust( $hash ) {
-            return $hash . ( $this->is_restricted_user() ? '_dig' : '_full' );
         }
 
         // =====================================================================
@@ -197,7 +187,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         }
         
         public function ensure_indexes_exist(): void {
-            // FIX: Reconstruir si no existe O si está vacío (prevención de corrupción)
             $ids = get_option( self::OPTION_PRODUCT_IDS, false );
             if ( false === $ids || empty( $ids ) ) {
                 $this->rebuild_digital_indexes();
@@ -291,21 +280,18 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         private function handle_product_redirect(): array {
             global $post;
             
-            // FIX: Recuperar índice. Si está vacío o no existe, reconstruir forzosamente.
             $digital_ids = (array) get_option( self::OPTION_PRODUCT_IDS, [] );
             if ( empty( $digital_ids ) ) {
                 $this->rebuild_digital_indexes();
                 $digital_ids = (array) get_option( self::OPTION_PRODUCT_IDS, [] );
             }
             
-            // Si el producto actual (Variable o Simple) ya está en la lista permitida, NO redirigir.
             if ( ! $post || in_array( (int) $post->ID, array_map( 'intval', $digital_ids ), true ) ) {
                 return [ false, '' ];
             }
             
             $redirect_map = get_option( self::OPTION_REDIRECT_MAP, [] );
             if ( isset( $redirect_map[ $post->ID ] ) ) {
-                // Validar destino
                 $target_id = $redirect_map[ $post->ID ];
                 if ( 'publish' === get_post_status( $target_id ) ) {
                     return [ true, get_permalink( $target_id ) ];
@@ -338,7 +324,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             }
             
             if ( function_exists( 'insertar_prefijo_idioma' ) && function_exists( 'muyu_country_language_prefix' ) ) {
-                // Extractor inline minificado ya que no necesitamos la función global
                 $sub = strtolower( explode( '.', $_SERVER['HTTP_HOST'] ?? '' )[0] );
                 $country = match($sub) { 'mexico'=>'MX','br'=>'BR','co'=>'CO','ec'=>'EC','cl'=>'CL','pe'=>'PE','ar'=>'AR', default=> strtoupper(substr($sub,0,2)) };
                 $prefix = muyu_country_language_prefix( $country );
@@ -353,55 +338,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         // VARIACIONES Y FRONTEND JS BRIDGE
         // =====================================================================
         
-        public function hide_physical_variation( bool $visible, $variation_id, $product_id, $variation ): bool {
-            if ( ! $visible || ! $this->is_restricted_user() ) return $visible;
-            $physical_term = get_term( MUYU_PHYSICAL_FORMAT_ID, 'pa_formato' );
-            return ( $physical_term && ! is_wp_error( $physical_term ) ) ? ( $this->extract_format( $variation->get_attributes() ) !== $physical_term->slug ) : $visible;
-        }
-        
-        public function clean_variation_dropdown( array $args ): array {
-            if ( ! $this->is_restricted_user() || empty( $args['options'] ) || ! in_array( $args['attribute'] ?? '', ['pa_formato', 'attribute_pa_formato', 'formato', 'attribute_formato'], true ) ) return $args;
-            $physical_term = get_term( MUYU_PHYSICAL_FORMAT_ID, 'pa_formato' );
-            if ( ! $physical_term || is_wp_error( $physical_term ) ) return $args;
-            
-            foreach ( $args['options'] as $key => $option ) {
-                if ( ( is_object( $option ) && isset( $option->term_id ) && $option->term_id == MUYU_PHYSICAL_FORMAT_ID ) || ( is_string( $option ) && $option === $physical_term->slug ) ) {
-                    unset( $args['options'][ $key ] );
-                }
-            }
-            return $args;
-        }
-        
-        public function filter_variation_prices( array $prices_array, $product, $for_display ): array {
-            if ( ! $this->is_restricted_user() || empty( $prices_array['price'] ) ) return $prices_array;
-            $physical_term = get_term( MUYU_PHYSICAL_FORMAT_ID, 'pa_formato' );
-            if ( ! $physical_term || is_wp_error( $physical_term ) ) return $prices_array;
-            
-            $removed = false;
-            foreach ( $prices_array['price'] as $variation_id => $amount ) {
-                $format_slug = get_post_meta( $variation_id, 'attribute_pa_formato', true ) ?: get_post_meta( $variation_id, 'attribute_formato', true );
-                if ( empty( $format_slug ) && ( $v_obj = wc_get_product( $variation_id ) ) ) $format_slug = $this->extract_format( $v_obj->get_attributes() );
-                
-                if ( $format_slug === $physical_term->slug ) {
-                    unset( $prices_array['price'][ $variation_id ], $prices_array['regular_price'][ $variation_id ], $prices_array['sale_price'][ $variation_id ] );
-                    $removed = true;
-                }
-            }
-            
-            if ( $removed ) {
-                if ( ! empty( $prices_array['price'] ) ) asort( $prices_array['price'] );
-                if ( ! empty( $prices_array['regular_price'] ) ) asort( $prices_array['regular_price'] );
-                if ( ! empty( $prices_array['sale_price'] ) ) asort( $prices_array['sale_price'] );
-            }
-            return $prices_array;
-        }
-        
-        public function filter_available_variation_data( $data, $product, $variation ) {
-            if ( ! $this->is_restricted_user() ) return $data;
-            $physical_term = get_term( MUYU_PHYSICAL_FORMAT_ID, 'pa_formato' );
-            return ( $physical_term && ! is_wp_error( $physical_term ) && $this->extract_format( $variation->get_attributes() ) === $physical_term->slug ) ? false : $data;
-        }
-        
         public function set_format_default( array $defaults, $product ): array {
             $term_id = $this->is_restricted_user() ? MUYU_DIGITAL_FORMAT_ID : MUYU_PHYSICAL_FORMAT_ID;
             $term = get_term( $term_id, 'pa_formato' );
@@ -414,21 +350,74 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             return $defaults;
         }
         
-        public function autoselect_format_variation_bridge(): void {
-            global $product;
-            if ( ! $product || ! $product->is_type( 'variable' ) ) return;
-
-            $is_restricted = $this->is_restricted_user();
-            $attributes = $product->get_variation_attributes();
-            if ( ! isset( $attributes['pa_formato'] ) && ! isset( $attributes['attribute_pa_formato'] ) && ! isset( $attributes['formato'] ) ) return;
-
-            $target_term = get_term( $is_restricted ? MUYU_DIGITAL_FORMAT_ID : MUYU_PHYSICAL_FORMAT_ID, 'pa_formato' );
-            if ( ! $target_term || is_wp_error( $target_term ) ) return;
+        /**
+         * Fuerza a que en los listados y catálogo se muestre solo el precio de la versión digital.
+         */
+        public function display_digital_price_only( $price, $product ) {
+            if ( ! $this->is_restricted_user() ) return $price;
             
-            $available_slugs = array_merge( $attributes['pa_formato'] ?? [], $attributes['attribute_pa_formato'] ?? [], $attributes['formato'] ?? [] );
-            if ( ! in_array( $target_term->slug, $available_slugs, true ) ) return;
+            $digital_term = get_term( MUYU_DIGITAL_FORMAT_ID, 'pa_formato' );
+            if ( ! $digital_term || is_wp_error( $digital_term ) ) return $price;
 
-            printf( '<span id="mu-format-autoselect-data" style="display:none" data-target-slug="%s" data-hide-row="%s"></span>', esc_attr( $target_term->slug ), $is_restricted ? 'true' : 'false' );
+            $digital_slug = $digital_term->slug;
+            
+            // Iterar sobre las variaciones para encontrar la digital y extraer su precio HTML
+            $variations = $product->get_children();
+            foreach ( $variations as $variation_id ) {
+                $variation = wc_get_product( $variation_id );
+                if ( ! $variation ) continue;
+                
+                $attributes = $variation->get_attributes();
+                $format = $attributes['pa_formato'] ?? $attributes['formato'] ?? '';
+                
+                if ( $format === $digital_slug ) {
+                    return $variation->get_price_html();
+                }
+            }
+            
+            return $price;
+        }
+        
+        /**
+         * Inyecta CSS y JS para ocultar la opción física de cara al cliente,
+         * manteniendo la integridad del producto variable para WooCommerce.
+         */
+        public function frontend_variation_script(): void {
+            if ( ! $this->is_restricted_user() ) return;
+            
+            $phys_term = get_term( MUYU_PHYSICAL_FORMAT_ID, 'pa_formato' );
+            if ( ! $phys_term || is_wp_error( $phys_term ) ) return;
+            
+            $phys_slug = $phys_term->slug;
+            ?>
+            <style>
+                /* Ocultar visualmente la opción física del selector para evitar destellos (flicker) */
+                select[name^="attribute_pa_formato"] option[value="<?php echo esc_attr($phys_slug); ?>"],
+                select[name^="attribute_formato"] option[value="<?php echo esc_attr($phys_slug); ?>"] {
+                    display: none !important;
+                }
+            </style>
+            <script type="text/javascript">
+                document.addEventListener('DOMContentLoaded', function() {
+                    if (typeof jQuery !== 'undefined') {
+                        // Engancharnos al evento de actualización de WooCommerce
+                        jQuery(document).on('woocommerce_update_variation_values', function(e) {
+                            var $form = jQuery(e.target);
+                            var $select = $form.find('select[name^="attribute_pa_formato"], select[name^="attribute_formato"]');
+                            
+                            if ($select.length) {
+                                var $physOption = $select.find('option[value="<?php echo esc_js($phys_slug); ?>"]');
+                                if ($physOption.length) {
+                                    // Removemos la opción para que no se pueda seleccionar mediante el teclado o scripts de terceros
+                                    $physOption.remove();
+                                    $select.trigger('change');
+                                }
+                            }
+                        });
+                    }
+                });
+            </script>
+            <?php
         }
     }
 }
