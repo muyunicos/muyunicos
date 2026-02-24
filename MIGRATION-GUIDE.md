@@ -1,6 +1,6 @@
 MUY ÚNICOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v1.9.3 · Feb 24, 2026
+Estado: Refactor Modular Pragmático · v1.9.4 · Feb 24, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
