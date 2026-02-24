@@ -1,1 +1,17 @@
 .order-status.status-production { background: #f39c12 !important; color: #fff !important; }
+
+/* Indicador de Pedido Virtual Manual (No Descargable) */
+/* HPOS & Legacy Admin List */
+.mu-has-virtual-manual .order-view::after,
+.mu-has-virtual-manual .column-order_number a::after,
+.mu-has-virtual-manual .column-order_title a::after {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background-color: #3498db; /* Azul Muy Únicos */
+    border-radius: 50%;
+    margin-left: 8px;
+    vertical-align: middle;
+    box-shadow: 0 0 0 1px #fff;
+}
