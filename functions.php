@@ -108,3 +108,4 @@ mu_load_module( 'cart' );                // Cart functionality
 mu_load_module( 'ui' );                  // UI components (header, footer, search, wplng body class)
 mu_load_module( 'orders-files' );        // Order File Manager (Admin/Frontend)
 mu_load_module( 'orders-workflow' );     // Order Workflow (Status, Email, WhatsApp)
+mu_load_module( 'downloads-bonus' );     // Dynamic Downloads Injections
