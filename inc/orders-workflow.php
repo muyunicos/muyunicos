@@ -2,7 +2,7 @@
 /**
  * Module: Orders - Workflow & Statuses
  * Description: Estado "En Producción", lógica de emails inteligentes, y mejoras de UI en Admin de Pedidos.
- * Version: 1.0.0
+ * Version: 1.1.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -24,6 +24,34 @@ if ( ! function_exists( 'muyunicos_is_order_edit_screen' ) ) {
         
         // IDs: 'shop_order' (Legacy Post Type) o 'woocommerce_page_wc-orders' (HPOS)
         return in_array( $screen->id, [ 'shop_order', 'woocommerce_page_wc-orders' ], true );
+    }
+}
+
+if ( ! function_exists( 'mu_order_has_virtual_manual_item' ) ) {
+    /**
+     * Helper: Detecta si un pedido tiene al menos un ítem Virtual NO Descargable (requiere trabajo manual).
+     * 
+     * @param int|WC_Order $order
+     * @return bool
+     */
+    function mu_order_has_virtual_manual_item( $order ) {
+        if ( is_numeric( $order ) ) {
+            $order = wc_get_order( $order );
+        }
+        if ( ! $order ) {
+            return false;
+        }
+
+        foreach ( $order->get_items() as $item ) {
+            $product = $item->get_product();
+            if ( ! $product ) continue;
+
+            // Si es virtual pero NO es descargable -> requiere trabajo manual
+            if ( $product->is_virtual() && ! $product->is_downloadable() ) {
+                return true;
+            }
+        }
+        return false;
     }
 }
 
@@ -88,23 +116,44 @@ function muyunicos_bulk_action_production( $bulk_actions ) {
 add_filter( 'woocommerce_payment_complete_order_status', 'mu_forzar_procesando_virtual_no_descargable', 20, 3 );
 
 function mu_forzar_procesando_virtual_no_descargable( $status, $order_id, $order = null ) {
-    if ( ! $order ) {
-        $order = wc_get_order( $order_id );
-        if ( ! $order ) return $status;
-    }
-
-    foreach ( $order->get_items() as $item ) {
-        $product = $item->get_product();
-        if ( ! $product ) continue;
-
-        // Si es virtual pero requiere trabajo manual (no descargable), frenar en 'processing'
-        if ( $product->is_virtual() && ! $product->is_downloadable() ) {
-            return 'processing';
-        }
+    // Usamos el helper refactorizado
+    if ( mu_order_has_virtual_manual_item( $order ?: $order_id ) ) {
+        return 'processing';
     }
 
     return $status;
 }
+
+/**
+ * Indicador visual en Listado de Pedidos (Admin)
+ * Agrega clase CSS a la fila del pedido si contiene ítems virtuales manuales.
+ */
+// Hook para Legacy (Post Type 'shop_order')
+add_filter( 'post_class', 'mu_add_virtual_manual_indicator_class_legacy', 10, 3 );
+function mu_add_virtual_manual_indicator_class_legacy( $classes, $class, $post_id ) {
+    if ( ! is_admin() || get_post_type( $post_id ) !== 'shop_order' ) {
+        return $classes;
+    }
+    
+    // Verificamos si estamos en el loop principal de admin
+    $screen = get_current_screen();
+    if ( $screen && $screen->id === 'edit-shop_order' ) {
+        if ( mu_order_has_virtual_manual_item( $post_id ) ) {
+            $classes[] = 'mu-has-virtual-manual';
+        }
+    }
+    return $classes;
+}
+
+// Hook para HPOS (High Performance Order Storage)
+add_filter( 'woocommerce_shop_order_list_table_order_css_classes', 'mu_add_virtual_manual_indicator_class_hpos', 10, 2 );
+function mu_add_virtual_manual_indicator_class_hpos( $classes, $order ) {
+    if ( mu_order_has_virtual_manual_item( $order ) ) {
+        $classes[] = 'mu-has-virtual-manual';
+    }
+    return $classes;
+}
+
 
 // ==========================================
 // 4. NOTIFICACIÓN POR EMAIL INTELIGENTE
@@ -148,11 +197,7 @@ function muyunicos_email_production_notification( $order_id, $from_status, $to_s
         $heading_txt = __( '¡Tu pedido está en marcha!', 'woocommerce' );
         
         $content = sprintf(
-            '<p>%s %s,</p>
-            <p>%s</p>
-            <p>%s</p>
-            <hr style="border:0; border-top:1px solid #eee; margin: 20px 0;">
-            <p><small>%s</small></p>',
+            '<p>%s %s,</p>\n            <p>%s</p>\n            <p>%s</p>\n            <hr style="border:0; border-top:1px solid #eee; margin: 20px 0;">\n            <p><small>%s</small></p>',
             __( 'Hola', 'woocommerce' ),
             esc_html( $first_name ),
             $msg_opening,
