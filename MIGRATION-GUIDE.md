@@ -1,6 +1,6 @@
 MUY ÚNICOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v1.9.1 · Feb 23, 2026
+Estado: Refactor Modular Pragmático · v1.9.2 · Feb 24, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -43,12 +43,12 @@ muyunicos/ (generatepress-child)
 │   ├── cart.php               # Lógica de carrito, buffers BACS
 │   ├── ui.php                 # ✅ Header, Footer, search form, WhatsApp btn, Canonical fix, WPLingua body class
 │   ├── orders-files.php       # ✅ File Manager (Admin/Frontend): Uploads, PDF gen, Downloads endpoint
-│   └── orders-workflow.php    # ✅ Workflow: Status 'Production', Smart Emails, Admin WhatsApp link
+│   └── orders-workflow.php    # ✅ Workflow: Status 'Production', Smart Emails, Admin UI (WhatsApp link, Indicador Virtual Manual)
 │
 ├── css/                       # 🎨 CSS MODULAR (Pragmático)
 │   ├── admin.css              # is_admin() — Botones reindex, tools internas
 │   ├── admin-order-files.css  # ✅ is_admin() && order_edit — Dropzone, Modal Files
-│   ├── admin-orders.css       # ✅ is_admin() && order_edit — Status Badge
+│   ├── admin-orders.css       # ✅ is_admin() && order_edit — Status Badge, Indicador Virtual Manual
 │   ├── components/            # Componentes compartidos
 │   │   ├── global-ui.css      # ✅ Global: micro UI (Share, WhatsApp flotante, Search, estilos de WPLingua, Carrusel Híbrido)
 │   │   ├── header.css         # Global: header, navegación, Country Selector (con hover automático v1.8.7)
@@ -72,9 +72,7 @@ muyunicos/ (generatepress-child)
     ├── checkout.js            # ✅ Validación WA (libphonenumber) + Toggle Dirección + Check Email
     ├── modal-auth.js          # ! is_user_logged_in()
     ├── country-modal.js       # Condicional — encolado por inc/geo.php
-    └── shop.js                # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() — Lógica de Infinite Scroll JS (Optimized)
-
-3. INVENTARIO DE ARCHIVOS (Estado Actual)
+    └── shop.js                # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() — Lógica de Infinite Scroll JS (Optimized)\n\n3. INVENTARIO DE ARCHIVOS (Estado Actual)
 
 PHP · inc/
 
@@ -88,7 +86,7 @@ inc/checkout.php | Campos, validaciones, optimizaciones Checkout, Título "Pedid
 inc/cart.php | Añadir múltiples ítems al carrito, buffers BACS
 inc/ui.php | Header icons, Cart badge fragment, WhatsApp btn, Custom Search form, Custom Footer, Share shortcode, Google Site Kit canonical, WPLingua body class, Category Description Mover, Reemplazo precio $0 a "Gratis", Disable GP Featured image HTML
 inc/orders-files.php | Gestor de archivos: Hooks Admin (Upload/Delete/PDF), Hooks Email (Links), Hook Account (Tabla Descargas).
-inc/orders-workflow.php | Flujo de pedidos: Estado 'wc-production', Filtro virtual no-descargable, Emails inteligentes (Físico/Digital), Admin UI (WhatsApp link).
+inc/orders-workflow.php | Flujo de pedidos: Estado 'wc-production', Helper mu_order_has_virtual_manual_item, Emails inteligentes (Físico/Digital), Admin UI (WhatsApp link, Indicador Virtual Manual).
 
 CSS · css/
 
@@ -97,7 +95,7 @@ Archivo | Condición de carga en functions.php
 style.css (raíz) | Global (base)
 css/admin.css | is_admin() && current_screen == 'product'
 css/admin-order-files.css | is_admin() && order_edit (Dropzone styles)
-css/admin-orders.css | is_admin() && order_edit (Badge styles)
+css/admin-orders.css | is_admin() && order_edit (Badge styles, Indicador Virtual Manual)
 css/account-downloads.css | is_account_page() && is_wc_endpoint_url('downloads')
 css/components/global-ui.css | Global (Share Button, WhatsApp flotante, Search Form, WPLingua estilos, Carrusel Híbrido CSS)
 css/components/header.css | Global (Header, Navegación, Country Selector con hover v1.8.7)
