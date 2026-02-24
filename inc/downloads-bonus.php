@@ -1,8 +1,8 @@
 <?php
 /**
- * Module: Downloads Bonus
- * Description: Inyección dinámica de archivo "Líneas de Corte" basado en historial de compras.
- * Version: 1.0.0
+ * Module: Downloads Bonus & Guides
+ * Description: Inyección dinámica de archivo "Líneas de Corte" + Guía de Uso para productos Cat. 18.
+ * Version: 1.1.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -84,8 +84,67 @@ if ( ! function_exists( 'mu_user_has_cat_18_download' ) ) {
     }
 }
 
+if ( ! function_exists( 'mu_product_is_cat_18_virtual' ) ) {
+    /**
+     * Verifica si un producto (o su padre si es variación) pertenece a la categoría 18 y es virtual.
+     */
+    function mu_product_is_cat_18_virtual( $product ) {
+        if ( ! $product ) return false;
+        
+        $parent_id = $product->get_parent_id() ? $product->get_parent_id() : $product->get_id();
+        return $product->is_virtual() && has_term( 18, 'product_cat', $parent_id );
+    }
+}
+
 // ==========================================
-// 2. INYECCIÓN EN MI CUENTA > DESCARGAS
+// 2. INYECCIÓN DE GUÍA EN MI CUENTA > DESCARGAS
+// ==========================================
+
+/**
+ * Modifica el nombre de las descargas para agregar un link inline a la guía si es Cat. 18 + Virtual.
+ */
+add_filter( 'woocommerce_account_downloads', 'mu_inject_guide_in_downloads_table', 10, 1 );
+function mu_inject_guide_in_downloads_table( $downloads ) {
+    if ( empty( $downloads ) ) return $downloads;
+
+    foreach ( $downloads as $key => $download ) {
+        $product_id = isset( $download['product_id'] ) ? $download['product_id'] : 0;
+        $product = wc_get_product( $product_id );
+        
+        if ( mu_product_is_cat_18_virtual( $product ) ) {
+            $guide_link = ' <a href="https://muyunicos.com/guia-etiquetas-personalizada/" target="_blank" style="font-size: 0.9em; color: #2B9FCF; text-decoration: none;">(📖 Ver Guía)</a>';
+            $downloads[$key]['download_name'] .= $guide_link;
+        }
+    }
+
+    return $downloads;
+}
+
+// ==========================================
+// 3. INYECCIÓN DE GUÍA EN EMAILS (INLINE SUTIL)
+// ==========================================
+
+/**
+ * Agrega el link de la guía inline después del nombre del producto en emails.
+ * Hook: woocommerce_order_item_name (filtro del nombre del producto en emails).
+ */
+add_filter( 'woocommerce_order_item_name', 'mu_inject_guide_in_email_item_name', 10, 3 );
+function mu_inject_guide_in_email_item_name( $item_name, $item, $is_visible ) {
+    // Solo aplicar en emails (no en frontend)
+    if ( ! is_email() && ! doing_action( 'woocommerce_email_order_details' ) ) {
+        return $item_name;
+    }
+
+    $product = $item->get_product();
+    if ( mu_product_is_cat_18_virtual( $product ) ) {
+        $item_name .= ' <a href="https://muyunicos.com/guia-etiquetas-personalizada/" target="_blank" style="font-size: 0.85em; color: #2B9FCF; text-decoration: none;">(📖 Ver Guía)</a>';
+    }
+
+    return $item_name;
+}
+
+// ==========================================
+// 4. INYECCIÓN DE BONUS EN MI CUENTA > DESCARGAS
 // ==========================================
 
 add_filter( 'woocommerce_customer_get_downloadable_products', 'mu_inject_bonus_download', 10, 1 );
@@ -121,7 +180,7 @@ function mu_inject_bonus_download( $downloads ) {
 }
 
 // ==========================================
-// 3. INYECCIÓN EN EMAILS DE PEDIDO
+// 5. INYECCIÓN DE BONUS EN EMAILS DE PEDIDO
 // ==========================================
 
 /**
