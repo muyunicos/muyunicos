@@ -2,7 +2,7 @@
 /**
  * Module: Downloads Bonus & Guides
  * Description: Inyección dinámica de archivo "Líneas de Corte" + Guía de Uso para productos Cat. 18.
- * Version: 1.1.1
+ * Version: 1.1.2
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -86,6 +86,44 @@ if ( ! function_exists( 'mu_user_has_cat_18_download' ) ) {
     }
 }
 
+if ( ! function_exists( 'mu_user_has_cat_18_custom_files' ) ) {
+    /**
+     * Evalúa si el usuario tiene pedidos con archivos personalizados pertenecientes a la Categoría 18.
+     */
+    function mu_user_has_cat_18_custom_files( $user_id ) {
+        if ( ! $user_id ) return false;
+        
+        static $cache = [];
+        if ( isset( $cache[$user_id] ) ) return $cache[$user_id];
+        
+        $has_cat_18 = false;
+        $orders = wc_get_orders([
+            'customer_id' => $user_id,
+            'status' => ['completed', 'processing'],
+            'limit' => 20,
+        ]);
+        
+        foreach ( $orders as $order ) {
+            foreach ( $order->get_items() as $item ) {
+                $files = $item->get_meta( '_urls_files', true );
+                if ( ! empty( $files ) && is_array( $files ) ) {
+                    $product = $item->get_product();
+                    if ( $product ) {
+                        $parent_id = $product->get_parent_id() ? $product->get_parent_id() : $product->get_id();
+                        if ( has_term( 18, 'product_cat', $parent_id ) ) {
+                            $has_cat_18 = true;
+                            break 2;
+                        }
+                    }
+                }
+            }
+        }
+        
+        $cache[$user_id] = $has_cat_18;
+        return $has_cat_18;
+    }
+}
+
 if ( ! function_exists( 'mu_product_is_cat_18_virtual' ) ) {
     /**
      * Verifica si un producto (o su padre si es variación) pertenece a la categoría 18 y es virtual.
@@ -128,7 +166,9 @@ if ( ! function_exists( 'mu_inject_downloads_and_guides_table' ) ) {
 
         // 2. Inyectar archivo bonus
         if ( $user_id && ! isset( $downloads['mu_bonus_lineas_corte'] ) ) {
-            if ( mu_user_has_cat_18_download( $downloads ) && mu_user_has_virtual_manual_purchases( $user_id ) ) {
+            $has_cat_18 = mu_user_has_cat_18_download( $downloads ) || mu_user_has_cat_18_custom_files( $user_id );
+            
+            if ( $has_cat_18 && mu_user_has_virtual_manual_purchases( $user_id ) ) {
                 $downloads['mu_bonus_lineas_corte'] = [
                     'download_url' => 'https://muyunicos.com/wp-content/uploads/2026/02/Lineas-de-Corte-Etiquetas-Escolares-Muy-Unicos.zip',
                     'download_id'  => 'mu_bonus_lineas_corte',
@@ -196,9 +236,11 @@ if ( ! function_exists( 'mu_inject_bonus_in_emails' ) ) {
         // Validación Condición A: Debe tener Virtual + Manual
         if ( ! mu_user_has_virtual_manual_purchases( $user_id ) ) return;
 
-        // Validación Condición B: Debe tener un producto Categoría 18
+        // Validación Condición B: Debe tener un producto Categoría 18 (nativo o personalizado)
         $all_downloads = wc_get_customer_available_downloads( $user_id );
-        if ( mu_user_has_cat_18_download( $all_downloads ) ) {
+        $has_cat_18 = mu_user_has_cat_18_download( $all_downloads ) || mu_user_has_cat_18_custom_files( $user_id );
+        
+        if ( $has_cat_18 ) {
             
             $zip_url = 'https://muyunicos.com/wp-content/uploads/2026/02/Lineas-de-Corte-Etiquetas-Escolares-Muy-Unicos.zip';
             
