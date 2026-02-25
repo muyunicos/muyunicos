@@ -1,4 +1,7 @@
-.mu-custom-downloads { margin-bottom: 30px; }
-/* Oculta "No downloads available" de WC nativo si es necesario, 
-   ya que estamos mostrando una lista custom */
-.woocommerce-account .woocommerce-info { display: none; }
+.mu-custom-downloads { margin-bottom: var(--mu-space-md, 20px); }
+
+/* Oculta "Aún no tienes descargas" de WC nativo SOLO si estamos 
+   mostrando la lista custom de archivos.
+   Se usa el combinador de hermanos (~) para no ocultar el aviso
+   cuando el usuario realmente NO tiene descargas. */
+.mu-custom-downloads ~ .woocommerce-info { display: none; }
