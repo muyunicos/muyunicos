@@ -329,6 +329,5 @@ add_action( 'woocommerce_account_downloads_endpoint', function() {
             </tbody>
         </table>
     </div>
-    <style>.woocommerce-info { display: none; }</style> <!-- Oculta "No downloads available" de WC nativo si es necesario -->
     <?php
 }, 5 );
