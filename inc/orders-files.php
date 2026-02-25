@@ -2,7 +2,7 @@
 /**
  * Module: Orders - File Manager
  * Description: Gestión eficiente de archivos adjuntos a items de pedido (Admin/Frontend).
- * Version: 1.0.0
+ * Version: 1.0.1
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -292,11 +292,18 @@ add_action( 'woocommerce_account_downloads_endpoint', function() {
         foreach ( $order->get_items() as $item ) {
             $files = $item->get_meta( '_urls_files', true );
             if ( ! empty( $files ) && is_array( $files ) ) {
+                
+                // --- INYECCIÓN DE GUÍA PARA PRODUCTOS VIRTUALES CAT 18 ---
+                $guide_link = '';
+                $product = $item->get_product();
+                if ( $product && function_exists('mu_product_is_cat_18_virtual') && mu_product_is_cat_18_virtual( $product ) ) {
+                    $guide_link = ' <a href="https://muyunicos.com/guia-etiquetas-personalizada/" target="_blank" style="font-size: 0.9em; color: var(--primario, #2B9FCF); text-decoration: none;">(📖 Ver Guía)</a>';
+                }
+
                 foreach ( $files as $url ) {
                     $display_rows[] = [
                         'date' => $order->get_date_created()->date_i18n('d/m/Y'),
-                        'product' => $item->get_name(),
-                        'file' => basename($url),
+                        'product' => esc_html( $item->get_name() ) . $guide_link,
                         'url' => $url
                     ];
                 }
@@ -313,7 +320,6 @@ add_action( 'woocommerce_account_downloads_endpoint', function() {
                 <tr>
                     <th>Fecha</th>
                     <th>Producto</th>
-                    <th>Archivo</th>
                     <th>&nbsp;</th>
                 </tr>
             </thead>
@@ -321,8 +327,7 @@ add_action( 'woocommerce_account_downloads_endpoint', function() {
                 <?php foreach ( $display_rows as $row ) : ?>
                 <tr>
                     <td data-title="Fecha"><?php echo esc_html($row['date']); ?></td>
-                    <td data-title="Producto"><small><?php echo esc_html($row['product']); ?></small></td>
-                    <td data-title="Archivo"><?php echo esc_html(mb_strimwidth($row['file'], 0, 20, '...')); ?></td>
+                    <td data-title="Producto"><small><?php echo wp_kses_post($row['product']); ?></small></td>
                     <td><a href="<?php echo esc_url($row['url']); ?>" class="button" target="_blank" download>Descargar</a></td>
                 </tr>
                 <?php endforeach; ?>
