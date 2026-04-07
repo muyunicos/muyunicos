@@ -1,0 +1,469 @@
+/**
+ * Product Builder — Unified Styles
+ *
+ * Carga condicional: is_product() || is_cart()
+ * Fuente: MU Core v2.1 + Addon Nombre v3.0 + Addon Etiquetas v3.0
+ *
+ * Todas las variables definidas en style.css (:root --mu-builder-*)
+ */
+
+/* ==========================================================================
+   1. UTILS
+   ========================================================================== */
+
+/* override GP: force flex layout on add-to-cart form for builder */
+.woocommerce div.product form.cart {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--mu-space-sm);
+}
+.woocommerce div.product form.cart .button { flex: 1 0 auto; }
+.mu-hidden { display: none !important; }
+
+/* override GP: hide native variation price when builder is active */
+.woocommerce-variation-price { display: none !important; }
+
+/* ==========================================================================
+   2. CONTENEDOR PRINCIPAL
+   ========================================================================== */
+
+#mu-builder-container {
+    width: 100%;
+    margin: 0 0 var(--mu-space-md) 0;
+    clear: both;
+    font-family: inherit;
+}
+
+/* ==========================================================================
+   3. TABS / MODOS
+   ========================================================================== */
+
+.mu-mode-selector {
+    display: flex;
+    gap: var(--mu-space-sm);
+    margin-bottom: var(--mu-space-md);
+}
+
+.mu-mode-btn {
+    flex: 1;
+    padding: 15px;
+    border: 2px solid var(--mu-builder-border);
+    border-radius: 8px;
+    background: var(--blanco);
+    cursor: pointer;
+    text-align: center;
+    transition: var(--mu-transition-fast);
+}
+
+.mu-mode-btn:hover {
+    border-color: var(--mu-builder-border-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+}
+
+.mu-mode-btn.active {
+    border-color: var(--mu-builder-accent);
+    background: var(--mu-builder-accent-bg);
+}
+
+.mu-mode-btn h4 { margin: 0 0 5px 0; font-size: 1em; }
+.mu-mode-btn span { font-size: 0.85em; color: var(--texto-light); }
+
+/* ==========================================================================
+   4. SECCIONES (ACORDEONES)
+   ========================================================================== */
+
+.mu-o-section {
+    border: 3px solid var(--mu-builder-accent);
+    border-radius: 14px;
+    margin-bottom: 15px;
+    background: var(--blanco);
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.mu-o-section-header {
+    padding: 12px 15px;
+    background: var(--mu-builder-accent);
+    color: var(--blanco);
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.mu-o-section-header:hover { background: var(--mu-builder-accent-hover); }
+.mu-o-section.fixed .mu-o-section-header { cursor: default; }
+
+.mu-o-section-content {
+    background: var(--blanco);
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+    opacity: 0;
+    padding: 0 15px;
+}
+
+.mu-o-section.expanded .mu-o-section-content,
+.mu-o-section.fixed .mu-o-section-content {
+    display: block;
+    max-height: 5000px;
+    opacity: 1;
+    padding: 10px 0;
+    overflow: visible;
+}
+
+.mu-toggle-icon svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    transition: transform 0.3s;
+}
+
+.mu-o-section.expanded .mu-toggle-icon svg { transform: rotate(180deg); }
+
+/* ==========================================================================
+   5. FILAS DE PRODUCTOS
+   ========================================================================== */
+
+.mu-row {
+    display: flex;
+    flex-direction: column;
+    padding: 15px 12px;
+    border-bottom: 3px solid var(--mu-builder-accent);
+}
+
+.mu-row:last-child { border-bottom: none; }
+.mu-row.selected { background: var(--mu-builder-bg-subtle); }
+
+.mu-row-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 15px;
+}
+
+.mu-info { flex: 1; }
+.mu-title { font-weight: 600; display: block; color: var(--mu-builder-text); margin-bottom: 4px; }
+.mu-desc { font-size: 0.85em; color: var(--mu-builder-text-muted); display: block; margin-bottom: 6px; }
+
+/* ==========================================================================
+   6. CONTROLES Y PRECIOS
+   ========================================================================== */
+
+.mu-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.mu-qty-wrap {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--mu-builder-bg-light);
+    border: 1px solid var(--mu-builder-border-dark);
+    border-radius: 8px;
+    padding: 3px;
+}
+
+.mu-qty-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: var(--mu-builder-accent);
+    color: var(--blanco);
+    border-radius: var(--mu-radius-sm);
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.mu-qty-input {
+    width: 45px;
+    text-align: center;
+    border: none;
+    background: transparent;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.mu-price-tag {
+    font-weight: 700;
+    color: var(--mu-builder-accent);
+    font-size: 0.9em;
+    text-align: right;
+}
+
+.price-strike {
+    text-decoration: line-through;
+    opacity: 0.6;
+    margin-right: 5px;
+    font-weight: normal;
+}
+
+.promo-badge {
+    background: var(--mu-builder-danger);
+    color: var(--blanco);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75em;
+    font-weight: bold;
+    margin-left: 5px;
+}
+
+.mu-price-plus { color: var(--mu-builder-accent); font-weight: 700; }
+.mu-price-full { color: var(--mu-builder-text); font-weight: 700; }
+.mu-price-included { color: var(--mu-builder-success); font-weight: 700; text-transform: uppercase; font-size: 0.85em; }
+
+/* ==========================================================================
+   7. OPCIONES EXTRA (Checkboxes, Radios, TextAreas)
+   ========================================================================== */
+
+.mu-item-options { display: none; margin-top: 10px; }
+
+.mu-advanced-option {
+    border: 1px solid var(--mu-builder-border);
+    border-radius: 8px;
+    margin-top: 10px;
+    background: var(--blanco);
+    overflow: hidden;
+}
+
+.mu-advanced-option.active {
+    border-color: var(--mu-builder-accent);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.mu-check-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    cursor: pointer;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+}
+
+.mu-check-start { display: flex; align-items: center; gap: 12px; }
+.mu-check-info { display: flex; flex-direction: column; line-height: 1.3; }
+.mu-opt-title { font-weight: 600; font-size: 0.95em; }
+
+.mu-price-badge {
+    background: var(--mu-builder-accent-bg-light);
+    color: var(--mu-builder-accent);
+    padding: 4px 8px;
+    border-radius: var(--mu-radius-sm);
+    font-size: 0.8em;
+    font-weight: 700;
+}
+
+.mu-option-body {
+    padding: 15px;
+    border-top: 1px dashed var(--mu-builder-border);
+    background: var(--mu-builder-bg-option);
+    display: none;
+}
+
+/* Radios & Text Area */
+.mu-mode-radios { display: flex; gap: 8px; margin-bottom: 10px; }
+
+.mu-radio-box {
+    flex: 1;
+    border: 1px solid var(--mu-builder-border-dark);
+    padding: 8px;
+    border-radius: var(--mu-radius-sm);
+    cursor: pointer;
+    text-align: center;
+    background: var(--blanco);
+}
+
+.mu-radio-box.active {
+    border-color: var(--mu-builder-accent);
+    background: var(--mu-builder-accent-bg);
+    color: var(--mu-builder-accent);
+    font-weight: 600;
+}
+
+.mu-radio-box input { display: none; }
+
+.mu-text-area {
+    width: 100%;
+    min-height: 80px;
+    padding: 10px;
+    border: 1px solid var(--mu-builder-border-dark);
+    border-radius: var(--mu-radius-sm);
+    font-size: 0.9em;
+    resize: vertical;
+}
+
+.mu-text-area:focus { outline: none; border-color: var(--mu-builder-accent); }
+.mu-custom-qty-wrapper { display: flex; justify-content: center; margin-top: 10px; }
+
+/* ==========================================================================
+   8. DETALLES EXPANDIBLES
+   ========================================================================== */
+
+.mu-details-toggle {
+    font-size: 0.8em;
+    color: var(--mu-builder-accent);
+    cursor: pointer;
+    text-decoration: underline;
+    margin-top: 5px;
+    display: inline-block;
+}
+
+.mu-details-content {
+    display: none;
+    font-size: 0.85em;
+    padding: 10px;
+    background: var(--mu-builder-bg-light);
+    border-radius: var(--mu-radius-sm);
+    margin-top: 8px;
+    color: #555;
+}
+
+/* ==========================================================================
+   9. CAJA DE TOTALES (Core UI)
+   ========================================================================== */
+
+#mu-total-wrapper {
+    margin-top: var(--mu-space-md);
+    margin-bottom: var(--mu-space-md);
+    width: 100%;
+    display: none;
+}
+
+/* Mostrar por defecto si es producto simple, JS controlará en variables */
+body.single-product:not(.product-type-variable) #mu-total-wrapper { display: block; }
+
+#mu-selection-summary {
+    background: var(--mu-builder-bg-muted);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    font-size: 0.9em;
+    line-height: 1.4;
+    border: 1px solid var(--mu-builder-border);
+    display: none;
+}
+
+.mu-total-box {
+    background: var(--blanco);
+    border: 2px solid var(--mu-builder-accent);
+    border-radius: 8px;
+    padding: 15px;
+    text-align: right;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.mu-total-row { display: flex; align-items: center; gap: 15px; font-size: 1.2em; }
+.mu-total-label { color: #555; text-transform: uppercase; font-size: 0.7em; font-weight: 700; }
+.mu-total-amount { color: var(--mu-builder-accent); font-size: 1.4em; font-weight: 800; }
+
+/* ==========================================================================
+   10. ADDON NOMBRE — Estilos específicos
+   ========================================================================== */
+
+.mu-case-controls { display: flex; gap: 5px; margin-top: 5px; justify-content: flex-end; }
+
+.mu-btn-case {
+    background: #f0f0f1;
+    border: 1px solid #ccc;
+    color: #555;
+    padding: 2px 8px;
+    font-size: 11px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.mu-btn-case:hover { background: #e5e5e5; color: #000; }
+.mu-input-error { border-color: #e2401c !important; background-color: #fff8f8 !important; }
+.mu-error-msg { color: #e2401c; font-size: 13px; margin-top: 5px; display: none; font-weight: 500; }
+
+.mu-text-input-nombre {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 1.1em;
+    transition: border-color 0.2s;
+}
+
+.mu-text-input-nombre:focus { outline: none; border-color: var(--mu-builder-accent); }
+
+/* ==========================================================================
+   11. ADDON NOMBRE — Editor inline carrito
+   ========================================================================== */
+
+.mu-name-wrapper-hook { margin-top: 5px; font-size: 0.85em; }
+
+.mu-name-trigger-edit {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--mu-builder-accent);
+    cursor: pointer;
+    text-decoration: underline;
+    font-size: 0.9em;
+}
+
+.mu-name-edit-mode { gap: 5px; margin-top: 5px; }
+
+.mu-name-input {
+    width: 140px;
+    padding: 2px 5px;
+    font-size: 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.mu-icon-btn {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.mu-btn-save { background: var(--mu-builder-success); color: var(--blanco); }
+.mu-name-cancel-btn { background: var(--mu-builder-danger-dark); color: var(--blanco); }
+.mu-name-status-msg { font-size: 10px; color: var(--texto-light); margin-left: 5px; }
+
+/* ==========================================================================
+   12. RESPONSIVE
+   ========================================================================== */
+
+@media (max-width: 600px) {
+    .mu-row-main { flex-direction: column; gap: 12px; }
+
+    .mu-controls {
+        flex-direction: row;
+        justify-content: space-between;
+        width: 100%;
+        align-items: center;
+        margin-top: 5px;
+    }
+
+    .mu-mode-selector { flex-direction: column; }
+
+    .mu-total-box {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+    }
+
+    .mu-total-row { justify-content: space-between; width: 100%; }
+}

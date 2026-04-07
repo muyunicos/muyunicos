@@ -39,6 +39,23 @@ Updated: 2026-02-22
   --mu-space-md: 20px;
   --mu-space-lg: 40px;
   --mu-space-xl: 40px;
+
+  /* Product Builder (Addons Etiquetas/Nombre) */
+  --mu-builder-accent: #6c5ce7;
+  --mu-builder-accent-hover: #a29bfe;
+  --mu-builder-accent-bg: #f4f3ff;
+  --mu-builder-accent-bg-light: #f0f3ff;
+  --mu-builder-text: #2d3436;
+  --mu-builder-text-muted: #636e72;
+  --mu-builder-success: #2ecc71;
+  --mu-builder-danger: #ff6b6b;
+  --mu-builder-danger-dark: #e74c3c;
+  --mu-builder-border: #eee;
+  --mu-builder-border-dark: #ddd;
+  --mu-builder-bg-light: #f8f9fa;
+  --mu-builder-bg-subtle: #f9f9ff;
+  --mu-builder-bg-muted: #f9f9f9;
+  --mu-builder-bg-option: #fcfcfc;
 }
 
 /* Elementos Base y Reset */
