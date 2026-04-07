@@ -200,3 +200,86 @@ td.actions .coupon::after { display: none !important; }
 
 /* Estado de bloqueo durante update */
 .woocommerce-cart-form.processing .mu-qty-btn { opacity: 0.5; pointer-events: none; }
+
+/* ============================================
+   7. PRECIO FLEXIBLE — Widget edición inline
+   Sistema de Precio Flexible v4.0
+   Carga: junto con cart.css (is_cart() || is_checkout())
+   ============================================ */
+
+.mu-cp-wrapper {
+    margin-top: var(--mu-space-xs, 5px);
+    font-size: 0.9em;
+}
+
+.mu-cp-label {
+    color: var(--texto-light, #666);
+    font-weight: 600;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.mu-cp-req {
+    color: var(--error, #d9534f);
+    margin-left: 4px;
+    font-weight: 400;
+}
+
+.mu-cp-view,
+.mu-cp-edit {
+    display: flex;
+    align-items: center;
+    gap: var(--mu-space-xs, 6px);
+    margin-top: 2px;
+}
+
+/* override GP: ocultar elementos del widget cuando no aplican */
+.mu-hidden { display: none !important; }
+
+.mu-cp-link {
+    background: none;
+    border: none;
+    color: var(--primario, #2B9FCF);
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0;
+    font-size: 0.9em;
+    transition: opacity 0.2s;
+}
+.mu-cp-link:hover { opacity: 0.75; }
+
+.mu-cp-input {
+    width: 80px !important;
+    padding: 2px var(--mu-space-xs, 6px) !important;
+    height: 30px !important;
+    border: 1px solid #ccc !important;
+    border-radius: var(--mu-radius-sm, 6px) !important;
+    transition: border-color 0.2s;
+}
+.mu-cp-input:focus { border-color: var(--primario, #2B9FCF) !important; outline: none; }
+
+.mu-btn-save {
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    background: var(--primario, #2B9FCF);
+    color: var(--blanco, #fff);
+    border: none;
+    border-radius: var(--mu-radius-sm, 6px);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.2s;
+}
+.mu-btn-save:hover         { opacity: 0.85; }
+.mu-btn-save:focus-visible { outline: 2px solid var(--secundario, #FFD77A); outline-offset: 2px; }
+.mu-btn-save svg           { width: 16px; height: 16px; stroke: currentColor; fill: none; }
+
+.mu-cp-msg {
+    font-size: 10px;
+    min-height: 12px;
+    margin-top: 2px;
+    color: var(--texto-light, #777);
+}

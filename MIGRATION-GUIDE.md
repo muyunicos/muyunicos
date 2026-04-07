@@ -1,6 +1,6 @@
 MUY ÚNCOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v1.9.6 · Apr 7, 2026
+Estado: Refactor Modular Pragmático · v1.9.7 · Apr 7, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -41,6 +41,7 @@ muyunicos/ (generatepress-child)
 │   ├── auth-modal.php         # Modal Login/Registro + endpoints WC-AJAX
 │   ├── checkout.php           # ✅ Checkout Híbrido Optimizado (Físico/Digital) + Validación WA
 │   ├── cart.php               # Lógica de carrito, buffers BACS
+│   ├── flexible-price.php     # ✅ Sistema de Precio Flexible v4.0: IDs configurables, validación, captura, precio dinámico, AJAX handler, enqueue condicional de js/flexible-price.js
 │   ├── ui.php                 # ✅ Header, Footer, search form, WhatsApp btn, Canonical fix, WPLingua body class
 │   ├── orders-files.php       # ✅ File Manager (Admin/Frontend): Uploads, PDF gen, Downloads endpoint
 │   ├── orders-workflow.php    # ✅ Workflow: Status 'Production', Smart Emails, Admin UI (WhatsApp link, Indicador Virtual Manual)
@@ -58,7 +59,7 @@ muyunicos/ (generatepress-child)
 │   │   ├── modal-auth.css     # ! is_user_logged_in()
 │   │   ├── country-modal.css  # Condicional — encolado por inc/geo.php (mu_should_show_country_modal)
 │   │   └── navigation-chips.css # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() — estilos de breadcrumb chips + filtros
-│   ├── cart.css               # is_cart()
+│   ├── cart.css               # is_cart() — incluye sección "7. PRECIO FLEXIBLE" (.mu-cp-*)
 │   ├── checkout.css           # ✅ is_checkout() && ! is_order_received_page()
 │   ├── home.css               # is_front_page()
 │   ├── shop.css               # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() (Infinite Scroll estilos)
@@ -72,6 +73,7 @@ muyunicos/ (generatepress-child)
     ├── header.js              # Global: menú móvil, submenús, dropdown cuenta
     ├── footer.js              # Global: comportamiento footer
     ├── cart.js                # is_cart() — depende de: jquery
+    ├── flexible-price.js      # ✅ is_cart() || is_checkout() — Widget edición inline de precio. IIFE+strict. Datos vía wp_localize_script (muFlexiblePrice: ajaxUrl, nonce, i18n). Depende de: jquery.
     ├── checkout.js            # ✅ is_checkout() && ! is_order_received_page() — depende de: jquery, libphonenumber-js
     ├── modal-auth.js          # ! is_user_logged_in()
     ├── country-modal.js       # Condicional — encolado por inc/geo.php
@@ -90,6 +92,7 @@ inc/digital-restriction.php | Restricción de productos físicos en subdominios 
 inc/auth-modal.php | HTML modal auth, endpoints wc_ajax_mu_*
 inc/checkout.php | Campos, validaciones, optimizaciones Checkout, Título "Pedido Recibido"
 inc/cart.php | Añadir múltiples ítems al carrito, buffers BACS
+inc/flexible-price.php | Sistema de Precio Flexible v4.0: mu_get_flexible_product_ids() (mapa O(1)), mu_is_flexible_product(), validación (precio negativo + instancia única), captura con wc_format_decimal, aplicación de precio en woocommerce_before_calculate_totals, guardado de metadatos en orden (_custom_price + Precio Acordado), bloqueo en checkout, widget HTML en woocommerce_after_cart_item_name, AJAX handler mu_ajax_update_flexible_price (nonce mu-price-nonce), enqueue condicional de js/flexible-price.js vía wp_localize_script (muFlexiblePrice).
 inc/ui.php | Header icons, Cart badge fragment, WhatsApp btn, Custom Search form, Custom Footer, Share shortcode, Google Site Kit canonical, WPLingua body class, Category Description Mover, Reemplazo precio $0 a "Gratis", Disable GP Featured image HTML
 inc/orders-files.php | Gestor de archivos: Hooks Admin (Upload/Delete/PDF), Hooks Email (Links), Hook Account (Tabla Descargas).
 inc/orders-workflow.php | Flujo de pedidos: Estado 'wc-production', Helper mu_order_has_virtual_manual_item, Emails inteligentes (Físico/Digital), Admin UI (WhatsApp link, Indicador Virtual Manual).
@@ -111,7 +114,7 @@ css/components/footer.css | Global
 css/components/modal-auth.css | ! is_user_logged_in()
 css/components/country-modal.css | Condicional — encolado por inc/geo.php
 css/components/navigation-chips.css | is_shop() || is_product_category() || is_product_tag() || is_product() (Breadcrumb chips + filtros)
-css/cart.css | is_cart()
+css/cart.css | is_cart() — incluye sección de estilos .mu-cp-* para widget de precio flexible
 css/checkout.css | is_checkout() && ! is_order_received_page()
 css/home.css | is_front_page() (actualmente vacío)
 css/shop.css | is_shop() || is_product_category() || is_product_tag() || is_product() (Auto-variaciones, Infinite Scroll)
@@ -128,6 +131,7 @@ js/header.js | Global
 js/footer.js | Global
 js/modal-auth.js | ! is_user_logged_in()
 js/cart.js | is_cart() — depende de: jquery
+js/flexible-price.js | is_cart() || is_checkout() — Widget inline precio flexible. IIFE+strict. Datos PHP→JS vía muFlexiblePrice (ajaxUrl, nonce, i18n). Depende de: jquery.
 js/checkout.js | is_checkout() && ! is_order_received_page() — depende de: jquery, libphonenumber-js
 js/country-modal.js | Condicional — encolado por inc/geo.php
 js/shop.js | is_shop() || is_product_category() || is_product_tag() || is_product() — Lógica de Infinite Scroll JS (Optimized).
@@ -153,7 +157,7 @@ echo mu_get_icon('name'); // NUNCA inline SVG directo
 
 Disponibles: arrow, search, help, account, cart, close, share, check, lock, instagram, facebook, pinterest, tiktok, youtube
 
-5. ROUTING DE DESARROLLO — ¿Dónde va el código nuevo?
+5. ROUTING DE DESARROLLO — ¿dónde va el código nuevo?
 
 ¿Qué necesitás agregar? | PHP (inc/) | CSS (css/) | JS (js/)
 ---|---|---
@@ -162,6 +166,7 @@ Elemento pesado Header/Footer | ui.php | components/header.css o footer.css | he
 Lógica multi-país | geo.php | components/country-modal.css | country-modal.js
 Lógica Restricción Subdominios | digital-restriction.php | admin.css / shop.css | admin.js / shop.js
 Flujo de Carrito | cart.php | cart.css | cart.js
+Precio Flexible (productos con monto libre) | flexible-price.php | cart.css (§ Precio Flexible) | flexible-price.js
 Login / Registro Modal | auth-modal.php | components/modal-auth.css | modal-auth.js
 Flujo Checkout | checkout.php | checkout.css | checkout.js
 Catálogo / Single Product | ui.php / geo.php / navigation-chips.php | shop.css / components/navigation-chips.css | shop.js / navigation-chips.js
@@ -199,3 +204,4 @@ CSS
 - [PENDIENTE PERFORMANCE] downloads-bonus.php: limitar wc_get_orders() a 'limit' => 50 en mu_user_has_virtual_manual_purchases para evitar carga masiva en usuarios con muchos pedidos.
 - [PENDIENTE PERFORMANCE] geo.php: evitar doble llamada a wc_get_customer_geolocation() por página (mu_should_show_country_modal + mu_country_modal_html).
 - [PENDIENTE PERFORMANCE] digital-restriction.php: display_digital_price_in_catalog usa wc_get_product() por variación en catálogo (N+1). Evaluar reemplazar con get_post_meta() directo.
+- [PENDIENTE] flexible-price.php: mu_get_flexible_product_ids() actualmente hardcoded con IDs 1 y 2. Migrar a opción de WordPress (get_option) o custom field de producto para administración sin tocar código.
