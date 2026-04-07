@@ -8,7 +8,7 @@
  * - CSS/JS condicional por página
  *
  * @package GeneratePress_Child
- * @version 1.3.0
+ * @version 1.4.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
@@ -47,10 +47,24 @@ function mu_enqueue_assets() {
     }
 
     if ( is_shop() || is_product_category() || is_product_tag() || is_product() ) {
+        // Grid del catálogo: loop principal + relacionados/upsells en ficha
+        wp_enqueue_style( 'mu-catalog-grid', "$uri/css/woocommerce/catalog-grid.css", [ 'mu-base' ], $ver );
         wp_enqueue_style( 'mu-shop', "$uri/css/shop.css", [ 'mu-base' ], $ver );
         wp_enqueue_style( 'mu-navigation-chips', "$uri/css/components/navigation-chips.css", [ 'mu-base' ], $ver );
         wp_enqueue_script( 'mu-shop-js', "$uri/js/shop.js", [ 'jquery' ], $ver, true );
         wp_enqueue_script( 'mu-navigation-chips-js', "$uri/js/navigation-chips.js", [], $ver, true );
+    }
+
+    // Ficha de producto: design system completo + drag-to-scroll en miniaturas
+    if ( is_product() ) {
+        wp_enqueue_style( 'mu-single-product', "$uri/css/woocommerce/single-product.css", [ 'mu-base' ], $ver );
+        wp_enqueue_script(
+            'mu-single-product-thumbs-drag',
+            "$uri/js/woocommerce/single-product-thumbs-drag.js",
+            [],
+            $ver,
+            true
+        );
     }
 
     // Product Builder (Core + Addons Etiquetas/Nombre)
@@ -85,7 +99,7 @@ function mu_enqueue_assets() {
             'nonce'      => wp_create_nonce( 'check-email-nonce' ),
         ] );
     }
-    
+
     // Mi Cuenta > Descargas (Custom Styles)
     if ( is_account_page() && is_wc_endpoint_url( 'downloads' ) ) {
         wp_enqueue_style( 'mu-account-downloads', "$uri/css/account-downloads.css", [ 'mu-base' ], $ver );

@@ -1,6 +1,6 @@
 MUY ÚNCOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v2.0.0 · Apr 7, 2026
+Estado: Refactor Modular Pragmático · v2.1.0 · Apr 7, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -62,10 +62,13 @@ muyunicos/ (generatepress-child)
 │   │   ├── modal-auth.css     # ! is_user_logged_in()
 │   │   ├── country-modal.css  # Condicional — encolado por inc/geo.php (mu_should_show_country_modal)
 │   │   └── navigation-chips.css # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() — estilos de breadcrumb chips + filtros
+│   ├── woocommerce/           # ✅ Assets específicos de WooCommerce
+│   │   ├── catalog-grid.css   # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() — Grid CSS de ul.products: reset WC floats, responsive 4/3/2 col, tarjeta, imagen, badge oferta, título, precio, estrellas, botón Comprar, added_to_cart, sin stock, paginación, ordenamiento
+│   │   └── single-product.css # ✅ is_product() — Galería, miniaturas híbridas (grid desktop / scroll móvil), info producto, precio, form.cart, qty, add-to-cart btn, meta, tabs, relacionados/upsells
 │   ├── cart.css               # is_cart() — incluye sección "7. PRECIO FLEXIBLE" (.mu-cp-*)
 │   ├── checkout.css           # ✅ is_checkout() && ! is_order_received_page()
 │   ├── home.css               # is_front_page()
-│   ├── shop.css               # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() (Infinite Scroll estilos)
+│   ├── shop.css               # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() (Infinite Scroll estilos, Carrusel Híbrido)
 │   ├── product-builder.css    # ✅ is_product() || is_cart() — Estilos unificados: builder, secciones, filas, controles qty, extras, totales, addon nombre (input + editor carrito)
 │   └── account-downloads.css  # ✅ is_account_page() && is_wc_endpoint_url('downloads')
 │
@@ -84,7 +87,9 @@ muyunicos/ (generatepress-child)
     ├── shop.js                # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() — Lógica de Infinite Scroll JS (Optimized)
     ├── navigation-chips.js    # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() — toggles "Más" de chips de categorías y etiquetas
     ├── addon-nombre.js        # ✅ is_product() || is_cart() — muTransformName, validación add-to-cart, editor inline AJAX. Datos vía muNombreData (ajaxUrl, nonce).
-    └── addon-etiquetas.js     # ✅ is_product() (cat 18/19) — Objeto MU: builder, calculadora, resumen, extras, variaciones. Datos vía MU_Config + muEtiquetasData.
+    ├── addon-etiquetas.js     # ✅ is_product() (cat 18/19) — Objeto MU: builder, calculadora, resumen, extras, variaciones. Datos vía MU_Config + muEtiquetasData (currencySymbol). Depende de: jquery.
+    └── woocommerce/           # ✅ JS específicos de WooCommerce
+        └── single-product-thumbs-drag.js # ✅ is_product() — Drag-to-scroll en miniaturas de galería (.flex-control-thumbs). Vanilla JS, IIFE+strict. Sin dependencias.
 
 3. INVENTARIO DE ARCHIVOS (Estado Actual)
 
@@ -123,6 +128,8 @@ css/components/footer.css | Global
 css/components/modal-auth.css | ! is_user_logged_in()
 css/components/country-modal.css | Condicional — encolado por inc/geo.php
 css/components/navigation-chips.css | is_shop() || is_product_category() || is_product_tag() || is_product() (Breadcrumb chips + filtros)
+css/woocommerce/catalog-grid.css | ✅ is_shop() || is_product_category() || is_product_tag() || is_product() — Grid de ul.products (catálogo + relacionados/upsells en ficha)
+css/woocommerce/single-product.css | ✅ is_product() — Galería, miniaturas, info, precio, form.cart, tabs, relacionados
 css/cart.css | is_cart() — incluye sección de estilos .mu-cp-* para widget de precio flexible
 css/checkout.css | is_checkout() && ! is_order_received_page()
 css/home.css | is_front_page() (actualmente vacío)
@@ -148,6 +155,7 @@ js/shop.js | is_shop() || is_product_category() || is_product_tag() || is_produc
 js/navigation-chips.js | is_shop() || is_product_category() || is_product_tag() || is_product() — toggles "Más" de chips de categorías y etiquetas
 js/addon-nombre.js | is_product() || is_cart() — muTransformName() (title/upper), validación client-side al add-to-cart, editor inline AJAX en carrito. Datos PHP→JS vía muNombreData (ajaxUrl, nonce). Depende de: jquery.
 js/addon-etiquetas.js | is_product() (cat 18/19) — Objeto MU completo: init, setupFormatListener, toggleBuilder, setMode, calculate, generateSummary, formatMoney, toggleSubmit, variationInit (reemplaza mu_core_variation_scripts). Datos PHP→JS vía wp_localize_script: MU_Config (general, extras_definitions, items) + muEtiquetasData (currencySymbol). Depende de: jquery.
+js/woocommerce/single-product-thumbs-drag.js | ✅ is_product() — Drag-to-scroll en miniaturas de galería (.flex-control-thumbs). Vanilla JS, IIFE+strict, sin dependencias.
 
 4. SISTEMA DE DISEÑO (API Exclusiva)
 
@@ -182,7 +190,8 @@ Flujo de Carrito | cart.php | cart.css | cart.js
 Precio Flexible (productos con monto libre) | flexible-price.php | cart.css (§ Precio Flexible) | flexible-price.js
 Login / Registro Modal | auth-modal.php | components/modal-auth.css | modal-auth.js
 Flujo Checkout | checkout.php | checkout.css | checkout.js
-Catálogo / Single Product | ui.php / geo.php / navigation-chips.php | shop.css / components/navigation-chips.css | shop.js / navigation-chips.js
+Grid catálogo / loops relacionados | — | css/woocommerce/catalog-grid.css | —
+Ficha de producto (galería, tabs, info) | — | css/woocommerce/single-product.css | js/woocommerce/single-product-thumbs-drag.js
 Gestor Archivos Pedido | orders-files.php | admin-order-files.css | admin-order-files.js
 Workflow Pedidos | orders-workflow.php | admin-orders.css | admin-orders.js
 Inyección Descargas Bonus + Guías | downloads-bonus.php | — | —
@@ -222,3 +231,4 @@ CSS
 - [PENDIENTE PERFORMANCE] digital-restriction.php: display_digital_price_in_catalog usa wc_get_product() por variación en catálogo (N+1). Evaluar reemplazar con get_post_meta() directo.
 - [PENDIENTE] flexible-price.php: mu_get_flexible_product_ids() actualmente hardcoded con IDs 1 y 2. Migrar a opción de WordPress (get_option) o custom field de producto para administración sin tocar código.
 - [MIGRADO] Code Snippets "MU Core v2.1", "Addon Nombre v3.0" y "Addon Etiquetas v3.0" migrados al repositorio. Desactivar los 3 snippets en Code Snippets plugin después de verificar el PR.
+- [MIGRADO ✅] Estilos inline de catálogo (add_action wp_head) y ficha de producto (DCMS plugin snippet) migrados a css/woocommerce/catalog-grid.css y css/woocommerce/single-product.css + js/woocommerce/single-product-thumbs-drag.js. Eliminar snippets correspondientes en Code Snippets plugin después de verificar el PR.
