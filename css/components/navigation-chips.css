@@ -1,0 +1,270 @@
+/* ========================================
+   MUYUNICOS - Navigation Chips (Breadcrumb + Filters)
+   Contexto: Catálogo WooCommerce (shop, category, tag, product)
+   ======================================== */
+
+/* Breadcrumb global basado en chips */
+.mu-navchips-breadcrumb {
+    margin: 0 0 20px 0;
+    font-size: 14px;
+    width: 100%;
+}
+
+.mu-navchips-breadcrumb ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.mu-navchips-breadcrumb li {
+    display: inline-flex;
+    align-items: center;
+}
+
+.mu-navchips-icon-link a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: var(--primario, #2367a7);
+    color: var(--blanco, #fff);
+    transition: all 0.2s ease;
+}
+
+.mu-navchips-icon-link a:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.mu-navchips-crumb a {
+    padding: 5px 12px;
+    background: var(--fondo, #f0f4f8);
+    color: var(--texto, #555);
+    border-radius: 15px;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 13px;
+    transition: all 0.2s ease;
+}
+
+.mu-navchips-crumb a:hover {
+    opacity: 0.8;
+}
+
+.mu-navchips-current span {
+    padding: 5px 14px;
+    background: var(--primario, #1c5285);
+    color: var(--blanco, #fff);
+    border-radius: 15px;
+    font-weight: 600;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,.1);
+}
+
+.mu-navchips-current--tag span {
+    background: #e3fff2;
+    color: #107556;
+    border: 1px solid #99e7cf;
+}
+
+.mu-navchips-current--tag .mu-share-btn {
+    color: #107556 !important;
+}
+
+/* Wrapper y etiquetas */
+.mu-navchips-wrapper {
+    margin: 10px 0 20px 0;
+    padding-top: 10px;
+    border-top: 1px dashed #eee;
+}
+
+.mu-navchips-label {
+    display: inline-block;
+    font-weight: 600;
+    color: var(--primario, #2367a7);
+    margin-right: 11px;
+    font-size: 15px;
+    margin-bottom: 0;
+}
+
+.mu-navchips-label--tags {
+    margin-top: 18px;
+}
+
+.mu-navchips-list {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+/* Chips base */
+.mu-navchips-chip {
+    display: inline-flex;
+    align-items: center;
+}
+
+.mu-navchips-chip a,
+.mu-navchips-chip .mu-navchips-chip-link {
+    display: inline-flex;
+    align-items: center;
+    padding: 7px 16px;
+    font-size: 14px;
+    border-radius: 23px;
+    text-decoration: none;
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+/* Reset chips */
+.mu-navchips-chip--reset a {
+    background: var(--primario, #2367a7);
+    color: var(--blanco, #fff);
+    font-weight: 600;
+}
+
+.mu-navchips-chip--reset-tags a {
+    background: #43b38f;
+    color: var(--blanco, #fff);
+    font-weight: 700;
+    font-size: 0.9em;
+}
+
+.mu-navchips-chip--reset-tags a:hover {
+    background-color: #49a789;
+}
+
+/* Categorías */
+.mu-navchips-chip--cat a {
+    background: #edf2fd;
+    color: #2367a7;
+    border: 1px solid #d6e6fa;
+    font-weight: 500;
+}
+
+.mu-navchips-chip--cat a:hover {
+    background: #c4e9f8;
+    color: #145c97;
+}
+
+.mu-navchips-chip--extra a {
+    background: #fee8c1;
+    color: #cf8c15;
+    border: 1px solid #fed097;
+    font-weight: 500;
+}
+
+/* Tags */
+.mu-navchips-chip--tag .mu-navchips-chip-link,
+.mu-navchips-chip--tag .mu-navchips-chip-link--disabled {
+    background: #e3fff2;
+    color: #107556;
+    border: 1px solid #99e7cf;
+    padding: 6px 12px;
+    font-weight: 500;
+    font-size: 0.9em;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.mu-navchips-chip--tag .mu-navchips-chip-link:hover {
+    background: #bafdde;
+}
+
+.mu-navchips-chip--active .mu-navchips-chip-link {
+    background: #38cb9d;
+    color: var(--blanco, #fff);
+    font-weight: 700;
+    border-color: transparent;
+}
+
+.mu-navchips-chip--active .mu-navchips-chip-link::after {
+    content: "×";
+    margin-left: 6px;
+    font-size: 1.2em;
+}
+
+/* Tags deshabilitados (sin productos compartidos) */
+.mu-navchips-chip--disabled .mu-navchips-chip-link--disabled {
+    background: #f5f5f5;
+    color: #999;
+    border-color: #ddd;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.mu-navchips-chip--disabled .mu-navchips-count {
+    color: #bbb;
+}
+
+/* Contador de productos */
+.mu-navchips-count {
+    background: var(--blanco, #fff);
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 0.85em;
+    font-weight: 600;
+    margin-left: 4px;
+}
+
+.mu-navchips-chip--active .mu-navchips-count {
+    background: rgba(255, 255, 255, 0.25);
+    color: var(--blanco, #fff);
+}
+
+/* Botón "Más" */
+.mu-navchips-chip--more .mu-navchips-more-btn,
+.mu-navchips-chip--more-tags .mu-navchips-more-btn {
+    background: #e8f7ff;
+    color: #5a7da9;
+    border: 1px solid #b0cbeb;
+    font-weight: 500;
+    padding: 7px 16px;
+    border-radius: 23px;
+    cursor: pointer;
+}
+
+.mu-navchips-more-btn:hover {
+    background: #d4ecff;
+}
+
+/* Responsive tweaks */
+@media (max-width: 600px) {
+    .mu-navchips-list {
+        gap: 6px;
+    }
+
+    .mu-navchips-breadcrumb ul {
+        gap: 4px;
+    }
+
+    .mu-navchips-label {
+        font-size: 14px;
+    }
+
+    .mu-navchips-chip--reset a,
+    .mu-navchips-chip--cat a,
+    .mu-navchips-chip--tag .mu-navchips-chip-link,
+    .mu-navchips-chip--extra a,
+    .mu-navchips-crumb a,
+    .mu-navchips-current span {
+        padding: 5px 10px;
+        font-size: 13px;
+    }
+
+    .mu-navchips-icon-link a {
+        width: 28px;
+        height: 28px;
+    }
+}

@@ -1,10 +1,10 @@
 MUY ÚNCOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v1.9.5 · Apr 7, 2026
+Estado: Refactor Modular Pragmático · v1.9.6 · Apr 7, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
-⚠️ IA / LLM DIRECTIVE: Read this document carefully before suggesting architecture changes. Strict compliance con "Pragmatic Modularity" y "Pull Request Workflow" is required.
+⚠️ IA / LLM DIRECTIVE: Read this document carefully before suggesting arquitectura changes. Strict compliance con "Pragmatic Modularity" y "Pull Request Workflow" is required.
 
 1. REGLAS CORE DE ARQUITECTURA Y FLUJO DE TRABAJO
 
@@ -15,7 +15,7 @@ Modularidad Pragmática (Regla "Goldilocks")
   - js/global-ui.js
 
 SÍ al aislamiento por contexto
-- Funcionalidades complejas (Checkout, Cart, Auth, Shop, Orders) deben tener sus propios archivos y cargarse condicionalmente.
+- Funcionalidades complejas (Checkout, Cart, Auth, Shop, Orders, Navigation Chips) deben tener sus propios archivos y cargarse condicionalmente.
 
 Carga Condicional Estricta
 - Nunca cargar assets globales si no aplican a header/footer o UI transversal.
@@ -44,7 +44,8 @@ muyunicos/ (generatepress-child)
 │   ├── ui.php                 # ✅ Header, Footer, search form, WhatsApp btn, Canonical fix, WPLingua body class
 │   ├── orders-files.php       # ✅ File Manager (Admin/Frontend): Uploads, PDF gen, Downloads endpoint
 │   ├── orders-workflow.php    # ✅ Workflow: Status 'Production', Smart Emails, Admin UI (WhatsApp link, Indicador Virtual Manual)
-│   └── downloads-bonus.php    # ✅ Dynamic Bonus & Guides: Archivo bonus + Guía inline para Cat. 18 (Account + Emails)
+│   ├── downloads-bonus.php    # ✅ Dynamic Bonus & Guides: Archivo bonus + Guía inline para Cat. 18 (Account + Emails)
+│   └── navigation-chips.php   # ✅ Navigation Chips v8: Breadcrumb global + índice compacto de productos + chips de categorías/etiquetas (catálogo WooCommerce)
 │
 ├── css/                       # 🎨 CSS MODULAR (Pragmático)
 │   ├── admin.css              # is_admin() — Botones reindex, tools internas
@@ -55,9 +56,10 @@ muyunicos/ (generatepress-child)
 │   │   ├── header.css         # Global: header, navegación, Country Selector (con hover automático v1.8.7)
 │   │   ├── footer.css         # Global: footer y columnas
 │   │   ├── modal-auth.css     # ! is_user_logged_in()
-│   │   └── country-modal.css  # Condicional — encolado por inc/geo.php (mu_should_show_country_modal)
+│   │   ├── country-modal.css  # Condicional — encolado por inc/geo.php (mu_should_show_country_modal)
+│   │   └── navigation-chips.css # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() — estilos de breadcrumb chips + filtros
 │   ├── cart.css               # is_cart()
-│   ├── checkout.css           # ✅ Checkout Moderno (Grid Desktop + Mobile Fix)
+│   ├── checkout.css           # ✅ is_checkout() && ! is_order_received_page()
 │   ├── home.css               # is_front_page()
 │   ├── shop.css               # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() (Infinite Scroll estilos)
 │   └── account-downloads.css  # ✅ is_account_page() && is_wc_endpoint_url('downloads')
@@ -70,10 +72,11 @@ muyunicos/ (generatepress-child)
     ├── header.js              # Global: menú móvil, submenús, dropdown cuenta
     ├── footer.js              # Global: comportamiento footer
     ├── cart.js                # is_cart() — depende de: jquery
-    ├── checkout.js            # ✅ Validación WA (libphonenumber) + Toggle Dirección + Check Email
+    ├── checkout.js            # ✅ is_checkout() && ! is_order_received_page() — depende de: jquery, libphonenumber-js
     ├── modal-auth.js          # ! is_user_logged_in()
     ├── country-modal.js       # Condicional — encolado por inc/geo.php
-    └── shop.js                # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() — Lógica de Infinite Scroll JS (Optimized)
+    ├── shop.js                # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() — Lógica de Infinite Scroll JS (Optimized)
+    └── navigation-chips.js    # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() — toggles "Más" de chips de categorías y etiquetas
 
 3. INVENTARIO DE ARCHIVOS (Estado Actual)
 
@@ -91,6 +94,7 @@ inc/ui.php | Header icons, Cart badge fragment, WhatsApp btn, Custom Search form
 inc/orders-files.php | Gestor de archivos: Hooks Admin (Upload/Delete/PDF), Hooks Email (Links), Hook Account (Tabla Descargas).
 inc/orders-workflow.php | Flujo de pedidos: Estado 'wc-production', Helper mu_order_has_virtual_manual_item, Emails inteligentes (Físico/Digital), Admin UI (WhatsApp link, Indicador Virtual Manual).
 inc/downloads-bonus.php | Inyección dinámica de archivos bonus para usuarios con compras previas de productos manuales + productos específicos (ej. Líneas de Corte). Inyección inline de guía de uso para productos Cat. 18 virtuales (Email + Account Downloads).
+inc/navigation-chips.php | Navigation Chips v8: Breadcrumb global con chips + índice compacto de productos (transient mu_navchips_product_index) + chips de categorías/etiquetas con conteos y herramientas admin para regenerar índice.
 
 CSS · css/
 
@@ -106,6 +110,7 @@ css/components/header.css | Global (Header, Navegación, Country Selector con ho
 css/components/footer.css | Global
 css/components/modal-auth.css | ! is_user_logged_in()
 css/components/country-modal.css | Condicional — encolado por inc/geo.php
+css/components/navigation-chips.css | is_shop() || is_product_category() || is_product_tag() || is_product() (Breadcrumb chips + filtros)
 css/cart.css | is_cart()
 css/checkout.css | is_checkout() && ! is_order_received_page()
 css/home.css | is_front_page() (actualmente vacío)
@@ -126,6 +131,7 @@ js/cart.js | is_cart() — depende de: jquery
 js/checkout.js | is_checkout() && ! is_order_received_page() — depende de: jquery, libphonenumber-js
 js/country-modal.js | Condicional — encolado por inc/geo.php
 js/shop.js | is_shop() || is_product_category() || is_product_tag() || is_product() — Lógica de Infinite Scroll JS (Optimized).
+js/navigation-chips.js | is_shop() || is_product_category() || is_product_tag() || is_product() — toggles "Más" de chips de categorías y etiquetas
 
 4. SISTEMA DE DISEÑO (API Exclusiva)
 
@@ -158,7 +164,7 @@ Lógica Restricción Subdominios | digital-restriction.php | admin.css / shop.cs
 Flujo de Carrito | cart.php | cart.css | cart.js
 Login / Registro Modal | auth-modal.php | components/modal-auth.css | modal-auth.js
 Flujo Checkout | checkout.php | checkout.css | checkout.js
-Catálogo / Single Product | ui.php / geo.php | shop.css | shop.js
+Catálogo / Single Product | ui.php / geo.php / navigation-chips.php | shop.css / components/navigation-chips.css | shop.js / navigation-chips.js
 Gestor Archivos Pedido | orders-files.php | admin-order-files.css | admin-order-files.js
 Workflow Pedidos | orders-workflow.php | admin-orders.css | admin-orders.js
 Inyección Descargas Bonus + Guías | downloads-bonus.php | — | —
