@@ -1,11 +1,11 @@
 <?php
 /**
  * Muy Únicos - Digital Restriction System
- * * Sistema de restricción de contenido digital v4.1.0 (Fix Memory: WP Cron Rebuild)
+ * * Sistema de restricción de contenido digital v4.2.0 (Fix Memory: N+1 Queries Catálogo)
  * Propósito: Restringir productos físicos en subdominios, mostrando solo 
  * productos digitales. Optimizado para rendimiento y compatibilidad.
  * * @package GeneratePress_Child
- * @since 4.1.0
+ * @since 4.2.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -374,13 +374,26 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             $defaults['pa_formato'] = $this->is_restricted_user() ? 'digitales' : 'impresas';
             return $defaults;
         }
-        
+
+        /**
+         * Muestra el precio del formato digital en catálogo para usuarios restringidos.
+         *
+         * FIX v4.2.0: se agrega update_meta_cache() antes del loop para pre-cargar
+         * todos los postmeta de las variaciones en una única query, eliminando el
+         * patrón N+1 queries (2 get_post_meta() por variación × N variaciones × M productos).
+         */
         public function display_digital_price_in_catalog( $price, $product ) {
             if ( is_product() ) return $price;
-            
+
             $variations = $product->get_children();
+            if ( empty( $variations ) ) return $price;
+
+            // Pre-cargar todos los metas en una sola query antes del loop
+            update_meta_cache( 'post', $variations );
+
             foreach ( $variations as $var_id ) {
-                $format = get_post_meta( $var_id, 'attribute_pa_formato', true ) ?: get_post_meta( $var_id, 'attribute_formato', true );
+                $format = get_post_meta( $var_id, 'attribute_pa_formato', true )
+                       ?: get_post_meta( $var_id, 'attribute_formato', true );
                 if ( 'digitales' === $format ) {
                     $var_product = wc_get_product( $var_id );
                     if ( $var_product ) return $var_product->get_price_html();
