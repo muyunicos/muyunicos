@@ -53,6 +53,20 @@ function mu_enqueue_assets() {
         wp_enqueue_script( 'mu-navigation-chips-js', "$uri/js/navigation-chips.js", [], $ver, true );
     }
 
+    // Product Builder (Core + Addons Etiquetas/Nombre)
+    if ( is_product() || is_cart() ) {
+        wp_enqueue_style( 'mu-product-builder', "$uri/css/product-builder.css", [ 'mu-base' ], $ver );
+        wp_enqueue_script( 'mu-addon-nombre', "$uri/js/addon-nombre.js", [ 'jquery' ], $ver, true );
+    }
+
+    // Addon Nombre: pasar datos AJAX solo en carrito/checkout
+    if ( is_cart() || is_checkout() ) {
+        wp_localize_script( 'mu-addon-nombre', 'muNombreData', [
+            'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+            'nonce'   => wp_create_nonce( 'update-cart-name' ),
+        ] );
+    }
+
     if ( is_cart() ) {
         wp_enqueue_style( 'mu-cart', "$uri/css/cart.css", [ 'mu-base' ], $ver );
         wp_enqueue_script( 'mu-cart-js', "$uri/js/cart.js", [ 'jquery' ], $ver, true );
@@ -113,3 +127,6 @@ mu_load_module( 'orders-files' );        // Order File Manager (Admin/Frontend)
 mu_load_module( 'orders-workflow' );     // Order Workflow (Status, Email, WhatsApp)
 mu_load_module( 'downloads-bonus' );     // Dynamic Downloads Injections
 mu_load_module( 'navigation-chips' );    // Navigation Chips v8 (breadcrumb + filtros catálogo)
+mu_load_module( 'products-core' );       // Productos Personalizados Core v2.1
+mu_load_module( 'addon-nombre' );        // Addon Nombre v3.0 (campo nombre personalizado)
+mu_load_module( 'addon-etiquetas' );     // Addon Etiquetas v3.0 (builder de etiquetas)

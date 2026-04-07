@@ -1,6 +1,6 @@
 MUY ÚNCOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v1.9.7 · Apr 7, 2026
+Estado: Refactor Modular Pragmático · v2.0.0 · Apr 7, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -46,7 +46,10 @@ muyunicos/ (generatepress-child)
 │   ├── orders-files.php       # ✅ File Manager (Admin/Frontend): Uploads, PDF gen, Downloads endpoint
 │   ├── orders-workflow.php    # ✅ Workflow: Status 'Production', Smart Emails, Admin UI (WhatsApp link, Indicador Virtual Manual)
 │   ├── downloads-bonus.php    # ✅ Dynamic Bonus & Guides: Archivo bonus + Guía inline para Cat. 18 (Account + Emails)
-│   └── navigation-chips.php   # ✅ Navigation Chips v8: Breadcrumb global + índice compacto de productos + chips de categorías/etiquetas (catálogo WooCommerce)
+│   ├── navigation-chips.php   # ✅ Navigation Chips v8: Breadcrumb global + índice compacto de productos + chips de categorías/etiquetas (catálogo WooCommerce)
+│   ├── products-core.php      # ✅ Productos Personalizados Core v2.1: MU_UI_Helper, backend automático (carrito/orden), constantes
+│   ├── addon-nombre.php       # ✅ Addon Nombre v3.0: Campo nombre personalizado, validación, guardado carrito/orden, editor inline AJAX
+│   └── addon-etiquetas.php    # ✅ Addon Etiquetas v3.0: Builder de etiquetas, config, render UI, enqueue JS+config, variaciones
 │
 ├── css/                       # 🎨 CSS MODULAR (Pragmático)
 │   ├── admin.css              # is_admin() — Botones reindex, tools internas
@@ -63,6 +66,7 @@ muyunicos/ (generatepress-child)
 │   ├── checkout.css           # ✅ is_checkout() && ! is_order_received_page()
 │   ├── home.css               # is_front_page()
 │   ├── shop.css               # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() (Infinite Scroll estilos)
+│   ├── product-builder.css    # ✅ is_product() || is_cart() — Estilos unificados: builder, secciones, filas, controles qty, extras, totales, addon nombre (input + editor carrito)
 │   └── account-downloads.css  # ✅ is_account_page() && is_wc_endpoint_url('downloads')
 │
 └── js/                        # ⚡ JS MODULAR (IIFE + strict mode + DOMContentLoaded)
@@ -78,7 +82,9 @@ muyunicos/ (generatepress-child)
     ├── modal-auth.js          # ! is_user_logged_in()
     ├── country-modal.js       # Condicional — encolado por inc/geo.php
     ├── shop.js                # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() — Lógica de Infinite Scroll JS (Optimized)
-    └── navigation-chips.js    # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() — toggles "Más" de chips de categorías y etiquetas
+    ├── navigation-chips.js    # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() — toggles "Más" de chips de categorías y etiquetas
+    ├── addon-nombre.js        # ✅ is_product() || is_cart() — muTransformName, validación add-to-cart, editor inline AJAX. Datos vía muNombreData (ajaxUrl, nonce).
+    └── addon-etiquetas.js     # ✅ is_product() (cat 18/19) — Objeto MU: builder, calculadora, resumen, extras, variaciones. Datos vía MU_Config + muEtiquetasData.
 
 3. INVENTARIO DE ARCHIVOS (Estado Actual)
 
@@ -98,6 +104,9 @@ inc/orders-files.php | Gestor de archivos: Hooks Admin (Upload/Delete/PDF), Hook
 inc/orders-workflow.php | Flujo de pedidos: Estado 'wc-production', Helper mu_order_has_virtual_manual_item, Emails inteligentes (Físico/Digital), Admin UI (WhatsApp link, Indicador Virtual Manual).
 inc/downloads-bonus.php | Inyección dinámica de archivos bonus para usuarios con compras previas de productos manuales + productos específicos (ej. Líneas de Corte). Inyección inline de guía de uso para productos Cat. 18 virtuales (Email + Account Downloads).
 inc/navigation-chips.php | Navigation Chips v8: Breadcrumb global con chips + índice compacto de productos (transient mu_navchips_product_index) + chips de categorías/etiquetas con conteos y herramientas admin para regenerar índice.
+inc/products-core.php | Productos Personalizados Core v2.1: MU_CORE_VERSION + MU_CORE_ACTIVE constantes, mu_core_is_active(), MU_UI_Helper (render_section, render_row), Backend automático: mu_core_add_cart_item_data (woocommerce_add_cart_item_data), mu_core_set_cart_price (woocommerce_before_calculate_totals), mu_core_display_cart_meta (woocommerce_get_item_data), mu_core_save_order_meta (woocommerce_checkout_create_order_line_item). Admin notice en code-snippets screen.
+inc/addon-nombre.php | Addon Nombre v3.0. Dependencia: products-core.php. mu_nombre_agregar_campo (woocommerce_before_add_to_cart_button, prioridad 15) para cat 18/62/19. mu_nombre_guardar_en_carrito (woocommerce_add_cart_item_data). mu_nombre_mostrar_en_carrito (woocommerce_get_item_data). mu_nombre_guardar_en_orden (woocommerce_checkout_create_order_line_item). mu_nombre_validar_campo (woocommerce_add_to_cart_validation, prioridad 20). mu_nombre_cart_edit_html (woocommerce_after_cart_item_name). AJAX handler: mu_update_cart_custom_name (wp_ajax + wp_ajax_nopriv).
+inc/addon-etiquetas.php | Addon Etiquetas v3.0. Dependencia: products-core.php. mu_etiquetas_get_configuracion (config de productos/extras/items). mu_etiquetas_render_v3 (woocommerce_before_add_to_cart_button, prioridad 10) para cat 19/18. mu_etiquetas_render_total_box (woocommerce_before_add_to_cart_button, prioridad 20). mu_render_group + mu_render_extra_specific (helpers de renderizado). mu_etiquetas_enqueue_builder_js (wp_enqueue_scripts, prioridad 25): enqueue condicional de js/addon-etiquetas.js + wp_localize_script MU_Config y muEtiquetasData.
 
 CSS · css/
 
@@ -117,6 +126,7 @@ css/components/navigation-chips.css | is_shop() || is_product_category() || is_p
 css/cart.css | is_cart() — incluye sección de estilos .mu-cp-* para widget de precio flexible
 css/checkout.css | is_checkout() && ! is_order_received_page()
 css/home.css | is_front_page() (actualmente vacío)
+css/product-builder.css | is_product() || is_cart() — Estilos unificados del Product Builder: secciones acordeón, filas de productos, controles qty, extras (checkbox/radio/textarea), caja de totales, addon nombre (input, editor inline carrito). Variables --mu-builder-* definidas en style.css.
 css/shop.css | is_shop() || is_product_category() || is_product_tag() || is_product() (Auto-variaciones, Infinite Scroll)
 
 JS · js/
@@ -136,6 +146,8 @@ js/checkout.js | is_checkout() && ! is_order_received_page() — depende de: jqu
 js/country-modal.js | Condicional — encolado por inc/geo.php
 js/shop.js | is_shop() || is_product_category() || is_product_tag() || is_product() — Lógica de Infinite Scroll JS (Optimized).
 js/navigation-chips.js | is_shop() || is_product_category() || is_product_tag() || is_product() — toggles "Más" de chips de categorías y etiquetas
+js/addon-nombre.js | is_product() || is_cart() — muTransformName() (title/upper), validación client-side al add-to-cart, editor inline AJAX en carrito. Datos PHP→JS vía muNombreData (ajaxUrl, nonce). Depende de: jquery.
+js/addon-etiquetas.js | is_product() (cat 18/19) — Objeto MU completo: init, setupFormatListener, toggleBuilder, setMode, calculate, generateSummary, formatMoney, toggleSubmit, variationInit (reemplaza mu_core_variation_scripts). Datos PHP→JS vía wp_localize_script: MU_Config (general, extras_definitions, items) + muEtiquetasData (currencySymbol). Depende de: jquery.
 
 4. SISTEMA DE DISEÑO (API Exclusiva)
 
@@ -150,6 +162,7 @@ Spacing | --mu-space-xs (5px), --mu-space-sm (10px), --mu-space-md (20px), --mu-
 Radius | --mu-radius-sm (6px), --mu-radius (12px), --mu-radius-md, --mu-radius-full (9999px)
 Sombras | --mu-shadow-sm, --mu-shadow, --mu-shadow-md, --mu-shadow-lg
 Tipografía | --mu-font-display (Fredoka One), --mu-font-base (Inter)
+Product Builder | --mu-builder-accent (#6c5ce7), --mu-builder-accent-hover, --mu-builder-accent-bg, --mu-builder-accent-bg-light, --mu-builder-text, --mu-builder-text-muted, --mu-builder-success, --mu-builder-danger, --mu-builder-danger-dark, --mu-builder-border, --mu-builder-border-dark, --mu-builder-bg-light, --mu-builder-bg-subtle, --mu-builder-bg-muted, --mu-builder-bg-option
 
 API de Iconos SVG (inc/icons.php)
 
@@ -174,6 +187,9 @@ Gestor Archivos Pedido | orders-files.php | admin-order-files.css | admin-order-
 Workflow Pedidos | orders-workflow.php | admin-orders.css | admin-orders.js
 Inyección Descargas Bonus + Guías | downloads-bonus.php | — | —
 Nuevo ícono SVG | icons.php | — | —
+Builder de producto personalizado | products-core.php | product-builder.css | —
+Addon campo nombre etiquetas | addon-nombre.php | product-builder.css (§10,§11) | addon-nombre.js
+Addon builder etiquetas | addon-etiquetas.php | product-builder.css | addon-etiquetas.js
 
 6. CONVENCIONES DE CÓDIGO & RENDIMIENTO
 
@@ -205,3 +221,4 @@ CSS
 - [PENDIENTE PERFORMANCE] geo.php: evitar doble llamada a wc_get_customer_geolocation() por página (mu_should_show_country_modal + mu_country_modal_html).
 - [PENDIENTE PERFORMANCE] digital-restriction.php: display_digital_price_in_catalog usa wc_get_product() por variación en catálogo (N+1). Evaluar reemplazar con get_post_meta() directo.
 - [PENDIENTE] flexible-price.php: mu_get_flexible_product_ids() actualmente hardcoded con IDs 1 y 2. Migrar a opción de WordPress (get_option) o custom field de producto para administración sin tocar código.
+- [MIGRADO] Code Snippets "MU Core v2.1", "Addon Nombre v3.0" y "Addon Etiquetas v3.0" migrados al repositorio. Desactivar los 3 snippets en Code Snippets plugin después de verificar el PR.
