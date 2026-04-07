@@ -53,13 +53,18 @@
             }
         });
 
-        // Limpiar al redimensionar a desktop
+        // FIX: debounce de 100ms para evitar disparos excesivos al redimensionar.
+        // Antes: listener sin debounce, se ejecutaba decenas de veces por segundo.
+        let resizeAccountTimer;
         window.addEventListener('resize', function() {
-            if (window.innerWidth > 768) {
-                accountWraps.forEach(function(wrap) {
-                    wrap.classList.remove('active');
-                });
-            }
+            clearTimeout(resizeAccountTimer);
+            resizeAccountTimer = setTimeout(function() {
+                if (window.innerWidth > 768) {
+                    accountWraps.forEach(function(wrap) {
+                        wrap.classList.remove('active');
+                    });
+                }
+            }, 100);
         });
     }
 

@@ -18,8 +18,12 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 if ( ! function_exists( 'woo_add_multiple_products_to_cart' ) ) {
     /**
-     * Permite agregar múltiples productos al carrito vía URL
+     * Permite agregar múltiples productos al carrito vía URL.
      * Ejemplo: ?add-multiple=123,456,789
+     *
+     * FIX: Se limita a un máximo de 10 IDs por URL para evitar que una
+     * petición maliciosa o accidental instancie cientos de WC_Product
+     * y ejecute add_to_cart() de forma descontrolada (DoS de recursos).
      */
     function woo_add_multiple_products_to_cart() {
         if ( empty( $_GET['add-multiple'] ) || ! function_exists( 'WC' ) ) return;
@@ -30,7 +34,12 @@ if ( ! function_exists( 'woo_add_multiple_products_to_cart' ) ) {
         
         if ( null === WC()->cart ) return;
 
-        $product_ids = explode( ',', sanitize_text_field( wp_unslash( $_GET['add-multiple'] ) ) );
+        $product_ids = array_slice(
+            explode( ',', sanitize_text_field( wp_unslash( $_GET['add-multiple'] ) ) ),
+            0,
+            10
+        );
+
         $productos_agregados = false;
         
         foreach ( $product_ids as $product_id ) {
