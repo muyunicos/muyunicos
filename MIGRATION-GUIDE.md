@@ -1,6 +1,6 @@
-MUY ÚNICOS — ARCHITECTURE & MIGRATION GUIDE
+MUY ÚNCOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v1.9.4 · Feb 24, 2026
+Estado: Refactor Modular Pragmático · v1.9.5 · Apr 7, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -37,7 +37,7 @@ muyunicos/ (generatepress-child)
 ├── inc/                       # ⚙️ MÓDULOS PHP (Lógica de negocio y hooks)
 │   ├── icons.php              # [CARGA PRIMERO] mu_get_icon() — repositorio de SVGs
 │   ├── geo.php                # Sistema multi-país + Auto-Detección + Decimales + Modal + Selector
-│   ├── digital-restriction.php# ✅ Digital Restriction System v3.1.1 (Hotfix Index Rebuild, Redirect Protection)
+│   ├── digital-restriction.php# ✅ Digital Restriction System v4.1.0 (Fix Memory: Rebuild vía WP Cron)
 │   ├── auth-modal.php         # Modal Login/Registro + endpoints WC-AJAX
 │   ├── checkout.php           # ✅ Checkout Híbrido Optimizado (Físico/Digital) + Validación WA
 │   ├── cart.php               # Lógica de carrito, buffers BACS
@@ -73,4 +73,123 @@ muyunicos/ (generatepress-child)
     ├── checkout.js            # ✅ Validación WA (libphonenumber) + Toggle Dirección + Check Email
     ├── modal-auth.js          # ! is_user_logged_in()
     ├── country-modal.js       # Condicional — encolado por inc/geo.php
-    └── shop.js                # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() — Lógica de Infinite Scroll JS (Optimized)\n\n3. INVENTARIO DE ARCHIVOS (Estado Actual)\n\nPHP · inc/\n\nArchivo | Responsabilidad principal\n---|---\ninc/icons.php | mu_get_icon() — todos los SVGs del tema\ninc/geo.php | Detección de país por dominio, control de decimales por moneda (0 para AR/CL/CO), redirect selector en header, modal sugerencia, prefijo idioma.\ninc/digital-restriction.php | Restricción de productos físicos en subdominios v3.1.1. Auto-Rebuild en fallo de índice, Protección de loops.\ninc/auth-modal.php | HTML modal auth, endpoints wc_ajax_mu_*\ninc/checkout.php | Campos, validaciones, optimizaciones Checkout, Título "Pedido Recibido"\ninc/cart.php | Añadir múltiples ítems al carrito, buffers BACS\ninc/ui.php | Header icons, Cart badge fragment, WhatsApp btn, Custom Search form, Custom Footer, Share shortcode, Google Site Kit canonical, WPLingua body class, Category Description Mover, Reemplazo precio $0 a "Gratis", Disable GP Featured image HTML\ninc/orders-files.php | Gestor de archivos: Hooks Admin (Upload/Delete/PDF), Hooks Email (Links), Hook Account (Tabla Descargas).\ninc/orders-workflow.php | Flujo de pedidos: Estado 'wc-production', Helper mu_order_has_virtual_manual_item, Emails inteligentes (Físico/Digital), Admin UI (WhatsApp link, Indicador Virtual Manual).\ninc/downloads-bonus.php | Inyección dinámica de archivos bonus para usuarios con compras previas de productos manuales + productos específicos (ej. Líneas de Corte). Inyección inline de guía de uso para productos Cat. 18 virtuales (Email + Account Downloads).\n\nCSS · css/\n\nArchivo | Condición de carga en functions.php\n---|---\nstyle.css (raíz) | Global (base)\ncss/admin.css | is_admin() && current_screen == 'product'\ncss/admin-order-files.css | is_admin() && order_edit (Dropzone styles)\ncss/admin-orders.css | is_admin() && order_edit (Badge styles, Indicador Virtual Manual)\ncss/account-downloads.css | is_account_page() && is_wc_endpoint_url('downloads')\ncss/components/global-ui.css | Global (Share Button, WhatsApp flotante, Search Form, WPLingua estilos, Carrusel Híbrido CSS)\ncss/components/header.css | Global (Header, Navegación, Country Selector con hover v1.8.7)\ncss/components/footer.css | Global\ncss/components/modal-auth.css | ! is_user_logged_in()\ncss/components/country-modal.css | Condicional — encolado por inc/geo.php\ncss/cart.css | is_cart()\ncss/checkout.css | is_checkout() && ! is_order_received_page()\ncss/home.css | is_front_page() (actualmente vacío)\ncss/shop.css | is_shop() || is_product_category() || is_product_tag() || is_product() (Auto-variaciones, Infinite Scroll)\n\nJS · js/\n\nArchivo | Condición de carga en functions.php\n---|---\njs/admin.js | is_admin() — Crea botón #muyu-rebuild + WC-AJAX handler. Sin jQuery, usa fetch(). Nonce y WC-AJAX URL vía wp_localize_script (muyuAdminData).\njs/admin-order-files.js | is_admin() && order_edit — Lógica Drag&Drop, Ajax Uploads, Modal Manager.\njs/admin-orders.js | is_admin() && order_edit — Reemplazo link teléfono por API WhatsApp.\njs/global-ui.js | Global (country selector, WPLingua toggle, share button, lógica drag Carrusel Híbrido)\njs/header.js | Global\njs/footer.js | Global\njs/modal-auth.js | ! is_user_logged_in()\njs/cart.js | is_cart() — depende de: jquery\njs/checkout.js | is_checkout() && ! is_order_received_page() — depende de: jquery, libphonenumber-js\njs/country-modal.js | Condicional — encolado por inc/geo.php\njs/shop.js | is_shop() || is_product_category() || is_product_tag() || is_product() — Lógica de Infinite Scroll JS (Optimized).\n\n4. SISTEMA DE DISEÑO (API Exclusiva)\n\n⚠️ NO inventar variables nuevas. Usar solo las listadas aquí (:root en style.css).\n\nVariables CSS (Extracto)\n\nCategoría | Variables Clave\n---|---\nColores | --primario (#2B9FCF), --secundario (#FFD77A), --texto, --blanco, --fondo\nSpacing | --mu-space-xs (5px), --mu-space-sm (10px), --mu-space-md (20px), --mu-space-lg (40px)\nRadius | --mu-radius-sm (6px), --mu-radius (12px), --mu-radius-md, --mu-radius-full (9999px)\nSombras | --mu-shadow-sm, --mu-shadow, --mu-shadow-md, --mu-shadow-lg\nTipografía | --mu-font-display (Fredoka One), --mu-font-base (Inter)\n\nAPI de Iconos SVG (inc/icons.php)\n\necho mu_get_icon('name'); // NUNCA inline SVG directo\n\nDisponibles: arrow, search, help, account, cart, close, share, check, lock, instagram, facebook, pinterest, tiktok, youtube\n\n5. ROUTING DE DESARROLLO — ¿Dónde va el código nuevo?\n\n¿Qué necesitás agregar? | PHP (inc/) | CSS (css/) | JS (js/)\n---|---|---\nAjuste UI pequeño (< 50 líneas) | ui.php | components/global-ui.css | global-ui.js\nElemento pesado Header/Footer | ui.php | components/header.css o footer.css | header.js o footer.js\nLógica multi-país | geo.php | components/country-modal.css | country-modal.js\nLógica Restricción Subdominios | digital-restriction.php | admin.css / shop.css | admin.js / shop.js\nFlujo de Carrito | cart.php | cart.css | cart.js\nLogin / Registro Modal | auth-modal.php | components/modal-auth.css | modal-auth.js\nFlujo Checkout | checkout.php | checkout.css | checkout.js\nCatálogo / Single Product | ui.php / geo.php | shop.css | shop.js\nGestor Archivos Pedido | orders-files.php | admin-order-files.css | admin-order-files.js\nWorkflow Pedidos | orders-workflow.php | admin-orders.css | admin-orders.js\nInyección Descargas Bonus + Guías | downloads-bonus.php | — | —\nNuevo ícono SVG | icons.php | — | —\n\n6. CONVENCIONES DE CÓDIGO & RENDIMIENTO\n\nPHP\n- Protección: if ( ! function_exists( 'mu_function_name' ) ) { ... } incluyendo el add_action/add_filter correspondiente dentro del bloque.\n- AJAX WC: Usar prefijo wc_ajax_mu_\n- Rendimiento: Evitar hooks pesados (init/wp_loaded) si hay hooks específicos o carga condicional.\n- CSS: NUNCA usar wp_add_inline_style() o wp_add_inline_script(). Todo estilo debe residir en un .css/.js cacheable.\n- Hooks: NUNCA anidar add_filter/add_action dentro de otras funciones hookeadas (e.g., dentro de wp_enqueue_scripts). Cada hook debe declararse en el scope global del módulo.\n\nJavaScript\n- Aislamiento: IIFE + 'use strict';.\n- Ejecución: DOMContentLoaded.\n- Cero jQuery salvo obligación de WooCommerce legacy (cart/checkout/shop).\n- Pasar datos PHP→JS vía wp_localize_script. NUNCA emitir <script> inline con lógica.\n\nCSS\n- Prefijos: .mu-[componente]__elem--[mod] (BEM).\n- Sobrescrituras: /* override GP: [motivo] */.\n- Variables: SIEMPRE usar variables CSS existentes (--primario, --blanco, --texto, etc.). NUNCA hardcodear colores que tengan variable disponible. Esto aplica también a valores de design tokens como border-radius (--mu-radius-full, --mu-radius-sm, etc.).\n\n7. PENDIENTES / DEUDA TÉCNICA\n\n- Evaluar auto-host de libphonenumber-js para eliminar dependencia CDN en checkout.\n- Llenar archivos vacíos: css/home.css\n- Migrar bulk actions de Legacy a HPOS (woocommerce_order_list_table_bulk_actions).\n
+    └── shop.js                # ✅ is_shop() || is_product_category() || is_product_tag() || is_product() — Lógica de Infinite Scroll JS (Optimized)
+
+3. INVENTARIO DE ARCHIVOS (Estado Actual)
+
+PHP · inc/
+
+Archivo | Responsabilidad principal
+---|---
+inc/icons.php | mu_get_icon() — todos los SVGs del tema
+inc/geo.php | Detección de país por dominio, control de decimales por moneda (0 para AR/CL/CO), redirect selector en header, modal sugerencia, prefijo idioma.
+inc/digital-restriction.php | Restricción de productos físicos en subdominios v4.1.0. Rebuild de índices via WP Cron (wp_schedule_single_event). ensure_indexes_exist() programa Cron en lugar de ejecutar rebuild síncrono. ELIMINADO: hook shutdown + TRANSIENT_REBUILD. NO ejecutar rebuild directo en admin_init.
+inc/auth-modal.php | HTML modal auth, endpoints wc_ajax_mu_*
+inc/checkout.php | Campos, validaciones, optimizaciones Checkout, Título "Pedido Recibido"
+inc/cart.php | Añadir múltiples ítems al carrito, buffers BACS
+inc/ui.php | Header icons, Cart badge fragment, WhatsApp btn, Custom Search form, Custom Footer, Share shortcode, Google Site Kit canonical, WPLingua body class, Category Description Mover, Reemplazo precio $0 a "Gratis", Disable GP Featured image HTML
+inc/orders-files.php | Gestor de archivos: Hooks Admin (Upload/Delete/PDF), Hooks Email (Links), Hook Account (Tabla Descargas).
+inc/orders-workflow.php | Flujo de pedidos: Estado 'wc-production', Helper mu_order_has_virtual_manual_item, Emails inteligentes (Físico/Digital), Admin UI (WhatsApp link, Indicador Virtual Manual).
+inc/downloads-bonus.php | Inyección dinámica de archivos bonus para usuarios con compras previas de productos manuales + productos específicos (ej. Líneas de Corte). Inyección inline de guía de uso para productos Cat. 18 virtuales (Email + Account Downloads).
+
+CSS · css/
+
+Archivo | Condición de carga en functions.php
+---|---
+style.css (raíz) | Global (base)
+css/admin.css | is_admin() && current_screen == 'product'
+css/admin-order-files.css | is_admin() && order_edit (Dropzone styles)
+css/admin-orders.css | is_admin() && order_edit (Badge styles, Indicador Virtual Manual)
+css/account-downloads.css | is_account_page() && is_wc_endpoint_url('downloads')
+css/components/global-ui.css | Global (Share Button, WhatsApp flotante, Search Form, WPLingua estilos, Carrusel Híbrido CSS)
+css/components/header.css | Global (Header, Navegación, Country Selector con hover v1.8.7)
+css/components/footer.css | Global
+css/components/modal-auth.css | ! is_user_logged_in()
+css/components/country-modal.css | Condicional — encolado por inc/geo.php
+css/cart.css | is_cart()
+css/checkout.css | is_checkout() && ! is_order_received_page()
+css/home.css | is_front_page() (actualmente vacío)
+css/shop.css | is_shop() || is_product_category() || is_product_tag() || is_product() (Auto-variaciones, Infinite Scroll)
+
+JS · js/
+
+Archivo | Condición de carga en functions.php
+---|---
+js/admin.js | is_admin() — Crea botón #muyu-rebuild + WC-AJAX handler. Sin jQuery, usa fetch(). Nonce y WC-AJAX URL vía wp_localize_script (muyuAdminData).
+js/admin-order-files.js | is_admin() && order_edit — Lógica Drag&Drop, Ajax Uploads, Modal Manager.
+js/admin-orders.js | is_admin() && order_edit — Reemplazo link teléfono por API WhatsApp.
+js/global-ui.js | Global (country selector, WPLingua toggle, share button, lógica drag Carrusel Híbrido)
+js/header.js | Global
+js/footer.js | Global
+js/modal-auth.js | ! is_user_logged_in()
+js/cart.js | is_cart() — depende de: jquery
+js/checkout.js | is_checkout() && ! is_order_received_page() — depende de: jquery, libphonenumber-js
+js/country-modal.js | Condicional — encolado por inc/geo.php
+js/shop.js | is_shop() || is_product_category() || is_product_tag() || is_product() — Lógica de Infinite Scroll JS (Optimized).
+
+4. SISTEMA DE DISEÑO (API Exclusiva)
+
+⚠️ NO inventar variables nuevas. Usar solo las listadas aquí (:root en style.css).
+
+Variables CSS (Extracto)
+
+Categoría | Variables Clave
+---|---
+Colores | --primario (#2B9FCF), --secundario (#FFD77A), --texto, --blanco, --fondo
+Spacing | --mu-space-xs (5px), --mu-space-sm (10px), --mu-space-md (20px), --mu-space-lg (40px)
+Radius | --mu-radius-sm (6px), --mu-radius (12px), --mu-radius-md, --mu-radius-full (9999px)
+Sombras | --mu-shadow-sm, --mu-shadow, --mu-shadow-md, --mu-shadow-lg
+Tipografía | --mu-font-display (Fredoka One), --mu-font-base (Inter)
+
+API de Iconos SVG (inc/icons.php)
+
+echo mu_get_icon('name'); // NUNCA inline SVG directo
+
+Disponibles: arrow, search, help, account, cart, close, share, check, lock, instagram, facebook, pinterest, tiktok, youtube
+
+5. ROUTING DE DESARROLLO — ¿Dónde va el código nuevo?
+
+¿Qué necesitás agregar? | PHP (inc/) | CSS (css/) | JS (js/)
+---|---|---
+Ajuste UI pequeño (< 50 líneas) | ui.php | components/global-ui.css | global-ui.js
+Elemento pesado Header/Footer | ui.php | components/header.css o footer.css | header.js o footer.js
+Lógica multi-país | geo.php | components/country-modal.css | country-modal.js
+Lógica Restricción Subdominios | digital-restriction.php | admin.css / shop.css | admin.js / shop.js
+Flujo de Carrito | cart.php | cart.css | cart.js
+Login / Registro Modal | auth-modal.php | components/modal-auth.css | modal-auth.js
+Flujo Checkout | checkout.php | checkout.css | checkout.js
+Catálogo / Single Product | ui.php / geo.php | shop.css | shop.js
+Gestor Archivos Pedido | orders-files.php | admin-order-files.css | admin-order-files.js
+Workflow Pedidos | orders-workflow.php | admin-orders.css | admin-orders.js
+Inyección Descargas Bonus + Guías | downloads-bonus.php | — | —
+Nuevo ícono SVG | icons.php | — | —
+
+6. CONVENCIONES DE CÓDIGO & RENDIMIENTO
+
+PHP
+- Protección: if ( ! function_exists( 'mu_function_name' ) ) { ... } incluyendo el add_action/add_filter correspondiente dentro del bloque.
+- AJAX WC: Usar prefijo wc_ajax_mu_
+- Rendimiento: Evitar hooks pesados (init/wp_loaded) si hay hooks específicos o carga condicional.
+- CSS: NUNCA usar wp_add_inline_style() o wp_add_inline_script(). Todo estilo debe residir en un .css/.js cacheable.
+- Hooks: NUNCA anidar add_filter/add_action dentro de otras funciones hookeadas (e.g., dentro de wp_enqueue_scripts). Cada hook debe declararse en el scope global del módulo.
+- WP Cron: Usar wp_schedule_single_event() para tareas pesadas en background (ej: rebuild de índices). NUNCA ejecutar queries masivas en shutdown, admin_init o template_redirect de forma síncrona.
+
+JavaScript
+- Aislamiento: IIFE + 'use strict';.
+- Ejecución: DOMContentLoaded.
+- Cero jQuery salvo obligación de WooCommerce legacy (cart/checkout/shop).
+- Pasar datos PHP→JS vía wp_localize_script. NUNCA emitir <script> inline con lógica.
+
+CSS
+- Prefijos: .mu-[componente]__elem--[mod] (BEM).
+- Sobrescrituras: /* override GP: [motivo] */.
+- Variables: SIEMPRE usar variables CSS existentes (--primario, --blanco, --texto, etc.). NUNCA hardcodear colores que tengan variable disponible. Esto aplica también a valores de design tokens como border-radius (--mu-radius-full, --mu-radius-sm, etc.).
+
+7. PENDIENTES / DEUDA TÉCNICA
+
+- Evaluar auto-host de libphonenumber-js para eliminar dependencia CDN en checkout.
+- Llenar archivos vacíos: css/home.css
+- Migrar bulk actions de Legacy a HPOS (woocommerce_order_list_table_bulk_actions).
+- [PENDIENTE PERFORMANCE] downloads-bonus.php: limitar wc_get_orders() a 'limit' => 50 en mu_user_has_virtual_manual_purchases para evitar carga masiva en usuarios con muchos pedidos.
+- [PENDIENTE PERFORMANCE] geo.php: evitar doble llamada a wc_get_customer_geolocation() por página (mu_should_show_country_modal + mu_country_modal_html).
+- [PENDIENTE PERFORMANCE] digital-restriction.php: display_digital_price_in_catalog usa wc_get_product() por variación en catálogo (N+1). Evaluar reemplazar con get_post_meta() directo.
