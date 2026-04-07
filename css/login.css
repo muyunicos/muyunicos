@@ -1,0 +1,134 @@
+/**
+ * Muy Únicos — Login Page Styles
+ *
+ * Cargado exclusivamente vía hook login_enqueue_scripts.
+ * Reemplaza el bloque <style> inline que existía en el snippet original.
+ *
+ * @package    MuyUnicos
+ * @subpackage Login
+ */
+
+/* ── Variables locales (wp-login.php no hereda style.css) ─────────────── */
+:root {
+    --mu-primario:       #2B9FCF;
+    --mu-primario-dark:  #237FA9;
+    --mu-secundario:     #FFD77A;
+    --mu-texto:          #277292;
+    --mu-texto-light:    #6C6F7A;
+    --mu-fondo:          #fbf7f5;
+    --mu-blanco:         #FFFFFF;
+    --mu-exito:          #a3ffbc;
+    --mu-error:          #ef4444;
+    --mu-radius:         12px;
+}
+
+/* ── Layout body ──────────────────────────────────────────────────────── */
+body.login {
+    background-color: var(--mu-fondo);
+    /* System Font Stack: carga instantánea, sin peticiones externas */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* ── Logo ─────────────────────────────────────────────────────────────── */
+/* override GP: imagen de logo circular de marca */
+#login h1 a,
+.login h1 a {
+    background-size:     contain;
+    background-position: center;
+    background-repeat:   no-repeat;
+    width:               120px;
+    height:              120px;
+    border-radius:       50%;
+    margin-bottom:       30px;
+    box-shadow:          0 4px 10px rgba(43, 159, 207, 0.2);
+    transition:          transform 0.3s ease;
+}
+#login h1 a:hover { transform: scale(1.05); }
+
+/* ── Formulario ───────────────────────────────────────────────────────── */
+.login form {
+    background:    var(--mu-blanco);
+    border-radius: var(--mu-radius);
+    box-shadow:    0 10px 25px rgba(0, 0, 0, 0.1);
+    border:        none;
+    padding:       40px;
+    overflow:      hidden;
+    position:      relative;
+}
+
+/* Barra superior decorativa */
+.login form::before {
+    content:    '';
+    position:   absolute;
+    top: 0; left: 0;
+    width: 100%; height: 6px;
+    background: linear-gradient(90deg, var(--mu-primario) 0%, var(--mu-secundario) 100%);
+}
+
+/* ── Labels e Inputs ──────────────────────────────────────────────────── */
+.login label {
+    color:       var(--mu-texto);
+    font-weight: 600;
+    font-size:   0.95rem;
+}
+
+.login input[type="text"],
+.login input[type="password"] {
+    height:        48px;
+    border:        2px solid #e2e8f0;
+    border-radius: 6px;
+    background:    #fafafa;
+    color:         var(--mu-texto);
+    box-shadow:    none !important;
+    margin-bottom: 20px;
+    transition:    all 0.2s;
+}
+
+.login input[type="text"]:focus,
+.login input[type="password"]:focus {
+    border-color: var(--mu-primario);
+    background:   #fff;
+}
+
+/* ── Botón primario ───────────────────────────────────────────────────── */
+.wp-core-ui .button-primary {
+    background:    var(--mu-primario);
+    border-color:  var(--mu-primario);
+    color:         #fff;
+    width:         100%;
+    height:        48px;
+    font-weight:   700;
+    border-radius: 6px;
+    text-transform: uppercase;
+    box-shadow:    0 4px 6px rgba(43, 159, 207, 0.3);
+    transition:    all 0.3s;
+    margin-top:    10px;
+}
+
+.wp-core-ui .button-primary:hover {
+    background:   var(--mu-primario-dark);
+    border-color: var(--mu-primario-dark);
+    transform:    translateY(-2px);
+}
+
+/* ── Enlaces ──────────────────────────────────────────────────────────── */
+.login #nav a,
+.login #backtoblog a {
+    color:      var(--mu-texto-light);
+    transition: color 0.2s;
+}
+.login #nav a:hover,
+.login #backtoblog a:hover {
+    color: var(--mu-primario);
+}
+
+/* ── Mensajes ─────────────────────────────────────────────────────────── */
+.login .message,
+.login .success   { border-left-color: var(--mu-exito); }
+.login #login_error { border-left-color: var(--mu-error); }
