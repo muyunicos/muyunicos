@@ -8,6 +8,7 @@
  * - Validación y sanitización robusta
  * - AJAX check email (Guest)
  * - Lógica condicional físico/digital
+ * - Gestión de contraseñas WooCommerce
  * 
  * @package GeneratePress_Child
  * @since 1.0.0
@@ -261,3 +262,27 @@ if ( ! function_exists( 'mu_order_received_custom_title' ) ) {
     }
 }
 add_filter( 'the_title', 'mu_order_received_custom_title', 10, 2 );
+
+// ============================================
+// GESTIÓN DE CONTRASEÑAS WOOCOMMERCE
+// Reduce la fricción: permite contraseñas simples y
+// elimina el medidor de fortaleza (JS innecesario en checkout/cuenta).
+// ============================================
+
+/**
+ * Permite contraseñas simples (0 = muy débil, 3 = muy fuerte/default).
+ * Reduce fricción en el checkout para mejorar conversión.
+ */
+add_filter( 'woocommerce_min_password_strength', function( $strength ) {
+    return 0;
+} );
+
+/**
+ * Elimina el script del medidor de fortaleza de contraseña.
+ * Ahorra ~15 KB de JS en checkout y páginas de cuenta.
+ */
+add_action( 'wp_print_scripts', function() {
+    if ( wp_script_is( 'wc-password-strength-meter', 'enqueued' ) ) {
+        wp_dequeue_script( 'wc-password-strength-meter' );
+    }
+}, 100 );
