@@ -1,0 +1,368 @@
+/**
+ * Muy Únicos — Catálogo WooCommerce: Grid de Productos
+ *
+ * Condición: is_shop() || is_product_category() || is_product_tag() || is_product()
+ * Cubre: Loop principal (shop/archive) + Relacionados + Upsells en ficha
+ */
+
+/* ============================================
+   RESET FORZADO DE ESTILOS WOOCOMMERCE
+   ============================================ */
+/* override GP: WooCommerce inyecta float + widths en li.product; forzamos reset para grid */
+.woocommerce ul.products li.product,
+.woocommerce-page ul.products li.product,
+.woocommerce ul.products[class*="columns-"] li.product,
+.woocommerce-page ul.products[class*="columns-"] li.product,
+.woocommerce ul.products.columns-1 li.product,
+.woocommerce ul.products.columns-2 li.product,
+.woocommerce ul.products.columns-3 li.product,
+.woocommerce ul.products.columns-4 li.product,
+.woocommerce ul.products.columns-5 li.product,
+.woocommerce ul.products.columns-6 li.product {
+    width: 100% !important;
+    float: none !important;
+    clear: none !important;
+    margin: 0 !important;
+}
+
+/* ============================================
+   GRID DE PRODUCTOS
+   ============================================ */
+/* override GP: sustituimos el float layout de WC por CSS Grid */
+.woocommerce ul.products,
+.woocommerce-page ul.products,
+.woocommerce .related ul.products,
+.woocommerce .up-sells ul.products {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)) !important;
+    gap: 24px !important;
+    padding: 0 !important;
+    margin: 30px 0 !important;
+    list-style: none !important;
+}
+
+/* FIX: Eliminar pseudo-elementos de clearfix de WooCommerce */
+.woocommerce ul.products::before,
+.woocommerce ul.products::after,
+.woocommerce-page ul.products::before,
+.woocommerce-page ul.products::after {
+    content: none !important;
+    display: none !important;
+}
+
+/* 4 columnas en desktop */
+@media (min-width: 1025px) {
+    .woocommerce ul.products,
+    .woocommerce-page ul.products {
+        grid-template-columns: repeat(4, 1fr) !important;
+    }
+}
+
+/* 3 columnas en tablet */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .woocommerce ul.products,
+    .woocommerce-page ul.products {
+        grid-template-columns: repeat(3, 1fr) !important;
+    }
+}
+
+/* 2 columnas en móvil */
+@media (max-width: 768px) {
+    .woocommerce ul.products,
+    .woocommerce-page ul.products {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 16px !important;
+    }
+}
+
+/* ============================================
+   TARJETA BASE
+   ============================================ */
+.woocommerce ul.products li.product,
+.woocommerce-page ul.products li.product {
+    background: var(--blanco);
+    border-radius: var(--mu-radius-md, 12px);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+/* Contenedor de imagen */
+.woocommerce ul.products li.product .woocommerce-loop-product__link,
+.woocommerce ul.products li.product a:first-child {
+    display: block;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Imagen */
+.woocommerce ul.products li.product img,
+.woocommerce-page ul.products li.product img {
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 1;
+    object-fit: cover;
+    background: var(--fondo);
+    transition: transform 0.4s ease;
+    display: block;
+}
+
+.woocommerce ul.products li.product:hover img {
+    transform: scale(1.05);
+}
+
+/* ============================================
+   BADGE OFERTA
+   ============================================ */
+/* override GP: reposicionamos el badge de WC */
+.woocommerce span.onsale {
+    position: absolute !important;
+    top: 12px !important;
+    left: 12px !important;
+    right: auto !important;
+    bottom: auto !important;
+    background: #ef4444 !important; /* sin variable de --error en design system actual */
+    color: var(--blanco) !important;
+    padding: 6px 14px !important;
+    border-radius: var(--mu-radius-full) !important;
+    font-size: 0.8rem !important;
+    font-weight: 700 !important;
+    z-index: 10 !important;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35) !important;
+    margin: 0 !important;
+    min-height: auto !important;
+    min-width: auto !important;
+    line-height: 1.2 !important;
+}
+
+/* ============================================
+   TÍTULO
+   ============================================ */
+.woocommerce ul.products li.product .woocommerce-loop-category__title,
+.woocommerce ul.products li.product .woocommerce-loop-product__title,
+.woocommerce ul.products li.product h2,
+.woocommerce ul.products li.product h3 {
+    font-family: var(--mu-font-base);
+    padding: 0;
+    font-size: 0.9rem !important;
+    font-weight: 500 !important;
+    color: var(--texto) !important;
+    height: 2.8em;
+    overflow: hidden;
+    text-align: center;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    margin-top: 15px !important;
+}
+
+.woocommerce ul.products li.product .woocommerce-loop-product__title:hover {
+    color: var(--primario) !important;
+}
+
+/* ============================================
+   PRECIO
+   ============================================ */
+.woocommerce ul.products li.product .price,
+.woocommerce-page ul.products li.product .price {
+    text-align: center;
+    font-size: 1rem !important;
+    font-weight: 800 !important;
+    color: var(--primario) !important;
+    font-family: var(--mu-font-display) !important;
+    margin-bottom: 10px !important;
+}
+
+.woocommerce ul.products li.product .price del {
+    opacity: 0.5;
+    font-size: 1.1rem !important;
+    color: var(--texto-light, #6C6F7A) !important;
+    margin-right: 8px;
+    font-weight: 600 !important;
+}
+
+.woocommerce ul.products li.product .price ins {
+    text-decoration: none !important;
+    color: var(--secundario) !important;
+    background: none !important;
+}
+
+/* ============================================
+   ESTRELLAS
+   ============================================ */
+.woocommerce .star-rating {
+    color: var(--secundario) !important;
+    margin: 0 auto 8px !important;
+    float: none !important;
+    display: block !important;
+}
+
+/* ============================================
+   BOTÓN COMPRAR
+   ============================================ */
+.woocommerce ul.products li.product .button,
+.woocommerce-page ul.products li.product .button {
+    background: var(--primario) !important;
+    color: var(--blanco) !important;
+    border: none !important;
+    padding: 9px 18px !important;
+    font-weight: 600 !important;
+    border-radius: var(--mu-radius-sm) !important;
+    text-align: center !important;
+    transition: all 0.3s ease !important;
+    cursor: pointer !important;
+    width: min-content;
+    margin: auto auto 20px auto !important;
+    display: block !important;
+    float: none !important;
+    align-self: center;
+    font-size: 0 !important; /* ocultar texto original para reemplazar vía ::after */
+}
+
+.woocommerce ul.products li.product .button:hover {
+    background: var(--resaltado) !important;
+}
+
+.woocommerce ul.products li.product .button::before {
+    content: none !important;
+    display: none !important;
+}
+
+/* Reemplazar texto del botón por "Comprar" */
+.woocommerce ul.products li.product .button::after {
+    content: 'Comprar' !important;
+    font-size: 0.95rem !important;
+    display: inline !important;
+}
+
+/* Botón "Ver Carrito" post-add */
+.woocommerce ul.products li.product .added_to_cart {
+    background: var(--secundario) !important;
+    color: var(--texto) !important;
+    padding: 10px 16px !important;
+    border-radius: var(--mu-radius-sm) !important;
+    font-weight: 600 !important;
+    text-align: center !important;
+    display: inline-block !important;
+    margin: 0 auto 16px !important;
+    font-size: 0.9rem !important;
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.woocommerce ul.products li.product .added_to_cart::before {
+    content: '✓ ';
+}
+
+/* ============================================
+   SIN STOCK
+   ============================================ */
+.woocommerce ul.products li.product.outofstock {
+    opacity: 0.65;
+}
+
+.woocommerce ul.products li.product.outofstock .button {
+    background: #9ca3af !important;
+    cursor: not-allowed !important;
+}
+
+/* ============================================
+   PAGINACIÓN
+   ============================================ */
+.woocommerce nav.woocommerce-pagination {
+    margin: 40px 0 !important;
+}
+
+.woocommerce nav.woocommerce-pagination ul {
+    display: flex !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    border: none !important;
+    padding: 0 !important;
+}
+
+.woocommerce nav.woocommerce-pagination ul li {
+    border: none !important;
+    margin: 0 !important;
+}
+
+.woocommerce nav.woocommerce-pagination ul li a,
+.woocommerce nav.woocommerce-pagination ul li span {
+    min-width: 40px !important;
+    height: 40px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: var(--blanco) !important;
+    color: var(--texto) !important;
+    border-radius: var(--mu-radius-sm) !important;
+    font-weight: 600 !important;
+    border: 2px solid #e5e7eb !important;
+    transition: all 0.2s ease !important;
+    padding: 0 10px !important;
+}
+
+.woocommerce nav.woocommerce-pagination ul li a:hover {
+    background: var(--primario) !important;
+    color: var(--blanco) !important;
+    border-color: var(--primario) !important;
+}
+
+.woocommerce nav.woocommerce-pagination ul li span.current {
+    background: var(--primario) !important;
+    color: var(--blanco) !important;
+    border-color: var(--primario) !important;
+}
+
+/* ============================================
+   ORDENAMIENTO
+   ============================================ */
+.woocommerce-ordering select {
+    border: 2px solid #e5e7eb !important;
+    border-radius: var(--mu-radius-sm) !important;
+    padding: 10px 16px !important;
+    font-size: 0.95rem !important;
+    background: var(--blanco) !important;
+    color: var(--texto) !important;
+    cursor: pointer !important;
+}
+
+.woocommerce-ordering select:focus {
+    border-color: var(--primario) !important;
+    outline: none !important;
+}
+
+/* ============================================
+   RESPONSIVE MOBILE
+   ============================================ */
+@media (max-width: 768px) {
+    .woocommerce ul.products li.product .woocommerce-loop-product__title,
+    .woocommerce ul.products li.product h2,
+    .woocommerce ul.products li.product h3 {
+        font-size: 0.9rem !important;
+        margin: 12px 12px 8px !important;
+        padding: 0;
+    }
+
+    .woocommerce ul.products li.product .price {
+        font-size: 1.2rem !important;
+        margin: 0 12px 12px !important;
+    }
+
+    .woocommerce ul.products li.product .button::after {
+        font-size: 0.9rem !important;
+    }
+}
+
+/* ============================================
+   ACCESIBILIDAD
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+    .woocommerce ul.products li.product,
+    .woocommerce ul.products li.product img {
+        transition: none !important;
+    }
+}

@@ -1,0 +1,319 @@
+/**
+ * Muy Únicos — Ficha de Producto (Single Product Design System)
+ *
+ * Condición: is_product()
+ * Cubre: Galería, miniaturas, info, precio, cart form, tabs, relacionados/upsells
+ */
+
+/* ============================================
+   1. CONTENEDOR PRINCIPAL & GALERÍA
+   ============================================ */
+.woocommerce-product-gallery {
+    border-radius: var(--mu-radius);
+    overflow: hidden;
+    margin-bottom: 2rem !important;
+    background: var(--blanco);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.woocommerce-product-gallery img {
+    transition: transform 0.5s ease;
+}
+
+/* ============================================
+   2. MINIATURAS (SISTEMA HÍBRIDO CON ARRASTRE)
+   ============================================ */
+
+/* override GP: reset de estilos forzados por JS de FlexSlider/WC */
+.woocommerce-product-gallery .flex-control-thumbs {
+    margin: 15px 0 0 0 !important;
+    padding: 0 !important;
+    list-style: none !important;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.woocommerce-product-gallery .flex-control-thumbs li {
+    margin: 2px !important;
+    padding: 0 !important;
+    float: none !important;
+    width: auto !important;
+}
+
+.woocommerce-product-gallery .flex-control-thumbs img {
+    border-radius: var(--mu-radius);
+    opacity: 0.6;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 2px solid transparent;
+    cursor: pointer;
+    display: block;
+    width: 100%;
+    height: auto;
+    background: var(--blanco);
+    -webkit-user-drag: none;
+    user-select: none;
+}
+
+.woocommerce-product-gallery .flex-control-thumbs img.flex-active,
+.woocommerce-product-gallery .flex-control-thumbs img:hover {
+    opacity: 1;
+    border-color: var(--primario);
+    box-shadow: var(--mu-shadow);
+    transform: translateY(-2px);
+}
+
+/* Modo escritorio (> 968px): grid de miniaturas */
+@media (min-width: 969px) {
+    .woocommerce-product-gallery .flex-control-thumbs {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+        gap: 0;
+    }
+}
+
+/* Modo carrusel móvil (<= 968px): drag-to-scroll */
+@media (max-width: 968px) {
+    .woocommerce-product-gallery .flex-control-thumbs {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        scroll-behavior: smooth;
+        gap: 0;
+        padding-bottom: 15px !important;
+        cursor: grab;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .woocommerce-product-gallery .flex-control-thumbs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .woocommerce-product-gallery .flex-control-thumbs:active {
+        cursor: grabbing;
+    }
+
+    .woocommerce-product-gallery .flex-control-thumbs li {
+        flex: 0 0 auto;
+        width: 70px !important;
+        scroll-snap-align: start;
+    }
+}
+
+/* ============================================
+   3. INFORMACIÓN DEL PRODUCTO
+   ============================================ */
+.product_title.entry-title {
+    font-family: var(--mu-font-display);
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: var(--texto);
+    margin-bottom: 1rem;
+    line-height: 1.2;
+}
+
+p.price {
+    font-size: 1.8rem;
+    color: var(--primario);
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+p.price del {
+    font-size: 1.1rem;
+    color: var(--texto-light, #aaa);
+    font-weight: 400;
+    opacity: 0.7;
+}
+
+p.price ins {
+    text-decoration: none;
+    background: #eef6fc;
+    color: var(--primario);
+    padding: 4px 12px;
+    border-radius: var(--mu-radius-sm);
+}
+
+.woocommerce-product-details__short-description {
+    background: var(--blanco);
+    padding: 20px;
+    border-left: 4px solid var(--primario);
+    border-radius: 0 var(--mu-radius) var(--mu-radius) 0;
+    margin-bottom: 30px;
+    color: var(--texto);
+    font-size: 1.05rem;
+    line-height: 1.6;
+}
+
+/* ============================================
+   4. ACCIONES DE COMPRA
+   ============================================ */
+form.cart {
+    background: var(--fondo);
+    padding: 25px;
+    border-radius: var(--mu-radius);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.woocommerce .quantity .qty {
+    height: 50px;
+    width: 80px;
+    border-radius: var(--mu-radius);
+    border: 2px solid #edf2f7;
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: var(--texto);
+    background: #f8fafc;
+    text-align: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.woocommerce .quantity .qty:focus {
+    border-color: var(--primario);
+    outline: none;
+    background: var(--blanco);
+}
+
+.single_add_to_cart_button.button {
+    background-color: var(--primario) !important;
+    color: var(--blanco) !important;
+    height: 50px;
+    padding: 0 40px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    border-radius: var(--mu-radius) !important;
+    text-transform: none;
+    letter-spacing: 0.5px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-grow: 1;
+    border: 2px solid var(--primario) !important;
+    box-shadow: var(--mu-shadow);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.single_add_to_cart_button.button:hover {
+    background-color: var(--resaltado) !important;
+    border-color: var(--resaltado) !important;
+}
+
+/* ============================================
+   5. META INFO & TABS
+   ============================================ */
+.product_meta {
+    font-size: 0.95rem;
+    color: var(--texto-light, #6C6F7A);
+    border-top: 1px dashed #e2e8f0;
+    padding-top: 20px;
+    margin-top: 10px;
+}
+
+.product_meta > span {
+    display: block;
+    margin-bottom: 8px;
+}
+
+.product_meta a {
+    color: var(--texto);
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.product_meta a:hover {
+    color: var(--primario);
+}
+
+/* override GP: tabs de WooCommerce */
+.woocommerce-tabs ul.tabs {
+    border-bottom: 2px solid #edf2f7 !important;
+    padding: 0 !important;
+    margin: 0 0 30px 0 !important;
+    background: transparent !important;
+}
+
+.woocommerce-tabs ul.tabs li {
+    background: transparent !important;
+    border: none !important;
+    margin: 0 !important;
+}
+
+.woocommerce-tabs ul.tabs li a {
+    padding: 15px 25px !important;
+    font-weight: 600;
+    color: var(--texto-light, #6c6f7a) !important;
+    font-size: 1.1rem;
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: var(--mu-radius) var(--mu-radius) 0 0;
+}
+
+.woocommerce-tabs ul.tabs li.active a {
+    color: var(--primario) !important;
+    border-bottom-color: var(--primario);
+    background: rgba(43, 159, 207, 0.05) !important;
+}
+
+.woocommerce-Tabs-panel {
+    background: var(--blanco);
+    padding: 30px;
+    border-radius: var(--mu-radius);
+    box-shadow: var(--mu-shadow);
+    line-height: 1.8;
+    color: var(--texto);
+}
+
+/* ============================================
+   6. RELACIONADOS & UPSELLS
+   ============================================ */
+.up-sells {
+    clear: both;
+}
+
+.related.products {
+    margin-top: 80px;
+    border-top: 1px solid #edf2f7;
+    padding-top: 50px;
+}
+
+.related.products > h2 {
+    font-family: var(--mu-font-display);
+    font-size: 2rem;
+    text-align: center;
+    margin-bottom: 40px;
+    color: var(--texto);
+}
+
+/* ============================================
+   7. RESPONSIVE MOBILE
+   ============================================ */
+@media (max-width: 768px) {
+    .product_title.entry-title {
+        font-size: 1.8rem;
+    }
+
+    .woocommerce-product-gallery {
+        margin-bottom: 1.5rem !important;
+    }
+
+    .woocommerce .quantity .qty {
+        width: 100%;
+        margin-bottom: 15px;
+    }
+
+    .woocommerce-tabs ul.tabs li a {
+        padding: 10px 15px !important;
+        font-size: 1rem;
+    }
+}
