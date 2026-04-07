@@ -2,7 +2,7 @@
 /**
  * Module: Downloads Bonus & Guides
  * Description: Inyección dinámica de archivo "Líneas de Corte" + Guía de Uso para productos Cat. 18.
- * Version: 1.1.2
+ * Version: 1.1.3
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -17,6 +17,9 @@ if ( ! function_exists( 'mu_user_has_virtual_manual_purchases' ) ) {
     /**
      * Evalúa si un usuario ha comprado alguna vez un producto Virtual NO Descargable.
      * Utiliza un caché persistente en usermeta para evitar queries pesadas en frontend.
+     *
+     * FIX v1.1.3: limit cambiado de -1 a 50 (últimas 50 órdenes DESC) para evitar
+     * cargar arrays de cientos de IDs en RAM con tráfico concurrente.
      */
     function mu_user_has_virtual_manual_purchases( $user_id ) {
         if ( ! $user_id ) return false;
@@ -26,11 +29,13 @@ if ( ! function_exists( 'mu_user_has_virtual_manual_purchases' ) ) {
         if ( $cached === 'no' ) return false;
 
         $has_virtual_manual = false;
-        
+
         $orders = wc_get_orders( [
             'customer_id' => $user_id,
             'status'      => [ 'completed', 'processing', 'production' ],
-            'limit'       => -1,
+            'limit'       => 50,
+            'orderby'     => 'date',
+            'order'       => 'DESC',
             'return'      => 'ids',
         ] );
 
