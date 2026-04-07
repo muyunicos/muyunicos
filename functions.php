@@ -8,7 +8,7 @@
  * - CSS/JS condicional por página
  *
  * @package GeneratePress_Child
- * @version 1.2.0
+ * @version 1.3.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
@@ -48,7 +48,9 @@ function mu_enqueue_assets() {
 
     if ( is_shop() || is_product_category() || is_product_tag() || is_product() ) {
         wp_enqueue_style( 'mu-shop', "$uri/css/shop.css", [ 'mu-base' ], $ver );
+        wp_enqueue_style( 'mu-navigation-chips', "$uri/css/components/navigation-chips.css", [ 'mu-base' ], $ver );
         wp_enqueue_script( 'mu-shop-js', "$uri/js/shop.js", [ 'jquery' ], $ver, true );
+        wp_enqueue_script( 'mu-navigation-chips-js', "$uri/js/navigation-chips.js", [], $ver, true );
     }
 
     if ( is_cart() ) {
@@ -109,3 +111,4 @@ mu_load_module( 'ui' );                  // UI components (header, footer, searc
 mu_load_module( 'orders-files' );        // Order File Manager (Admin/Frontend)
 mu_load_module( 'orders-workflow' );     // Order Workflow (Status, Email, WhatsApp)
 mu_load_module( 'downloads-bonus' );     // Dynamic Downloads Injections
+mu_load_module( 'navigation-chips' );    // Navigation Chips v8 (breadcrumb + filtros catálogo)
