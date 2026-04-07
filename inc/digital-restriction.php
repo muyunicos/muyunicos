@@ -1,11 +1,11 @@
 <?php
 /**
  * Muy Únicos - Digital Restriction System
- * * Sistema de restricción de contenido digital v4.0.2 (Fix Auto-Select Bounce)
+ * * Sistema de restricción de contenido digital v4.1.0 (Fix Memory: WP Cron Rebuild)
  * Propósito: Restringir productos físicos en subdominios, mostrando solo 
  * productos digitales. Optimizado para rendimiento y compatibilidad.
  * * @package GeneratePress_Child
- * @since 4.0.2
+ * @since 4.1.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -23,7 +23,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         const OPTION_TAG_IDS      = 'muyu_digital_tag_ids';
         const OPTION_REDIRECT_MAP = 'muyu_phys_to_dig_map';
         const OPTION_LAST_UPDATE  = 'muyu_digital_list_updated';
-        const TRANSIENT_REBUILD   = 'muyu_rebuild_scheduled';
+        const CRON_HOOK           = 'muyu_cron_rebuild_digital_indexes';
         
         public static function get_instance(): self {
             if ( null === self::$instance ) {
@@ -40,9 +40,13 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             // ---- Gestión de índices (Admin) ----
             add_action( 'wc_ajax_mu_rebuild_digital_list', [ $this, 'ajax_rebuild_indexes' ] );
             add_action( 'woocommerce_update_product', [ $this, 'schedule_rebuild' ] );
-            add_action( 'admin_init', [ $this, 'ensure_indexes_exist' ], 5 );
             add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_admin_assets' ] );
-            add_action( 'shutdown', [ $this, 'execute_scheduled_rebuild' ] );
+
+            // ---- Cron: ejecuta rebuild en background real (NO en shutdown) ----
+            add_action( self::CRON_HOOK, [ $this, 'rebuild_digital_indexes' ] );
+
+            // ---- Verificación silenciosa de índices solo en admin (lazy, sin rebuild síncrono) ----
+            add_action( 'admin_init', [ $this, 'ensure_indexes_exist' ], 5 );
             
             // ---- Filtrado de contenido (Frontend) ----
             add_action( 'pre_get_posts', [ $this, 'filter_product_queries' ], 50 );
@@ -165,7 +169,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             update_option( self::OPTION_TAG_IDS, $tag_ids, false );
             update_option( self::OPTION_REDIRECT_MAP, $redirect_map, false );
             update_option( self::OPTION_LAST_UPDATE, current_time( 'mysql' ), false );
-            delete_transient( self::TRANSIENT_REBUILD );
         }
 
         // =====================================================================
@@ -178,18 +181,27 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             wp_send_json_success( sprintf( 'Índice reconstruido correctamente. Total productos digitales: %d', $this->rebuild_digital_indexes() ) );
         }
         
+        /**
+         * Programa un rebuild en WP Cron para ejecutarse en background.
+         * Se usa en lugar de un transient + shutdown para no bloquear la
+         * petición actual ni saturar la memoria del proceso PHP en curso.
+         */
         public function schedule_rebuild(): void {
-            if ( ! get_transient( self::TRANSIENT_REBUILD ) ) set_transient( self::TRANSIENT_REBUILD, true, 120 );
+            if ( ! wp_next_scheduled( self::CRON_HOOK ) ) {
+                wp_schedule_single_event( time() + 30, self::CRON_HOOK );
+            }
         }
         
-        public function execute_scheduled_rebuild(): void {
-            if ( get_transient( self::TRANSIENT_REBUILD ) ) $this->rebuild_digital_indexes();
-        }
-        
+        /**
+         * Verificación silenciosa: si los índices no existen, programa un rebuild
+         * vía Cron en lugar de ejecutarlo síncronamente en admin_init.
+         * Esto evita queries pesadas en cada carga de admin cuando los índices
+         * están vacíos (ej: primera instalación o después de borrar opciones).
+         */
         public function ensure_indexes_exist(): void {
             $ids = get_option( self::OPTION_PRODUCT_IDS, false );
             if ( false === $ids || empty( $ids ) ) {
-                $this->rebuild_digital_indexes();
+                $this->schedule_rebuild();
             }
         }
         
@@ -217,9 +229,10 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             if ( ! $is_shop_query || ! $this->is_restricted_user() ) return;
             
             $digital_ids = get_option( self::OPTION_PRODUCT_IDS, false );
-            if ( false === $digital_ids ) {
-                $this->rebuild_digital_indexes();
-                $digital_ids = get_option( self::OPTION_PRODUCT_IDS, [] );
+            if ( false === $digital_ids || empty( $digital_ids ) ) {
+                // Índices no disponibles: programar rebuild silencioso y mostrar catálogo vacío temporalmente.
+                $this->schedule_rebuild();
+                $digital_ids = [];
             }
             $query->set( 'post__in', empty( $digital_ids ) ? [ 0 ] : array_map( 'intval', (array) $digital_ids ) );
         }
@@ -284,8 +297,9 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             
             $digital_ids = (array) get_option( self::OPTION_PRODUCT_IDS, [] );
             if ( empty( $digital_ids ) ) {
-                $this->rebuild_digital_indexes();
-                $digital_ids = (array) get_option( self::OPTION_PRODUCT_IDS, [] );
+                // Sin índice disponible: programar rebuild y no redirigir hasta próxima visita.
+                $this->schedule_rebuild();
+                return [ false, '' ];
             }
             
             if ( ! $post || in_array( (int) $post->ID, array_map( 'intval', $digital_ids ), true ) ) {
