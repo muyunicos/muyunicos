@@ -1,266 +1,204 @@
-MUY ÍNICOS — ARCHITECTURE & MIGRATION GUIDE
+MUY ÚNICOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v2.6.3 · Apr 8, 2026
+Estado: Modular Pragmático · v2.6.3 · Apr 8, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
-⚠️ IA / LLM DIRECTIVE: Read this document carefully before suggesting arquitectura changes. Strict compliance con "Pragmatic Modularity" y "Pull Request Workflow" is required.
+⚠️ IA / LLM DIRECTIVE: Leer este documento antes de sugerir cambios de arquitectura.
+Compliance estricto con "Pragmatic Modularity" y "Pull Request Workflow" es obligatorio.
 
-1. REGLAS CORE DE ARQUITECTURA Y FLUJO DE TRABAJO
+════════════════════════════════════════════════════════════════
+1. REGLAS CORE
+════════════════════════════════════════════════════════════════
 
-Modularidad Pragmática (Regla "Goldilocks")
-- NO a la micro-fragmentación.
-- Ajustes pequeños de UI (botones, toggles, iconos, micro-interacciones < 50 líneas) DEBEN agruparse en:
-  - css/components/global-ui.css
-  - js/global-ui.js
+MODULARIDAD PRAGMÁTICA ("Goldilocks")
+- Ajustes pequeños de UI < 50 líneas → agrupar en global-ui.css / global-ui.js
+- Funcionalidades complejas o aisladas → archivo propio, carga condicional
 
-SÍ al aislamiento por contexto
-- Funcionalidades complejas (Checkout, Cart, Auth, Shop, Orders, Navigation Chips, Login, Testimonials, Hero) deben tener sus propios archivos y cargarse condicionalmente.
+CARGA CONDICIONAL ESTRICTA
+- Nunca cargar assets globalmente si no aplican a header/footer/UI transversal.
+- Usar is_shop(), is_checkout(), is_cart(), is_user_logged_in(), is_product(),
+  has_shortcode(), is_front_page(), etc.
+- NUNCA wp_add_inline_style() / wp_add_inline_script() — todo CSS/JS en archivos cacheables.
+  · EXCEPCIÓN login: wp_add_inline_style() dentro de login_enqueue_scripts está permitido
+    solo para propiedades dinámicas PHP (ej: URL de imagen). CSS base siempre en login.css.
+  · EXCEPCIÓN emails: style="" inline es obligatorio en fragmentos HTML de email.
+    Los clientes de correo no soportan hojas externas.
 
-Carga Condicional Estricta
-- Nunca cargar assets globales si no aplican a header/footer o UI transversal.
-- Usar is_shop(), is_checkout(), is_cart(), is_user_logged_in(), is_product(), has_shortcode(), is_front_page(), etc. en functions.php.
-- NUNCA usar wp_add_inline_style() o wp_add_inline_script(). Todo CSS/JS debe estar en archivos cacheables.
-- EXCEPCIÓN VÁLIDA: wp_add_inline_style() está permitido dentro del hook login_enqueue_scripts exclusivamente para inyectar propiedades dinámicas generadas por PHP (ej: URLs de imágenes). El bloque CSS principal debe residir siempre en un archivo .css cacheable.
-- EXCEPCIÓN EMAILS: style="" inline es obligatorio en templates/fragmentos HTML de email. Los clientes de correo no soportan hojas de estilo externas.
+FLUJO GITHUB (PROHIBIDO COMMIT DIRECTO A MAIN)
+- Rama semántica obligatoria: perf/, refactor/, fix/, feat/
+- Todo cambio requiere Pull Request contra main.
+- Actualizar SIEMPRE este archivo en el PR (estado actual, no changelog).
 
-Flujo GitHub (PROHIBIDO COMMIT A MAIN)
-- Todo cambio debe ir en una rama semántica (perf/, refactor/, fix/, feat/).
-- Todo cambio requiere un Pull Request (PR). El título debe ser descriptivo.
-- Actualiza SIEMPRE este archivo en el PR, manteniendo el "System Map" como estado actual (no changelog).
-
-2. ÁRBOL DE DIRECTORIOS (System Map)
+════════════════════════════════════════════════════════════════
+2. SYSTEM MAP — ÁRBOL DE DIRECTORIOS
+════════════════════════════════════════════════════════════════
 
 muyunicos/ (generatepress-child)
 │
-├── functions.php              # SOLO: mu_enqueue_assets (condicional) + mu_load_module
-├── style.css                  # Variables CSS, reset, y child theme header
+├── functions.php           # Enqueue central (mu_enqueue_assets) + mu_load_module()
+├── style.css               # Variables CSS globales (:root), reset, child theme header
 │
-├── inc/                       # ⚙️ MÓDULOS PHP (Lógica de negocio y hooks)
-│   ├── icons.php              # [CARGA PRIMERO] mu_get_icon() — repositorio de SVGs
-│   ├── geo.php                # ✅ Sistema multi-país + Auto-Detección + Decimales + Modal + Selector
-│   │                          #   muyu_get_cached_geolocation() — caché estática (static $geo)
-│   │                          #   mu_country_modal_enqueue() y mu_country_modal_html() con function_exists()
-│   ├── digital-restriction.php# ✅ Digital Restriction System v4.1.0 (Fix Memory: Rebuild vía WP Cron)
-│   ├── auth-modal.php         # Modal Login/Registro + endpoints WC-AJAX
-│   ├── login.php              # ✅ Login Page v2.1.0
-│   ├── checkout.php           # ✅ Checkout Híbrido Optimizado + Login Gate
-│   ├── cart.php               # Lógica de carrito, buffers BACS
-│   ├── flexible-price.php     # ✅ Sistema de Precio Flexible v4.0
-│   ├── ui.php                 # ✅ Header, Footer, Search, WhatsApp, Canonical, WPLingua, Gratis/$0,
-│   │                          #   Shortcodes: [mu_testimonios_section] [mu_bestsellers_section]
-│   │                          #               [mu_popcat_section] [mu_hero_section]
-│   ├── orders-files.php       # ✅ File Manager (Admin/Frontend)
-│   ├── orders-workflow.php    # ✅ Workflow pedidos
-│   ├── downloads-bonus.php    # ✅ Dynamic Bonus & Guides v1.2.0
-│   │                          #   mu_user_has_cat_18_custom_files() usa transient 12h (mu_cat18_files_{uid})
-│   │                          #   invalidado en woocommerce_order_status_changed
-│   │                          #   .mu-guide-link sin inline style → css/account-downloads.css
-│   ├── navigation-chips.php   # ✅ Navigation Chips v8
-│   ├── products-core.php      # ✅ Productos Personalizados Core v2.1
-│   ├── addon-nombre.php       # ✅ Addon Nombre v3.0
-│   └── addon-etiquetas.php    # ✅ Addon Etiquetas v3.0
+├── inc/                    # Módulos PHP — lógica de negocio y hooks
+│   ├── icons.php           # [PRIMERO] mu_get_icon() — repositorio SVG
+│   ├── geo.php             # Multi-país: detección por subdominio, decimales, modal
+│   │                       # sugerencia de país, selector de header, prefijo idioma.
+│   │                       # muyu_get_cached_geolocation() — una sola llamada/request.
+│   ├── digital-restriction.php  # Restricción productos físicos por subdominio v4.1.0.
+│   │                            # Rebuild de índice vía wp_schedule_single_event().
+│   ├── auth-modal.php      # Modal Login/Registro + endpoints wc_ajax_mu_*
+│   ├── login.php           # Personalización wp-login.php v2.1.0
+│   ├── checkout.php        # Checkout Híbrido + Login Gate (mu_checkout_login_notice p5)
+│   ├── cart.php            # Multi-item add, buffers BACS
+│   ├── flexible-price.php  # Precio Flexible v4.0: mapa O(1), validación, AJAX handler.
+│   │                       # Encola flexible-price.js vía mu_flexible_price_enqueue().
+│   │                       # NO agregar a mu_enqueue_assets() — causaría duplicado.
+│   ├── ui.php              # Header icons, Cart badge, WhatsApp, Search, Footer custom,
+│   │                       # Share shortcode, canonical GSK, WPLingua body class,
+│   │                       # Category desc mover, precio $0, disable GP featured img.
+│   │                       # Shortcodes: [mu_testimonios_section] [mu_bestsellers_section]
+│   │                       #             [mu_popcat_section] [mu_hero_section]
+│   │                       # mu_home_sections_enqueue() → home.css + hero.js en front_page.
+│   ├── orders-files.php    # Gestor de archivos de pedido: Admin + Email + Mi Cuenta
+│   ├── orders-workflow.php # Estado 'wc-production', emails inteligentes, Admin UI
+│   ├── downloads-bonus.php # Bonus & Guías v1.2.0: inyección tabla descargas + emails.
+│   │                       # mu_user_has_cat_18_custom_files() — transient mu_cat18_files_{uid}
+│   │                       # (TTL 12h), invalidado en woocommerce_order_status_changed.
+│   ├── navigation-chips.php # Navigation Chips v8: breadcrumb, índice compacto, chips,
+│   │                        # transient por categoría.
+│   ├── products-core.php   # Core v2.1: constantes, MU_UI_Helper, hooks carrito/orden
+│   ├── addon-nombre.php    # Addon Nombre v3.0: campo, validación, editor inline AJAX
+│   └── addon-etiquetas.php # Addon Etiquetas v3.0: builder, config, render UI, enqueue
 │
-├── css/                       # 🎨 CSS MODULAR (Pragmático)
-│   ├── admin.css              # is_admin()
-│   ├── admin-order-files.css  # is_admin() && order_edit
-│   ├── admin-orders.css       # is_admin() && order_edit
-│   ├── login.css              # login_enqueue_scripts
-│   ├── product.css            # is_product()
-│   ├── testimonials.css       # has_shortcode('mu_testimonios_section')
-│   ├── home.css               # ✅ is_front_page()
-│   │                          #   §1-3: Tarjetas producto/categoría (bestsellers + popcat)
-│   │                          #   §4+: Hero Promos (.mu-hero-promo-*) — slider grid-stack, dots, badge
+├── css/                    # CSS modular — siempre carga condicional
 │   ├── components/
-│   │   ├── global-ui.css      # ✅ Global: Share, WhatsApp, Search, WPLingua, Carrusel Híbrido
-│   │   ├── header.css         # Global
-│   │   ├── footer.css         # Global
-│   │   ├── modal-auth.css     # ! is_user_logged_in()
-│   │   ├── country-modal.css  # Condicional (inc/geo.php)
-│   │   └── navigation-chips.css # is_shop() || ...
-│   ├── cart.css               # is_cart()
-│   ├── checkout.css           # is_checkout() && ! is_order_received_page()
-│   ├── shop.css               # is_shop() || ...
-│   ├── product-builder.css    # is_product() || is_cart()
-│   └── account-downloads.css  # ✅ is_account_page() && is_wc_endpoint_url('downloads')
-│                              #   §1: .mu-custom-downloads + WC info override
-│                              #   §2: .mu-guide-link (link "Ver Guía" inyectado por downloads-bonus.php)
+│   │   ├── global-ui.css        # Global: Share, WhatsApp, Search, WPLingua, Carrusel
+│   │   ├── header.css           # Global
+│   │   ├── footer.css           # Global
+│   │   ├── modal-auth.css       # !is_user_logged_in()
+│   │   ├── country-modal.css    # Condicional (inc/geo.php → mu_country_modal_enqueue)
+│   │   └── navigation-chips.css # is_shop() || is_product_category() || is_product_tag() || is_product()
+│   ├── admin.css                # is_admin()
+│   ├── admin-order-files.css    # is_admin() + order edit
+│   ├── admin-orders.css         # is_admin() + order edit
+│   ├── login.css                # login_enqueue_scripts
+│   ├── home.css                 # is_front_page() — tarjetas, Hero Promos (.mu-hero-promo-*)
+│   ├── shop.css                 # is_shop() || ...
+│   ├── product.css              # is_product()
+│   ├── product-builder.css      # is_product() || is_cart()
+│   ├── cart.css                 # is_cart()
+│   ├── checkout.css             # is_checkout() && !is_order_received_page()
+│   ├── testimonials.css         # has_shortcode('mu_testimonios_section')
+│   └── account-downloads.css   # is_account_page() && is_wc_endpoint_url('downloads')
+│                                # .mu-custom-downloads · .mu-guide-link
 │
-└── js/                        # ⚡ JS MODULAR (IIFE + strict mode + DOMContentLoaded)
-    ├── admin.js               # is_admin()
-    ├── admin-order-files.js   # is_admin() && order_edit
-    ├── admin-orders.js        # is_admin() && order_edit
-    ├── global-ui.js           # ✅ Global — initCarousels() cubre todos los .mu-carousel-wrapper
-    ├── header.js              # Global
-    ├── footer.js              # Global
-    ├── hero.js                # ✅ is_front_page() — IIFE, autoplay 7s, swipe (touch), dots data-driven
-    ├── product.js             # is_product()
-    ├── cart.js                # is_cart()
-    ├── flexible-price.js      # is_cart() || is_checkout() — encolado por mu_flexible_price_enqueue() en flexible-price.php. NO agregar a mu_enqueue_assets().
-    ├── checkout.js            # is_checkout() && ! is_order_received_page()
-    ├── modal-auth.js          # ! is_user_logged_in()
-    ├── country-modal.js       # Condicional (inc/geo.php)
-    ├── shop.js                # is_shop() || ...
-    ├── navigation-chips.js    # is_shop() || ...
-    ├── testimonials.js        # has_shortcode('mu_testimonios_section')
-    ├── addon-nombre.js        # is_product() || is_cart()
-    └── addon-etiquetas.js     # is_product() (cat 18/19)
+└── js/                     # JS modular — IIFE + 'use strict' + DOMContentLoaded
+    ├── global-ui.js             # Global — initCarousels() para todo .mu-carousel-wrapper
+    ├── header.js                # Global
+    ├── footer.js                # Global
+    ├── hero.js                  # is_front_page() — slider, autoplay 7s, swipe, dots
+    ├── modal-auth.js            # !is_user_logged_in()
+    ├── country-modal.js         # Condicional (inc/geo.php)
+    ├── shop.js                  # is_shop() || ...
+    ├── navigation-chips.js      # is_shop() || ...
+    ├── product.js               # is_product()
+    ├── addon-nombre.js          # is_product() || is_cart()
+    ├── addon-etiquetas.js       # is_product() (cat 18/19)
+    ├── product-builder.js       # (reservado — lógica builder si se separa de addons)
+    ├── cart.js                  # is_cart()
+    ├── flexible-price.js        # is_cart() || is_checkout() — mu_flexible_price_enqueue()
+    ├── checkout.js              # is_checkout() && !is_order_received_page()
+    ├── testimonials.js          # has_shortcode('mu_testimonios_section')
+    ├── admin.js                 # is_admin()
+    ├── admin-order-files.js     # is_admin() + order edit
+    └── admin-orders.js          # is_admin() + order edit
 
-3. INVENTARIO DE ARCHIVOS (Estado Actual)
+════════════════════════════════════════════════════════════════
+3. ROUTING — ¿DÓNDE VA EL CÓDIGO NUEVO?
+════════════════════════════════════════════════════════════════
 
-PHP · inc/
+¿Qué necesitás agregar?             | PHP (inc/)               | CSS                          | JS
+------------------------------------|--------------------------|------------------------------|----------------------------
+Ajuste UI pequeño (< 50 líneas)     | ui.php                   | components/global-ui.css     | global-ui.js
+Header / Footer (elemento pesado)   | ui.php                   | header.css / footer.css      | header.js / footer.js
+Multi-país / Geolocalización        | geo.php                  | components/country-modal.css | country-modal.js
+Restricción subdominios             | digital-restriction.php  | shop.css / admin.css         | shop.js / admin.js
+Carrito                             | cart.php                 | cart.css                     | cart.js
+Precio Flexible                     | flexible-price.php       | cart.css                     | flexible-price.js
+Login/Registro Modal                | auth-modal.php           | components/modal-auth.css    | modal-auth.js
+Personalización wp-login.php        | login.php                | login.css                    | —
+Checkout                            | checkout.php             | checkout.css                 | checkout.js
+Catálogo / Grid                     | navigation-chips.php     | shop.css                     | shop.js / navigation-chips.js
+Ficha de producto (single)          | ui.php                   | product.css                  | product.js
+Gestor archivos pedido              | orders-files.php         | admin-order-files.css        | admin-order-files.js
+Workflow pedidos                    | orders-workflow.php      | admin-orders.css             | admin-orders.js
+Descargas Bonus + Guías             | downloads-bonus.php      | account-downloads.css        | —
+Builder producto personalizado      | products-core.php        | product-builder.css          | —
+Addon campo nombre                  | addon-nombre.php         | product-builder.css          | addon-nombre.js
+Addon builder etiquetas             | addon-etiquetas.php      | product-builder.css          | addon-etiquetas.js
+Shortcode Testimonios               | ui.php                   | testimonials.css             | testimonials.js
+Shortcodes Home (carrusel/sección)  | ui.php                   | home.css                     | — (reutiliza initCarousels)
+Hero promos dinámicas               | ui.php                   | home.css                     | hero.js
+Nuevo ícono SVG                     | icons.php                | —                            | —
 
-Archivo | Responsabilidad principal
----|---
-inc/icons.php | mu_get_icon() — todos los SVGs del tema
-inc/geo.php | ✅ Detección de país por dominio, control de decimales, redirect selector, modal sugerencia, prefijo idioma. muyu_get_cached_geolocation() centraliza y cachea wc_get_customer_geolocation() con static $geo — una sola llamada por request. mu_country_modal_enqueue() y mu_country_modal_html() protegidas con function_exists().
-inc/digital-restriction.php | Restricción de productos físicos en subdominios v4.1.0. Rebuild de índices via WP Cron.
-inc/auth-modal.php | HTML modal auth, endpoints wc_ajax_mu_*
-inc/login.php | ✅ Personalización wp-login.php v2.1.0: enqueue css/login.css + inline background-image (wp_add_inline_style), login_headerurl, login_errors genérico, mu_smart_login_redirect. Cargado via mu_load_module('login') en functions.php.
-inc/checkout.php | Checkout Híbrido, Gestión contraseñas WC. Login Gate: mu_checkout_login_notice (prioridad 5).
-inc/cart.php | Añadir múltiples ítems, buffers BACS.
-inc/flexible-price.php | Precio Flexible v4.0: mapa O(1), validación, captura, precio dinámico, AJAX handler. Encola js/flexible-price.js via mu_flexible_price_enqueue() (hook propio wp_enqueue_scripts). NO encolar desde mu_enqueue_assets() — causaría duplicado.
-inc/ui.php | Header icons, Cart badge fragment, WhatsApp btn, Custom Search form, Custom Footer, Share shortcode, Google Site Kit canonical, WPLingua body class, Category Description Mover, Reemplazo precio $0, Disable GP Featured image. Shortcodes: [mu_testimonios_section] (has_shortcode condicional) · [mu_bestsellers_section] (transient 12h) · [mu_popcat_section] (estático) · [mu_hero_section] (filtrado por fecha DateTime). mu_home_sections_enqueue() encola css/home.css + js/hero.js en is_front_page().
-inc/orders-files.php | Gestor de archivos: Admin, Email, Account.
-inc/orders-workflow.php | Workflow pedidos: Estado 'wc-production', Emails inteligentes, Admin UI.
-inc/downloads-bonus.php | ✅ v1.2.0: Inyección dinámica de archivos bonus + guía Cat. 18. mu_user_has_cat_18_custom_files() usa transient 'mu_cat18_files_{uid}' (TTL 12h), invalidado en woocommerce_order_status_changed. .mu-guide-link sin inline style — estilos en css/account-downloads.css. Inline styles mantenidos exclusivamente en contextos de email.
-inc/navigation-chips.php | Navigation Chips v8: Breadcrumb global, índice compacto, chips, transient.
-inc/products-core.php | Productos Personalizados Core v2.1: constantes, MU_UI_Helper, hooks carrito/orden.
-inc/addon-nombre.php | Addon Nombre v3.0: campo nombre, validación, guardado, editor inline AJAX.
-inc/addon-etiquetas.php | Addon Etiquetas v3.0: builder, config, render UI, enqueue JS+config.
+════════════════════════════════════════════════════════════════
+4. SISTEMA DE DISEÑO (API EXCLUSIVA)
+════════════════════════════════════════════════════════════════
 
-CSS · css/
+⚠️ NO inventar variables nuevas. Solo las definidas en :root de style.css.
 
-Archivo | Condición de carga
----|---
-style.css (raíz) | Global (base)
-css/admin.css | is_admin()
-css/admin-order-files.css | is_admin() && order_edit
-css/admin-orders.css | is_admin() && order_edit
-css/login.css | login_enqueue_scripts
-css/account-downloads.css | ✅ is_account_page() && is_wc_endpoint_url('downloads') — §1: .mu-custom-downloads; §2: .mu-guide-link
-css/product.css | is_product()
-css/testimonials.css | has_shortcode('mu_testimonios_section') — via mu_testimonios_enqueue
-css/home.css | ✅ is_front_page() — §1-3 tarjetas producto/categoría; §4+ Hero Promos. Encolado por mu_home_sections_enqueue().
-css/components/global-ui.css | Global — Share, WhatsApp, Search, WPLingua, Carrusel Híbrido
-css/components/header.css | Global
-css/components/footer.css | Global
-css/components/modal-auth.css | ! is_user_logged_in()
-css/components/country-modal.css | Condicional (inc/geo.php)
-css/components/navigation-chips.css | is_shop() \|\| is_product_category() \|\| is_product_tag() \|\| is_product()
-css/cart.css | is_cart()
-css/checkout.css | is_checkout() && ! is_order_received_page()
-css/shop.css | is_shop() \|\| ...
-css/product-builder.css | is_product() \|\| is_cart()
+VARIABLES CSS
 
-JS · js/
+Categoría    | Variables
+-------------|--------------------------------------------------------------------------
+Colores      | --primario (#2B9FCF)  --secundario (#FFD77A)  --texto  --blanco  --fondo
+Spacing      | --mu-space-xs (5px)  --mu-space-sm (10px)  --mu-space-md (20px)  --mu-space-lg (40px)
+Radius       | --mu-radius-sm (6px)  --mu-radius (12px)  --mu-radius-md  --mu-radius-full (9999px)
+Sombras      | --mu-shadow-sm  --mu-shadow  --mu-shadow-md  --mu-shadow-lg
+Tipografía   | --mu-font-display (Fredoka One)  --mu-font-base (Inter)
+Builder      | --mu-builder-accent (#6c5ce7)  --mu-builder-accent-hover  --mu-builder-accent-bg
+             | --mu-builder-text  --mu-builder-text-muted  --mu-builder-success
+             | --mu-builder-danger  --mu-builder-danger-dark  --mu-builder-border
+             | --mu-builder-border-dark  --mu-builder-bg-light  --mu-builder-bg-subtle
+             | --mu-builder-bg-muted  --mu-builder-bg-option
 
-Archivo | Condición de carga
----|---
-js/admin.js | is_admin()
-js/admin-order-files.js | is_admin() && order_edit
-js/admin-orders.js | is_admin() && order_edit
-js/global-ui.js | ✅ Global — initCarousels() cubre todos los .mu-carousel-wrapper
-js/header.js | Global
-js/footer.js | Global
-js/hero.js | ✅ is_front_page() — IIFE + strict. Controla slider .mu-hero-promo-slider: autoplay 7s, dots vía data-hero-dot (sin onclick inline), swipe touch (passive listeners, umbral 50px), navegación circular, aria-selected en dots. Sin dependencias externas.
-js/product.js | is_product()
-js/cart.js | is_cart()
-js/flexible-price.js | is_cart() \|\| is_checkout() — encolado por mu_flexible_price_enqueue() en flexible-price.php. NO agregar a mu_enqueue_assets().
-js/checkout.js | is_checkout() && ! is_order_received_page()
-js/modal-auth.js | ! is_user_logged_in()
-js/country-modal.js | Condicional (inc/geo.php)
-js/shop.js | is_shop() \|\| ...
-js/navigation-chips.js | is_shop() \|\| ...
-js/testimonials.js | has_shortcode('mu_testimonios_section') — IIFE, Fisher-Yates shuffle, render dinámico, botón satélite. Datos PHP→JS vía muTestimonials.reviews.
-js/addon-nombre.js | is_product() \|\| is_cart()
-js/addon-etiquetas.js | is_product() (cat 18/19)
+ICONOS SVG
+  echo mu_get_icon('name');  // NUNCA inline SVG directo
 
-4. SISTEMA DE DISEÑO (API Exclusiva)
+  Disponibles: arrow · search · help · account · cart · close · share · check
+               lock · instagram · facebook · pinterest · tiktok · youtube
 
-⚠️ NO inventar variables nuevas. Usar solo las listadas aquí (:root en style.css).
-
-Variables CSS (Extracto)
-
-Categoría | Variables Clave
----|---
-Colores | --primario (#2B9FCF), --secundario (#FFD77A), --texto, --blanco, --fondo
-Spacing | --mu-space-xs (5px), --mu-space-sm (10px), --mu-space-md (20px), --mu-space-lg (40px)
-Radius | --mu-radius-sm (6px), --mu-radius (12px), --mu-radius-md, --mu-radius-full (9999px)
-Sombras | --mu-shadow-sm, --mu-shadow, --mu-shadow-md, --mu-shadow-lg
-Tipografía | --mu-font-display (Fredoka One), --mu-font-base (Inter)
-Product Builder | --mu-builder-accent (#6c5ce7), --mu-builder-accent-hover, --mu-builder-accent-bg, --mu-builder-accent-bg-light, --mu-builder-text, --mu-builder-text-muted, --mu-builder-success, --mu-builder-danger, --mu-builder-danger-dark, --mu-builder-border, --mu-builder-border-dark, --mu-builder-bg-light, --mu-builder-bg-subtle, --mu-builder-bg-muted, --mu-builder-bg-option
-
-API de Iconos SVG (inc/icons.php)
-
-echo mu_get_icon('name'); // NUNCA inline SVG directo
-
-Disponibles: arrow, search, help, account, cart, close, share, check, lock, instagram, facebook, pinterest, tiktok, youtube
-
-5. ROUTING DE DESARROLLO — ¿dónde va el código nuevo?
-
-¿Qué necesitás agregar? | PHP (inc/) | CSS (css/) | JS (js/)
----|---|---
-Ajuste UI pequeño (< 50 líneas) | ui.php | components/global-ui.css | global-ui.js
-Elemento pesado Header/Footer | ui.php | components/header.css o footer.css | header.js o footer.js
-Lógica multi-país | geo.php | components/country-modal.css | country-modal.js
-Lógica Restricción Subdominios | digital-restriction.php | admin.css / shop.css | admin.js / shop.js
-Flujo de Carrito | cart.php | cart.css | cart.js
-Precio Flexible | flexible-price.php | cart.css (§ Precio Flexible) | flexible-price.js
-Login / Registro Modal | auth-modal.php | components/modal-auth.css | modal-auth.js
-Personalización wp-login.php | login.php | css/login.css | —
-Flujo Checkout | checkout.php | checkout.css | checkout.js
-Catálogo / Grid de Productos | navigation-chips.php | shop.css | shop.js / navigation-chips.js
-Ficha de Producto (Single) | ui.php | product.css | product.js
-Gestor Archivos Pedido | orders-files.php | admin-order-files.css | admin-order-files.js
-Workflow Pedidos | orders-workflow.php | admin-orders.css | admin-orders.js
-Inyección Descargas Bonus + Guías | downloads-bonus.php | account-downloads.css | —
-Nuevo icóno SVG | icons.php | — | —
-Builder de producto personalizado | products-core.php | product-builder.css | —
-Addon campo nombre etiquetas | addon-nombre.php | product-builder.css (§10,§11) | addon-nombre.js
-Addon builder etiquetas | addon-etiquetas.php | product-builder.css | addon-etiquetas.js
-Shortcode Testimonios / Reseñas Google | ui.php | testimonials.css | testimonials.js
-Shortcode Home (carrusel/sección) | ui.php | home.css | — (reutiliza global-ui.js::initCarousels)
-Slider Hero promos dinámicas | ui.php | home.css | hero.js
-
-6. CONVENCIONES DE CÓDIGO & RENDIMIENTO
+════════════════════════════════════════════════════════════════
+5. CONVENCIONES DE CÓDIGO
+════════════════════════════════════════════════════════════════
 
 PHP
-- Protección: if ( ! function_exists( 'mu_function_name' ) ) { ... } incluyendo el add_action/add_filter correspondiente dentro del bloque.
-- AJAX WC: Usar prefijo wc_ajax_mu_
-- Rendimiento: Evitar hooks pesados (init/wp_loaded) si hay hooks específicos o carga condicional.
-- CSS: NUNCA usar wp_add_inline_style() o wp_add_inline_script(). Todo estilo debe residir en un .css/.js cacheable.
-- EXCEPCIÓN login: wp_add_inline_style() está permitido dentro de login_enqueue_scripts exclusivamente para propiedades dinámicas PHP. El CSS base debe estar en css/login.css.
-- EXCEPCIÓN emails: style="" inline es obligatorio en fragmentos HTML de email. Los clientes de correo no soportan hojas de estilo externas.
-- Hooks: NUNCA anidar add_filter/add_action dentro de otras funciones hookeadas. Cada hook en el scope global del módulo.
-- WP Cron: Usar wp_schedule_single_event() para tareas pesadas. NUNCA en shutdown, admin_init o template_redirect.
-- API Keys: NUNCA hardcodear en el repositorio. Usar constantes en wp-config.php.
-- DB Queries: NUNCA WP_Query con 'limit' => -1 en frontend. Limitar + transient cuando aplique.
-- Transients: Para shortcodes con WP_Query, usar set_transient() con TTL razonable. Clave: mu_[shortcode]_html.
-- Hero promos: La lógica de fechas usa DateTime::createFromFormat('dmY', ...) en PHP. La imagen del primer slide lleva loading="eager" + fetchpriority="high" para optimizar LCP.
-- Geolocalización: SIEMPRE consumir muyu_get_cached_geolocation() en lugar de llamar directamente a wc_get_customer_geolocation(). Garantiza una única llamada por request.
+- Siempre: if ( ! function_exists( 'mu_fn' ) ) { ... add_action/filter dentro del bloque }
+- AJAX WC: prefijo wc_ajax_mu_
+- Evitar hooks pesados (init/wp_loaded) cuando hay alternativas más específicas.
+- WP Cron: wp_schedule_single_event() para tareas pesadas. NUNCA en shutdown/admin_init/template_redirect.
+- API Keys: NUNCA hardcodear. Usar constantes en wp-config.php.
+- DB Queries: NUNCA 'limit' => -1 en frontend. Siempre limitar + transient.
+- Transients: clave mu_[contexto]_{id}. TTL razonable. Invalidar en el hook de cambio de estado.
+- Geolocalización: SIEMPRE muyu_get_cached_geolocation(). NUNCA wc_get_customer_geolocation() directo.
+- Hero promos: fechas con DateTime::createFromFormat('dmY'). Primer slide: loading="eager" fetchpriority="high".
 
 JavaScript
-- Aislamiento: IIFE + 'use strict';.
-- Ejecución: DOMContentLoaded.
-- Cero jQuery salvo obligación de WooCommerce legacy.
-- Pasar datos PHP→JS vía wp_localize_script. NUNCA emitir <script> inline con lógica.
-- Shuffle arrays: SIEMPRE usar Fisher-Yates. NUNCA sort(() => 0.5 - Math.random()).
-- Carrusel: NUNCA duplicar initCarousels(). Todo .mu-carousel-wrapper es automático.
-- Hero slider: Controla SOLO elementos .mu-hero-promo-slide. Dots identificados por data-hero-dot (sin onclick inline). Swipe con {passive:true}.
+- IIFE + 'use strict' + DOMContentLoaded. Cero jQuery salvo obligación WC legacy.
+- Datos PHP→JS: wp_localize_script(). NUNCA <script> inline con lógica.
+- Arrays: Fisher-Yates. NUNCA sort(() => 0.5 - Math.random()).
+- Carrusel: NUNCA duplicar initCarousels(). Cualquier .mu-carousel-wrapper es automático.
+- Hero slider: dots por data-hero-dot (sin onclick inline). Swipe con {passive:true}.
 
 CSS
-- Prefijos: .mu-[componente]__elem--[mod] (BEM).
-- Sobrescrituras: /* override GP: [motivo] */.
-- Variables: SIEMPRE usar variables CSS existentes. NUNCA hardcodear colores con variable disponible.
+- Prefijo + BEM: .mu-[componente]__elem--[mod]
+- Sobrescrituras GP: /* override GP: [motivo] */
+- SIEMPRE variables CSS. NUNCA hardcodear colores con variable disponible.
 
-7. PENDIENTES / DEUDA TÉCNICA
+════════════════════════════════════════════════════════════════
+6. DEUDA TÉCNICA
+════════════════════════════════════════════════════════════════
 
-- Evaluar auto-host de libphonenumber-js para eliminar dependencia CDN en checkout.
-- Migrar bulk actions de Legacy a HPOS (woocommerce_order_list_table_bulk_actions).
-- [PENDIENTE PERFORMANCE] digital-restriction.php: N+1 en display_digital_price_in_catalog. Evaluar get_post_meta() directo.
-- [MIGRADO] Code Snippets "MU Core v2.1", "Addon Nombre v3.0", "Addon Etiquetas v3.0" → desactivar en plugin.
-- [ACCIÓN REQUERIDA] Desactivar snippet "Login + Password" en Code Snippets.
-- [ACCIÓN REQUERIDA] Desactivar y eliminar plugin "DCMS - Estilos Premium Ficha de Producto".
-- [ACCIÓN REQUERIDA] Desactivar snippet con [mu_bestsellers_section] / [mu_popcat_section] en Code Snippets.
-- [ACCIÓN REQUERIDA] Desactivar snippet con [mu_hero_section] en Code Snippets al mergear este PR.
+- [ ] checkout.js: libphonenumber-js desde CDN unpkg.com — evaluar auto-host local.
+- [ ] orders-workflow.php: bulk actions Legacy → migrar a HPOS (woocommerce_order_list_table_bulk_actions).
+- [ ] digital-restriction.php: N+1 en display_digital_price_in_catalog — evaluar get_post_meta() directo.
