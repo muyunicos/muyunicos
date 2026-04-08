@@ -336,65 +336,71 @@ if ( ! function_exists( 'mu_should_show_country_modal' ) ) {
 }
 
 /**
- * Enqueue condicional del modal de país
+ * Enqueue condicional del modal de país.
+ * Protegido con function_exists() para compatibilidad con snippets/plugins externos.
  */
-function mu_country_modal_enqueue() {
-    if ( is_admin() || ! mu_should_show_country_modal() ) return;
-    
-    $theme_version = wp_get_theme()->get( 'Version' );
-    $theme_uri = get_stylesheet_directory_uri();
-    
-    wp_enqueue_style( 'mu-country-modal', $theme_uri . '/css/components/country-modal.css', [ 'mu-base' ], $theme_version );
-    wp_enqueue_script( 'mu-country-modal-js', $theme_uri . '/js/country-modal.js', [], $theme_version, true );
+if ( ! function_exists( 'mu_country_modal_enqueue' ) ) {
+    function mu_country_modal_enqueue() {
+        if ( is_admin() || ! mu_should_show_country_modal() ) return;
+        
+        $theme_version = wp_get_theme()->get( 'Version' );
+        $theme_uri = get_stylesheet_directory_uri();
+        
+        wp_enqueue_style( 'mu-country-modal', $theme_uri . '/css/components/country-modal.css', [ 'mu-base' ], $theme_version );
+        wp_enqueue_script( 'mu-country-modal-js', $theme_uri . '/js/country-modal.js', [], $theme_version, true );
+    }
+    add_action( 'wp_enqueue_scripts', 'mu_country_modal_enqueue', 30 );
 }
-add_action( 'wp_enqueue_scripts', 'mu_country_modal_enqueue', 30 );
 
 /**
  * Renderiza el HTML del modal de país en wp_footer.
  * Reutiliza la geolocalización ya cacheada por muyu_get_cached_geolocation().
+ * Protegido con function_exists() para compatibilidad con snippets/plugins externos.
  */
-function mu_country_modal_html() {
-    if ( is_admin() || ! mu_should_show_country_modal() ) return;
-    
-    $countries    = muyu_get_countries_data();
-    $request_uri  = $_SERVER['REQUEST_URI'] ?? '/';
-    $current_domain = preg_replace( '/:\d+$/', '', trim( $_SERVER['HTTP_HOST'] ?? '' ) );
-    
-    // Geolocalización cacheada — sin segunda llamada a wc_get_customer_geolocation()
-    $geo          = muyu_get_cached_geolocation();
-    $user_country = ( ! empty( $geo['country'] ) ) ? strtoupper( $geo['country'] ) : null;
-    
-    if ( ! $user_country || ! isset( $countries[ $user_country ] ) ) return;
-    
-    $target        = $countries[ $user_country ];
-    $prefix        = muyu_country_language_prefix( $user_country );
-    $final_request = muyu_clean_uri( $prefix, $request_uri );
-    $target_url    = 'https://' . rtrim( $target['host'], '/' ) . $final_request;
-    
-    $modal_question = sprintf( muyu_country_modal_text( $user_country, 'question' ), $target['name'] );
-    $modal_stay     = muyu_country_modal_text( $user_country, 'stay' );
-    $flag_url       = 'https://flagcdn.com/w40/' . esc_attr( $target['flag'] ) . '.png';
-    ?>
-    <div id="muyu-country-modal-overlay" data-current-domain="<?php echo esc_attr( $current_domain ); ?>">
-        <div id="muyu-country-modal">
-            <button id="muyu-country-close" title="Cerrar" aria-label="Cerrar">&times;</button>
-            <div>
+if ( ! function_exists( 'mu_country_modal_html' ) ) {
+    function mu_country_modal_html() {
+        if ( is_admin() || ! mu_should_show_country_modal() ) return;
+        
+        $countries    = muyu_get_countries_data();
+        $request_uri  = $_SERVER['REQUEST_URI'] ?? '/';
+        $current_domain = preg_replace( '/:\d+$/', '', trim( $_SERVER['HTTP_HOST'] ?? '' ) );
+        
+        // Geolocalización cacheada — sin segunda llamada a wc_get_customer_geolocation()
+        $geo          = muyu_get_cached_geolocation();
+        $user_country = ( ! empty( $geo['country'] ) ) ? strtoupper( $geo['country'] ) : null;
+        
+        if ( ! $user_country || ! isset( $countries[ $user_country ] ) ) return;
+        
+        $target        = $countries[ $user_country ];
+        $prefix        = muyu_country_language_prefix( $user_country );
+        $final_request = muyu_clean_uri( $prefix, $request_uri );
+        $target_url    = 'https://' . rtrim( $target['host'], '/' ) . $final_request;
+        
+        $modal_question = sprintf( muyu_country_modal_text( $user_country, 'question' ), $target['name'] );
+        $modal_stay     = muyu_country_modal_text( $user_country, 'stay' );
+        $flag_url       = 'https://flagcdn.com/w40/' . esc_attr( $target['flag'] ) . '.png';
+        ?>
+        <div id="muyu-country-modal-overlay" data-current-domain="<?php echo esc_attr( $current_domain ); ?>">
+            <div id="muyu-country-modal">
+                <button id="muyu-country-close" title="Cerrar" aria-label="Cerrar">&times;</button>
                 <div>
-                    <?php echo esc_html( $modal_question ); ?>
-                    <img src="<?php echo esc_attr( $flag_url ); ?>" alt="<?php echo esc_attr( $target['name'] ); ?>" />
+                    <div>
+                        <?php echo esc_html( $modal_question ); ?>
+                        <img src="<?php echo esc_attr( $flag_url ); ?>" alt="<?php echo esc_attr( $target['name'] ); ?>" />
+                    </div>
+                    <a href="<?php echo esc_url( $target_url ); ?>" rel="nofollow" class="muyu-country-btn">
+                        Ir a Muy Únicos <?php echo esc_html( $target['name'] ); ?>
+                    </a>
                 </div>
-                <a href="<?php echo esc_url( $target_url ); ?>" rel="nofollow" class="muyu-country-btn">
-                    Ir a Muy Únicos <?php echo esc_html( $target['name'] ); ?>
-                </a>
+                <button id="muyu-country-stay" class="muyu-country-stay-btn">
+                    <?php echo esc_html( $modal_stay ); ?>
+                </button>
             </div>
-            <button id="muyu-country-stay" class="muyu-country-stay-btn">
-                <?php echo esc_html( $modal_stay ); ?>
-            </button>
         </div>
-    </div>
-    <?php
+        <?php
+    }
+    add_action( 'wp_footer', 'mu_country_modal_html', 100 );
 }
-add_action( 'wp_footer', 'mu_country_modal_html', 100 );
 
 // ============================================
 // SELECTOR DE PAÍS EN HEADER
@@ -451,12 +457,14 @@ add_shortcode( 'country_redirect_selector', 'render_country_redirect_selector' )
 /**
  * Inyecta el selector de país en el header
  */
-function mu_inject_country_selector_header() {
-    if ( ! function_exists( 'render_country_redirect_selector' ) ) return;
-    ?>
-    <div class="mu-header-country-item">
-        <?php echo render_country_redirect_selector(); ?>
-    </div>
-    <?php
+if ( ! function_exists( 'mu_inject_country_selector_header' ) ) {
+    function mu_inject_country_selector_header() {
+        if ( ! function_exists( 'render_country_redirect_selector' ) ) return;
+        ?>
+        <div class="mu-header-country-item">
+            <?php echo render_country_redirect_selector(); ?>
+        </div>
+        <?php
+    }
+    add_action( 'generate_header', 'mu_inject_country_selector_header', 1 );
 }
-add_action( 'generate_header', 'mu_inject_country_selector_header', 1 );

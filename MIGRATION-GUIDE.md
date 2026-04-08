@@ -1,6 +1,6 @@
 MUY ÍNICOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v2.6.1 · Apr 8, 2026
+Estado: Refactor Modular Pragmático · v2.6.2 · Apr 8, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -89,7 +89,7 @@ muyunicos/ (generatepress-child)
     ├── hero.js                # ✅ is_front_page() — IIFE, autoplay 7s, swipe (touch), dots data-driven
     ├── product.js             # is_product()
     ├── cart.js                # is_cart()
-    ├── flexible-price.js      # is_cart() || is_checkout()
+    ├── flexible-price.js      # is_cart() || is_checkout() — encolado por mu_flexible_price_enqueue() en flexible-price.php. NO agregar a mu_enqueue_assets().
     ├── checkout.js            # is_checkout() && ! is_order_received_page()
     ├── modal-auth.js          # ! is_user_logged_in()
     ├── country-modal.js       # Condicional (inc/geo.php)
@@ -106,13 +106,13 @@ PHP · inc/
 Archivo | Responsabilidad principal
 ---|---
 inc/icons.php | mu_get_icon() — todos los SVGs del tema
-inc/geo.php | ✅ Detección de país por dominio, control de decimales, redirect selector, modal sugerencia, prefijo idioma. muyu_get_cached_geolocation() centraliza y cachea wc_get_customer_geolocation() con static $geo — una sola llamada por request.
+inc/geo.php | ✅ Detección de país por dominio, control de decimales, redirect selector, modal sugerencia, prefijo idioma. muyu_get_cached_geolocation() centraliza y cachea wc_get_customer_geolocation() con static $geo — una sola llamada por request. mu_country_modal_enqueue() y mu_country_modal_html() protegidas con function_exists().
 inc/digital-restriction.php | Restricción de productos físicos en subdominios v4.1.0. Rebuild de índices via WP Cron.
 inc/auth-modal.php | HTML modal auth, endpoints wc_ajax_mu_*
-inc/login.php | Personalización wp-login.php v2.1.0: enqueue css/login.css + inline background-image (wp_add_inline_style), login_headerurl, login_errors genérico, mu_smart_login_redirect.
+inc/login.php | ✅ Personalización wp-login.php v2.1.0: enqueue css/login.css + inline background-image (wp_add_inline_style), login_headerurl, login_errors genérico, mu_smart_login_redirect. Cargado via mu_load_module('login') en functions.php.
 inc/checkout.php | Checkout Híbrido, Gestión contraseñas WC. Login Gate: mu_checkout_login_notice (prioridad 5).
 inc/cart.php | Añadir múltiples ítems, buffers BACS.
-inc/flexible-price.php | Precio Flexible v4.0: mapa O(1), validación, captura, precio dinámico, AJAX handler, enqueue js/flexible-price.js.
+inc/flexible-price.php | Precio Flexible v4.0: mapa O(1), validación, captura, precio dinámico, AJAX handler. Encola js/flexible-price.js via mu_flexible_price_enqueue() (hook propio wp_enqueue_scripts). NO encolar desde mu_enqueue_assets() — causaría duplicado.
 inc/ui.php | Header icons, Cart badge fragment, WhatsApp btn, Custom Search form, Custom Footer, Share shortcode, Google Site Kit canonical, WPLingua body class, Category Description Mover, Reemplazo precio $0, Disable GP Featured image. Shortcodes: [mu_testimonios_section] (has_shortcode condicional) · [mu_bestsellers_section] (transient 12h) · [mu_popcat_section] (estático) · [mu_hero_section] (filtrado por fecha DateTime). mu_home_sections_enqueue() encola css/home.css + js/hero.js en is_front_page().
 inc/orders-files.php | Gestor de archivos: Admin, Email, Account.
 inc/orders-workflow.php | Workflow pedidos: Estado 'wc-production', Emails inteligentes, Admin UI.
@@ -159,7 +159,7 @@ js/footer.js | Global
 js/hero.js | ✅ is_front_page() — IIFE + strict. Controla slider .mu-hero-promo-slider: autoplay 7s, dots vía data-hero-dot (sin onclick inline), swipe touch (passive listeners, umbral 50px), navegación circular, aria-selected en dots. Sin dependencias externas.
 js/product.js | is_product()
 js/cart.js | is_cart()
-js/flexible-price.js | is_cart() \|\| is_checkout()
+js/flexible-price.js | is_cart() \|\| is_checkout() — encolado por mu_flexible_price_enqueue() en flexible-price.php. NO agregar a mu_enqueue_assets().
 js/checkout.js | is_checkout() && ! is_order_received_page()
 js/modal-auth.js | ! is_user_logged_in()
 js/country-modal.js | Condicional (inc/geo.php)
@@ -253,7 +253,6 @@ CSS
 - [PENDIENTE PERFORMANCE] downloads-bonus.php: limitar wc_get_orders() a 'limit' => 50.
 - [PENDIENTE PERFORMANCE] digital-restriction.php: N+1 en display_digital_price_in_catalog. Evaluar get_post_meta() directo.
 - [PENDIENTE] flexible-price.php: mu_get_flexible_product_ids() hardcoded. Migrar a get_option().
-- [ACCIÓN REQUERIDA] Agregar myAccountUrl al wp_localize_script de muCheckout en functions.php.
 - [ACCIÓN REQUERIDA] Definir constante MU_GOOGLE_PLACES_API_KEY en wp-config.php.
 - [MIGRADO] Code Snippets "MU Core v2.1", "Addon Nombre v3.0", "Addon Etiquetas v3.0" → desactivar en plugin.
 - [ACCIÓN REQUERIDA] Desactivar snippet "Login + Password" en Code Snippets.
