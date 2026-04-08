@@ -13,6 +13,7 @@
  * - Mover descripción de categoría al final del loop
  * - Mostrar "¡Gratis!" en productos con precio $0
  * - Desactivar Imagen Destacada en cabecera
+ * - Shortcode de Testimonios / Reseñas Google [mu_testimonios_section]
  *
  * @package GeneratePress_Child
  * @since 1.0.0
@@ -143,7 +144,7 @@ if ( ! function_exists( 'mu_boton_flotante_whatsapp' ) ) {
 }
 
 // ============================================
-// FORMULARIO DE BÚSQUEDA CUSTOM
+// FORMULARIO DE BÚSQL CUSTOM
 // ============================================
 
 if ( ! function_exists( 'mu_custom_search_form_logic' ) ) {
@@ -362,4 +363,141 @@ if ( ! function_exists( 'mu_desactivar_imagen_destacada_html' ) ) {
         remove_action( 'generate_before_content', 'generate_featured_page_header_area', 10 );
     }
     add_action( 'wp', 'mu_desactivar_imagen_destacada_html' );
+}
+
+// ============================================
+// SHORTCODE TESTIMONIOS / RESEÑAS GOOGLE
+// Uso: [mu_testimonios_section]
+// Carga condicional de assets: solo cuando el shortcode está presente en la página.
+// La API Key debe definirse en wp-config.php:
+//   define( 'MU_GOOGLE_PLACES_API_KEY', 'tu-api-key' );
+// ============================================
+
+if ( ! function_exists( 'mu_testimonios_enqueue' ) ) {
+    /**
+     * Encola CSS y JS de testimonios únicamente en páginas
+     * que contengan el shortcode [mu_testimonios_section].
+     * Hook: wp (post content ya disponible).
+     */
+    function mu_testimonios_enqueue() {
+        global $post;
+        if (
+            ! is_a( $post, 'WP_Post' ) ||
+            ! has_shortcode( $post->post_content, 'mu_testimonios_section' )
+        ) {
+            return;
+        }
+
+        wp_enqueue_style(
+            'mu-testimonials',
+            get_stylesheet_directory_uri() . '/css/testimonials.css',
+            [],
+            '1.0.0'
+        );
+
+        wp_enqueue_script(
+            'mu-testimonials',
+            get_stylesheet_directory_uri() . '/js/testimonials.js',
+            [],
+            '1.0.0',
+            true // footer
+        );
+    }
+    add_action( 'wp_enqueue_scripts', 'mu_testimonios_enqueue' );
+}
+
+if ( ! function_exists( 'mu_testimonios_section' ) ) {
+    function mu_testimonios_section() {
+        // Configuración
+        // La API Key se lee desde la constante definida en wp-config.php.
+        // NUNCA hardcodear la key en el repositorio.
+        $api_key        = defined( 'MU_GOOGLE_PLACES_API_KEY' ) ? MU_GOOGLE_PLACES_API_KEY : '';
+        $place_id       = 'ChIJ18LlLQPchJURqIDwiZM7t_E';
+        $db_option_name = 'mu_reviews_master_db';
+        $msg_update     = '';
+
+        // Actualización manual desde Google (solo admins, vía ?force_reviews=1)
+        if ( $api_key && current_user_can( 'administrator' ) && isset( $_GET['force_reviews'] ) ) {
+            $url      = add_query_arg(
+                [
+                    'placeid'  => $place_id,
+                    'fields'   => 'reviews',
+                    'key'      => $api_key,
+                    'language' => 'es',
+                ],
+                'https://maps.googleapis.com/maps/api/place/details/json'
+            );
+            $response = wp_remote_get( $url, [ 'timeout' => 10 ] );
+
+            if ( ! is_wp_error( $response ) ) {
+                $data       = json_decode( wp_remote_retrieve_body( $response ), true );
+                $new_batch  = $data['result']['reviews'] ?? [];
+                $current_db = get_option( $db_option_name, [] );
+                $added      = 0;
+
+                foreach ( $new_batch as $item ) {
+                    if ( intval( $item['rating'] ) < 5 ) continue;
+
+                    $exists = false;
+                    foreach ( $current_db as $stored ) {
+                        if ( $stored['time'] == $item['time'] && $stored['author_name'] === $item['author_name'] ) {
+                            $exists = true;
+                            break;
+                        }
+                    }
+                    if ( ! $exists ) {
+                        $current_db[] = $item;
+                        $added++;
+                    }
+                }
+
+                if ( $added > 0 ) {
+                    update_option( $db_option_name, $current_db );
+                    $msg_update = sprintf(
+                        '<div style="background:#d4edda;color:#155724;padding:10px;text-align:center;border-radius:12px;margin-bottom:20px;font-size:0.9rem;">✅ Se agregaron %d reseñas nuevas.</div>',
+                        $added
+                    );
+                }
+            }
+        }
+
+        // Datos para el JS (pasados vía wp_localize_script)
+        $all_reviews = get_option( $db_option_name, [] );
+        wp_localize_script(
+            'mu-testimonials',
+            'muTestimonials',
+            [ 'reviews' => $all_reviews ]
+        );
+
+        ob_start();
+        echo wp_kses_post( $msg_update );
+        ?>
+        <section class="mu-testimonials mu-section">
+            <div class="mu-container">
+                <h2 class="mu-section-title">Clientes Felices</h2>
+
+                <div id="mu-reviews-container" class="mu-grid-reviews">
+                    <!-- js/testimonials.js inserta las tarjetas aquí -->
+                </div>
+
+                <div class="mu-bottom-actions">
+                    <a href="https://search.google.com/local/writereview?placeid=<?php echo esc_attr( $place_id ); ?>"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="mu-btn mu-btn-secondary">
+                        <span class="mu-btn-icon">⭐</span> Déjanos tu reseña
+                    </a>
+                </div>
+
+                <?php if ( current_user_can( 'administrator' ) ) : ?>
+                    <div style="text-align:center;margin-top:20px;font-size:12px;opacity:0.6;">
+                        <a href="?force_reviews=1" style="color:inherit;">↻ Admin: Actualizar desde Google</a>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </section>
+        <?php
+        return ob_get_clean();
+    }
+    add_shortcode( 'mu_testimonios_section', 'mu_testimonios_section' );
 }
