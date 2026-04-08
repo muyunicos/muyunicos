@@ -180,6 +180,37 @@ if ( ! function_exists( 'muyu_country_modal_text' ) ) {
 }
 
 // ============================================
+// GEOLOCALIZACIÓN CACHEADA (fix: doble llamada)
+// ============================================
+
+if ( ! function_exists( 'muyu_get_cached_geolocation' ) ) {
+    /**
+     * Devuelve el resultado de wc_get_customer_geolocation() cacheado
+     * para el ciclo de vida de la request. Garantiza que la función
+     * externa —que puede implicar una consulta a la base de datos o a
+     * un servicio remoto— se invoque una sola vez por página, incluso
+     * cuando múltiples consumidores (mu_should_show_country_modal y
+     * mu_country_modal_html) la necesiten.
+     *
+     * @return array|null Array con clave 'country', o null si WC no está disponible.
+     */
+    function muyu_get_cached_geolocation() {
+        static $geo = null;
+
+        if ( $geo === null ) {
+            if ( ! function_exists( 'wc_get_customer_geolocation' ) ||
+                 ! function_exists( 'WC' ) ||
+                 ! WC()->customer ) {
+                return null;
+            }
+            $geo = wc_get_customer_geolocation();
+        }
+
+        return $geo;
+    }
+}
+
+// ============================================
 // DECIMALES DE PRECIO POR PAÍS
 // ============================================
 
@@ -273,8 +304,9 @@ add_shortcode( 'mi_pais_facturacion', 'mostrar_nombre_pais_facturacion' );
 
 if ( ! function_exists( 'mu_should_show_country_modal' ) ) {
     /**
-     * Determina si debe mostrarse el modal de sugerencia de país
-     * 
+     * Determina si debe mostrarse el modal de sugerencia de país.
+     * Consume muyu_get_cached_geolocation() para evitar doble request.
+     *
      * @return bool True si debe mostrarse
      */
     function mu_should_show_country_modal() {
@@ -285,12 +317,9 @@ if ( ! function_exists( 'mu_should_show_country_modal' ) ) {
             return false;
         }
         
-        // Obtener país del usuario por geolocalización
-        $user_country = null;
-        if ( function_exists( 'wc_get_customer_geolocation' ) && function_exists( 'WC' ) && WC()->customer ) {
-            $geo = wc_get_customer_geolocation();
-            $user_country = ! empty( $geo['country'] ) ? strtoupper( $geo['country'] ) : null;
-        }
+        // Geolocalización cacheada — una sola llamada por request
+        $geo = muyu_get_cached_geolocation();
+        $user_country = ( ! empty( $geo['country'] ) ) ? strtoupper( $geo['country'] ) : null;
         
         if ( ! $user_country ) return false;
         
@@ -321,28 +350,30 @@ function mu_country_modal_enqueue() {
 add_action( 'wp_enqueue_scripts', 'mu_country_modal_enqueue', 30 );
 
 /**
- * Renderiza el HTML del modal de país en wp_footer
+ * Renderiza el HTML del modal de país en wp_footer.
+ * Reutiliza la geolocalización ya cacheada por muyu_get_cached_geolocation().
  */
 function mu_country_modal_html() {
     if ( is_admin() || ! mu_should_show_country_modal() ) return;
     
-    $countries = muyu_get_countries_data();
-    $request_uri = $_SERVER['REQUEST_URI'] ?? '/';
+    $countries    = muyu_get_countries_data();
+    $request_uri  = $_SERVER['REQUEST_URI'] ?? '/';
     $current_domain = preg_replace( '/:\d+$/', '', trim( $_SERVER['HTTP_HOST'] ?? '' ) );
     
-    $geo = wc_get_customer_geolocation();
-    $user_country = ! empty( $geo['country'] ) ? strtoupper( $geo['country'] ) : null;
+    // Geolocalización cacheada — sin segunda llamada a wc_get_customer_geolocation()
+    $geo          = muyu_get_cached_geolocation();
+    $user_country = ( ! empty( $geo['country'] ) ) ? strtoupper( $geo['country'] ) : null;
     
     if ( ! $user_country || ! isset( $countries[ $user_country ] ) ) return;
     
-    $target = $countries[ $user_country ];
-    $prefix = muyu_country_language_prefix( $user_country );
+    $target        = $countries[ $user_country ];
+    $prefix        = muyu_country_language_prefix( $user_country );
     $final_request = muyu_clean_uri( $prefix, $request_uri );
-    $target_url = 'https://' . rtrim( $target['host'], '/' ) . $final_request;
+    $target_url    = 'https://' . rtrim( $target['host'], '/' ) . $final_request;
     
     $modal_question = sprintf( muyu_country_modal_text( $user_country, 'question' ), $target['name'] );
-    $modal_stay = muyu_country_modal_text( $user_country, 'stay' );
-    $flag_url = 'https://flagcdn.com/w40/' . esc_attr( $target['flag'] ) . '.png';
+    $modal_stay     = muyu_country_modal_text( $user_country, 'stay' );
+    $flag_url       = 'https://flagcdn.com/w40/' . esc_attr( $target['flag'] ) . '.png';
     ?>
     <div id="muyu-country-modal-overlay" data-current-domain="<?php echo esc_attr( $current_domain ); ?>">
         <div id="muyu-country-modal">
