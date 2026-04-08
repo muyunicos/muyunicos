@@ -1,6 +1,6 @@
 MUY ÍNICOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v2.6.0 · Apr 8, 2026
+Estado: Refactor Modular Pragmático · v2.6.1 · Apr 8, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -38,6 +38,7 @@ muyunicos/ (generatepress-child)
 ├── inc/                       # ⚙️ MÓDULOS PHP (Lógica de negocio y hooks)
 │   ├── icons.php              # [CARGA PRIMERO] mu_get_icon() — repositorio de SVGs
 │   ├── geo.php                # Sistema multi-país + Auto-Detección + Decimales + Modal + Selector
+│   │                          # ✅ muyu_get_cached_geolocation() — caché estática (static $geo)
 │   ├── digital-restriction.php# ✅ Digital Restriction System v4.1.0 (Fix Memory: Rebuild vía WP Cron)
 │   ├── auth-modal.php         # Modal Login/Registro + endpoints WC-AJAX
 │   ├── login.php              # ✅ Login Page v2.1.0
@@ -105,7 +106,7 @@ PHP · inc/
 Archivo | Responsabilidad principal
 ---|---
 inc/icons.php | mu_get_icon() — todos los SVGs del tema
-inc/geo.php | Detección de país por dominio, control de decimales, redirect selector, modal sugerencia, prefijo idioma.
+inc/geo.php | ✅ Detección de país por dominio, control de decimales, redirect selector, modal sugerencia, prefijo idioma. muyu_get_cached_geolocation() centraliza y cachea wc_get_customer_geolocation() con static $geo — una sola llamada por request.
 inc/digital-restriction.php | Restricción de productos físicos en subdominios v4.1.0. Rebuild de índices via WP Cron.
 inc/auth-modal.php | HTML modal auth, endpoints wc_ajax_mu_*
 inc/login.php | Personalización wp-login.php v2.1.0: enqueue css/login.css + inline background-image (wp_add_inline_style), login_headerurl, login_errors genérico, mu_smart_login_redirect.
@@ -229,6 +230,7 @@ PHP
 - DB Queries: NUNCA WP_Query con 'limit' => -1 en frontend. Limitar + transient cuando aplique.
 - Transients: Para shortcodes con WP_Query, usar set_transient() con TTL razonable. Clave: mu_[shortcode]_html.
 - Hero promos: La lógica de fechas usa DateTime::createFromFormat('dmY', ...) en PHP. La imagen del primer slide lleva loading="eager" + fetchpriority="high" para optimizar LCP.
+- Geolocalización: SIEMPRE consumir muyu_get_cached_geolocation() en lugar de llamar directamente a wc_get_customer_geolocation(). Garantiza una única llamada por request.
 
 JavaScript
 - Aislamiento: IIFE + 'use strict';.
@@ -249,7 +251,6 @@ CSS
 - Evaluar auto-host de libphonenumber-js para eliminar dependencia CDN en checkout.
 - Migrar bulk actions de Legacy a HPOS (woocommerce_order_list_table_bulk_actions).
 - [PENDIENTE PERFORMANCE] downloads-bonus.php: limitar wc_get_orders() a 'limit' => 50.
-- [PENDIENTE PERFORMANCE] geo.php: evitar doble llamada a wc_get_customer_geolocation().
 - [PENDIENTE PERFORMANCE] digital-restriction.php: N+1 en display_digital_price_in_catalog. Evaluar get_post_meta() directo.
 - [PENDIENTE] flexible-price.php: mu_get_flexible_product_ids() hardcoded. Migrar a get_option().
 - [ACCIÓN REQUERIDA] Agregar myAccountUrl al wp_localize_script de muCheckout en functions.php.
