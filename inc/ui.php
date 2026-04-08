@@ -15,6 +15,7 @@
  * - Desactivar Imagen Destacada en cabecera
  * - Shortcode Testimonios / Reseñas Google [mu_testimonios_section]
  * - Shortcodes Home: [mu_bestsellers_section] + [mu_popcat_section]
+ * - Shortcode Hero Promos Dinámicas [mu_hero_section]
  *
  * @package GeneratePress_Child
  * @since 1.0.0
@@ -400,14 +401,15 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
 
 // ============================================
 // SHORTCODES HOME — ENQUEUE CONDICIONAL
-// Carga css/home.css solo en is_front_page().
-// El carrusel JS ya está cubierto por js/global-ui.js (initCarousels).
+// Carga css/home.css + js/hero.js solo en is_front_page().
+// El carrusel de bestsellers/popcat ya está cubierto por js/global-ui.js.
 // ============================================
 
 if ( ! function_exists( 'mu_home_sections_enqueue' ) ) {
     function mu_home_sections_enqueue() {
         if ( ! is_front_page() ) return;
-        wp_enqueue_style( 'mu-home', get_stylesheet_directory_uri() . '/css/home.css', [], '1.0.0' );
+        wp_enqueue_style( 'mu-home', get_stylesheet_directory_uri() . '/css/home.css', [], '1.1.0' );
+        wp_enqueue_script( 'mu-hero', get_stylesheet_directory_uri() . '/js/hero.js', [], '1.0.0', true );
     }
     add_action( 'wp_enqueue_scripts', 'mu_home_sections_enqueue' );
 }
@@ -415,13 +417,11 @@ if ( ! function_exists( 'mu_home_sections_enqueue' ) ) {
 // ============================================
 // SHORTCODE BESTSELLERS
 // Uso: [mu_bestsellers_section]
-// Muestra los 8 productos más vendidos en un carrusel hírido.
 // CSS: css/home.css | Carrusel JS: js/global-ui.js (initCarousels)
 // ============================================
 
 if ( ! function_exists( 'mu_bestsellers_section' ) ) {
     function mu_bestsellers_section() {
-        // Transient de 12h para evitar WP_Query en cada carga de la home
         $cache_key = 'mu_bestsellers_html';
         $cached    = get_transient( $cache_key );
         if ( $cached ) return $cached;
@@ -446,19 +446,13 @@ if ( ! function_exists( 'mu_bestsellers_section' ) ) {
         <section class="mu-bestsellers mu-section">
             <div class="mu-container">
                 <h2 class="mu-section-title">Nuestros Productos Más Vendidos</h2>
-
                 <div class="mu-carousel-wrapper">
                     <button class="mu-nav-btn prev" aria-label="Anterior">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
-                            <polyline points="15 18 9 12 15 6"></polyline>
-                        </svg>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><polyline points="15 18 9 12 15 6"></polyline></svg>
                     </button>
                     <button class="mu-nav-btn next" aria-label="Siguiente">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
-                            <polyline points="9 18 15 12 9 6"></polyline>
-                        </svg>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><polyline points="9 18 15 12 9 6"></polyline></svg>
                     </button>
-
                     <div class="mu-carousel-track">
                         <?php
                         if ( $query->have_posts() ) :
@@ -472,11 +466,9 @@ if ( ! function_exists( 'mu_bestsellers_section' ) ) {
                                         <?php if ( $product->is_on_sale() ) : ?>
                                             <span class="mu-product-badge">Oferta</span>
                                         <?php endif; ?>
-                                        <img src="<?php echo esc_url( $image_url ); ?>"
-                                             class="mu-product-image"
+                                        <img src="<?php echo esc_url( $image_url ); ?>" class="mu-product-image"
                                              alt="<?php echo esc_attr( get_the_title() ); ?>"
-                                             width="300" height="300"
-                                             loading="lazy">
+                                             width="300" height="300" loading="lazy">
                                         <h3 class="mu-product-title"><?php the_title(); ?></h3>
                                         <span class="mu-product-price"><?php echo $product->get_price_html(); ?></span>
                                         <span class="mu-product-btn">Ver Producto</span>
@@ -490,11 +482,8 @@ if ( ! function_exists( 'mu_bestsellers_section' ) ) {
                         ?>
                     </div>
                 </div>
-
                 <div class="mu-bestsellers-footer">
-                    <a href="<?php echo esc_url( add_query_arg( 'orderby', 'popularity', wc_get_page_permalink( 'shop' ) ) ); ?>" class="mu-btn mu-btn-primary">
-                        Ver Todos
-                    </a>
+                    <a href="<?php echo esc_url( add_query_arg( 'orderby', 'popularity', wc_get_page_permalink( 'shop' ) ) ); ?>" class="mu-btn mu-btn-primary">Ver Todos</a>
                 </div>
             </div>
         </section>
@@ -509,42 +498,16 @@ if ( ! function_exists( 'mu_bestsellers_section' ) ) {
 // ============================================
 // SHORTCODE CATEGORÍAS POPULARES
 // Uso: [mu_popcat_section]
-// Grid de 4 columnas en desktop, carrusel en móvil.
 // CSS: css/home.css | Carrusel JS: js/global-ui.js (initCarousels)
 // ============================================
 
 if ( ! function_exists( 'mu_popcat_section' ) ) {
     function mu_popcat_section() {
-        // Categorías configuradas estáticamente — cambiar aquí si se renombran slugs
         $categories = [
-            [
-                'href'  => '/tienda/escolares/',
-                'img'   => '/wp-content/uploads/2026/02/catescolares.webp',
-                'alt'   => 'Etiquetas Escolares',
-                'title' => 'Etiquetas Escolares',
-                'desc'  => 'Más de 150 diseños',
-            ],
-            [
-                'href'  => '/tienda/decoracion/',
-                'img'   => '/wp-content/uploads/2026/02/catstickers.webp',
-                'alt'   => 'Stickers Decorativos',
-                'title' => 'Stickers Decorativos',
-                'desc'  => 'Planchas y packs',
-            ],
-            [
-                'href'  => '/tienda/emprendimientos/',
-                'img'   => '/wp-content/uploads/2026/02/catetiquetas.webp',
-                'alt'   => 'Emprendedores',
-                'title' => 'Emprendedores',
-                'desc'  => 'Todo para tu marca',
-            ],
-            [
-                'href'  => '/tienda/outlet/',
-                'img'   => '/wp-content/uploads/2026/02/catoutlet.webp',
-                'alt'   => 'Outlet',
-                'title' => 'Outlet',
-                'desc'  => 'Productos en oferta',
-            ],
+            [ 'href' => '/tienda/escolares/',     'img' => '/wp-content/uploads/2026/02/catescolares.webp', 'alt' => 'Etiquetas Escolares',  'title' => 'Etiquetas Escolares',  'desc' => 'Más de 150 diseños' ],
+            [ 'href' => '/tienda/decoracion/',    'img' => '/wp-content/uploads/2026/02/catstickers.webp',  'alt' => 'Stickers Decorativos', 'title' => 'Stickers Decorativos', 'desc' => 'Planchas y packs' ],
+            [ 'href' => '/tienda/emprendimientos/', 'img' => '/wp-content/uploads/2026/02/catetiquetas.webp', 'alt' => 'Emprendedores',       'title' => 'Emprendedores',        'desc' => 'Todo para tu marca' ],
+            [ 'href' => '/tienda/outlet/',        'img' => '/wp-content/uploads/2026/02/catoutlet.webp',    'alt' => 'Outlet',               'title' => 'Outlet',               'desc' => 'Productos en oferta' ],
         ];
 
         ob_start();
@@ -552,19 +515,13 @@ if ( ! function_exists( 'mu_popcat_section' ) ) {
         <section class="mu-section">
             <div class="mu-container">
                 <h2 class="mu-section-title">Explora Nuestras Categorías</h2>
-
                 <div class="mu-carousel-wrapper">
                     <button class="mu-nav-btn prev" aria-label="Anterior">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
-                            <polyline points="15 18 9 12 15 6"></polyline>
-                        </svg>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><polyline points="15 18 9 12 15 6"></polyline></svg>
                     </button>
                     <button class="mu-nav-btn next" aria-label="Siguiente">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
-                            <polyline points="9 18 15 12 9 6"></polyline>
-                        </svg>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><polyline points="9 18 15 12 9 6"></polyline></svg>
                     </button>
-
                     <div class="mu-carousel-track">
                         <?php foreach ( $categories as $cat ) : ?>
                             <div class="mu-carousel-item">
@@ -572,8 +529,7 @@ if ( ! function_exists( 'mu_popcat_section' ) ) {
                                     <a href="<?php echo esc_url( $cat['href'] ); ?>">
                                         <div class="mu-category-image">
                                             <img src="<?php echo esc_url( $cat['img'] ); ?>"
-                                                 alt="<?php echo esc_attr( $cat['alt'] ); ?>"
-                                                 loading="lazy">
+                                                 alt="<?php echo esc_attr( $cat['alt'] ); ?>" loading="lazy">
                                         </div>
                                         <div class="mu-category-info">
                                             <h3><?php echo esc_html( $cat['title'] ); ?></h3>
@@ -591,4 +547,157 @@ if ( ! function_exists( 'mu_popcat_section' ) ) {
         return ob_get_clean();
     }
     add_shortcode( 'mu_popcat_section', 'mu_popcat_section' );
+}
+
+// ============================================
+// SHORTCODE HERO PROMOS DINÁMICAS
+// Uso: [mu_hero_section]
+// CSS: css/home.css (sección Hero, encolado por mu_home_sections_enqueue)
+// JS:  js/hero.js  (IIFE, autoplay 7s, swipe, dots — encolado por mu_home_sections_enqueue)
+// Las promos se filtran por fecha en PHP: DateTime::createFromFormat('dmY', ...)
+// ============================================
+
+if ( ! function_exists( 'mu_hero_section' ) ) {
+    function mu_hero_section() {
+        if ( is_admin() || ( defined( 'DOING_AJAX' ) && DOING_AJAX ) ) return '';
+
+        // --- CONFIGURACIÓN DE PROMOS ---
+        // Para agregar/editar promos solo modificar este array.
+        // 'inicio' y 'fin' en formato 'dmY' (día-mes-año).
+        // Omitir ambas claves para mostrar siempre.
+        $promos_data = [
+            [
+                'id'                    => 'vuelta-al-cole',
+                'inicio'                => '01012024',
+                'fin'                   => '01032027',
+                'imagen'                => '/wp-content/uploads/2026/02/fondo0126.webp',
+                'eyebrow'               => 'Vuelta a Clases 2026',
+                'titulo'                => 'Etiquetas escolares <span class="mu-highlight">únicas</span>',
+                'descripcion'           => 'Personalizadas a mano. Más de 150 diseños diferentes para que nada se pierda.',
+                'cta_texto'             => 'Ver Diseños',
+                'cta_url'               => '/tienda/escolares/',
+                'cta_secundario_texto'  => 'Guía de uso',
+                'cta_secundario_url'    => '/guia-etiquetas-personalizadas/',
+                'show_free_badge'       => true,
+                'free_badge_text'       => '<strong>¡20% OFF!</strong><span>cupón: COLE26</span>',
+            ],
+            [
+                'id'                    => 'san-valentin',
+                'inicio'                => '01022026',
+                'fin'                   => '20022026',
+                'imagen'                => '/wp-content/uploads/2026/02/sanvalentin.webp',
+                'eyebrow'               => 'San Valentín 14/02',
+                'titulo'                => 'Stickers para <span class="mu-highlight">enamorarse</span>',
+                'descripcion'           => 'Visitá nuestra selección de etiquetas imprimibles para celebrar el amor.',
+                'cta_texto'             => 'Ver Diseños',
+                'cta_url'               => '/tienda/eventos/',
+                'show_free_badge'       => false,
+            ],
+        ];
+
+        // --- FILTRADO POR FECHA ---
+        $active_promos = [];
+        $now           = time();
+
+        foreach ( $promos_data as $p ) {
+            if ( empty( $p['inicio'] ) || empty( $p['fin'] ) ) {
+                $active_promos[] = $p;
+                continue;
+            }
+            $dt_start = DateTime::createFromFormat( 'dmY', $p['inicio'] );
+            $dt_end   = DateTime::createFromFormat( 'dmY', $p['fin'] );
+            if ( ! $dt_start || ! $dt_end ) continue;
+
+            $start = $dt_start->setTime( 0, 0, 0 )->getTimestamp();
+            $end   = $dt_end->setTime( 23, 59, 59 )->getTimestamp();
+
+            if ( $now >= $start && $now <= $end ) {
+                $active_promos[] = $p;
+            }
+        }
+
+        if ( empty( $active_promos ) ) return '';
+
+        // --- DEFAULTS PARA BADGE ---
+        $badge_defaults = [
+            'url'  => '/tienda/digital/?min_price=0&max_price=0',
+            'text' => '<strong>¡Gratis!</strong><span>Envíos digitales</span>',
+        ];
+
+        $total = count( $active_promos );
+
+        ob_start();
+        ?>
+        <section class="mu-hero-promo">
+            <div class="mu-hero-promo-wrapper" data-hero-slides="<?php echo esc_attr( $total ); ?>">
+                <div class="mu-hero-promo-slider" id="muHeroSlider">
+                    <?php foreach ( $active_promos as $idx => $promo ) :
+                        $is_first      = ( 0 === $idx );
+                        $show_badge    = ! empty( $promo['show_free_badge'] ) && true === $promo['show_free_badge'];
+                        $badge_url     = ! empty( $promo['free_badge_url'] )  ? $promo['free_badge_url']  : $badge_defaults['url'];
+                        $badge_text    = ! empty( $promo['free_badge_text'] ) ? $promo['free_badge_text'] : $badge_defaults['text'];
+                    ?>
+                    <div class="mu-hero-promo-slide<?php echo $is_first ? ' active' : ''; ?>"
+                         data-slide-index="<?php echo esc_attr( $idx ); ?>">
+
+                        <div class="mu-hero-promo-bg">
+                            <img src="<?php echo esc_url( $promo['imagen'] ); ?>"
+                                 alt="<?php echo esc_attr( strip_tags( $promo['titulo'] ) ); ?>"
+                                 width="1280" height="580"
+                                 loading="<?php echo $is_first ? 'eager' : 'lazy'; ?>"
+                                 <?php echo $is_first ? 'fetchpriority="high"' : ''; ?>
+                                 decoding="async">
+                        </div>
+
+                        <div class="mu-hero-promo-content">
+                            <?php if ( ! empty( $promo['eyebrow'] ) ) : ?>
+                                <div class="mu-hero-promo-eyebrow">
+                                    <?php echo esc_html( $promo['eyebrow'] ); ?>
+                                </div>
+                            <?php endif; ?>
+
+                            <h1 class="mu-hero-promo-title"><?php echo wp_kses_post( $promo['titulo'] ); ?></h1>
+                            <p class="mu-hero-promo-desc"><?php echo esc_html( $promo['descripcion'] ); ?></p>
+
+                            <div class="mu-hero-promo-actions">
+                                <a href="<?php echo esc_url( $promo['cta_url'] ); ?>" class="mu-btn mu-btn-primary">
+                                    <span><?php echo esc_html( $promo['cta_texto'] ); ?></span>
+                                    <?php echo mu_get_icon( 'arrow' ); ?>
+                                </a>
+
+                                <?php if ( ! empty( $promo['cta_secundario_texto'] ) && ! empty( $promo['cta_secundario_url'] ) ) : ?>
+                                <a href="<?php echo esc_url( $promo['cta_secundario_url'] ); ?>" class="mu-btn mu-btn-outline">
+                                    <?php echo esc_html( $promo['cta_secundario_texto'] ); ?>
+                                </a>
+                                <?php endif; ?>
+
+                                <?php if ( $show_badge ) : ?>
+                                <a href="<?php echo esc_url( $badge_url ); ?>" class="mu-hero-promo-free-badge">
+                                    <div class="mu-hero-promo-free-text"><?php echo wp_kses_post( $badge_text ); ?></div>
+                                </a>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+
+                <?php if ( $total > 1 ) : ?>
+                <div class="mu-hero-promo-dots" role="tablist" aria-label="Promos">
+                    <?php foreach ( $active_promos as $idx => $promo ) : ?>
+                    <button class="mu-hero-promo-dot<?php echo 0 === $idx ? ' active' : ''; ?>"
+                            role="tab"
+                            aria-selected="<?php echo 0 === $idx ? 'true' : 'false'; ?>"
+                            aria-label="Promo <?php echo $idx + 1; ?>"
+                            data-hero-dot="<?php echo esc_attr( $idx ); ?>"></button>
+                    <?php endforeach; ?>
+                </div>
+                <?php endif; ?>
+
+            </div>
+        </section>
+        <?php
+        return ob_get_clean();
+    }
+    add_shortcode( 'mu_hero_section', 'mu_hero_section' );
 }
