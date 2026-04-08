@@ -1,7 +1,7 @@
 /*
  * Muy Únicos — Home Page Styles
  * Carga: is_front_page()
- * Secciones: [mu_bestsellers_section] + [mu_popcat_section]
+ * Secciones: [mu_bestsellers_section] + [mu_popcat_section] + [mu_hero_section]
  *
  * NOTA: El sistema de carrusel híbrido (.mu-carousel-wrapper, .mu-carousel-track,
  * .mu-carousel-item, .mu-nav-btn) ya existe en css/components/global-ui.css
@@ -39,7 +39,6 @@
     border-color: var(--primario, #2B9FCF);
 }
 
-/* Imagen cuadrada */
 .mu-product-image {
     width: 100%;
     aspect-ratio: 1 / 1;
@@ -54,7 +53,6 @@
     transform: scale(1.05);
 }
 
-/* Título */
 .mu-product-title {
     font-size: 1.1rem;
     color: var(--texto, #333);
@@ -64,7 +62,6 @@
     margin: 0;
 }
 
-/* Precio */
 .mu-product-price {
     color: var(--primario, #2B9FCF);
     font-weight: 700;
@@ -81,7 +78,6 @@
     text-decoration: line-through;
 }
 
-/* Botón simulado */
 .mu-product-btn {
     background: var(--secundario, #FFD77A);
     color: var(--texto, #333);
@@ -100,7 +96,6 @@
     transform: translateY(-2px);
 }
 
-/* Badge de oferta */
 .mu-product-badge {
     position: absolute;
     top: 15px;
@@ -115,7 +110,6 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-/* Footer del bloque bestsellers */
 .mu-bestsellers-footer {
     text-align: center;
     margin-top: var(--mu-space-md, 20px);
@@ -150,7 +144,6 @@
     -webkit-user-drag: none;
 }
 
-/* Imagen con ratio fijo */
 .mu-category-image {
     aspect-ratio: 4 / 3;
     overflow: hidden;
@@ -171,7 +164,6 @@
     transform: scale(1.08);
 }
 
-/* Texto informativo */
 .mu-category-info {
     padding: 20px;
     text-align: center;
@@ -189,4 +181,306 @@
     font-size: 0.9rem;
     color: #666;
     margin: 0;
+}
+
+/* ============================================
+   §3. HERO SLIDER — [mu_hero_section]
+   Sistema de slides apilados (CSS Grid Stack).
+   Animación de entrada: opacidad + visibility.
+   El JS vive en js/hero.js (IIFE, sin globals).
+   ============================================ */
+
+/* Variables locales del hero (scope: solo este bloque) */
+.mu-hero-promo {
+    --mu-hero-h-desktop:   580px;
+    --mu-hero-transition:  0.8s;
+    /* #f14085: color de eyebrow promo (rosa vivo, sin variable global equivalente) */
+    --mu-hero-eyebrow-bg:  #f14085;
+}
+
+/* Layout */
+.mu-hero-promo {
+    padding: 0;
+    overflow: hidden;
+    contain: content;
+}
+
+.mu-hero-promo-wrapper {
+    max-width: 1280px;
+    margin: 0 auto;
+    position: relative;
+}
+
+/* Slider — Grid Stack (todos los slides superpuestos en la misma celda) */
+.mu-hero-promo-slider {
+    position: relative;
+    border-radius: var(--mu-radius-lg, 16px);
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+    background: var(--blanco, #fff);
+    min-height: var(--mu-hero-h-desktop);
+    width: 100%;
+    aspect-ratio: 1280 / 580; /* Reserva espacio antes de cargar imagen — evita CLS */
+}
+
+/* Slides apilados */
+.mu-hero-promo-slide {
+    grid-area: 1 / 1;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity var(--mu-hero-transition) ease-in-out,
+                visibility var(--mu-hero-transition);
+    display: flex;
+    align-items: center;
+    z-index: 1;
+    will-change: opacity;
+}
+
+.mu-hero-promo-slide.active {
+    opacity: 1;
+    visibility: visible;
+    z-index: 2;
+}
+
+/* Imagen de fondo */
+.mu-hero-promo-bg {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+}
+
+.mu-hero-promo-bg img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center right;
+    display: block;
+}
+
+/* Contenido superpuesto */
+.mu-hero-promo-content {
+    padding: var(--mu-space-lg, 40px);
+    color: var(--texto, #333);
+    position: relative;
+    z-index: 3;
+    width: 100%;
+    max-width: 1280px;
+}
+
+/* Eyebrow badge */
+.mu-hero-promo-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--mu-hero-eyebrow-bg);
+    color: var(--blanco, #fff);
+    padding: 6px 14px;
+    border-radius: var(--mu-radius-full, 50px);
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Título principal */
+.mu-hero-promo-title {
+    font-size: clamp(2rem, 4vw, 3.2rem);
+    line-height: 1.1;
+    color: var(--texto, #000);
+    margin-bottom: 16px;
+    font-family: var(--mu-font-display, sans-serif);
+    max-width: 550px;
+}
+
+/* Highlight (span dentro del título) */
+.mu-hero-promo-title .highlight {
+    background: var(--primario, #2B9FCF);
+    color: var(--blanco, #fff);
+    padding: 0 12px;
+    border-radius: var(--mu-radius-sm, 6px);
+    display: inline-block;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+}
+
+/* Descripción con glassmorphism suave */
+.mu-hero-promo-desc {
+    font-weight: 500;
+    line-height: 1.5;
+    margin-bottom: 28px;
+    color: var(--texto, #555); /* override GP: texto claro sobre imagen */
+    max-width: 480px;
+    background: rgba(255, 255, 255, 0.95); /* glassmorphism — no existe variable rgba */
+    padding: 10px;
+    border-radius: var(--mu-radius-sm, 8px);
+    backdrop-filter: blur(4px);
+}
+
+/* Acciones (botones) */
+.mu-hero-promo-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+/* Badge flotante (oferta/cupón) */
+.mu-hero-promo-free-badge {
+    position: absolute;
+    bottom: 30px;
+    right: 30px;
+    z-index: 10;
+    background: linear-gradient(135deg, var(--secundario, #FFD77A) 0%, #ffa500 100%);
+    color: var(--texto, #333);
+    text-decoration: none;
+    padding: 12px 18px;
+    border-radius: var(--mu-radius-lg, 16px);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 8px 20px rgba(253, 203, 110, 0.4);
+    border: 2px solid var(--blanco, #fff);
+    transition: transform 0.3s ease;
+    animation: mu-hero-float 3s ease-in-out infinite;
+}
+
+.mu-hero-promo-free-badge:hover {
+    transform: translateY(-4px);
+}
+
+.mu-hero-promo-free-icon {
+    font-size: 1.8rem;
+    line-height: 1;
+}
+
+.mu-hero-promo-free-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.mu-hero-promo-free-text strong {
+    font-size: 1rem;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.mu-hero-promo-free-text span {
+    font-size: 0.75rem;
+    font-weight: 600;
+    opacity: 0.9;
+}
+
+@keyframes mu-hero-float {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(-8px); }
+}
+
+/* Dots de navegación */
+.mu-hero-promo-dots {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+    position: relative;
+    z-index: 5;
+}
+
+.mu-hero-promo-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: var(--mu-radius-full, 50%);
+    background: rgba(0, 0, 0, 0.2);
+    border: none;
+    cursor: pointer;
+    transition: background 0.3s ease, width 0.3s ease, transform 0.3s ease;
+    padding: 0;
+}
+
+.mu-hero-promo-dot:hover {
+    background: rgba(0, 0, 0, 0.5);
+    transform: scale(1.2);
+}
+
+.mu-hero-promo-dot.active {
+    background: var(--primario, #2B9FCF);
+    width: 30px;
+    border-radius: 10px;
+}
+
+/* ============================================
+   HERO — TABLET & MÓVIL (≤ 968px)
+   ============================================ */
+@media (max-width: 968px) {
+    .mu-hero-promo-slider {
+        min-height: auto;
+        aspect-ratio: auto;
+        border: 2px solid var(--primario, #2B9FCF);
+    }
+
+    .mu-hero-promo-slide {
+        flex-direction: column;
+    }
+
+    .mu-hero-promo-bg {
+        position: relative;
+        height: 280px;
+        width: 100%;
+        flex-shrink: 0;
+    }
+
+    .mu-hero-promo-content {
+        padding: var(--mu-space-md, 20px);
+        text-align: center;
+    }
+
+    .mu-hero-promo-eyebrow {
+        position: absolute;
+        top: -260px;
+        left: 16px;
+        z-index: 5;
+        font-size: 0.75rem;
+    }
+
+    .mu-hero-promo-title {
+        font-size: 1.8rem;
+        max-width: 100%;
+        margin: 0 auto 12px;
+    }
+
+    .mu-hero-promo-desc {
+        width: 100%;
+        max-width: 100%;
+        background: transparent;
+        backdrop-filter: none;
+        padding: 0;
+        margin-bottom: 20px;
+    }
+
+    .mu-hero-promo-actions {
+        justify-content: center;
+        width: 100%;
+        gap: 10px;
+    }
+
+    /* Badge inlined en móvil */
+    .mu-hero-promo-free-badge {
+        position: static;
+        margin-top: 10px;
+        width: 100%;
+        justify-content: center;
+        animation: none;
+        box-shadow: none;
+        border: 1px solid var(--secundario, #FFD77A);
+        background: var(--blanco, #fff);
+        transform: none !important;
+    }
+
+    .mu-hero-promo-dots {
+        margin: 15px auto 0;
+    }
 }
