@@ -3,13 +3,12 @@
    Migrado desde snippets:
      - "Checkout Híbrido Optimizado" (Section 6.1)
      - "Checkout Moderno Mobile-First" (Snippet 3)
+     - "Checkout Login Gate" (feat/checkout-login-gate)
    Carga: condicional is_checkout()
-   ~14 KB / 0 KB inline eliminado
    ======================================== */
 
 /* ============================================
    1. ANTI-FOUC: Campos nativos ocultos
-   Render-blocking gracias a <link> en <head>
    ============================================ */
 #billing_first_name_field,
 #billing_last_name_field,
@@ -36,7 +35,6 @@
    3. COMPONENTES CUSTOM (CAMPOS)
    ============================================ */
 
-/* Encabezado de sección de contacto */
 .mu-contact-header {
     font-weight: 600;
     font-size: 1.1em;
@@ -46,11 +44,9 @@
     margin: 20px 0 5px;
 }
 
-/* Toggle de dirección (cursor desde PHP → CSS) */
 .mu-shipping-toggle-wrapper { margin: 10px 0 20px; padding: 12px; background: #f9f9f9; border-radius: var(--mu-radius, 8px); border: 1px solid #e0e0e0; }
 .mu-shipping-toggle-wrapper label { cursor: pointer; }
 
-/* Estados de inputs */
 .mu-smart-field input,
 .mu-contact-field input {
     border-radius: var(--mu-radius, 8px);
@@ -60,21 +56,18 @@
 .mu-field-valid input { border-color: var(--exito, #a3ffbc) !important; }
 .mu-field-error input { border-color: #e74c3c !important; background-color: #fff5f5 !important; }
 
-/* Badge verificado — inline style removido del PHP */
 .mu-verified-badge {
-    display: none; /* JS usa .show() / .hide() */
+    display: none;
     color: var(--exito, #a3ffbc);
     margin-left: 5px;
     font-weight: bold;
 }
 
-/* Indicador WhatsApp */
 #wa-status-msg         { font-size: 0.85em; transition: all 0.3s; margin-left: 5px; }
 .wa-ok                 { color: var(--exito, #a3ffbc); font-weight: 700; }
 .wa-err                { color: #e74c3c; font-weight: 700; }
 #billing_phone_field.hide-optional label .optional { display: none !important; }
 
-/* Notice email existente */
 #mu-email-exists-notice {
     background-color: #e3f2fd;
     color: #0d47a1;
@@ -93,7 +86,6 @@
 .woocommerce-checkout #customer_details { margin-bottom: 30px; }
 .woocommerce-checkout .woocommerce-form-coupon-toggle { display: none !important; }
 
-/* Títulos de sección con ícono emoji */
 .woocommerce-billing-fields h3,
 .woocommerce-shipping-fields h3,
 .woocommerce-additional-fields h3,
@@ -114,7 +106,6 @@
 .woocommerce-shipping-fields h3::before  { content: "📦"; font-size: 1.2rem; }
 .woocommerce-additional-fields h3::before { content: "📝"; font-size: 1.2rem; }
 
-/* Cajas contenedoras */
 .woocommerce-billing-fields,
 .woocommerce-shipping-fields,
 .woocommerce-additional-fields {
@@ -129,11 +120,9 @@
 .woocommerce-shipping-fields__field-wrapper,
 .woocommerce-additional-fields__field-wrapper { padding: 20px; }
 
-/* Form rows */
 .woocommerce-checkout .form-row { margin-bottom: 15px; width: 100%; float: none; }
 .woocommerce-checkout .form-row label { display: block; margin-bottom: 6px; font-weight: 600; color: var(--texto, #333); font-size: 0.9rem; }
 
-/* Inputs globales (font-size: 16px evita zoom en iOS) */
 .woocommerce-checkout input.input-text,
 .woocommerce-checkout select,
 .woocommerce-checkout textarea {
@@ -184,7 +173,6 @@
     border-top: 2px solid var(--primario, #2B9FCF);
 }
 
-/* Botón de pago */
 #place_order {
     width: 100%; padding: 18px;
     background: var(--primario, #2B9FCF);
@@ -206,7 +194,6 @@
         gap: 40px;
         align-items: start;
     }
-    /* Todo elemento desconocido ocupa ancho completo */
     .woocommerce-checkout form.checkout > * { grid-column: 1 / -1; width: 100%; }
 
     .woocommerce-checkout .col2-set {
@@ -227,17 +214,140 @@
 
 /* ============================================
    7. MOBILE ≤1024px
-   FIX: removidas reglas !important conflictivas
-   del snippet original (dead code detectado)
    ============================================ */
 @media (max-width: 1024px) {
     .woocommerce-checkout form.checkout { display: block; }
     .woocommerce-checkout .col2-set { display: block; }
     .woocommerce-checkout .col2-set .col-1,
     .woocommerce-checkout .col2-set .col-2 { width: 100%; margin-bottom: 20px; }
-
-    /* Tabla de revisión como tabla nativa en móvil */
     .woocommerce-checkout-review-order-table tr    { display: table-row !important; }
     .woocommerce-checkout-review-order-table thead { display: table-header-group !important; }
     .woocommerce-checkout-review-order-table td    { display: table-cell !important; }
+}
+
+/* ============================================
+   8. CHECKOUT LOGIN GATE
+   Carga: is_checkout() && ! is_user_logged_in()
+   ============================================ */
+
+/* Contenedor Principal */
+.mu-checkout-login-block {
+    background: var(--blanco, #ffffff);
+    border: 1px solid #e5e7eb;
+    border-top: 3px solid var(--primario, #333);
+    border-radius: var(--mu-radius, 12px);
+    padding: 2rem;
+    margin-bottom: 2rem;
+    text-align: center;
+    box-shadow: var(--mu-shadow-lg, 0 10px 25px rgba(0, 0, 0, 0.15));
+    position: relative;
+    z-index: 50;
+    grid-column: 1 / -1;
+    width: 100%;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.mu-checkout-login-block.mu-hidden { display: none !important; }
+
+.mu-checkout-login-content { max-width: 480px; margin: 0 auto; }
+
+.mu-checkout-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 64px; height: 64px;
+    background: var(--fondo, #fbf7f5);
+    color: var(--primario, #333);
+    border-radius: var(--mu-radius-full, 9999px);
+    margin-bottom: 1rem;
+}
+
+.mu-checkout-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--texto, #111);
+    font-family: var(--mu-font-display, sans-serif);
+    margin: 0 0 0.5rem 0;
+    line-height: 1.2;
+}
+
+.mu-checkout-subtitle {
+    font-size: 0.95rem;
+    color: var(--texto-light, #6b7280);
+    margin: 0 0 1.5rem 0;
+}
+
+/* Botones: layout específico del Gate */
+.mu-checkout-actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--mu-space-sm, 10px);
+}
+
+/* override GP: ancho completo en contexto Gate */
+.mu-checkout-login-block .mu-btn { width: 100%; }
+
+/* Divisor */
+.mu-checkout-divider {
+    display: flex; align-items: center;
+    color: var(--texto-light, #9ca3af);
+    font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px;
+    margin: 0.5rem 0;
+}
+.mu-checkout-divider::before,
+.mu-checkout-divider::after {
+    content: ''; flex: 1; border-bottom: 1px solid #e5e7eb;
+}
+.mu-checkout-divider span { padding: 0 10px; }
+
+/* Social Buttons */
+.mu-checkout-social { display: flex; gap: 10px; justify-content: center; }
+.mu-btn-social {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 20px;
+    border-radius: var(--mu-radius, 12px);
+    font-weight: 600; font-size: 0.9rem;
+    text-decoration: none;
+    transition: opacity 0.2s ease;
+    flex: 1; justify-content: center;
+}
+.mu-btn-social:hover { opacity: 0.85; }
+.mu-btn-google   { background: #fff; border: 1px solid #dadce0; color: #3c4043; }
+.mu-btn-facebook { background: #1877f2; border: 1px solid #1877f2; color: #fff; }
+
+/* Beneficios */
+.mu-checkout-benefits {
+    margin-top: 1.5rem; padding: 1rem;
+    background: var(--fondo, #f9fafb);
+    border-radius: var(--mu-radius-sm, 6px);
+    text-align: left;
+}
+.mu-benefits-title {
+    font-size: 0.85rem; font-weight: 700; color: var(--texto, #374151);
+    margin-bottom: 0.5rem; display: block;
+}
+.mu-benefits-list {
+    list-style: none; padding: 0; margin: 0; display: grid; gap: 4px;
+}
+.mu-benefits-list li {
+    font-size: 0.8rem; color: var(--texto-light, #4b5563);
+    padding-left: 18px; position: relative;
+}
+.mu-benefits-list li::before {
+    content: '✓'; position: absolute; left: 0;
+    color: var(--exito, #10b981); font-weight: bold;
+}
+
+/* Efecto Blur sobre el formulario (bloqueo visual) */
+body:not(.logged-in):not(.mu-guest-checkout) .woocommerce-checkout #customer_details,
+body:not(.logged-in):not(.mu-guest-checkout) .woocommerce-checkout #order_review_heading,
+body:not(.logged-in):not(.mu-guest-checkout) .woocommerce-checkout #order_review,
+body:not(.logged-in):not(.mu-guest-checkout) .woocommerce-checkout .woocommerce-checkout-payment {
+    filter: blur(3px);
+    opacity: 0.4;
+    pointer-events: none;
+    user-select: none;
+}
+
+@media (max-width: 640px) {
+    .mu-checkout-login-block { padding: 1.5rem 1rem; }
+    .mu-checkout-social { flex-direction: column; }
 }

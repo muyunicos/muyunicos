@@ -9,6 +9,7 @@
  * - AJAX check email (Guest)
  * - Lógica condicional físico/digital
  * - Gestión de contraseñas WooCommerce
+ * - Checkout Login Gate (Invitado / Login / Social)
  * 
  * @package GeneratePress_Child
  * @since 1.0.0
@@ -26,10 +27,12 @@ add_filter( 'woocommerce_checkout_registration_required', '__return_false' );
 add_filter( 'woocommerce_create_account_default_checked', '__return_true' );
 add_filter( 'woocommerce_terms_is_checked_default', '__return_true' );
 
+// Elimina el formulario de login nativo de WooCommerce (evita duplicidad con el Gate)
+remove_action( 'woocommerce_before_checkout_form', 'woocommerce_checkout_login_form', 10 );
+
 if ( ! function_exists( 'mu_get_terms_and_conditions_checkbox_text' ) ) {
     /**
      * Personaliza el texto de términos y condiciones.
-     * Mejora respecto al snippet original: añade enlace directo y target blank.
      */
     function mu_get_terms_and_conditions_checkbox_text( $text ) {
         return 'He leído y acepto los <a href="/terminos/" target="_blank">términos y condiciones</a> de la web.';
@@ -45,8 +48,8 @@ if ( ! function_exists( 'mu_has_physical_products' ) ) {
     /**
      * Verifica si el carrito contiene productos físicos.
      * USO DE STATIC: Evita recorrer el array del carrito múltiples veces en una misma carga.
-     * 
-     * @return bool True si hay productos físicos
+     *
+     * @return bool
      */
     function mu_has_physical_products() {
         static $has_physical = null;
@@ -71,7 +74,6 @@ if ( ! function_exists( 'mu_has_physical_products' ) ) {
 
 if ( ! function_exists( 'mu_optimize_checkout_fields' ) ) {
     function mu_optimize_checkout_fields( $fields ) {
-        // Campo Nombre y Apellido unificado
         $fields['billing']['billing_full_name'] = [
             'label'       => 'Nombre y Apellido',
             'placeholder' => 'Ej: Juan Pérez',
@@ -81,13 +83,11 @@ if ( ! function_exists( 'mu_optimize_checkout_fields' ) ) {
             'priority'    => 10,
         ];
 
-        // Ajustes de prioridad para País
         if ( isset( $fields['billing']['billing_country'] ) ) {
             $fields['billing']['billing_country']['priority'] = 20;
             $fields['billing']['billing_country']['class'] = [ 'form-row-wide' ];
         }
 
-        // Header de contacto (inyectado visualmente)
         $fields['billing']['billing_contact_header'] = [
             'type'     => 'text',
             'label'    => '',
@@ -96,16 +96,14 @@ if ( ! function_exists( 'mu_optimize_checkout_fields' ) ) {
             'priority' => 25,
         ];
 
-        // Email con badge de verificación
         $fields['billing']['billing_email']['priority'] = 30;
         $fields['billing']['billing_email']['class'] = [ 'form-row-wide', 'mu-contact-field' ];
         $fields['billing']['billing_email']['label'] = '<span class="mu-verified-badge" style="display:none;">✓</span> E-Mail';
 
-        // WhatsApp (validado vía JS/libphonenumber)
         if ( isset( $fields['billing']['billing_phone'] ) ) {
             $fields['billing']['billing_phone']['priority'] = 40;
             $fields['billing']['billing_phone']['label'] = 'WhatsApp';
-            $fields['billing']['billing_phone']['required'] = false; // Siempre opcional en PHP, JS maneja la lógica
+            $fields['billing']['billing_phone']['required'] = false;
             $fields['billing']['billing_phone']['placeholder'] = 'Ej: 9 223 123 4567';
             $fields['billing']['billing_phone']['class'] = [ 'form-row-wide', 'mu-contact-field' ];
         }
@@ -113,17 +111,14 @@ if ( ! function_exists( 'mu_optimize_checkout_fields' ) ) {
         $is_physical = mu_has_physical_products();
         $address_fields = [ 'billing_address_1', 'billing_address_2', 'billing_city', 'billing_postcode', 'billing_state' ];
 
-        // Eliminamos Company siempre
         unset( $fields['billing']['billing_company'] );
 
         if ( ! $is_physical ) {
-            // MODO DIGITAL: Limpieza total de dirección
             foreach ( $address_fields as $key ) {
                 unset( $fields['billing'][ $key ] );
             }
             add_filter( 'woocommerce_cart_needs_shipping', '__return_false' );
         } else {
-            // MODO FÍSICO: Toggle para mostrar dirección (UX Híbrida)
             $fields['billing']['billing_shipping_toggle'] = [
                 'type'     => 'text',
                 'label'    => '',
@@ -156,11 +151,9 @@ if ( ! function_exists( 'mu_render_html_fragments' ) ) {
         if ( $key === 'billing_contact_header' ) {
             return '<div class="form-row form-row-wide" id="mu_header_row" style="margin-bottom:0;"><div class="mu-contact-header">Te contactamos por:</div><div id="mu-email-exists-notice"></div></div>';
         }
-        
         if ( $key === 'billing_shipping_toggle' ) {
             return '<div class="form-row form-row-wide" id="mu_toggle_row"><div class="mu-shipping-toggle-wrapper"><label style="cursor:pointer;"><input type="checkbox" id="mu-toggle-shipping" name="mu_shipping_toggle" value="1"> <b>Ingresar datos para envío</b> (Opcional)</label></div></div>';
         }
-        
         return $field;
     }
 }
@@ -172,21 +165,17 @@ add_filter( 'woocommerce_form_field', 'mu_render_html_fragments', 10, 4 );
 
 if ( ! function_exists( 'mu_sanitize_posted_data' ) ) {
     function mu_sanitize_posted_data( $data ) {
-        // Dividir nombre completo en First/Last para WC Core
         if ( ! empty( $data['billing_full_name'] ) ) {
             $parts = explode( ' ', trim( $data['billing_full_name'] ), 2 );
             $data['billing_first_name'] = $parts[0];
             $data['billing_last_name'] = $parts[1] ?? '.';
         }
-        
-        // Validar longitud de teléfono (eliminar si es ruido < 6 dígitos)
         if ( ! empty( $data['billing_phone'] ) ) {
             $digits = preg_replace( '/\D/', '', $data['billing_phone'] );
             if ( strlen( $digits ) <= 6 ) {
                 $data['billing_phone'] = '';
             }
         }
-        
         return $data;
     }
 }
@@ -198,19 +187,14 @@ add_filter( 'woocommerce_checkout_posted_data', 'mu_sanitize_posted_data' );
 
 if ( ! function_exists( 'mu_validate_checkout' ) ) {
     function mu_validate_checkout() {
-        // Validar nombre completo
         if ( empty( $_POST['billing_full_name'] ) ) {
             wc_add_notice( __( 'Por favor, completa tu Nombre y Apellido.' ), 'error' );
         }
-        
-        // Validar WhatsApp (Trust in JS validation result)
         if ( ! empty( $_POST['billing_phone'] ) ) {
             if ( isset( $_POST['mu_wa_valid'] ) && $_POST['mu_wa_valid'] === '0' ) {
                 wc_add_notice( __( 'El número de WhatsApp parece incompleto o inválido.' ), 'error' );
             }
         }
-        
-        // Validar campos de envío físicos si el toggle está activo
         if ( isset( $_POST['mu_shipping_toggle'] ) && $_POST['mu_shipping_toggle'] == '1' ) {
             if ( empty( $_POST['billing_address_1'] ) ) {
                 wc_add_notice( __( 'La <strong>Dirección</strong> es necesaria para el envío.' ), 'error' );
@@ -236,9 +220,7 @@ add_action( 'woocommerce_checkout_process', 'mu_validate_checkout' );
 if ( ! function_exists( 'mu_ajax_check_email_optimized' ) ) {
     function mu_ajax_check_email_optimized() {
         check_ajax_referer( 'check-email-nonce', 'security' );
-        
         $email = isset( $_POST['email'] ) ? sanitize_email( $_POST['email'] ) : '';
-        
         if ( ! empty( $email ) && email_exists( $email ) ) {
             wp_send_json( [ 'exists' => true ] );
         } else {
@@ -246,7 +228,6 @@ if ( ! function_exists( 'mu_ajax_check_email_optimized' ) ) {
         }
     }
 }
-// Hook WC-AJAX (no admin-ajax standard)
 add_action( 'wc_ajax_mu_check_email', 'mu_ajax_check_email_optimized' );
 
 // ============================================
@@ -265,15 +246,12 @@ add_filter( 'the_title', 'mu_order_received_custom_title', 10, 2 );
 
 // ============================================
 // GESTIÓN DE CONTRASEÑAS WOOCOMMERCE
-// Reduce fricción en checkout/cuenta. Nivel 0 = sin restricción mínima.
 // ============================================
 
-// Reduce la fortaleza mínima requerida para contraseñas.
 add_filter( 'woocommerce_min_password_strength', function( $strength ) {
-    return 0; // 0 = Muy débil | 3 = Muy fuerte (default WC)
+    return 0;
 } );
 
-// Elimina el JS del medidor de fortaleza (ahorra carga en checkout y páginas de cuenta).
 if ( ! function_exists( 'mu_dequeue_password_strength_meter' ) ) {
     function mu_dequeue_password_strength_meter() {
         if ( wp_script_is( 'wc-password-strength-meter', 'enqueued' ) ) {
@@ -282,3 +260,69 @@ if ( ! function_exists( 'mu_dequeue_password_strength_meter' ) ) {
     }
 }
 add_action( 'wp_print_scripts', 'mu_dequeue_password_strength_meter', 100 );
+
+// ============================================
+// CHECKOUT LOGIN GATE — HTML
+// Muestra el bloque de acceso (Invitado/Login/Social)
+// solo a usuarios no logueados en el checkout.
+// Carga: woocommerce_before_checkout_form, prioridad 5.
+// ============================================
+
+if ( ! function_exists( 'mu_checkout_login_notice' ) ) {
+    function mu_checkout_login_notice() {
+        if ( ! is_checkout() || is_user_logged_in() || is_wc_endpoint_url( 'order-received' ) ) {
+            return;
+        }
+        $current_url = wc_get_checkout_url();
+        ?>
+        <div class="mu-checkout-login-block" id="mu-checkout-notice" role="dialog" aria-modal="true" aria-labelledby="mu-gate-title">
+            <div class="mu-checkout-login-content">
+
+                <div class="mu-checkout-icon">
+                    <?php echo mu_get_icon( 'account' ); ?>
+                </div>
+
+                <h2 class="mu-checkout-title" id="mu-gate-title">¿Cómo quieres continuar?</h2>
+                <p class="mu-checkout-subtitle">Compra más rápido iniciando sesión o continúa como invitado.</p>
+
+                <div class="mu-checkout-actions">
+
+                    <button type="button" class="mu-btn mu-btn-secondary" id="mu-continue-guest-btn">
+                        Continuar como Invitado
+                    </button>
+
+                    <div class="mu-checkout-divider"><span>O ingresa con</span></div>
+
+                    <button type="button" class="mu-btn mu-btn-outline" id="mu-checkout-open-modal">
+                        Usuario y Contraseña
+                    </button>
+
+                    <?php if ( shortcode_exists( 'nextend_social_login' ) || class_exists( 'NextendSocialLogin' ) ) : ?>
+                    <div class="mu-checkout-social">
+                        <a href="<?php echo esc_url( site_url( '/wp-login.php?loginSocial=google&redirect=' . urlencode( $current_url ) ) ); ?>" class="mu-btn-social mu-btn-google" rel="nofollow">
+                            <?php echo mu_get_icon( 'google' ); ?>
+                            Google
+                        </a>
+                        <a href="<?php echo esc_url( site_url( '/wp-login.php?loginSocial=facebook&redirect=' . urlencode( $current_url ) ) ); ?>" class="mu-btn-social mu-btn-facebook" rel="nofollow">
+                            <?php echo mu_get_icon( 'facebook' ); ?>
+                            Facebook
+                        </a>
+                    </div>
+                    <?php endif; ?>
+
+                    <div class="mu-checkout-benefits">
+                        <span class="mu-benefits-title">Beneficios de tu cuenta Muy Únicos:</span>
+                        <ul class="mu-benefits-list">
+                            <li>Seguimiento de pedidos y descargas</li>
+                            <li>Acceso inmediato a tus imprimibles</li>
+                            <li>Recibe descuentos especiales</li>
+                        </ul>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        <?php
+    }
+}
+add_action( 'woocommerce_before_checkout_form', 'mu_checkout_login_notice', 5 );
