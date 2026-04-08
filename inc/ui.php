@@ -13,7 +13,8 @@
  * - Mover descripción de categoría al final del loop
  * - Mostrar "¡Gratis!" en productos con precio $0
  * - Desactivar Imagen Destacada en cabecera
- * - Shortcode de Testimonios / Reseñas Google [mu_testimonios_section]
+ * - Shortcode Testimonios / Reseñas Google [mu_testimonios_section]
+ * - Shortcodes Home: [mu_bestsellers_section] + [mu_popcat_section]
  *
  * @package GeneratePress_Child
  * @since 1.0.0
@@ -23,9 +24,6 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 // ============================================
 // WPLINGUA — BODY CLASS
-// Ocultar switcher en subdominios sin multilenguaje.
-// El CSS de ocultación vive en css/components/global-ui.css
-// (selector: body.mu-wplng-hide .wplng-switcher).
 // ============================================
 
 if ( ! function_exists( 'mu_wplng_body_class' ) ) {
@@ -46,13 +44,10 @@ if ( ! function_exists( 'mu_wplng_body_class' ) ) {
 
 if ( ! function_exists( 'mu_header_icons' ) ) {
     function mu_header_icons() {
-        // Validación preventiva de WooCommerce
         if ( ! function_exists( 'WC' ) ) return;
 
         $cart_count       = ( null !== WC()->cart ) ? WC()->cart->get_cart_contents_count() : 0;
         $is_logged_in     = is_user_logged_in();
-        
-        // Uso de endpoints de WC de forma segura
         $my_account_url   = wc_get_page_permalink( 'myaccount' );
         $edit_account_url = wc_get_account_endpoint_url( 'edit-account' );
         $downloads_url    = wc_get_account_endpoint_url( 'downloads' );
@@ -61,26 +56,20 @@ if ( ! function_exists( 'mu_header_icons' ) ) {
         ?>
         <div class="mu-header-icons">
             <a class="mu-header-icon mu-icon-help" href="<?php echo esc_url( home_url( '/terminos/' ) ); ?>" title="Ayuda">
-                <span class="mu-icon-wrapper">
-                    <?php echo mu_get_icon( 'help' ); ?>
-                </span>
+                <span class="mu-icon-wrapper"><?php echo mu_get_icon( 'help' ); ?></span>
                 <span class="mu-icon-label"></span>
             </a>
             <a class="mu-header-icon mu-icon-search" href="#" role="button" aria-label="Buscar" data-gpmodal-trigger="gp-search">
-                <span class="mu-icon-wrapper">
-                    <?php echo mu_get_icon( 'search' ); ?>
-                </span>
+                <span class="mu-icon-wrapper"><?php echo mu_get_icon( 'search' ); ?></span>
                 <span class="mu-icon-label">Buscar</span>
             </a>
             <div class="mu-account-dropdown-wrap">
                 <a class="mu-header-icon mu-icon-account mu-open-auth-modal" href="<?php echo esc_url( $my_account_url ); ?>" title="<?php echo esc_attr( $account_label ); ?>">
-                    <span class="mu-icon-wrapper">
-                        <?php echo mu_get_icon( 'account' ); ?>
-                    </span>
+                    <span class="mu-icon-wrapper"><?php echo mu_get_icon( 'account' ); ?></span>
                     <span class="mu-icon-label">
                         <?php echo esc_html( $account_label ); ?>
                         <?php if ( $is_logged_in ) : ?>
-                             <span class="gp-icon icon-arrow"> <?php echo mu_get_icon( 'arrow' ); ?> </span>
+                            <span class="gp-icon icon-arrow"> <?php echo mu_get_icon( 'arrow' ); ?> </span>
                         <?php endif; ?>
                     </span>
                 </a>
@@ -109,11 +98,7 @@ if ( ! function_exists( 'mu_header_icons' ) ) {
 
 if ( ! function_exists( 'mu_update_cart_badge' ) ) {
     function mu_update_cart_badge( $fragments ) {
-        // Prevención de error fatal si el carrito no está inicializado en la petición AJAX
-        if ( ! function_exists( 'WC' ) || null === WC()->cart ) {
-            return $fragments;
-        }
-
+        if ( ! function_exists( 'WC' ) || null === WC()->cart ) return $fragments;
         $cart_count = WC()->cart->get_cart_contents_count();
         ob_start();
         ?>
@@ -182,19 +167,16 @@ if ( ! function_exists( 'muyunicos_custom_footer_structure' ) ) {
         <footer class="mu-custom-footer site-footer">
             <div class="mu-container">
                 <div class="mu-footer-grid">
-                    <!-- Columna: Marca -->
                     <div class="mu-footer-col mu-col-brand">
                         <h3 class="mu-footer-title">Muy Únicos</h3>
                         <p style="opacity: 0.8; line-height: 1.6; margin-bottom: 15px;">Diseños exclusivos y productos personalizados hechos con pasión en Mar del Plata.</p>
                         <div class="mu-trust-wrapper">
                             <a href="https://www.trustindex.io/reviews/muyunicos.com" target="_blank" class="mu-trust-badge">
-                                 <span class="ti-stars">★★★★★</span>
-                                 <span class="ti-text">4.9/5 en Trustindex</span>
+                                <span class="ti-stars">★★★★★</span>
+                                <span class="ti-text">4.9/5 en Trustindex</span>
                             </a>
                         </div>
                     </div>
-
-                    <!-- Columna: Enlaces -->
                     <div class="mu-footer-col mu-col-links">
                         <details class="mu-accordion">
                             <summary class="mu-footer-title">
@@ -211,8 +193,6 @@ if ( ! function_exists( 'muyunicos_custom_footer_structure' ) ) {
                             </div>
                         </details>
                     </div>
-
-                    <!-- Columna: Medios de Pago -->
                     <div class="mu-footer-col mu-col-pay">
                         <h3 class="mu-footer-title">Pagá seguro</h3>
                         <div class="mu-payment-icons">
@@ -222,30 +202,23 @@ if ( ! function_exists( 'muyunicos_custom_footer_structure' ) ) {
                             <?php echo function_exists( 'mu_get_icon' ) ? mu_get_icon( 'lock' ) : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>'; ?> Compra 100% Protegida
                         </div>
                     </div>
-
-                    <!-- Columna: Buscador -->
                     <div class="mu-footer-col mu-col-search">
                         <h3 class="mu-footer-title">¿Buscás algo?</h3>
                         <div class="mu-footer-search">
                             <?php
                             if ( function_exists( 'get_product_search_form' ) ) {
                                 get_product_search_form();
-                            } else {
-                                ?>
+                            } else { ?>
                                 <form role="search" method="get" class="woocommerce-product-search" action="<?php echo esc_url( home_url( '/' ) ); ?>">
                                     <input type="search" class="search-field" placeholder="Buscar productos..." value="<?php echo esc_attr( get_search_query() ); ?>" name="s" />
                                     <button type="submit">Buscar</button>
                                     <input type="hidden" name="post_type" value="product" />
                                 </form>
-                                <?php
-                            }
-                            ?>
+                            <?php } ?>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Socket (Barra Inferior) -->
             <div class="mu-socket">
                 <div class="mu-container mu-socket-inner">
                     <div class="mu-copyright">
@@ -274,13 +247,11 @@ if ( ! function_exists( 'mu_dcms_share_shortcode' ) ) {
     function mu_dcms_share_shortcode( $atts ) {
         $icon_share = function_exists( 'mu_get_icon' ) ? mu_get_icon( 'share' ) : '';
         $icon_check = function_exists( 'mu_get_icon' ) ? mu_get_icon( 'check' ) : '';
-
-        // Estructura HTML preparada para el cambio de icono por CSS (.is-copied)
-        return sprintf( 
+        return sprintf(
             '<button class="dcms-share-btn mu-share-btn" type="button" title="Compartir" aria-label="Compartir">
                 <span class="dcms-share-icon dcms-share-icon--share">%s</span>
                 <span class="dcms-share-icon dcms-share-icon--check">%s</span>
-            </button>', 
+            </button>',
             $icon_share,
             $icon_check
         );
@@ -306,9 +277,7 @@ if ( ! function_exists( 'mu_googlesitekit_canonical_home_url' ) ) {
 if ( ! function_exists( 'mu_move_category_description' ) ) {
     function mu_move_category_description() {
         if ( is_product_category() ) {
-            // Quita la descripción de arriba
             remove_action( 'woocommerce_archive_description', 'woocommerce_taxonomy_archive_description', 10 );
-            // La agrega debajo del loop de productos
             add_action( 'woocommerce_after_shop_loop', 'woocommerce_taxonomy_archive_description', 5 );
         }
     }
@@ -321,28 +290,13 @@ if ( ! function_exists( 'mu_move_category_description' ) ) {
 
 if ( ! function_exists( 'mu_opt_mostrar_gratis_si_precio_cero' ) ) {
     function mu_opt_mostrar_gratis_si_precio_cero( $price, $product ) {
-        // Salir si estamos en el admin y no es ajax
-        if ( is_admin() && ! wp_doing_ajax() ) {
-            return $price;
-        }
+        if ( is_admin() && ! wp_doing_ajax() ) return $price;
+        if ( ! $product->is_on_sale() ) return $price;
+        if ( (float) $product->get_sale_price() !== 0.0 ) return $price;
 
-        if ( ! $product->is_on_sale() ) {
-            return $price;
-        }
-
-        $sale_price = (float) $product->get_sale_price();
-
-        if ( $sale_price !== 0.0 ) {
-            return $price;
-        }
-
-        // Mostrar precio regular tachado y texto Gratis
         $regular_price_html = wc_price( $product->get_regular_price() );
         $free_text = __( '¡Gratis!', 'woocommerce' );
-
-        $price = sprintf( '<del aria-hidden="true">%s</del> <ins>%s</ins>', $regular_price_html, $free_text );
-
-        return $price;
+        return sprintf( '<del aria-hidden="true">%s</del> <ins>%s</ins>', $regular_price_html, $free_text );
     }
     add_filter( 'woocommerce_get_price_html', 'mu_opt_mostrar_gratis_si_precio_cero', 100, 2 );
 }
@@ -353,13 +307,8 @@ if ( ! function_exists( 'mu_opt_mostrar_gratis_si_precio_cero' ) ) {
 
 if ( ! function_exists( 'mu_desactivar_imagen_destacada_html' ) ) {
     function mu_desactivar_imagen_destacada_html() {
-        // Salir si estamos en el admin para no afectar la edición
         if ( is_admin() ) return;
-
-        // Elimina la función de GeneratePress que inyecta la imagen destacada después del header
         remove_action( 'generate_after_header', 'generate_featured_page_header_area', 10 );
-        
-        // Opcional: Si en algunas versiones de GP la imagen aparece antes del contenido
         remove_action( 'generate_before_content', 'generate_featured_page_header_area', 10 );
     }
     add_action( 'wp', 'mu_desactivar_imagen_destacada_html' );
@@ -368,63 +317,30 @@ if ( ! function_exists( 'mu_desactivar_imagen_destacada_html' ) ) {
 // ============================================
 // SHORTCODE TESTIMONIOS / RESEÑAS GOOGLE
 // Uso: [mu_testimonios_section]
-// Carga condicional de assets: solo cuando el shortcode está presente en la página.
-// La API Key debe definirse en wp-config.php:
-//   define( 'MU_GOOGLE_PLACES_API_KEY', 'tu-api-key' );
+// API Key: define('MU_GOOGLE_PLACES_API_KEY','...') en wp-config.php
 // ============================================
 
 if ( ! function_exists( 'mu_testimonios_enqueue' ) ) {
-    /**
-     * Encola CSS y JS de testimonios únicamente en páginas
-     * que contengan el shortcode [mu_testimonios_section].
-     * Hook: wp (post content ya disponible).
-     */
     function mu_testimonios_enqueue() {
         global $post;
-        if (
-            ! is_a( $post, 'WP_Post' ) ||
-            ! has_shortcode( $post->post_content, 'mu_testimonios_section' )
-        ) {
-            return;
-        }
+        if ( ! is_a( $post, 'WP_Post' ) || ! has_shortcode( $post->post_content, 'mu_testimonios_section' ) ) return;
 
-        wp_enqueue_style(
-            'mu-testimonials',
-            get_stylesheet_directory_uri() . '/css/testimonials.css',
-            [],
-            '1.0.0'
-        );
-
-        wp_enqueue_script(
-            'mu-testimonials',
-            get_stylesheet_directory_uri() . '/js/testimonials.js',
-            [],
-            '1.0.0',
-            true // footer
-        );
+        wp_enqueue_style( 'mu-testimonials', get_stylesheet_directory_uri() . '/css/testimonials.css', [], '1.0.0' );
+        wp_enqueue_script( 'mu-testimonials', get_stylesheet_directory_uri() . '/js/testimonials.js', [], '1.0.0', true );
     }
     add_action( 'wp_enqueue_scripts', 'mu_testimonios_enqueue' );
 }
 
 if ( ! function_exists( 'mu_testimonios_section' ) ) {
     function mu_testimonios_section() {
-        // Configuración
-        // La API Key se lee desde la constante definida en wp-config.php.
-        // NUNCA hardcodear la key en el repositorio.
         $api_key        = defined( 'MU_GOOGLE_PLACES_API_KEY' ) ? MU_GOOGLE_PLACES_API_KEY : '';
         $place_id       = 'ChIJ18LlLQPchJURqIDwiZM7t_E';
         $db_option_name = 'mu_reviews_master_db';
         $msg_update     = '';
 
-        // Actualización manual desde Google (solo admins, vía ?force_reviews=1)
         if ( $api_key && current_user_can( 'administrator' ) && isset( $_GET['force_reviews'] ) ) {
             $url      = add_query_arg(
-                [
-                    'placeid'  => $place_id,
-                    'fields'   => 'reviews',
-                    'key'      => $api_key,
-                    'language' => 'es',
-                ],
+                [ 'placeid' => $place_id, 'fields' => 'reviews', 'key' => $api_key, 'language' => 'es' ],
                 'https://maps.googleapis.com/maps/api/place/details/json'
             );
             $response = wp_remote_get( $url, [ 'timeout' => 10 ] );
@@ -437,18 +353,11 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
 
                 foreach ( $new_batch as $item ) {
                     if ( intval( $item['rating'] ) < 5 ) continue;
-
                     $exists = false;
                     foreach ( $current_db as $stored ) {
-                        if ( $stored['time'] == $item['time'] && $stored['author_name'] === $item['author_name'] ) {
-                            $exists = true;
-                            break;
-                        }
+                        if ( $stored['time'] == $item['time'] && $stored['author_name'] === $item['author_name'] ) { $exists = true; break; }
                     }
-                    if ( ! $exists ) {
-                        $current_db[] = $item;
-                        $added++;
-                    }
+                    if ( ! $exists ) { $current_db[] = $item; $added++; }
                 }
 
                 if ( $added > 0 ) {
@@ -461,13 +370,7 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
             }
         }
 
-        // Datos para el JS (pasados vía wp_localize_script)
-        $all_reviews = get_option( $db_option_name, [] );
-        wp_localize_script(
-            'mu-testimonials',
-            'muTestimonials',
-            [ 'reviews' => $all_reviews ]
-        );
+        wp_localize_script( 'mu-testimonials', 'muTestimonials', [ 'reviews' => get_option( $db_option_name, [] ) ] );
 
         ob_start();
         echo wp_kses_post( $msg_update );
@@ -475,20 +378,13 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
         <section class="mu-testimonials mu-section">
             <div class="mu-container">
                 <h2 class="mu-section-title">Clientes Felices</h2>
-
-                <div id="mu-reviews-container" class="mu-grid-reviews">
-                    <!-- js/testimonials.js inserta las tarjetas aquí -->
-                </div>
-
+                <div id="mu-reviews-container" class="mu-grid-reviews"></div>
                 <div class="mu-bottom-actions">
                     <a href="https://search.google.com/local/writereview?placeid=<?php echo esc_attr( $place_id ); ?>"
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       class="mu-btn mu-btn-secondary">
+                       target="_blank" rel="noopener noreferrer" class="mu-btn mu-btn-secondary">
                         <span class="mu-btn-icon">⭐</span> Déjanos tu reseña
                     </a>
                 </div>
-
                 <?php if ( current_user_can( 'administrator' ) ) : ?>
                     <div style="text-align:center;margin-top:20px;font-size:12px;opacity:0.6;">
                         <a href="?force_reviews=1" style="color:inherit;">↻ Admin: Actualizar desde Google</a>
@@ -500,4 +396,199 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
         return ob_get_clean();
     }
     add_shortcode( 'mu_testimonios_section', 'mu_testimonios_section' );
+}
+
+// ============================================
+// SHORTCODES HOME — ENQUEUE CONDICIONAL
+// Carga css/home.css solo en is_front_page().
+// El carrusel JS ya está cubierto por js/global-ui.js (initCarousels).
+// ============================================
+
+if ( ! function_exists( 'mu_home_sections_enqueue' ) ) {
+    function mu_home_sections_enqueue() {
+        if ( ! is_front_page() ) return;
+        wp_enqueue_style( 'mu-home', get_stylesheet_directory_uri() . '/css/home.css', [], '1.0.0' );
+    }
+    add_action( 'wp_enqueue_scripts', 'mu_home_sections_enqueue' );
+}
+
+// ============================================
+// SHORTCODE BESTSELLERS
+// Uso: [mu_bestsellers_section]
+// Muestra los 8 productos más vendidos en un carrusel hírido.
+// CSS: css/home.css | Carrusel JS: js/global-ui.js (initCarousels)
+// ============================================
+
+if ( ! function_exists( 'mu_bestsellers_section' ) ) {
+    function mu_bestsellers_section() {
+        // Transient de 12h para evitar WP_Query en cada carga de la home
+        $cache_key = 'mu_bestsellers_html';
+        $cached    = get_transient( $cache_key );
+        if ( $cached ) return $cached;
+
+        $query = new WP_Query( [
+            'post_type'      => 'product',
+            'posts_per_page' => 8,
+            'meta_key'       => 'total_sales',
+            'orderby'        => 'meta_value_num',
+            'order'          => 'DESC',
+            'post_status'    => 'publish',
+            'tax_query'      => [ [
+                'taxonomy' => 'product_visibility',
+                'field'    => 'name',
+                'terms'    => 'exclude-from-catalog',
+                'operator' => 'NOT IN',
+            ] ],
+        ] );
+
+        ob_start();
+        ?>
+        <section class="mu-bestsellers mu-section">
+            <div class="mu-container">
+                <h2 class="mu-section-title">Nuestros Productos Más Vendidos</h2>
+
+                <div class="mu-carousel-wrapper">
+                    <button class="mu-nav-btn prev" aria-label="Anterior">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                    </button>
+                    <button class="mu-nav-btn next" aria-label="Siguiente">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </button>
+
+                    <div class="mu-carousel-track">
+                        <?php
+                        if ( $query->have_posts() ) :
+                            while ( $query->have_posts() ) : $query->the_post();
+                                global $product;
+                                $image_id  = $product->get_image_id();
+                                $image_url = $image_id ? wp_get_attachment_image_url( $image_id, 'woocommerce_thumbnail' ) : wc_placeholder_img_src();
+                                ?>
+                                <div class="mu-carousel-item">
+                                    <a href="<?php echo esc_url( get_permalink() ); ?>" class="mu-product-card can-hover">
+                                        <?php if ( $product->is_on_sale() ) : ?>
+                                            <span class="mu-product-badge">Oferta</span>
+                                        <?php endif; ?>
+                                        <img src="<?php echo esc_url( $image_url ); ?>"
+                                             class="mu-product-image"
+                                             alt="<?php echo esc_attr( get_the_title() ); ?>"
+                                             width="300" height="300"
+                                             loading="lazy">
+                                        <h3 class="mu-product-title"><?php the_title(); ?></h3>
+                                        <span class="mu-product-price"><?php echo $product->get_price_html(); ?></span>
+                                        <span class="mu-product-btn">Ver Producto</span>
+                                    </a>
+                                </div>
+                            <?php endwhile;
+                        else : ?>
+                            <p style="text-align:center;width:100%;">No hay productos destacados por el momento.</p>
+                        <?php endif;
+                        wp_reset_postdata();
+                        ?>
+                    </div>
+                </div>
+
+                <div class="mu-bestsellers-footer">
+                    <a href="<?php echo esc_url( add_query_arg( 'orderby', 'popularity', wc_get_page_permalink( 'shop' ) ) ); ?>" class="mu-btn mu-btn-primary">
+                        Ver Todos
+                    </a>
+                </div>
+            </div>
+        </section>
+        <?php
+        $html = ob_get_clean();
+        set_transient( $cache_key, $html, 12 * HOUR_IN_SECONDS );
+        return $html;
+    }
+    add_shortcode( 'mu_bestsellers_section', 'mu_bestsellers_section' );
+}
+
+// ============================================
+// SHORTCODE CATEGORÍAS POPULARES
+// Uso: [mu_popcat_section]
+// Grid de 4 columnas en desktop, carrusel en móvil.
+// CSS: css/home.css | Carrusel JS: js/global-ui.js (initCarousels)
+// ============================================
+
+if ( ! function_exists( 'mu_popcat_section' ) ) {
+    function mu_popcat_section() {
+        // Categorías configuradas estáticamente — cambiar aquí si se renombran slugs
+        $categories = [
+            [
+                'href'  => '/tienda/escolares/',
+                'img'   => '/wp-content/uploads/2026/02/catescolares.webp',
+                'alt'   => 'Etiquetas Escolares',
+                'title' => 'Etiquetas Escolares',
+                'desc'  => 'Más de 150 diseños',
+            ],
+            [
+                'href'  => '/tienda/decoracion/',
+                'img'   => '/wp-content/uploads/2026/02/catstickers.webp',
+                'alt'   => 'Stickers Decorativos',
+                'title' => 'Stickers Decorativos',
+                'desc'  => 'Planchas y packs',
+            ],
+            [
+                'href'  => '/tienda/emprendimientos/',
+                'img'   => '/wp-content/uploads/2026/02/catetiquetas.webp',
+                'alt'   => 'Emprendedores',
+                'title' => 'Emprendedores',
+                'desc'  => 'Todo para tu marca',
+            ],
+            [
+                'href'  => '/tienda/outlet/',
+                'img'   => '/wp-content/uploads/2026/02/catoutlet.webp',
+                'alt'   => 'Outlet',
+                'title' => 'Outlet',
+                'desc'  => 'Productos en oferta',
+            ],
+        ];
+
+        ob_start();
+        ?>
+        <section class="mu-section">
+            <div class="mu-container">
+                <h2 class="mu-section-title">Explora Nuestras Categorías</h2>
+
+                <div class="mu-carousel-wrapper">
+                    <button class="mu-nav-btn prev" aria-label="Anterior">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                    </button>
+                    <button class="mu-nav-btn next" aria-label="Siguiente">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </button>
+
+                    <div class="mu-carousel-track">
+                        <?php foreach ( $categories as $cat ) : ?>
+                            <div class="mu-carousel-item">
+                                <div class="mu-category-card can-hover">
+                                    <a href="<?php echo esc_url( $cat['href'] ); ?>">
+                                        <div class="mu-category-image">
+                                            <img src="<?php echo esc_url( $cat['img'] ); ?>"
+                                                 alt="<?php echo esc_attr( $cat['alt'] ); ?>"
+                                                 loading="lazy">
+                                        </div>
+                                        <div class="mu-category-info">
+                                            <h3><?php echo esc_html( $cat['title'] ); ?></h3>
+                                            <p><?php echo esc_html( $cat['desc'] ); ?></p>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <?php
+        return ob_get_clean();
+    }
+    add_shortcode( 'mu_popcat_section', 'mu_popcat_section' );
 }
