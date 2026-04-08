@@ -1,0 +1,192 @@
+/*
+ * Muy Únicos — Home Page Styles
+ * Carga: is_front_page()
+ * Secciones: [mu_bestsellers_section] + [mu_popcat_section]
+ *
+ * NOTA: El sistema de carrusel híbrido (.mu-carousel-wrapper, .mu-carousel-track,
+ * .mu-carousel-item, .mu-nav-btn) ya existe en css/components/global-ui.css
+ * y es manejado por js/global-ui.js → initCarousels().
+ * Este archivo contiene SOLO los estilos de contenido específicos de la home.
+ *
+ * @package GeneratePress_Child
+ */
+
+/* ============================================
+   §1. BESTSELLERS — TARJETA DE PRODUCTO
+   Usada dentro de .mu-carousel-item en [mu_bestsellers_section]
+   ============================================ */
+
+.mu-product-card {
+    background: var(--blanco, #fff);
+    border-radius: var(--mu-radius-lg, 16px);
+    border: 1px solid var(--secundario, #eee);
+    padding: 20px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+    box-shadow: var(--mu-shadow-sm);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    height: 100%;
+    text-decoration: none;
+}
+
+.mu-product-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--mu-shadow-lg, 0 10px 25px rgba(0,0,0,0.1));
+    border-color: var(--primario, #2B9FCF);
+}
+
+/* Imagen cuadrada */
+.mu-product-image {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: var(--mu-radius, 12px);
+    margin-bottom: var(--mu-space-sm, 15px);
+    transition: transform 0.5s ease;
+    display: block;
+}
+
+.mu-product-card:hover .mu-product-image {
+    transform: scale(1.05);
+}
+
+/* Título */
+.mu-product-title {
+    font-size: 1.1rem;
+    color: var(--texto, #333);
+    font-family: var(--mu-font-display, sans-serif);
+    padding: 10px 0 5px;
+    line-height: 1.3;
+    margin: 0;
+}
+
+/* Precio */
+.mu-product-price {
+    color: var(--primario, #2B9FCF);
+    font-weight: 700;
+    font-size: 1.15rem;
+    margin-bottom: var(--mu-space-sm, 15px);
+    display: block;
+}
+
+.mu-product-price del {
+    opacity: 0.5;
+    font-size: 0.9em;
+    margin-right: 5px;
+    color: #999;
+    text-decoration: line-through;
+}
+
+/* Botón simulado */
+.mu-product-btn {
+    background: var(--secundario, #FFD77A);
+    color: var(--texto, #333);
+    border-radius: var(--mu-radius-full, 50px);
+    font-weight: 600;
+    padding: 10px 24px;
+    margin-top: auto;
+    display: inline-block;
+    transition: background 0.3s ease, transform 0.3s ease;
+    font-size: 0.9rem;
+    text-decoration: none;
+}
+
+.mu-product-card:hover .mu-product-btn {
+    background: #ffc94d;
+    transform: translateY(-2px);
+}
+
+/* Badge de oferta */
+.mu-product-badge {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: #ef4444;
+    color: var(--blanco, #fff);
+    border-radius: var(--mu-radius-full, 50px);
+    padding: 4px 12px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    z-index: 2;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Footer del bloque bestsellers */
+.mu-bestsellers-footer {
+    text-align: center;
+    margin-top: var(--mu-space-md, 20px);
+}
+
+/* ============================================
+   §2. POPCAT — TARJETA DE CATEGORÍA
+   Usada dentro de .mu-carousel-item en [mu_popcat_section]
+   ============================================ */
+
+.mu-category-card {
+    background: var(--fondo, #fff);
+    border: 1px solid var(--secundario, #eee);
+    border-radius: var(--mu-radius-lg, 16px);
+    overflow: hidden;
+    position: relative;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    height: 100%;
+}
+
+.mu-category-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.08);
+}
+
+.mu-category-card a {
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    -webkit-user-drag: none;
+}
+
+/* Imagen con ratio fijo */
+.mu-category-image {
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    position: relative;
+    background: #f3f4f6;
+}
+
+.mu-category-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+    pointer-events: none;
+    display: block;
+}
+
+.mu-category-card:hover .mu-category-image img {
+    transform: scale(1.08);
+}
+
+/* Texto informativo */
+.mu-category-info {
+    padding: 20px;
+    text-align: center;
+    flex-grow: 1;
+}
+
+.mu-category-info h3 {
+    font-size: 1.2rem;
+    margin: 0 0 5px;
+    color: var(--texto, #333);
+    font-weight: 700;
+}
+
+.mu-category-info p {
+    font-size: 0.9rem;
+    color: #666;
+    margin: 0;
+}
