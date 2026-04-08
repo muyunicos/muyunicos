@@ -147,6 +147,9 @@ if ( ! function_exists( 'mu_navchips_parse_product_index' ) ) {
     /**
      * Parsea el índice compacto y devuelve estructura PHP.
      *
+     * Si el transient expiró, programa un rebuild vía cron y devuelve
+     * un array vacío para no bloquear la petición del visitante.
+     *
      * @return array {
      *   @type array $products        Mapa pid => [ 'cats' => [], 'tags' => [] ].
      *   @type array $cat_to_products Mapa cat_id => [ product_ids ].
@@ -163,8 +166,19 @@ if ( ! function_exists( 'mu_navchips_parse_product_index' ) ) {
         $index = get_transient( 'mu_navchips_product_index' );
 
         if ( false === $index ) {
-            mu_navchips_build_product_index();
-            $index = get_transient( 'mu_navchips_product_index' );
+            // [Fix #1] No reconstruir inline: programar cron y devolver vacío.
+            // El próximo visitante (tras el siguiente cron, máx 10 min) verá los chips.
+            if ( ! wp_next_scheduled( 'mu_navchips_rebuild_index_hook' ) ) {
+                wp_schedule_single_event( time(), 'mu_navchips_rebuild_index_hook' );
+            }
+
+            $parsed_cache = [
+                'products'        => [],
+                'cat_to_products' => [],
+                'tag_to_products' => [],
+            ];
+
+            return $parsed_cache;
         }
 
         if ( empty( $index ) ) {
@@ -489,10 +503,11 @@ if ( ! function_exists( 'mu_navchips_render_navigation_chips' ) ) {
             }
         }
 
+        // [Fix #2] hide_empty => true: evita cargar categorías sin productos en memoria.
         $cats_query = get_terms(
             [
                 'taxonomy'   => 'product_cat',
-                'hide_empty' => false,
+                'hide_empty' => true,
                 'orderby'    => 'count',
                 'order'      => 'DESC',
             ]
@@ -552,6 +567,9 @@ if ( ! function_exists( 'mu_navchips_render_navigation_chips' ) ) {
         $tags_a_omitir  = [ 'descargable', 'adhesivos', 'planchas-de-stickers' ];
         $processed      = 0;
         $max_tags       = 30;
+
+        // [Fix #3] Pre-cargar hasta $max_tags términos en una sola query al object cache.
+        _prime_term_caches( array_keys( array_slice( $tag_stats, 0, $max_tags, true ) ) );
 
         foreach ( $tag_stats as $tag_id => $stats ) {
             if ( $processed >= $max_tags && ! in_array( $tag_id, $active_tag_ids, true ) ) {

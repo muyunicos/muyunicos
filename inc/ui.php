@@ -337,6 +337,7 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
         $api_key        = defined( 'MU_GOOGLE_PLACES_API_KEY' ) ? MU_GOOGLE_PLACES_API_KEY : '';
         $place_id       = 'ChIJ18LlLQPchJURqIDwiZM7t_E';
         $db_option_name = 'mu_reviews_master_db';
+        $max_reviews    = 200; // [Fix #4] Límite para evitar crecimiento ilimitado en wp_options.
         $msg_update     = '';
 
         if ( $api_key && current_user_can( 'administrator' ) && isset( $_GET['force_reviews'] ) ) {
@@ -362,6 +363,8 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
                 }
 
                 if ( $added > 0 ) {
+                    // [Fix #4] Mantener solo las últimas $max_reviews reseñas para limitar el tamaño de wp_options.
+                    $current_db = array_slice( $current_db, -$max_reviews );
                     update_option( $db_option_name, $current_db );
                     $msg_update = sprintf(
                         '<div style="background:#d4edda;color:#155724;padding:10px;text-align:center;border-radius:12px;margin-bottom:20px;font-size:0.9rem;">✅ Se agregaron %d reseñas nuevas.</div>',
