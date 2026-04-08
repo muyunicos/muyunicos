@@ -1,6 +1,6 @@
 MUY ÍNICOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Refactor Modular Pragmático · v2.6.2 · Apr 8, 2026
+Estado: Refactor Modular Pragmático · v2.6.3 · Apr 8, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -22,6 +22,7 @@ Carga Condicional Estricta
 - Usar is_shop(), is_checkout(), is_cart(), is_user_logged_in(), is_product(), has_shortcode(), is_front_page(), etc. en functions.php.
 - NUNCA usar wp_add_inline_style() o wp_add_inline_script(). Todo CSS/JS debe estar en archivos cacheables.
 - EXCEPCIÓN VÁLIDA: wp_add_inline_style() está permitido dentro del hook login_enqueue_scripts exclusivamente para inyectar propiedades dinámicas generadas por PHP (ej: URLs de imágenes). El bloque CSS principal debe residir siempre en un archivo .css cacheable.
+- EXCEPCIÓN EMAILS: style="" inline es obligatorio en templates/fragmentos HTML de email. Los clientes de correo no soportan hojas de estilo externas.
 
 Flujo GitHub (PROHIBIDO COMMIT A MAIN)
 - Todo cambio debe ir en una rama semántica (perf/, refactor/, fix/, feat/).
@@ -37,8 +38,9 @@ muyunicos/ (generatepress-child)
 │
 ├── inc/                       # ⚙️ MÓDULOS PHP (Lógica de negocio y hooks)
 │   ├── icons.php              # [CARGA PRIMERO] mu_get_icon() — repositorio de SVGs
-│   ├── geo.php                # Sistema multi-país + Auto-Detección + Decimales + Modal + Selector
-│   │                          # ✅ muyu_get_cached_geolocation() — caché estática (static $geo)
+│   ├── geo.php                # ✅ Sistema multi-país + Auto-Detección + Decimales + Modal + Selector
+│   │                          #   muyu_get_cached_geolocation() — caché estática (static $geo)
+│   │                          #   mu_country_modal_enqueue() y mu_country_modal_html() con function_exists()
 │   ├── digital-restriction.php# ✅ Digital Restriction System v4.1.0 (Fix Memory: Rebuild vía WP Cron)
 │   ├── auth-modal.php         # Modal Login/Registro + endpoints WC-AJAX
 │   ├── login.php              # ✅ Login Page v2.1.0
@@ -50,7 +52,10 @@ muyunicos/ (generatepress-child)
 │   │                          #               [mu_popcat_section] [mu_hero_section]
 │   ├── orders-files.php       # ✅ File Manager (Admin/Frontend)
 │   ├── orders-workflow.php    # ✅ Workflow pedidos
-│   ├── downloads-bonus.php    # ✅ Dynamic Bonus & Guides
+│   ├── downloads-bonus.php    # ✅ Dynamic Bonus & Guides v1.2.0
+│   │                          #   mu_user_has_cat_18_custom_files() usa transient 12h (mu_cat18_files_{uid})
+│   │                          #   invalidado en woocommerce_order_status_changed
+│   │                          #   .mu-guide-link sin inline style → css/account-downloads.css
 │   ├── navigation-chips.php   # ✅ Navigation Chips v8
 │   ├── products-core.php      # ✅ Productos Personalizados Core v2.1
 │   ├── addon-nombre.php       # ✅ Addon Nombre v3.0
@@ -77,7 +82,9 @@ muyunicos/ (generatepress-child)
 │   ├── checkout.css           # is_checkout() && ! is_order_received_page()
 │   ├── shop.css               # is_shop() || ...
 │   ├── product-builder.css    # is_product() || is_cart()
-│   └── account-downloads.css  # is_account_page() && is_wc_endpoint_url('downloads')
+│   └── account-downloads.css  # ✅ is_account_page() && is_wc_endpoint_url('downloads')
+│                              #   §1: .mu-custom-downloads + WC info override
+│                              #   §2: .mu-guide-link (link "Ver Guía" inyectado por downloads-bonus.php)
 │
 └── js/                        # ⚡ JS MODULAR (IIFE + strict mode + DOMContentLoaded)
     ├── admin.js               # is_admin()
@@ -116,7 +123,7 @@ inc/flexible-price.php | Precio Flexible v4.0: mapa O(1), validación, captura, 
 inc/ui.php | Header icons, Cart badge fragment, WhatsApp btn, Custom Search form, Custom Footer, Share shortcode, Google Site Kit canonical, WPLingua body class, Category Description Mover, Reemplazo precio $0, Disable GP Featured image. Shortcodes: [mu_testimonios_section] (has_shortcode condicional) · [mu_bestsellers_section] (transient 12h) · [mu_popcat_section] (estático) · [mu_hero_section] (filtrado por fecha DateTime). mu_home_sections_enqueue() encola css/home.css + js/hero.js en is_front_page().
 inc/orders-files.php | Gestor de archivos: Admin, Email, Account.
 inc/orders-workflow.php | Workflow pedidos: Estado 'wc-production', Emails inteligentes, Admin UI.
-inc/downloads-bonus.php | Inyección dinámica de archivos bonus + guía de uso Cat. 18.
+inc/downloads-bonus.php | ✅ v1.2.0: Inyección dinámica de archivos bonus + guía Cat. 18. mu_user_has_cat_18_custom_files() usa transient 'mu_cat18_files_{uid}' (TTL 12h), invalidado en woocommerce_order_status_changed. .mu-guide-link sin inline style — estilos en css/account-downloads.css. Inline styles mantenidos exclusivamente en contextos de email.
 inc/navigation-chips.php | Navigation Chips v8: Breadcrumb global, índice compacto, chips, transient.
 inc/products-core.php | Productos Personalizados Core v2.1: constantes, MU_UI_Helper, hooks carrito/orden.
 inc/addon-nombre.php | Addon Nombre v3.0: campo nombre, validación, guardado, editor inline AJAX.
@@ -131,10 +138,10 @@ css/admin.css | is_admin()
 css/admin-order-files.css | is_admin() && order_edit
 css/admin-orders.css | is_admin() && order_edit
 css/login.css | login_enqueue_scripts
-css/account-downloads.css | is_account_page() && is_wc_endpoint_url('downloads')
+css/account-downloads.css | ✅ is_account_page() && is_wc_endpoint_url('downloads') — §1: .mu-custom-downloads; §2: .mu-guide-link
 css/product.css | is_product()
 css/testimonials.css | has_shortcode('mu_testimonios_section') — via mu_testimonios_enqueue
-css/home.css | ✅ is_front_page() — §1-3 tarjetas producto/categoría; §4+ Hero Promos (.mu-hero-promo-*: slider grid-stack, dots, badge flotante, mobile responsive). Encolado por mu_home_sections_enqueue().
+css/home.css | ✅ is_front_page() — §1-3 tarjetas producto/categoría; §4+ Hero Promos. Encolado por mu_home_sections_enqueue().
 css/components/global-ui.css | Global — Share, WhatsApp, Search, WPLingua, Carrusel Híbrido
 css/components/header.css | Global
 css/components/footer.css | Global
@@ -207,7 +214,7 @@ Catálogo / Grid de Productos | navigation-chips.php | shop.css | shop.js / navi
 Ficha de Producto (Single) | ui.php | product.css | product.js
 Gestor Archivos Pedido | orders-files.php | admin-order-files.css | admin-order-files.js
 Workflow Pedidos | orders-workflow.php | admin-orders.css | admin-orders.js
-Inyección Descargas Bonus + Guías | downloads-bonus.php | — | —
+Inyección Descargas Bonus + Guías | downloads-bonus.php | account-downloads.css | —
 Nuevo icóno SVG | icons.php | — | —
 Builder de producto personalizado | products-core.php | product-builder.css | —
 Addon campo nombre etiquetas | addon-nombre.php | product-builder.css (§10,§11) | addon-nombre.js
@@ -224,6 +231,7 @@ PHP
 - Rendimiento: Evitar hooks pesados (init/wp_loaded) si hay hooks específicos o carga condicional.
 - CSS: NUNCA usar wp_add_inline_style() o wp_add_inline_script(). Todo estilo debe residir en un .css/.js cacheable.
 - EXCEPCIÓN login: wp_add_inline_style() está permitido dentro de login_enqueue_scripts exclusivamente para propiedades dinámicas PHP. El CSS base debe estar en css/login.css.
+- EXCEPCIÓN emails: style="" inline es obligatorio en fragmentos HTML de email. Los clientes de correo no soportan hojas de estilo externas.
 - Hooks: NUNCA anidar add_filter/add_action dentro de otras funciones hookeadas. Cada hook en el scope global del módulo.
 - WP Cron: Usar wp_schedule_single_event() para tareas pesadas. NUNCA en shutdown, admin_init o template_redirect.
 - API Keys: NUNCA hardcodear en el repositorio. Usar constantes en wp-config.php.
@@ -250,10 +258,7 @@ CSS
 
 - Evaluar auto-host de libphonenumber-js para eliminar dependencia CDN en checkout.
 - Migrar bulk actions de Legacy a HPOS (woocommerce_order_list_table_bulk_actions).
-- [PENDIENTE PERFORMANCE] downloads-bonus.php: limitar wc_get_orders() a 'limit' => 50.
 - [PENDIENTE PERFORMANCE] digital-restriction.php: N+1 en display_digital_price_in_catalog. Evaluar get_post_meta() directo.
-- [PENDIENTE] flexible-price.php: mu_get_flexible_product_ids() hardcoded. Migrar a get_option().
-- [ACCIÓN REQUERIDA] Definir constante MU_GOOGLE_PLACES_API_KEY en wp-config.php.
 - [MIGRADO] Code Snippets "MU Core v2.1", "Addon Nombre v3.0", "Addon Etiquetas v3.0" → desactivar en plugin.
 - [ACCIÓN REQUERIDA] Desactivar snippet "Login + Password" en Code Snippets.
 - [ACCIÓN REQUERIDA] Desactivar y eliminar plugin "DCMS - Estilos Premium Ficha de Producto".

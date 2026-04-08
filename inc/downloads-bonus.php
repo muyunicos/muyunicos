@@ -2,7 +2,7 @@
 /**
  * Module: Downloads Bonus & Guides
  * Description: Inyección dinámica de archivo "Líneas de Corte" + Guía de Uso para productos Cat. 18.
- * Version: 1.1.3
+ * Version: 1.2.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -40,8 +40,7 @@ if ( ! function_exists( 'mu_user_has_virtual_manual_purchases' ) ) {
         ] );
 
         foreach ( $orders as $order_id ) {
-            // Reutiliza el helper de inc/orders-workflow.php si está disponible
-            if ( function_exists('mu_order_has_virtual_manual_item') && mu_order_has_virtual_manual_item( $order_id ) ) {
+            if ( function_exists( 'mu_order_has_virtual_manual_item' ) && mu_order_has_virtual_manual_item( $order_id ) ) {
                 $has_virtual_manual = true;
                 break;
             }
@@ -55,13 +54,13 @@ if ( ! function_exists( 'mu_user_has_virtual_manual_purchases' ) ) {
 if ( ! function_exists( 'mu_clear_virtual_manual_cache' ) ) {
     /**
      * Limpia el caché del usuario cuando el pedido cambia a un estado activo.
-     * Esto asegura que la regla sea retroactiva y en tiempo real.
      */
     function mu_clear_virtual_manual_cache( $order_id, $from, $to, $order ) {
         if ( in_array( $to, [ 'processing', 'completed', 'production' ] ) ) {
             $user_id = $order->get_customer_id();
             if ( $user_id ) {
                 delete_user_meta( $user_id, '_mu_has_virtual_manual' );
+                delete_transient( 'mu_cat18_files_' . $user_id );
             }
         }
     }
@@ -78,7 +77,7 @@ if ( ! function_exists( 'mu_user_has_cat_18_download' ) ) {
         foreach ( $downloads as $dl ) {
             $product_id = isset( $dl['product_id'] ) ? $dl['product_id'] : 0;
             if ( ! $product_id ) continue;
-            
+
             $product = wc_get_product( $product_id );
             if ( $product ) {
                 $parent_id = $product->get_parent_id() ? $product->get_parent_id() : $product->get_id();
@@ -94,20 +93,26 @@ if ( ! function_exists( 'mu_user_has_cat_18_download' ) ) {
 if ( ! function_exists( 'mu_user_has_cat_18_custom_files' ) ) {
     /**
      * Evalúa si el usuario tiene pedidos con archivos personalizados pertenecientes a la Categoría 18.
+     *
+     * FIX v1.2.0: Migrado de static $cache (solo in-request) a transient con TTL de 12h.
+     * Se invalida automáticamente en mu_clear_virtual_manual_cache() al cambiar estado del pedido.
      */
     function mu_user_has_cat_18_custom_files( $user_id ) {
         if ( ! $user_id ) return false;
-        
-        static $cache = [];
-        if ( isset( $cache[$user_id] ) ) return $cache[$user_id];
-        
+
+        $transient_key = 'mu_cat18_files_' . $user_id;
+        $cached        = get_transient( $transient_key );
+
+        if ( $cached === 'yes' ) return true;
+        if ( $cached === 'no' )  return false;
+
         $has_cat_18 = false;
-        $orders = wc_get_orders([
+        $orders     = wc_get_orders( [
             'customer_id' => $user_id,
-            'status' => ['completed', 'processing'],
-            'limit' => 20,
-        ]);
-        
+            'status'      => [ 'completed', 'processing' ],
+            'limit'       => 20,
+        ] );
+
         foreach ( $orders as $order ) {
             foreach ( $order->get_items() as $item ) {
                 $files = $item->get_meta( '_urls_files', true );
@@ -123,8 +128,8 @@ if ( ! function_exists( 'mu_user_has_cat_18_custom_files' ) ) {
                 }
             }
         }
-        
-        $cache[$user_id] = $has_cat_18;
+
+        set_transient( $transient_key, $has_cat_18 ? 'yes' : 'no', 12 * HOUR_IN_SECONDS );
         return $has_cat_18;
     }
 }
@@ -135,7 +140,7 @@ if ( ! function_exists( 'mu_product_is_cat_18_virtual' ) ) {
      */
     function mu_product_is_cat_18_virtual( $product ) {
         if ( ! $product ) return false;
-        
+
         $parent_id = $product->get_parent_id() ? $product->get_parent_id() : $product->get_id();
         return $product->is_virtual() && has_term( 18, 'product_cat', $parent_id );
     }
@@ -148,22 +153,24 @@ if ( ! function_exists( 'mu_product_is_cat_18_virtual' ) ) {
 if ( ! function_exists( 'mu_inject_downloads_and_guides_table' ) ) {
     /**
      * Modifica el nombre de las descargas para agregar guía (Cat. 18) y agrega bono si aplica.
+     *
+     * FIX v1.2.0: Eliminado style="" inline del link de guía. La clase .mu-guide-link
+     * ahora vive en css/account-downloads.css (cargado condicionalmente en esa página).
      */
     function mu_inject_downloads_and_guides_table( $downloads ) {
         $user_id = get_current_user_id();
-        
+
         // 1. Inyectar links a la guía
         if ( ! empty( $downloads ) && is_array( $downloads ) ) {
             foreach ( $downloads as $key => $download ) {
                 $product_id = isset( $download['product_id'] ) ? $download['product_id'] : 0;
                 if ( ! $product_id ) continue;
                 $product = wc_get_product( $product_id );
-                
+
                 if ( mu_product_is_cat_18_virtual( $product ) ) {
-                    // Solo inyectar si aún no tiene la guía
-                    if ( strpos( $downloads[$key]['download_name'], '(📖 Ver Guía)' ) === false ) {
-                        $guide_link = ' <a href="https://muyunicos.com/guia-etiquetas-personalizada/" target="_blank" style="font-size: 0.9em; color: var(--primario, #2B9FCF); text-decoration: none;">(📖 Ver Guía)</a>';
-                        $downloads[$key]['download_name'] .= $guide_link;
+                    if ( strpos( $downloads[ $key ]['download_name'], '(📖 Ver Guía)' ) === false ) {
+                        $guide_link = ' <a href="https://muyunicos.com/guia-etiquetas-personalizada/" target="_blank" class="mu-guide-link">(📖 Ver Guía)</a>';
+                        $downloads[ $key ]['download_name'] .= $guide_link;
                     }
                 }
             }
@@ -172,22 +179,22 @@ if ( ! function_exists( 'mu_inject_downloads_and_guides_table' ) ) {
         // 2. Inyectar archivo bonus
         if ( $user_id && ! isset( $downloads['mu_bonus_lineas_corte'] ) ) {
             $has_cat_18 = mu_user_has_cat_18_download( $downloads ) || mu_user_has_cat_18_custom_files( $user_id );
-            
+
             if ( $has_cat_18 && mu_user_has_virtual_manual_purchases( $user_id ) ) {
                 $downloads['mu_bonus_lineas_corte'] = [
-                    'download_url' => 'https://muyunicos.com/wp-content/uploads/2026/02/Lineas-de-Corte-Etiquetas-Escolares-Muy-Unicos.zip',
-                    'download_id'  => 'mu_bonus_lineas_corte',
-                    'product_id'   => 0,
-                    'product_name' => 'Líneas de Corte - Etiquetas Escolares (Bonus)',
-                    'download_name'=> 'Líneas de Corte - Etiquetas Escolares',
-                    'order_id'     => 0,
-                    'order_key'    => '',
+                    'download_url'        => 'https://muyunicos.com/wp-content/uploads/2026/02/Lineas-de-Corte-Etiquetas-Escolares-Muy-Unicos.zip',
+                    'download_id'         => 'mu_bonus_lineas_corte',
+                    'product_id'          => 0,
+                    'product_name'        => 'Líneas de Corte - Etiquetas Escolares (Bonus)',
+                    'download_name'       => 'Líneas de Corte - Etiquetas Escolares',
+                    'order_id'            => 0,
+                    'order_key'           => '',
                     'downloads_remaining' => '',
-                    'access_expires' => '',
-                    'file' => [
+                    'access_expires'      => '',
+                    'file'                => [
                         'name' => 'Líneas de Corte - Etiquetas Escolares',
-                        'file' => 'https://muyunicos.com/wp-content/uploads/2026/02/Lineas-de-Corte-Etiquetas-Escolares-Muy-Unicos.zip'
-                    ]
+                        'file' => 'https://muyunicos.com/wp-content/uploads/2026/02/Lineas-de-Corte-Etiquetas-Escolares-Muy-Unicos.zip',
+                    ],
                 ];
             }
         }
@@ -198,15 +205,15 @@ if ( ! function_exists( 'mu_inject_downloads_and_guides_table' ) ) {
 }
 
 // ==========================================
-// 3. INYECCIÓN DE GUÍA EN EMAILS (INLINE SUTIL)
+// 3. INYECCIÓN DE GUÍA EN EMAILS (INLINE OBLIGATORIO)
 // ==========================================
 
 if ( ! function_exists( 'mu_inject_guide_in_email_item_name' ) ) {
     /**
      * Agrega el link de la guía inline después del nombre del producto en emails.
+     * Los estilos inline son obligatorios en emails HTML (compatibilidad con clientes de correo).
      */
     function mu_inject_guide_in_email_item_name( $item_name, $item, $is_visible ) {
-        // Solo aplicar en emails (validar contexto de WooCommerce)
         if ( ! doing_action( 'woocommerce_email_order_details' ) ) {
             return $item_name;
         }
@@ -222,33 +229,30 @@ if ( ! function_exists( 'mu_inject_guide_in_email_item_name' ) ) {
 }
 
 // ==========================================
-// 5. INYECCIÓN DE BONUS EN EMAILS DE PEDIDO
+// 5. INYECCIÓN DE BONUS EN EMAILS DE PEDIDO (INLINE OBLIGATORIO)
 // ==========================================
 
 if ( ! function_exists( 'mu_inject_bonus_in_emails' ) ) {
     /**
-     * Agregamos el enlace del bonus directamente en los correos de pedido completado/procesando.
+     * Agrega el enlace del bonus en correos de pedido completado/facturado.
+     * Los estilos inline son obligatorios en emails HTML (compatibilidad con clientes de correo).
      */
     function mu_inject_bonus_in_emails( $order, $sent_to_admin, $plain_text, $email ) {
         if ( $sent_to_admin || $plain_text || ! $email ) return;
-        
-        // Solo mostramos el bonus si la orden fue recién completada o facturada
+
         if ( ! in_array( $email->id, [ 'customer_completed_order', 'customer_invoice' ] ) ) return;
 
         $user_id = $order->get_customer_id();
         if ( ! $user_id ) return;
 
-        // Validación Condición A: Debe tener Virtual + Manual
         if ( ! mu_user_has_virtual_manual_purchases( $user_id ) ) return;
 
-        // Validación Condición B: Debe tener un producto Categoría 18 (nativo o personalizado)
         $all_downloads = wc_get_customer_available_downloads( $user_id );
-        $has_cat_18 = mu_user_has_cat_18_download( $all_downloads ) || mu_user_has_cat_18_custom_files( $user_id );
-        
+        $has_cat_18    = mu_user_has_cat_18_download( $all_downloads ) || mu_user_has_cat_18_custom_files( $user_id );
+
         if ( $has_cat_18 ) {
-            
             $zip_url = 'https://muyunicos.com/wp-content/uploads/2026/02/Lineas-de-Corte-Etiquetas-Escolares-Muy-Unicos.zip';
-            
+
             echo '<div style="margin: 20px 0; border: 1px solid #e5e5e5; padding: 15px; background: #fdfdfd; border-radius: 6px;">';
             echo '<h3 style="margin-top:0; color: #2B9FCF;">🎁 Archivo Adicional (Bonus)</h3>';
             echo '<p style="margin-bottom: 10px;">Como adquiriste etiquetas escolares y productos de diseño manual, te regalamos este recurso útil:</p>';

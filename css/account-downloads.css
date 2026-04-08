@@ -5,3 +5,13 @@
    Se usa el combinador de hermanos (~) para no ocultar el aviso
    cuando el usuario realmente NO tiene descargas. */
 .mu-custom-downloads ~ .woocommerce-info { display: none; }
+
+/* Link "Ver Guía" inyectado por downloads-bonus.php en la tabla de descargas */
+.mu-guide-link {
+    font-size: 0.9em;
+    color: var(--primario);
+    text-decoration: none;
+}
+.mu-guide-link:hover {
+    text-decoration: underline;
+}
