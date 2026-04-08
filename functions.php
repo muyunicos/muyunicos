@@ -53,6 +53,12 @@ function mu_enqueue_assets() {
         wp_enqueue_script( 'mu-navigation-chips-js', "$uri/js/navigation-chips.js", [], $ver, true );
     }
 
+    // Ficha de producto individual
+    if ( is_product() ) {
+        wp_enqueue_style( 'mu-product', "$uri/css/product.css", [ 'mu-base' ], $ver );
+        wp_enqueue_script( 'mu-product-js', "$uri/js/product.js", [ 'wc-single-product' ], $ver, true );
+    }
+
     // Product Builder (Core + Addons Etiquetas/Nombre)
     if ( is_product() || is_cart() ) {
         wp_enqueue_style( 'mu-product-builder', "$uri/css/product-builder.css", [ 'mu-base' ], $ver );
@@ -85,7 +91,7 @@ function mu_enqueue_assets() {
             'nonce'      => wp_create_nonce( 'check-email-nonce' ),
         ] );
     }
-    
+
     // Mi Cuenta > Descargas (Custom Styles)
     if ( is_account_page() && is_wc_endpoint_url( 'downloads' ) ) {
         wp_enqueue_style( 'mu-account-downloads', "$uri/css/account-downloads.css", [ 'mu-base' ], $ver );
