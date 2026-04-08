@@ -126,9 +126,10 @@ mu_load_module( 'icons' );               // SVG icons repository
 mu_load_module( 'geo' );                 // Multi-country system
 mu_load_module( 'digital-restriction' ); // Digital Restriction System
 mu_load_module( 'auth-modal' );          // Authentication modal
+mu_load_module( 'login' );               // wp-login.php customization (hooks only fire on login screen)
 mu_load_module( 'checkout' );            // Checkout optimizations
 mu_load_module( 'cart' );                // Cart functionality
-mu_load_module( 'flexible-price' );      // Sistema de Precio Flexible v4.0
+mu_load_module( 'flexible-price' );      // Sistema de Precio Flexible v4.0 — encola js/flexible-price.js via mu_flexible_price_enqueue(). NO agregar a mu_enqueue_assets() para evitar duplicado.
 mu_load_module( 'ui' );                  // UI components (header, footer, search, wplng body class)
 mu_load_module( 'orders-files' );        // Order File Manager (Admin/Frontend)
 mu_load_module( 'orders-workflow' );     // Order Workflow (Status, Email, WhatsApp)
