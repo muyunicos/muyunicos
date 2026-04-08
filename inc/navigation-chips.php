@@ -163,8 +163,15 @@ if ( ! function_exists( 'mu_navchips_parse_product_index' ) ) {
         $index = get_transient( 'mu_navchips_product_index' );
 
         if ( false === $index ) {
-            mu_navchips_build_product_index();
-            $index = get_transient( 'mu_navchips_product_index' );
+            // Defer rebuild to background cron to avoid blocking the visitor request.
+            if ( ! wp_next_scheduled( 'mu_navchips_rebuild_index_hook' ) ) {
+                wp_schedule_single_event( time(), 'mu_navchips_rebuild_index_hook' );
+            }
+            return [
+                'products'        => [],
+                'cat_to_products' => [],
+                'tag_to_products' => [],
+            ];
         }
 
         if ( empty( $index ) ) {
@@ -492,7 +499,7 @@ if ( ! function_exists( 'mu_navchips_render_navigation_chips' ) ) {
         $cats_query = get_terms(
             [
                 'taxonomy'   => 'product_cat',
-                'hide_empty' => false,
+                'hide_empty' => true,
                 'orderby'    => 'count',
                 'order'      => 'DESC',
             ]
@@ -552,6 +559,9 @@ if ( ! function_exists( 'mu_navchips_render_navigation_chips' ) ) {
         $tags_a_omitir  = [ 'descargable', 'adhesivos', 'planchas-de-stickers' ];
         $processed      = 0;
         $max_tags       = 30;
+
+        // Pre-load term objects in bulk to avoid N individual DB queries inside the loop.
+        _prime_term_caches( array_keys( array_slice( $tag_stats, 0, $max_tags, true ) ) );
 
         foreach ( $tag_stats as $tag_id => $stats ) {
             if ( $processed >= $max_tags && ! in_array( $tag_id, $active_tag_ids, true ) ) {
