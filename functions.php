@@ -86,9 +86,10 @@ function mu_enqueue_assets() {
         wp_register_script( 'libphonenumber-js', 'https://unpkg.com/libphonenumber-js@1.10.49/bundle/libphonenumber-js.min.js', [], '1.10.49', true );
         wp_enqueue_script( 'mu-checkout-js', "$uri/js/checkout.js", [ 'jquery', 'libphonenumber-js' ], $ver, true );
         wp_localize_script( 'mu-checkout-js', 'muCheckout', [
-            'isLoggedIn' => is_user_logged_in(),
-            'ajaxUrl'    => WC_AJAX::get_endpoint( 'mu_check_email' ),
-            'nonce'      => wp_create_nonce( 'check-email-nonce' ),
+            'isLoggedIn'   => is_user_logged_in(),
+            'ajaxUrl'      => WC_AJAX::get_endpoint( 'mu_check_email' ),
+            'nonce'        => wp_create_nonce( 'check-email-nonce' ),
+            'myAccountUrl' => wc_get_page_permalink( 'myaccount' ),
         ] );
     }
 
