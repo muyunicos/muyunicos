@@ -183,25 +183,58 @@ body.mu-wplng-hide .wplng-switcher {
     user-select: none; /* Mejor experiencia para el drag futuro */
 }
 
-/* Botones Navegación (Ocultos en Desktop) */
+/* ============================================
+   BOTONES DE NAVEGACIÓN — Estética Satélite
+   Comparten base visual con .mu-refresh-satellite
+   (testimonials.css): círculo primario, borde blanco,
+   box-shadow elevado, SVG aislado con will-change.
+   SIN animación de giro — solo scale en active.
+   ============================================ */
 .mu-nav-btn {
-    display: none;
+    display: none;               /* Oculto en desktop, visible en media query */
     position: absolute;
     top: 40%;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    box-sizing: border-box;
+    line-height: 0;
     border-radius: 50%;
-    background: var(--primario, #ff5e57);
-    border: none;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    background: var(--primario, #2B9FCF);
+    color: var(--blanco, #fff);
+    border: 3px solid var(--blanco, #fff);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
     z-index: 20;
     cursor: pointer;
     align-items: center;
     justify-content: center;
+    /* Solo transicionamos propiedades del botón — transform va en el SVG */
+    transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
+.mu-nav-btn:hover {
+    background: var(--resaltado, #1A7BA5);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
+}
+
+/* SVG aislado en su propia capa de composición */
+.mu-nav-btn svg {
+    display: block;
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    stroke: currentColor;
+    stroke-width: 2.5;
+    fill: none;
+    will-change: transform;       /* Reserva capa GPU antes del hover */
     transition: transform 0.2s ease;
 }
 
-.mu-nav-btn:active { transform: translateY(-50%) scale(0.95); }
+/* Scale sutil en click — sin transform en el contenedor */
+.mu-nav-btn:active svg {
+    transform: scale(0.9);
+}
+
 .mu-nav-btn.prev { left: -10px; }
 .mu-nav-btn.next { right: -10px; }
 
@@ -243,7 +276,15 @@ body.mu-wplng-hide .wplng-switcher {
     }
     
     /* Botones más discretos */
-    .mu-nav-btn { width: 32px; height: 32px; }
+    .mu-nav-btn {
+        width: 36px;
+        height: 36px;
+    }
+
+    .mu-nav-btn svg {
+        width: 16px;
+        height: 16px;
+    }
 }
 
 /* ============================================
