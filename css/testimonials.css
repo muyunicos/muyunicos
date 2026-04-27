@@ -3,6 +3,11 @@
  * Carga: shortcode mu_testimonios_section (páginas con el bloque)
  * Condicional: encolado desde inc/ui.php solo cuando el shortcode está presente
  *
+ * NOTA: La base visual de .mu-refresh-satellite (tamaño, fondo, borde, sombra,
+ * cursor, transición de botón, SVG con will-change) viene del selector agrupado
+ * en css/components/global-ui.css. Aquí solo va lo que es específico de
+ * este componente: posicionamiento y animación de giro.
+ *
  * @package GeneratePress_Child
  */
 
@@ -17,7 +22,6 @@
     margin-bottom: var(--mu-space-lg, 40px);
 }
 
-/* Desktop: 3 columnas directas cuando hay espacio suficiente */
 @media (min-width: 900px) {
     .mu-grid-reviews {
         grid-template-columns: repeat(3, 1fr);
@@ -59,8 +63,6 @@
     border-color: var(--primario, #2B9FCF);
 }
 
-/* --- Meta (avatar + nombre + estrellas) --- */
-
 .mu-review-meta {
     display: flex;
     align-items: center;
@@ -88,8 +90,6 @@
     letter-spacing: 1px;
 }
 
-/* --- Texto de la reseña --- */
-
 .mu-review-text {
     font-size: 0.95rem;
     color: #555;
@@ -100,64 +100,15 @@
 }
 
 /* ============================================
-   BOTÓN SATÉLITE — Rotar reseñas
+   BOTÓN SATÉLITE — solo lo específico
+   Base visual en global-ui.css (.mu-nav-btn, .mu-refresh-satellite)
    ============================================ */
 
-/* 1. El Botón — solo controla fondo y sombra */
+/* Posicionamiento específico del satélite */
 .mu-refresh-satellite {
-    position: absolute;
-    width: 44px;
-    height: 44px;
-    background: var(--primario, #2B9FCF);
-    color: var(--blanco, #fff);
-    border-radius: 50%;
-    border: 3px solid var(--blanco, #fff);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
     z-index: 10;
-    padding: 0;
-    box-sizing: border-box;
-    line-height: 0;
-    /* Solo transicionamos propiedades del botón, NO transform (eso va en el SVG) */
-    transition: background 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* 2. El SVG — tiene su propia capa de composición y su propia transición */
-.mu-refresh-satellite svg {
-    display: block;
-    margin: 0;
-    flex-shrink: 0;
-    width: 20px;
-    height: 20px;
-    stroke-width: 2.5;
-    will-change: transform; /* reserva capa GPU antes del hover */
-    transition: transform 0.4s ease;
-}
-
-/* 3. Hover: solo el SVG rota, el botón cambia de color */
-.mu-refresh-satellite:hover {
-    background: var(--resaltado, #1A7BA5);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
-}
-
-.mu-refresh-satellite:hover svg {
-    transform: rotate(180deg);
-}
-
-/* 4. Clase .is-spinning disparada por JS al hacer click */
-@keyframes mu-spin-once {
-    from { transform: rotate(0deg); }
-    to   { transform: rotate(360deg); }
-}
-
-.mu-refresh-satellite.is-spinning svg {
-    animation: mu-spin-once 0.4s ease forwards;
-}
-
-/* Posición Desktop (≥ 900px): centrado vertical, flotando sobre borde derecho */
 @media (min-width: 900px) {
     .mu-refresh-satellite {
         top: 50%;
@@ -166,7 +117,6 @@
     }
 }
 
-/* Posición Móvil (< 900px): centrado horizontal, flotando sobre borde inferior */
 @media (max-width: 899px) {
     .mu-refresh-satellite {
         bottom: -22px;
@@ -177,8 +127,23 @@
     }
 }
 
+/* Hover — el SVG rota (exclusivo del satélite, nav-btn no gira) */
+.mu-refresh-satellite:hover svg {
+    transform: rotate(180deg);
+}
+
+/* Click — animación de vuelta completa vía clase .is-spinning (JS) */
+@keyframes mu-spin-once {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+.mu-refresh-satellite.is-spinning svg {
+    animation: mu-spin-once 0.4s ease forwards;
+}
+
 /* ============================================
-   ACCIONES INFERIORES — Botón "Dejanos tu reseña"
+   ACCIONES INFERIORES
    ============================================ */
 
 .mu-bottom-actions {
