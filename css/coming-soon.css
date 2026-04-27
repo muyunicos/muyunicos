@@ -1,7 +1,7 @@
 /*
  * Muy Únicos — Coming Soon
  * Carga condicional: solo cuando mu_is_hostinger_coming_soon_active() === true
- * y el visitante no es administrador. Ver inc/coming-soon.php.
+ * y el visitante no tiene bypass. Ver inc/coming-soon.php.
  *
  * Convenciones: prefijo .mu-cs | BEM | solo variables CSS del :root
  */
@@ -34,7 +34,7 @@
 	background: var(--blanco, #fff);
 	border-radius: var(--mu-radius, 12px);
 	box-shadow: var(--mu-shadow-md, 0 8px 32px rgba(0,0,0,.10));
-	padding: var(--mu-space-lg, 40px) var(--mu-space-lg, 40px);
+	padding: var(--mu-space-lg, 40px);
 	max-width: 480px;
 	width: 100%;
 	text-align: center;
@@ -164,13 +164,6 @@
 	bottom: 15%;
 	right: 8%;
 	opacity: .10;
-}
-
-/* ── Accesibilidad: foco visible global ── */
-.mu-cs *:focus-visible {
-	outline: 2px solid var(--primario, #2B9FCF);
-	outline-offset: 3px;
-	border-radius: var(--mu-radius-sm, 6px);
 }
 
 @media (prefers-reduced-motion: reduce) {
