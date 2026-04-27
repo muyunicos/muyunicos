@@ -21,7 +21,6 @@
 
         /**
          * Fisher-Yates shuffle — distribución uniforme real.
-         * Reemplaza el sort(() => 0.5 - Math.random()) sesgado.
          */
         function fisherYatesShuffle(arr) {
             var a = arr.slice();
@@ -94,12 +93,16 @@
                 btn.addEventListener('click', function (e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    btn.style.transform = 'scale(0.9) rotate(360deg)';
+
+                    /* Disparar animación CSS via clase, sin pisar transform inline */
+                    btn.classList.add('is-spinning');
                     container.style.opacity = '0.5';
+
                     setTimeout(function () {
+                        btn.classList.remove('is-spinning');
                         container.style.opacity = '1';
                         renderReviews();
-                    }, 300);
+                    }, 400);
                 });
             }
         }

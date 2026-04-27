@@ -1,6 +1,6 @@
-MUY ÚNCOS — ARCHITECTURE & MIGRATION GUIDE
+MUY ÜNCOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Modular Pragmático · v2.8.0 · Apr 27, 2026
+Estado: Modular Pragmático · v2.8.1 · Apr 27, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -103,6 +103,10 @@ muyunicos/ (generatepress-child)
 │   ├── cart.css                 # is_cart()
 │   ├── checkout.css             # is_checkout() && !is_order_received_page()
 │   ├── testimonials.css         # has_shortcode('mu_testimonios_section')
+│   │                            # .mu-refresh-satellite: transiciones separadas botón/SVG.
+│   │                            # Botón: transition background+box-shadow.
+│   │                            # SVG: transition transform + will-change:transform (GPU).
+│   │                            # Click: clase .is-spinning dispara @keyframes mu-spin-once.
 │   ├── coming-soon.css          # DEPRECATED — CSS ya no se encola (inline en template v2).
 │   │                            # Mantener archivo como referencia pero no encolarlo.
 │   └── account-downloads.css   # is_account_page() && is_wc_endpoint_url('downloads')
@@ -125,6 +129,8 @@ muyunicos/ (generatepress-child)
     ├── flexible-price.js        # is_cart() || is_checkout() — mu_flexible_price_enqueue()
     ├── checkout.js              # is_checkout() && !is_order_received_page()
     ├── testimonials.js          # has_shortcode('mu_testimonios_section')
+    │                            # Click en .mu-refresh-satellite: clase .is-spinning
+    │                            # (sin style.transform inline). Sync con animación CSS 400ms.
     ├── admin.js                 # is_admin()
     ├── admin-order-files.js     # is_admin() + order edit
     └── admin-orders.js          # is_admin() + order edit
@@ -211,6 +217,8 @@ JavaScript
 - Arrays: Fisher-Yates. NUNCA sort(() => 0.5 - Math.random()).
 - Carrusel: NUNCA duplicar initCarousels(). Cualquier .mu-carousel-wrapper es automático.
 - Hero slider: dots por data-hero-dot (sin onclick inline). Swipe con {passive:true}.
+- Animaciones de botón: NUNCA style.transform inline. Usar clases CSS (.is-spinning, etc.)
+  que deleguen al motor de animación del browser (GPU-composited).
 
 CSS
 - Prefijo + BEM: .mu-[componente]__elem--[mod]
@@ -218,6 +226,8 @@ CSS
 - SIEMPRE variables CSS. NUNCA hardcodear colores con variable disponible.
   ⚠️  EXCEPCIÓN: templates/coming-soon.php inlinea valores fallback porque
       las CSS variables del :root no están disponibles en modo standalone.
+- Animaciones: separar transiciones del contenedor y del hijo SVG/icon.
+  El hijo SVG debe tener su propio transition:transform + will-change:transform.
 
 ════════════════════════════════════════════════════════════════
 6. DEUDA TÉCNICA

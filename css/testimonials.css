@@ -103,6 +103,7 @@
    BOTÓN SATÉLITE — Rotar reseñas
    ============================================ */
 
+/* 1. El Botón — solo controla fondo y sombra */
 .mu-refresh-satellite {
     position: absolute;
     width: 44px;
@@ -111,24 +112,49 @@
     color: var(--blanco, #fff);
     border-radius: 50%;
     border: 3px solid var(--blanco, #fff);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     z-index: 10;
-    transition: transform 0.4s ease, background 0.3s ease;
+    padding: 0;
+    box-sizing: border-box;
+    line-height: 0;
+    /* Solo transicionamos propiedades del botón, NO transform (eso va en el SVG) */
+    transition: background 0.3s ease, box-shadow 0.3s ease;
 }
 
-.mu-refresh-satellite:hover {
-    background: var(--resaltado, #237FA9);
-    transform: scale(1.1) rotate(180deg);
-}
-
+/* 2. El SVG — tiene su propia capa de composición y su propia transición */
 .mu-refresh-satellite svg {
+    display: block;
+    margin: 0;
+    flex-shrink: 0;
     width: 20px;
     height: 20px;
     stroke-width: 2.5;
+    will-change: transform; /* reserva capa GPU antes del hover */
+    transition: transform 0.4s ease;
+}
+
+/* 3. Hover: solo el SVG rota, el botón cambia de color */
+.mu-refresh-satellite:hover {
+    background: var(--resaltado, #1A7BA5);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
+}
+
+.mu-refresh-satellite:hover svg {
+    transform: rotate(180deg);
+}
+
+/* 4. Clase .is-spinning disparada por JS al hacer click */
+@keyframes mu-spin-once {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+.mu-refresh-satellite.is-spinning svg {
+    animation: mu-spin-once 0.4s ease forwards;
 }
 
 /* Posición Desktop (≥ 900px): centrado vertical, flotando sobre borde derecho */
