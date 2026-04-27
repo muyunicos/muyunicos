@@ -1,6 +1,6 @@
-MUY ÚNICOS — ARCHITECTURE & MIGRATION GUIDE
+MUY ÚNCOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Modular Pragmático · v2.6.3 · Apr 8, 2026
+Estado: Modular Pragmático · v2.7.0 · Apr 27, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -41,6 +41,11 @@ muyunicos/ (generatepress-child)
 │
 ├── inc/                    # Módulos PHP — lógica de negocio y hooks
 │   ├── icons.php           # [PRIMERO] mu_get_icon() — repositorio SVG
+│   ├── coming-soon.php     # Coming Soon override v1.0.0. Intercepta template_redirect
+│   │                       # (prioridad 0) cuando Hostinger Coming Soon está activo.
+│   │                       # Sirve templates/coming-soon.php con status 503.
+│   │                       # Bypass: admin, AJAX, REST, wc-ajax, manage_options.
+│   │                       # Enqueue css/coming-soon.css vía mu_coming_soon_enqueue().
 │   ├── geo.php             # Multi-país: detección por subdominio, decimales, modal
 │   │                       # sugerencia de país, selector de header, prefijo idioma.
 │   │                       # muyu_get_cached_geolocation() — una sola llamada/request.
@@ -70,6 +75,10 @@ muyunicos/ (generatepress-child)
 │   ├── addon-nombre.php    # Addon Nombre v3.0: campo, validación, editor inline AJAX
 │   └── addon-etiquetas.php # Addon Etiquetas v3.0: builder, config, render UI, enqueue
 │
+├── templates/              # Plantillas PHP standalone (fuera del loop de GP)
+│   └── coming-soon.php     # Pantalla Coming Soon custom. Servida por inc/coming-soon.php.
+│                           # Incluye logo, título, tagline, CTA WhatsApp, shapes deco.
+│
 ├── css/                    # CSS modular — siempre carga condicional
 │   ├── components/
 │   │   ├── global-ui.css        # Global: Share, WhatsApp, Search, WPLingua, Carrusel
@@ -89,6 +98,7 @@ muyunicos/ (generatepress-child)
 │   ├── cart.css                 # is_cart()
 │   ├── checkout.css             # is_checkout() && !is_order_received_page()
 │   ├── testimonials.css         # has_shortcode('mu_testimonios_section')
+│   ├── coming-soon.css          # Condicional: solo cuando mu_is_hostinger_coming_soon_active()
 │   └── account-downloads.css   # is_account_page() && is_wc_endpoint_url('downloads')
 │                                # .mu-custom-downloads · .mu-guide-link
 │
@@ -121,7 +131,7 @@ muyunicos/ (generatepress-child)
 ------------------------------------|--------------------------|------------------------------|----------------------------
 Ajuste UI pequeño (< 50 líneas)     | ui.php                   | components/global-ui.css     | global-ui.js
 Header / Footer (elemento pesado)   | ui.php                   | header.css / footer.css      | header.js / footer.js
-Multi-país / Geolocalización        | geo.php                  | components/country-modal.css | country-modal.js
+Multi-país / Geolocalización       | geo.php                  | components/country-modal.css | country-modal.js
 Restricción subdominios             | digital-restriction.php  | shop.css / admin.css         | shop.js / admin.js
 Carrito                             | cart.php                 | cart.css                     | cart.js
 Precio Flexible                     | flexible-price.php       | cart.css                     | flexible-price.js
@@ -139,7 +149,8 @@ Addon builder etiquetas             | addon-etiquetas.php      | product-builder
 Shortcode Testimonios               | ui.php                   | testimonials.css             | testimonials.js
 Shortcodes Home (carrusel/sección)  | ui.php                   | home.css                     | — (reutiliza initCarousels)
 Hero promos dinámicas               | ui.php                   | home.css                     | hero.js
-Nuevo ícono SVG                     | icons.php                | —                            | —
+Nuevo icóno SVG                     | icons.php                | —                            | —
+Pantalla Coming Soon custom         | coming-soon.php          | coming-soon.css              | —
 
 ════════════════════════════════════════════════════════════════
 4. SISTEMA DE DISEÑO (API EXCLUSIVA)
