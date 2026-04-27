@@ -1,11 +1,21 @@
 <?php
 /**
- * Muy Únicos — Coming Soon Override v1.0.0
+ * Muy Únicos — Coming Soon Override v2.0.0
  *
- * Intercepta el modo Coming Soon del plugin Hostinger y sirve
- * una plantilla propia del child theme, respetando admins y bots WC.
+ * Basado en lectura directa de ComingSoon.php del plugin Hostinger.
  *
- * Hook: template_redirect (prioridad 0 — antes que cualquier otro)
+ * Cómo funciona el plugin:
+ *   - Instancia la clase con `new ComingSoon()` al final del archivo.
+ *   - Registra: add_action( 'template_redirect', array( $this, 'coming_soon' ) )
+ *     sin prioridad explícita → prioridad por defecto = 10.
+ *   - No existe ninguna get_option() que indique si está activo:
+ *     si la clase ComingSoon existe en memoria → el modo está activo.
+ *   - Bypass nativo: is_admin() || current_user_can('update_plugins') || bypass_code.
+ *
+ * Nuestra estrategia:
+ *   - Enganchamos template_redirect con prioridad 1 (antes que el plugin).
+ *   - Replicamos su bypass exacto para no romper acceso a admins.
+ *   - Servimos nuestra plantilla y llamamos die(), bloqueando la del plugin.
  *
  * @package GeneratePress_Child
  */
@@ -14,55 +24,45 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-// ─────────────────────────────────────────────
-// 1. Detectar si Hostinger Coming Soon está activo
-// ─────────────────────────────────────────────
-
-if ( ! function_exists( 'mu_is_hostinger_coming_soon_active' ) ) {
-	function mu_is_hostinger_coming_soon_active() {
-		// Intentamos todas las keys conocidas del plugin de Hostinger.
-		// Si en el futuro cambia, agregar la nueva aquí sin tocar el plugin.
-		$candidate_options = [
-			'hostinger_coming_soon',
-			'hostinger_coming_soon_enabled',
-			'hts_coming_soon',
-			'hostinger_maintenance_mode',
-		];
-
-		foreach ( $candidate_options as $key ) {
-			$value = get_option( $key, null );
-			if ( null !== $value && false !== $value && '0' !== (string) $value && 0 !== (int) $value ) {
-				return true;
-			}
-		}
-
-		return false;
-	}
-}
-
-// ─────────────────────────────────────────────
-// 2. Decidir si esta petición debe bypassar
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────
+// 1. ¿Debe esta request ignorar el override?
+//    Espejo de can_bypass_coming_soon() del plugin Hostinger.
+// ─────────────────────────────────────────────────────────
 
 if ( ! function_exists( 'mu_coming_soon_should_bypass' ) ) {
-	function mu_coming_soon_should_bypass() {
-		// Admin, AJAX y Cron: nunca interceptar.
-		if ( is_admin() || wp_doing_ajax() || wp_doing_cron() ) {
+	function mu_coming_soon_should_bypass(): bool {
+		// Admin panel: el plugin también lo permite.
+		if ( is_admin() ) {
 			return true;
 		}
 
-		// REST API: no interceptar.
+		// AJAX, Cron, REST: no interceptar nunca.
+		if ( wp_doing_ajax() || wp_doing_cron() ) {
+			return true;
+		}
+
 		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
 			return true;
 		}
 
 		// WooCommerce AJAX custom (wc-ajax=*).
-		if ( isset( $_GET['wc-ajax'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( isset( $_GET['wc-ajax'] ) ) {
 			return true;
 		}
 
-		// Administradores y editores logueados: ver el sitio normalmente.
-		if ( is_user_logged_in() && current_user_can( 'manage_options' ) ) {
+		// El plugin usa update_plugins (no manage_options) — respetamos eso exacto.
+		if ( current_user_can( 'update_plugins' ) ) {
+			return true;
+		}
+
+		// Bypass por cookie que el plugin mismo setea cuando validate GET bypass_code.
+		// Si la cookie existe y no está vacía, el plugin ya la validó antes.
+		$bypass_cookie = isset( $_COOKIE['hostinger_bypass_code'] ) // phpcs:ignore WordPress.Security.NonceVerification
+			? sanitize_text_field( wp_unslash( $_COOKIE['hostinger_bypass_code'] ) )
+			: '';
+
+		if ( ! empty( $bypass_cookie ) ) {
 			return true;
 		}
 
@@ -70,12 +70,27 @@ if ( ! function_exists( 'mu_coming_soon_should_bypass' ) ) {
 	}
 }
 
-// ─────────────────────────────────────────────
-// 3. Interceptar y servir plantilla propia
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────
+// 2. ¿Está activo el Coming Soon de Hostinger?
+//    La clase solo existe en memoria si el plugin cargó su archivo.
+// ─────────────────────────────────────────────────────────
+
+if ( ! function_exists( 'mu_is_hostinger_coming_soon_active' ) ) {
+	function mu_is_hostinger_coming_soon_active(): bool {
+		// class_exists() es O(1) — sin queries a la DB.
+		// Cubrimos el nombre de clase en versiones antiguas y nuevas del plugin.
+		return class_exists( 'ComingSoon' )
+			|| class_exists( 'Hostinger\\Includes\\ComingSoon' )
+			|| class_exists( 'Hostinger_Coming_Soon' );
+	}
+}
+
+// ─────────────────────────────────────────────────────────
+// 3. Interceptar con prioridad 1 → antes que el plugin (prioridad 10)
+// ─────────────────────────────────────────────────────────
 
 if ( ! function_exists( 'mu_render_coming_soon_override' ) ) {
-	function mu_render_coming_soon_override() {
+	function mu_render_coming_soon_override(): void {
 		if ( mu_coming_soon_should_bypass() ) {
 			return;
 		}
@@ -87,41 +102,27 @@ if ( ! function_exists( 'mu_render_coming_soon_override' ) ) {
 		$template = get_stylesheet_directory() . '/templates/coming-soon.php';
 
 		if ( ! file_exists( $template ) ) {
-			return; // Fallback seguro: deja que Hostinger sirva la suya.
+			// Fallback seguro: dejamos que el plugin sirva la suya.
+			return;
 		}
-
-		// Marcar para el enqueue condicional del CSS.
-		$GLOBALS['mu_is_custom_coming_soon'] = true;
 
 		status_header( 503 );
 		header( 'Retry-After: 3600' );
 		nocache_headers();
 
-		include $template;
-		exit;
-	}
-}
-add_action( 'template_redirect', 'mu_render_coming_soon_override', 0 );
-
-// ─────────────────────────────────────────────
-// 4. Enqueue CSS — solo en la vista custom
-// ─────────────────────────────────────────────
-
-if ( ! function_exists( 'mu_coming_soon_enqueue' ) ) {
-	function mu_coming_soon_enqueue() {
-		if ( empty( $GLOBALS['mu_is_custom_coming_soon'] ) ) {
-			return;
-		}
-
-		$ver = wp_get_theme()->get( 'Version' );
-		$uri = get_stylesheet_directory_uri();
-
-		wp_enqueue_style(
-			'mu-coming-soon',
-			"$uri/css/coming-soon.css",
-			[ 'mu-base' ],
-			$ver
+		// Enqueue el CSS antes de que wp_head() corra dentro de la plantilla.
+		add_action(
+			'wp_enqueue_scripts',
+			function () {
+				$ver = wp_get_theme()->get( 'Version' );
+				$uri = get_stylesheet_directory_uri();
+				wp_enqueue_style( 'mu-coming-soon', "$uri/css/coming-soon.css", [], $ver );
+			},
+			5
 		);
+
+		include $template;
+		die; // Igual que el plugin: corta la ejecución de WordPress.
 	}
 }
-add_action( 'wp_enqueue_scripts', 'mu_coming_soon_enqueue', 20 );
+add_action( 'template_redirect', 'mu_render_coming_soon_override', 1 );
