@@ -37,6 +37,16 @@
     transition: all 0.2s ease;
 }
 
+/* override GP: normalizar tamaño SVG dentro del chip circular */
+.mu-navchips-icon-link a .mu-icon-svg,
+.mu-navchips-icon-link a svg {
+    width: 16px;
+    height: 16px;
+    stroke: currentColor;
+    fill: none;
+    flex-shrink: 0;
+}
+
 .mu-navchips-icon-link a:hover {
     opacity: 0.9;
     transform: translateY(-1px);
@@ -57,16 +67,44 @@
     opacity: 0.8;
 }
 
+/* override GP: chip actual — padding igualado a .mu-navchips-crumb a (5px 12px) */
 .mu-navchips-current span {
-    padding: 5px 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
     background: var(--primario, #1c5285);
     color: var(--blanco, #fff);
     border-radius: 15px;
     font-weight: 600;
     font-size: 13px;
-    display: flex;
-    align-items: center;
+    line-height: 1.4;
     box-shadow: 0 1px 2px rgba(0,0,0,.1);
+}
+
+/* El botón share dentro del chip actual no debe alterar la altura */
+.mu-navchips-current .mu-share-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+    background: none;
+    border: none;
+    color: inherit;
+    opacity: 0.8;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.mu-navchips-current .mu-share-btn:hover {
+    opacity: 1;
+}
+
+.mu-navchips-current .mu-share-btn svg {
+    display: block;
+    width: 14px;
+    height: 14px;
 }
 
 .mu-navchips-current--tag span {
@@ -223,7 +261,7 @@
     color: var(--blanco, #fff);
 }
 
-/* Botón "Más" */
+/* Botón «Más» */
 .mu-navchips-chip--more .mu-navchips-more-btn,
 .mu-navchips-chip--more-tags .mu-navchips-more-btn {
     background: #e8f7ff;
@@ -266,5 +304,11 @@
     .mu-navchips-icon-link a {
         width: 28px;
         height: 28px;
+    }
+
+    .mu-navchips-icon-link a .mu-icon-svg,
+    .mu-navchips-icon-link a svg {
+        width: 14px;
+        height: 14px;
     }
 }
