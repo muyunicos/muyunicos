@@ -1,6 +1,6 @@
 MUY ÜNCOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Modular Pragmático · v2.8.1 · Apr 27, 2026
+Estado: Modular Pragmático · v2.8.2 · Apr 27, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -124,6 +124,15 @@ muyunicos/ (generatepress-child)
     ├── product.js               # is_product()
     ├── addon-nombre.js          # is_product() || is_cart()
     ├── addon-etiquetas.js       # is_product() (cat 18/19)
+    │                            # Format toggle (variación #pa_formato): "impresas" activa
+    │                            # el builder; cualquier otro valor (ej. archivo-digital-pdf)
+    │                            # lo desactiva. State stash/restore: MU.snapshotState() guarda
+    │                            # la selección en MU.stashedState al cambiar a digital y
+    │                            # MU.restoreState() + MU.rebuildUIFromState() la reponen al
+    │                            # volver a "impresas". En digital: mu_data_input queda vacío
+    │                            # y disabled, #mu-selection-summary se limpia, #mu-final-price
+    │                            # = $0, #mu-total-wrapper oculto y precio WooCommerce nativo
+    │                            # visible (no se aplica .mu-replaced cuando isBuilderActive=false).
     ├── product-builder.js       # (reservado — lógica builder si se separa de addons)
     ├── cart.js                  # is_cart()
     ├── flexible-price.js        # is_cart() || is_checkout() — mu_flexible_price_enqueue()
