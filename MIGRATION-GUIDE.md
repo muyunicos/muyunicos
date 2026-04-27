@@ -1,6 +1,6 @@
 MUY ÜNCOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Modular Pragmático · v2.8.2 · Apr 27, 2026
+Estado: Modular Pragmático · v2.8.3 · Apr 27, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -92,6 +92,11 @@ muyunicos/ (generatepress-child)
 │   │   ├── modal-auth.css       # !is_user_logged_in()
 │   │   ├── country-modal.css    # Condicional (inc/geo.php → mu_country_modal_enqueue)
 │   │   └── navigation-chips.css # is_shop() || is_product_category() || is_product_tag() || is_product()
+│   │                            # Fix v2.8.3: chip actual (.mu-navchips-current span) normalizado
+│   │                            # con font-size/padding/line-height iguales a los crumbs anteriores.
+│   │                            # .mu-share-btn dentro del chip: display:inline-flex, padding:0,
+│   │                            # svg 14×14px — no altera la altura del chip.
+│   │                            # SVGs dentro de .mu-navchips-icon-link forzados a 16×16px.
 │   ├── admin.css                # is_admin()
 │   ├── admin-order-files.css    # is_admin() + order edit
 │   ├── admin-orders.css         # is_admin() + order edit
@@ -201,7 +206,11 @@ ICONOS SVG
       ciclo completo de WP (standalone). En ese contexto es correcto.
 
   Disponibles: arrow · search · help · account · cart · close · share · check
-               lock · instagram · facebook · pinterest · tiktok · youtube
+               lock · home · book · instagram · facebook · pinterest · tiktok · youtube
+
+  Notas:
+  · home  → usado en breadcrumb (.mu-navchips-icon-link, primer chip)
+  · book  → usado en breadcrumb contexto blog (.mu-navchips-icon-link--context)
 
 ════════════════════════════════════════════════════════════════
 5. CONVENCIONES DE CÓDIGO
