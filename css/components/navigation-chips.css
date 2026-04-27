@@ -67,12 +67,12 @@
     opacity: 0.8;
 }
 
-/* override GP: chip actual — altura consistente con los crumbs anteriores */
+/* override GP: chip actual — padding igualado a .mu-navchips-crumb a (5px 12px) */
 .mu-navchips-current span {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 5px 14px;
+    padding: 5px 12px;
     background: var(--primario, #1c5285);
     color: var(--blanco, #fff);
     border-radius: 15px;

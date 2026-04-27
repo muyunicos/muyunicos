@@ -371,19 +371,24 @@ if ( ! function_exists( 'mu_navchips_get_share_button_html' ) ) {
 
 if ( ! function_exists( 'mu_navchips_render_global_breadcrumb' ) ) {
     function mu_navchips_render_global_breadcrumb() {
+        // [Fix #breadcrumb-1] Flag estático: garantiza render único sin importar
+        // el orden de disparo entre woocommerce_before_main_content y generate_before_content.
+        static $rendered = false;
+        if ( $rendered ) {
+            return;
+        }
+
         if ( is_front_page() || is_cart() || is_checkout() ) {
             return;
         }
 
-        if ( did_action( 'woocommerce_before_main_content' ) && current_action() === 'generate_before_content' && is_woocommerce() ) {
-            return;
-        }
+        $rendered = true;
 
         $home_url  = home_url();
         $is_woo    = function_exists( 'is_woocommerce' ) && is_woocommerce();
         $share_btn = mu_navchips_get_share_button_html();
 
-        $icon_home = '<span class="mu-navchips-icon-home">' . mu_get_icon( 'home' ) . '</span>';
+        $icon_home    = '<span class="mu-navchips-icon-home">' . mu_get_icon( 'home' ) . '</span>';
         $icon_context = $is_woo
             ? '<span class="mu-navchips-icon-context mu-navchips-icon-context--shop">' . mu_get_icon( 'cart' ) . '</span>'
             : '<span class="mu-navchips-icon-context mu-navchips-icon-context--blog">' . mu_get_icon( 'book' ) . '</span>';
@@ -392,7 +397,7 @@ if ( ! function_exists( 'mu_navchips_render_global_breadcrumb' ) ) {
         $current_tags_slugs = isset( $_GET['product_tag'] ) ? array_filter( explode( ' ', str_replace( '+', ' ', wp_unslash( $_GET['product_tag'] ) ) ) ) : [];
         $is_filtered_view   = ! empty( $current_tags_slugs );
 
-        $ancestors_html   = '';
+        $ancestors_html    = '';
         $current_item_html = '';
 
         if ( $is_woo ) {
@@ -400,8 +405,8 @@ if ( ! function_exists( 'mu_navchips_render_global_breadcrumb' ) ) {
                 global $post;
                 $terms = get_the_terms( $post->ID, 'product_cat' );
                 if ( $terms && ! is_wp_error( $terms ) ) {
-                    $main_term  = $terms[0];
-                    $ancestors  = array_reverse( get_ancestors( $main_term->term_id, 'product_cat' ) );
+                    $main_term = $terms[0];
+                    $ancestors = array_reverse( get_ancestors( $main_term->term_id, 'product_cat' ) );
                     foreach ( $ancestors as $aid ) {
                         $term = get_term( $aid, 'product_cat' );
                         if ( $term ) {
@@ -430,7 +435,7 @@ if ( ! function_exists( 'mu_navchips_render_global_breadcrumb' ) ) {
                             $tag_names[] = $t->name;
                         }
                     }
-                    $display_name     = ! empty( $tag_names ) ? implode( ' + ', $tag_names ) : 'Filtros';
+                    $display_name      = ! empty( $tag_names ) ? implode( ' + ', $tag_names ) : 'Filtros';
                     $current_item_html = '<li class="mu-navchips-current mu-navchips-current--tag"><span>' . esc_html( $display_name ) . $share_btn . '</span></li>';
                 } else {
                     $current_item_html = '<li class="mu-navchips-current"><span>' . esc_html( $obj->name ) . $share_btn . '</span></li>';
@@ -491,7 +496,7 @@ if ( ! function_exists( 'mu_navchips_render_navigation_chips' ) ) {
         }
 
         // --- A. CATEGORÍAS ---
-        $cats_to_show             = [];
+        $cats_to_show              = [];
         $categorias_a_omitir_slugs = [ 'sin-categorizar' ];
 
         $extra_slugs = $is_restricted ? [ 'digital' ] : [ 'digital', 'outlet' ];
@@ -563,10 +568,10 @@ if ( ! function_exists( 'mu_navchips_render_navigation_chips' ) ) {
             }
         );
 
-        $tags_to_show   = [];
-        $tags_a_omitir  = [ 'descargable', 'adhesivos', 'planchas-de-stickers' ];
-        $processed      = 0;
-        $max_tags       = 30;
+        $tags_to_show  = [];
+        $tags_a_omitir = [ 'descargable', 'adhesivos', 'planchas-de-stickers' ];
+        $processed     = 0;
+        $max_tags      = 30;
 
         // [Fix #3] Pre-cargar hasta $max_tags términos en una sola query al object cache.
         _prime_term_caches( array_keys( array_slice( $tag_stats, 0, $max_tags, true ) ) );
@@ -603,8 +608,8 @@ if ( ! function_exists( 'mu_navchips_render_navigation_chips' ) ) {
             $shop_url = wc_get_page_permalink( 'shop' );
             echo "<li class='mu-navchips-chip mu-navchips-chip--reset'><a href='" . esc_url( $shop_url ) . "'>Todas</a></li>";
 
-            $max_cats    = 4;
-            $c           = 0;
+            $max_cats = 4;
+            $c        = 0;
 
             foreach ( $extra_terms as $term ) {
                 if ( $term->term_id === $current_cat_id ) {
@@ -756,9 +761,9 @@ if ( ! function_exists( 'mu_navchips_admin_notice' ) ) {
             return;
         }
 
-        $meta     = get_transient( 'mu_navchips_index_metadata' );
-        $index    = get_transient( 'mu_navchips_product_index' );
-        $size_kb  = $index ? number_format( strlen( $index ) / 1024, 2 ) : '0.00';
+        $meta    = get_transient( 'mu_navchips_index_metadata' );
+        $index   = get_transient( 'mu_navchips_product_index' );
+        $size_kb = $index ? number_format( strlen( $index ) / 1024, 2 ) : '0.00';
 
         echo '<div class="notice notice-success is-dismissible"><p>';
         echo '<strong>✅ Índice NavChips regenerado exitosamente</strong><br />';
