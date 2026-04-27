@@ -25,6 +25,7 @@
     window.MU = {
         state: { mode: 'personalizar', items: {}, packQty: 0, packRopa: {} },
         isBuilderActive: true,
+        stashedState: null,
 
         init: function () {
             jQuery('.quantity').hide();
@@ -52,24 +53,104 @@
         },
 
         toggleBuilder: function (show) {
+            var wasActive = this.isBuilderActive;
             this.isBuilderActive = show;
-            var $builder      = jQuery('#mu-builder-container');
-            var $totalWrapper  = jQuery('#mu-total-wrapper');
-            var $dataInput     = jQuery('#mu_data_input');
+            var $builder     = jQuery('#mu-builder-container');
+            var $totalWrapper = jQuery('#mu-total-wrapper');
+            var $dataInput    = jQuery('#mu_data_input');
+            var $summary      = jQuery('#mu-selection-summary');
 
             if (show) {
                 $dataInput.prop('disabled', false);
+                if (this.stashedState) {
+                    this.restoreState(this.stashedState);
+                    this.stashedState = null;
+                }
                 if ($builder.is(':hidden')) {
                     $builder.slideDown();
                     $totalWrapper.slideDown();
-                    this.calculate();
                 }
+                this.calculate();
             } else {
+                if (wasActive) {
+                    this.stashedState = this.snapshotState();
+                }
                 $builder.slideUp();
                 $totalWrapper.slideUp();
-                this.resetStateGlobal();
+                $summary.empty();
+                document.getElementById('mu-final-price').textContent = this.formatMoney(0);
                 $dataInput.val('').prop('disabled', true);
                 this.toggleSubmit(true);
+            }
+        },
+
+        snapshotState: function () {
+            return JSON.parse(JSON.stringify({
+                mode:     this.state.mode,
+                items:    this.state.items,
+                packQty:  this.state.packQty,
+                packRopa: this.state.packRopa
+            }));
+        },
+
+        restoreState: function (snap) {
+            this.state.mode     = snap.mode || 'personalizar';
+            this.state.items    = snap.items || {};
+            this.state.packQty  = snap.packQty || 0;
+            this.state.packRopa = snap.packRopa || {};
+
+            jQuery('.mu-mode-btn').removeClass('active');
+            jQuery('#btn-mode-' + this.state.mode).addClass('active');
+            jQuery('.mu-view-container').addClass('mu-hidden');
+            jQuery('#view-' + this.state.mode).removeClass('mu-hidden');
+
+            this.rebuildUIFromState();
+        },
+
+        rebuildUIFromState: function () {
+            var k, eK, ext, uID;
+
+            if (this.state.mode === 'personalizar') {
+                for (k in MU_Config.items) {
+                    if (k === 'super_pack') continue;
+                    var qty = this.state.items[k] ? this.state.items[k].qty : 0;
+                    this.updateUI(k, qty);
+
+                    if (this.state.items[k] && this.state.items[k].extras) {
+                        for (eK in this.state.items[k].extras) {
+                            ext = this.state.items[k].extras[eK];
+                            uID = k + '_' + eK;
+                            var $chk = jQuery('#check-' + uID);
+                            $chk.prop('checked', !!ext.active);
+                            jQuery('#opt-' + uID).toggleClass('active', !!ext.active);
+                            if (ext.active) {
+                                jQuery('#body-' + uID).show();
+                            } else {
+                                jQuery('#body-' + uID).hide();
+                            }
+                            if (ext.isText) {
+                                jQuery('#text-' + uID).val(ext.textValue || '');
+                                var qtyInput = document.getElementById('qty-' + uID);
+                                if (qtyInput) qtyInput.value = ext.qty || 0;
+                            } else if (MU_Config.extras_definitions[eK] && MU_Config.extras_definitions[eK].type !== 'fixed_price') {
+                                jQuery('#rad-all-' + uID).toggleClass('active', ext.mode === 'all');
+                                jQuery('#rad-custom-' + uID).toggleClass('active', ext.mode === 'custom');
+                                var customWrap = document.getElementById('custom-wrap-' + uID);
+                                if (customWrap) customWrap.style.display = (ext.mode === 'custom') ? 'flex' : 'none';
+                                var qInput = document.getElementById('qty-' + uID);
+                                if (qInput) qInput.value = ext.qty || 0;
+                                this.updateAllLabel(k, eK, qty);
+                            }
+                        }
+                    }
+                }
+            } else {
+                this.updateUI('super_pack', this.state.packQty);
+                var ropaKeys = ['plancha_ropa_clara', 'plancha_ropa_oscura', 'plancha_tela_sintetica'];
+                ropaKeys.forEach(function (rk) {
+                    var rqty = this.state.packRopa[rk] ? this.state.packRopa[rk].qty : 0;
+                    this.updateUI(rk + '_sp', rqty);
+                }.bind(this));
             }
         },
 
@@ -77,6 +158,7 @@
             this.state.items = {};
             this.state.packQty = 0;
             this.state.packRopa = {};
+            this.stashedState = null;
             this.resetState();
             this.calculate();
         },
@@ -478,15 +560,20 @@
                 $form.on('found_variation', function (event, variation) {
                     var price = variation.display_price;
                     window.mu_base_product_price = price;
-                    $wooPrice.addClass('mu-replaced');
-                    $muWrapper.fadeIn(200);
 
                     // Actualizar precio base en config para recálculo
                     if (typeof MU_Config !== 'undefined') {
                         MU_Config.general.precio_base_wc = price;
                     }
 
-                    self.calculate();
+                    if (self.isBuilderActive) {
+                        $wooPrice.addClass('mu-replaced');
+                        $muWrapper.fadeIn(200);
+                        self.calculate();
+                    } else {
+                        $wooPrice.removeClass('mu-replaced');
+                        $muWrapper.hide();
+                    }
                 });
 
                 $form.on('hide_variation', function () {
