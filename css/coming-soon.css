@@ -1,0 +1,181 @@
+/*
+ * Muy Únicos — Coming Soon
+ * Carga condicional: solo cuando mu_is_hostinger_coming_soon_active() === true
+ * y el visitante no es administrador. Ver inc/coming-soon.php.
+ *
+ * Convenciones: prefijo .mu-cs | BEM | solo variables CSS del :root
+ */
+
+/* ── Reset mínimo para esta vista ── */
+.mu-cs-body {
+	margin: 0;
+	min-height: 100dvh;
+	background: var(--fondo, #f9f9f9);
+	font-family: var(--mu-font-base, 'Inter', sans-serif);
+	color: var(--texto, #333);
+	-webkit-font-smoothing: antialiased;
+}
+
+/* ── Layout principal ── */
+.mu-cs {
+	position: relative;
+	min-height: 100dvh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--mu-space-lg, 40px) var(--mu-space-md, 20px);
+	overflow: hidden;
+}
+
+/* ── Tarjeta central ── */
+.mu-cs__card {
+	position: relative;
+	z-index: 2;
+	background: var(--blanco, #fff);
+	border-radius: var(--mu-radius, 12px);
+	box-shadow: var(--mu-shadow-md, 0 8px 32px rgba(0,0,0,.10));
+	padding: var(--mu-space-lg, 40px) var(--mu-space-lg, 40px);
+	max-width: 480px;
+	width: 100%;
+	text-align: center;
+}
+
+@media (max-width: 480px) {
+	.mu-cs__card {
+		padding: var(--mu-space-md, 20px);
+		border-radius: var(--mu-radius-md, 16px);
+	}
+}
+
+/* ── Logo ── */
+.mu-cs__logo {
+	margin-bottom: var(--mu-space-md, 20px);
+}
+
+.mu-cs__logo img {
+	max-width: 160px;
+	height: auto;
+	display: block;
+	margin-inline: auto;
+}
+
+.mu-cs__logo--text {
+	font-family: var(--mu-font-display, 'Fredoka One', cursive);
+	font-size: 1.75rem;
+	color: var(--primario, #2B9FCF);
+	font-weight: 700;
+}
+
+/* ── Título ── */
+.mu-cs__title {
+	font-family: var(--mu-font-display, 'Fredoka One', cursive);
+	font-size: clamp(1.75rem, 5vw, 2.5rem);
+	color: var(--primario, #2B9FCF);
+	margin: 0 0 var(--mu-space-sm, 10px);
+	line-height: 1.2;
+}
+
+/* ── Subtítulo ── */
+.mu-cs__subtitle {
+	font-size: clamp(0.95rem, 2.5vw, 1.1rem);
+	color: var(--texto, #555);
+	margin: 0 0 var(--mu-space-md, 20px);
+	line-height: 1.6;
+	max-width: 36ch;
+	margin-inline: auto;
+}
+
+/* ── Divisor decorativo ── */
+.mu-cs__divider {
+	width: 48px;
+	height: 4px;
+	border-radius: var(--mu-radius-full, 9999px);
+	background: var(--secundario, #FFD77A);
+	margin: 0 auto var(--mu-space-md, 20px);
+}
+
+/* ── Contacto / CTA ── */
+.mu-cs__contact {
+	font-size: 0.95rem;
+	color: var(--texto, #555);
+	margin: 0;
+}
+
+.mu-cs__link {
+	display: inline-block;
+	margin-top: var(--mu-space-xs, 5px);
+	background: var(--primario, #2B9FCF);
+	color: var(--blanco, #fff);
+	padding: 0.55em 1.4em;
+	border-radius: var(--mu-radius-full, 9999px);
+	text-decoration: none;
+	font-weight: 600;
+	font-size: 0.95rem;
+	transition: background 180ms ease, transform 180ms ease;
+}
+
+.mu-cs__link:hover,
+.mu-cs__link:focus-visible {
+	background: var(--primario-hover, #1a7fac);
+	outline: 2px solid var(--primario, #2B9FCF);
+	outline-offset: 3px;
+	transform: translateY(-1px);
+}
+
+.mu-cs__link:active {
+	transform: translateY(0);
+}
+
+/* ── Formas decorativas de fondo ── */
+.mu-cs__shapes {
+	position: fixed;
+	inset: 0;
+	pointer-events: none;
+	z-index: 1;
+	overflow: hidden;
+}
+
+.mu-cs__shape {
+	position: absolute;
+	border-radius: var(--mu-radius-full, 9999px);
+	opacity: .18;
+}
+
+.mu-cs__shape--1 {
+	width: clamp(160px, 35vw, 320px);
+	height: clamp(160px, 35vw, 320px);
+	background: var(--primario, #2B9FCF);
+	top: -60px;
+	right: -80px;
+}
+
+.mu-cs__shape--2 {
+	width: clamp(100px, 22vw, 200px);
+	height: clamp(100px, 22vw, 200px);
+	background: var(--secundario, #FFD77A);
+	bottom: -40px;
+	left: -60px;
+}
+
+.mu-cs__shape--3 {
+	width: clamp(60px, 12vw, 120px);
+	height: clamp(60px, 12vw, 120px);
+	background: var(--primario, #2B9FCF);
+	bottom: 15%;
+	right: 8%;
+	opacity: .10;
+}
+
+/* ── Accesibilidad: foco visible global ── */
+.mu-cs *:focus-visible {
+	outline: 2px solid var(--primario, #2B9FCF);
+	outline-offset: 3px;
+	border-radius: var(--mu-radius-sm, 6px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.mu-cs__link {
+		transition: none;
+		transform: none !important;
+	}
+}
