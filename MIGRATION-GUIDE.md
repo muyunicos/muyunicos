@@ -1,6 +1,6 @@
 MUY ÚNCOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Modular Pragmático · v2.7.0 · Apr 27, 2026
+Estado: Modular Pragmático · v2.8.0 · Apr 27, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -43,9 +43,10 @@ muyunicos/ (generatepress-child)
 │   ├── icons.php           # [PRIMERO] mu_get_icon() — repositorio SVG
 │   ├── coming-soon.php     # Coming Soon override v1.0.0. Intercepta template_redirect
 │   │                       # (prioridad 0) cuando Hostinger Coming Soon está activo.
-│   │                       # Sirve templates/coming-soon.php con status 503.
+│   │                       # Sirve templates/coming-soon.php con status 503 y exit().
+│   │                       # IMPORTANTE: la plantilla es standalone (no wp_head/wp_footer).
 │   │                       # Bypass: admin, AJAX, REST, wc-ajax, manage_options.
-│   │                       # Enqueue css/coming-soon.css vía mu_coming_soon_enqueue().
+│   │                       # css/coming-soon.css YA NO SE ENCOLA (CSS inline en template).
 │   ├── geo.php             # Multi-país: detección por subdominio, decimales, modal
 │   │                       # sugerencia de país, selector de header, prefijo idioma.
 │   │                       # muyu_get_cached_geolocation() — una sola llamada/request.
@@ -76,8 +77,12 @@ muyunicos/ (generatepress-child)
 │   └── addon-etiquetas.php # Addon Etiquetas v3.0: builder, config, render UI, enqueue
 │
 ├── templates/              # Plantillas PHP standalone (fuera del loop de GP)
-│   └── coming-soon.php     # Pantalla Coming Soon custom. Servida por inc/coming-soon.php.
-│                           # Incluye logo, título, tagline, CTA WhatsApp, shapes deco.
+│   └── coming-soon.php     # STANDALONE v2.0.0 — NO usa wp_head() ni wp_footer().
+│                           # CSS inlineado en <style> + JS mínimo inline.
+│                           # Descarga total < 30 KB. Cero recursos WP/WC/plugins.
+│                           # Contenido: logo, título multi-idioma rotativo (ES/EN/PT/IT/FR),
+│                           # subtítulo fijo, botón WhatsApp con SVG inline.
+│                           # Número WA y logo hardcodeados (estables, evita llamadas DB).
 │
 ├── css/                    # CSS modular — siempre carga condicional
 │   ├── components/
@@ -98,7 +103,8 @@ muyunicos/ (generatepress-child)
 │   ├── cart.css                 # is_cart()
 │   ├── checkout.css             # is_checkout() && !is_order_received_page()
 │   ├── testimonials.css         # has_shortcode('mu_testimonios_section')
-│   ├── coming-soon.css          # Condicional: solo cuando mu_is_hostinger_coming_soon_active()
+│   ├── coming-soon.css          # DEPRECATED — CSS ya no se encola (inline en template v2).
+│   │                            # Mantener archivo como referencia pero no encolarlo.
 │   └── account-downloads.css   # is_account_page() && is_wc_endpoint_url('downloads')
 │                                # .mu-custom-downloads · .mu-guide-link
 │
@@ -150,7 +156,7 @@ Shortcode Testimonios               | ui.php                   | testimonials.cs
 Shortcodes Home (carrusel/sección)  | ui.php                   | home.css                     | — (reutiliza initCarousels)
 Hero promos dinámicas               | ui.php                   | home.css                     | hero.js
 Nuevo icóno SVG                     | icons.php                | —                            | —
-Pantalla Coming Soon custom         | coming-soon.php          | coming-soon.css              | —
+Pantalla Coming Soon custom         | coming-soon.php          | inline en template           | inline en template
 
 ════════════════════════════════════════════════════════════════
 4. SISTEMA DE DISEÑO (API EXCLUSIVA)
@@ -175,6 +181,9 @@ Builder      | --mu-builder-accent (#6c5ce7)  --mu-builder-accent-hover  --mu-bu
 
 ICONOS SVG
   echo mu_get_icon('name');  // NUNCA inline SVG directo
+  ⚠️  EXCEPCIÓN: templates/coming-soon.php usa SVG inline directo porque
+      mu_get_icon() requiere ABSPATH y el template se sirve antes del
+      ciclo completo de WP (standalone). En ese contexto es correcto.
 
   Disponibles: arrow · search · help · account · cart · close · share · check
                lock · instagram · facebook · pinterest · tiktok · youtube
@@ -193,10 +202,12 @@ PHP
 - Transients: clave mu_[contexto]_{id}. TTL razonable. Invalidar en el hook de cambio de estado.
 - Geolocalización: SIEMPRE muyu_get_cached_geolocation(). NUNCA wc_get_customer_geolocation() directo.
 - Hero promos: fechas con DateTime::createFromFormat('dmY'). Primer slide: loading="eager" fetchpriority="high".
+- Coming Soon standalone: logo y número WA hardcodeados. Cambios → editar templates/coming-soon.php directamente.
 
 JavaScript
 - IIFE + 'use strict' + DOMContentLoaded. Cero jQuery salvo obligación WC legacy.
 - Datos PHP→JS: wp_localize_script(). NUNCA <script> inline con lógica.
+  ⚠️  EXCEPCIÓN: templates/coming-soon.php usa <script> inline porque es standalone.
 - Arrays: Fisher-Yates. NUNCA sort(() => 0.5 - Math.random()).
 - Carrusel: NUNCA duplicar initCarousels(). Cualquier .mu-carousel-wrapper es automático.
 - Hero slider: dots por data-hero-dot (sin onclick inline). Swipe con {passive:true}.
@@ -205,6 +216,8 @@ CSS
 - Prefijo + BEM: .mu-[componente]__elem--[mod]
 - Sobrescrituras GP: /* override GP: [motivo] */
 - SIEMPRE variables CSS. NUNCA hardcodear colores con variable disponible.
+  ⚠️  EXCEPCIÓN: templates/coming-soon.php inlinea valores fallback porque
+      las CSS variables del :root no están disponibles en modo standalone.
 
 ════════════════════════════════════════════════════════════════
 6. DEUDA TÉCNICA
@@ -213,3 +226,5 @@ CSS
 - [ ] checkout.js: libphonenumber-js desde CDN unpkg.com — evaluar auto-host local.
 - [ ] orders-workflow.php: bulk actions Legacy → migrar a HPOS (woocommerce_order_list_table_bulk_actions).
 - [ ] digital-restriction.php: N+1 en display_digital_price_in_catalog — evaluar get_post_meta() directo.
+- [ ] coming-soon.css: archivo deprecado pero presente. Evaluar eliminarlo si inc/coming-soon.php
+      ya no lo encola tras esta migración.
