@@ -90,6 +90,7 @@ body{
   line-height:1.6;
   max-width:32ch;
   margin-inline:auto;
+	display: none;
 }
 
 /* === DIVIDER === */
@@ -97,7 +98,7 @@ body{
   width:40px;height:4px;
   background:#FFD77A;
   border-radius:9999px;
-  margin:0 auto 24px;
+  margin:24px auto;
 }
 
 /* === BOTÓN WHATSAPP === */
