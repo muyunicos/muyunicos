@@ -16,12 +16,9 @@
 
         if (!container) return;
 
-        /* --- Icono SVG de recarga (inline, no contiene datos sensibles) --- */
+        /* --- Icono SVG de recarga --- */
         var refreshIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/></svg>';
 
-        /**
-         * Fisher-Yates shuffle — distribución uniforme real.
-         */
         function fisherYatesShuffle(arr) {
             var a = arr.slice();
             for (var i = a.length - 1; i > 0; i--) {
@@ -65,7 +62,7 @@
                 var delay    = i * 100;
 
                 var satelliteBtn = isLast
-                    ? '<button class="mu-refresh-satellite" id="mu-btn-rotate" type="button" title="Ver otras opiniones" aria-label="Ver otras opiniones">' + refreshIcon + '</button>'
+                    ? '<button class="mu-nav-btn refresh" id="mu-btn-rotate" type="button" title="Ver otras opiniones" aria-label="Ver otras opiniones">' + refreshIcon + '</button>'
                     : '';
 
                 html +=
@@ -87,14 +84,12 @@
 
             container.innerHTML = html;
 
-            /* Re-bindear botón dinámico */
             var btn = document.getElementById('mu-btn-rotate');
             if (btn) {
                 btn.addEventListener('click', function (e) {
                     e.preventDefault();
                     e.stopPropagation();
 
-                    /* Disparar animación CSS via clase, sin pisar transform inline */
                     btn.classList.add('is-spinning');
                     container.style.opacity = '0.5';
 

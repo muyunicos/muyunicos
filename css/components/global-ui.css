@@ -169,7 +169,6 @@ body.mu-wplng-hide .wplng-switcher {
     margin: 0 auto;
 }
 
-/* --- ESTADO DESKTOP (>968px): Grilla Estática --- */
 .mu-carousel-track {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -184,12 +183,13 @@ body.mu-wplng-hide .wplng-switcher {
 
 /* ============================================
    BASE COMPARTIDA: BOTÓN CÍRCULO
-   Usada por .mu-nav-btn (carrusel) y
-   .mu-refresh-satellite (testimonios).
-   Cada clase solo agrega lo que la diferencia.
+   Patrón: .mu-nav-btn [modificador]
+     .mu-nav-btn.prev    — carrusel, flecha izquierda
+     .mu-nav-btn.next    — carrusel, flecha derecha
+     .mu-nav-btn.refresh — testimonios, rotar reseñas
+   Cada modificador solo agrega lo que lo diferencia.
    ============================================ */
-.mu-nav-btn,
-.mu-refresh-satellite {
+.mu-nav-btn {
     position: absolute;
     width: 44px;
     height: 44px;
@@ -209,15 +209,14 @@ body.mu-wplng-hide .wplng-switcher {
     transition: background 0.3s ease, box-shadow 0.3s ease;
 }
 
-.mu-nav-btn:hover,
-.mu-refresh-satellite:hover {
+.mu-nav-btn:hover {
     background: var(--resaltado, #1A7BA5);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
 }
 
-/* SVG hijo — capa de composición propia (GPU) */
-.mu-nav-btn svg,
-.mu-refresh-satellite svg {
+/* SVG hijo — capa de composición propia (GPU)
+   transition: 0.4s para que hover y spin se sientan consistentes */
+.mu-nav-btn svg {
     display: block;
     margin: 0;
     flex-shrink: 0;
@@ -227,28 +226,28 @@ body.mu-wplng-hide .wplng-switcher {
     stroke-width: 2.5;
     fill: none;
     will-change: transform;
-    transition: transform 0.3s ease;
+    transition: transform 0.4s ease;
 }
 
 /* ============================================
-   BOTÓN NAV — Específico del carrusel
-   La base visual viene del bloque anterior.
-   Aquí solo va lo que difiere:
-   visibilidad, z-index, posición y feedback de click.
+   .mu-nav-btn.prev / .mu-nav-btn.next
+   Solo agrega visibilidad, posición y feedback de click.
    ============================================ */
-.mu-nav-btn {
+.mu-nav-btn.prev,
+.mu-nav-btn.next {
     display: none; /* Oculto en desktop; visible en <= 968px */
     top: 40%;
     z-index: 20;
 }
 
-/* Scale sutil en click — solo en el SVG, sin tocar el contenedor */
-.mu-nav-btn:active svg {
-    transform: scale(0.9);
-}
-
 .mu-nav-btn.prev { left: -10px; }
 .mu-nav-btn.next { right: -10px; }
+
+/* Scale sutil en click — solo en el SVG, sin tocar el contenedor */
+.mu-nav-btn.prev:active svg,
+.mu-nav-btn.next:active svg {
+    transform: scale(0.9);
+}
 
 /* --- MODO CARRUSEL (Tablets y Móviles <= 968px) --- */
 @media (max-width: 968px) {
@@ -270,7 +269,8 @@ body.mu-wplng-hide .wplng-switcher {
         scroll-snap-align: center;
     }
 
-    .mu-nav-btn { display: flex; }
+    .mu-nav-btn.prev,
+    .mu-nav-btn.next { display: flex; }
 }
 
 /* --- MODO MÓVIL PEQUEÑO (< 480px) --- */
@@ -282,12 +282,14 @@ body.mu-wplng-hide .wplng-switcher {
         margin-right: 0;
     }
 
-    .mu-nav-btn {
+    .mu-nav-btn.prev,
+    .mu-nav-btn.next {
         width: 36px;
         height: 36px;
     }
 
-    .mu-nav-btn svg {
+    .mu-nav-btn.prev svg,
+    .mu-nav-btn.next svg {
         width: 16px;
         height: 16px;
     }
@@ -307,7 +309,7 @@ body.mu-wplng-hide .wplng-switcher {
     border: none;
     padding: 6px;
     cursor: pointer;
-    border-radius: var(--mu-radius-full, 9999px); /* override GP: full pill — evita hardcode 999px */
+    border-radius: var(--mu-radius-full, 9999px);
     transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
     line-height: 0;
     vertical-align: middle;
@@ -327,13 +329,9 @@ body.mu-wplng-hide .wplng-switcher {
 
 @media (prefers-reduced-motion: reduce) {
     .mu-share-btn,
-    .dcms-share-btn {
-        transition: none;
-    }
+    .dcms-share-btn { transition: none; }
     .mu-share-btn:hover,
-    .dcms-share-btn:hover {
-        transform: none;
-    }
+    .dcms-share-btn:hover { transform: none; }
 }
 
 .dcms-share-icon {
@@ -342,28 +340,17 @@ body.mu-wplng-hide .wplng-switcher {
     justify-content: center;
 }
 
-.dcms-share-icon svg {
-    display: block;
-}
+.dcms-share-icon svg { display: block; }
 
 .dcms-share-btn.is-copied {
     background-color: color-mix(in srgb, currentColor 10%, transparent);
     color: var(--mu-success, #27ae60);
 }
 
-.dcms-share-btn .dcms-share-icon--check {
-    display: none;
-}
+.dcms-share-btn .dcms-share-icon--check { display: none; }
+.dcms-share-btn.is-copied .dcms-share-icon--share { display: none; }
+.dcms-share-btn.is-copied .dcms-share-icon--check { display: inline-flex; }
 
-.dcms-share-btn.is-copied .dcms-share-icon--share {
-    display: none;
-}
-
-.dcms-share-btn.is-copied .dcms-share-icon--check {
-    display: inline-flex;
-}
-
-/* Tooltip "Enlace copiado" */
 .dcms-share-tooltip {
     position: absolute;
     bottom: 110%;
@@ -372,7 +359,7 @@ body.mu-wplng-hide .wplng-switcher {
     background-color: #333;
     color: var(--blanco, #fff);
     padding: 5px 10px;
-    border-radius: var(--mu-radius-sm, 6px); /* override GP: tooltip compacto — evita hardcode 8px */
+    border-radius: var(--mu-radius-sm, 6px);
     font-size: 12px;
     white-space: nowrap;
     pointer-events: none;
@@ -395,11 +382,9 @@ body.mu-wplng-hide .wplng-switcher {
 
 @keyframes dcmsFadeIn {
     from { opacity: 0; transform: translate(-50%, 5px); }
-    to { opacity: 1; transform: translate(-50%, 0); }
+    to   { opacity: 1; transform: translate(-50%, 0); }
 }
 
 @media (max-width: 768px) {
-    .dcms-share-tooltip {
-        font-size: 11px;
-    }
+    .dcms-share-tooltip { font-size: 11px; }
 }

@@ -3,10 +3,11 @@
  * Carga: shortcode mu_testimonios_section (páginas con el bloque)
  * Condicional: encolado desde inc/ui.php solo cuando el shortcode está presente
  *
- * NOTA: La base visual de .mu-refresh-satellite (tamaño, fondo, borde, sombra,
- * cursor, transición de botón, SVG con will-change) viene del selector agrupado
- * en css/components/global-ui.css. Aquí solo va lo que es específico de
- * este componente: posicionamiento y animación de giro.
+ * NOTA: La base visual de .mu-nav-btn.refresh (tamaño, fondo, borde, sombra,
+ * cursor, transición de botón, SVG con will-change) viene de .mu-nav-btn
+ * en css/components/global-ui.css.
+ * Aquí solo va lo específico del modificador .refresh:
+ * posicionamiento y animación de giro.
  *
  * @package GeneratePress_Child
  */
@@ -100,25 +101,26 @@
 }
 
 /* ============================================
-   BOTÓN SATÉLITE — solo lo específico
-   Base visual en global-ui.css (.mu-nav-btn, .mu-refresh-satellite)
+   .mu-nav-btn.refresh — solo lo específico
+   Base visual (.mu-nav-btn) en global-ui.css
    ============================================ */
 
-/* Posicionamiento específico del satélite */
-.mu-refresh-satellite {
+.mu-nav-btn.refresh {
     z-index: 10;
 }
 
+/* Desktop (≥ 900px): flota sobre el borde derecho de la última tarjeta */
 @media (min-width: 900px) {
-    .mu-refresh-satellite {
+    .mu-nav-btn.refresh {
         top: 50%;
         right: -22px;
         margin-top: -22px;
     }
 }
 
+/* Móvil (< 900px): flota sobre el borde inferior */
 @media (max-width: 899px) {
-    .mu-refresh-satellite {
+    .mu-nav-btn.refresh {
         bottom: -22px;
         left: 50%;
         margin-left: -22px;
@@ -127,18 +129,18 @@
     }
 }
 
-/* Hover — el SVG rota (exclusivo del satélite, nav-btn no gira) */
-.mu-refresh-satellite:hover svg {
+/* Hover — el SVG rota (exclusivo de .refresh, prev/next no giran) */
+.mu-nav-btn.refresh:hover svg {
     transform: rotate(180deg);
 }
 
-/* Click — animación de vuelta completa vía clase .is-spinning (JS) */
+/* Click — vuelta completa via clase .is-spinning (disparada por JS) */
 @keyframes mu-spin-once {
     from { transform: rotate(0deg); }
     to   { transform: rotate(360deg); }
 }
 
-.mu-refresh-satellite.is-spinning svg {
+.mu-nav-btn.refresh.is-spinning svg {
     animation: mu-spin-once 0.4s ease forwards;
 }
 
