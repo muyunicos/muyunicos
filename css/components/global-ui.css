@@ -172,28 +172,25 @@ body.mu-wplng-hide .wplng-switcher {
 /* --- ESTADO DESKTOP (>968px): Grilla Estática --- */
 .mu-carousel-track {
     display: grid;
-    grid-template-columns: repeat(4, 1fr); /* 4 columnas iguales */
+    grid-template-columns: repeat(4, 1fr);
     gap: 20px;
     width: 100%;
     padding: 10px 0 20px 0;
 }
 
-/* Items del carrusel */
 .mu-carousel-item {
-    user-select: none; /* Mejor experiencia para el drag futuro */
+    user-select: none;
 }
 
 /* ============================================
-   BOTONES DE NAVEGACIÓN — Estética Satélite
-   Comparten base visual con .mu-refresh-satellite
-   (testimonials.css): círculo primario, borde blanco,
-   box-shadow elevado, SVG aislado con will-change.
-   SIN animación de giro — solo scale en active.
+   BASE COMPARTIDA: BOTÓN CÍRCULO
+   Usada por .mu-nav-btn (carrusel) y
+   .mu-refresh-satellite (testimonios).
+   Cada clase solo agrega lo que la diferencia.
    ============================================ */
-.mu-nav-btn {
-    display: none;               /* Oculto en desktop, visible en media query */
+.mu-nav-btn,
+.mu-refresh-satellite {
     position: absolute;
-    top: 40%;
     width: 44px;
     height: 44px;
     padding: 0;
@@ -204,33 +201,48 @@ body.mu-wplng-hide .wplng-switcher {
     color: var(--blanco, #fff);
     border: 3px solid var(--blanco, #fff);
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-    z-index: 20;
-    cursor: pointer;
+    display: flex;
     align-items: center;
     justify-content: center;
-    /* Solo transicionamos propiedades del botón — transform va en el SVG */
+    cursor: pointer;
+    /* Solo transicionamos propiedades del botón — transform va en el SVG hijo */
     transition: background 0.3s ease, box-shadow 0.3s ease;
 }
 
-.mu-nav-btn:hover {
+.mu-nav-btn:hover,
+.mu-refresh-satellite:hover {
     background: var(--resaltado, #1A7BA5);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
 }
 
-/* SVG aislado en su propia capa de composición */
-.mu-nav-btn svg {
+/* SVG hijo — capa de composición propia (GPU) */
+.mu-nav-btn svg,
+.mu-refresh-satellite svg {
     display: block;
+    margin: 0;
     flex-shrink: 0;
     width: 20px;
     height: 20px;
     stroke: currentColor;
     stroke-width: 2.5;
     fill: none;
-    will-change: transform;       /* Reserva capa GPU antes del hover */
-    transition: transform 0.2s ease;
+    will-change: transform;
+    transition: transform 0.3s ease;
 }
 
-/* Scale sutil en click — sin transform en el contenedor */
+/* ============================================
+   BOTÓN NAV — Específico del carrusel
+   La base visual viene del bloque anterior.
+   Aquí solo va lo que difiere:
+   visibilidad, z-index, posición y feedback de click.
+   ============================================ */
+.mu-nav-btn {
+    display: none; /* Oculto en desktop; visible en <= 968px */
+    top: 40%;
+    z-index: 20;
+}
+
+/* Scale sutil en click — solo en el SVG, sin tocar el contenedor */
 .mu-nav-btn:active svg {
     transform: scale(0.9);
 }
@@ -241,41 +253,35 @@ body.mu-wplng-hide .wplng-switcher {
 /* --- MODO CARRUSEL (Tablets y Móviles <= 968px) --- */
 @media (max-width: 968px) {
     .mu-carousel-track {
-        display: flex; /* Cambia Grid a Flex */
-        overflow-x: auto; /* Habilita scroll horizontal */
-        scroll-snap-type: x mandatory; /* Efecto magnético */
+        display: flex;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
         scroll-behavior: smooth;
-        padding-bottom: 40px; /* Espacio para scroll/sombras */
-        
-        /* Ocultar barra de scroll nativa */
-        scrollbar-width: none; 
+        padding-bottom: 40px;
+        scrollbar-width: none;
         -ms-overflow-style: none;
     }
-    
+
     .mu-carousel-track::-webkit-scrollbar { display: none; }
 
-    /* Ajuste de Items para Carrusel */
     .mu-carousel-item {
         flex: 0 0 auto;
-        width: 260px; /* Ancho fijo para ver parcialmente el siguiente */
+        width: 260px;
         scroll-snap-align: center;
     }
 
-    /* Mostrar botones */
     .mu-nav-btn { display: flex; }
 }
 
 /* --- MODO MÓVIL PEQUEÑO (< 480px) --- */
 @media (max-width: 480px) {
     .mu-carousel-track { gap: 15px; }
-    
-    /* Item ocupa todo el ancho */
+
     .mu-carousel-item {
         width: 100%;
         margin-right: 0;
     }
-    
-    /* Botones más discretos */
+
     .mu-nav-btn {
         width: 36px;
         height: 36px;
@@ -340,7 +346,6 @@ body.mu-wplng-hide .wplng-switcher {
     display: block;
 }
 
-/* Estado copiado */
 .dcms-share-btn.is-copied {
     background-color: color-mix(in srgb, currentColor 10%, transparent);
     color: var(--mu-success, #27ae60);
