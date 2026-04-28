@@ -1,0 +1,82 @@
+/* Muy Únicos — Admin Hero Banners
+ * Carga: solo en marketing_page_mu-hero-banners
+ */
+
+.mu-hero-banners-wrap .mu-hero-banners-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--mu-space-md, 20px);
+    margin-top: var(--mu-space-md, 20px);
+}
+
+.mu-hero-banner-row {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: var(--mu-radius, 12px);
+    padding: var(--mu-space-md, 20px);
+    box-shadow: var(--mu-shadow-sm, 0 1px 2px rgba(0,0,0,0.06));
+}
+
+.mu-hero-banner-row.is-deleted {
+    opacity: 0.4;
+    background: #fafafa;
+}
+
+.mu-hero-banner-row__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--mu-space-sm, 10px);
+    margin-bottom: var(--mu-space-sm, 10px);
+    border-bottom: 1px solid #f0f0f1;
+    padding-bottom: var(--mu-space-sm, 10px);
+}
+
+.mu-hero-banner-row__title {
+    font-size: 16px;
+    margin: 0;
+    color: var(--texto, #1d2327);
+}
+
+.mu-hero-banner-row__remove {
+    background: none;
+    border: 0;
+    color: #b32d2e;
+    cursor: pointer;
+    text-decoration: underline;
+    font-size: 13px;
+}
+
+.mu-hero-banner-row__remove:hover { color: #d63638; }
+
+.mu-hero-banner-row__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--mu-space-sm, 10px) var(--mu-space-md, 20px);
+}
+
+.mu-hero-banner-row__grid p { margin: 0; }
+.mu-hero-banner-row__grid label { display: block; margin-bottom: 4px; }
+.mu-hero-banner-row__full { grid-column: 1 / -1; }
+
+.mu-hero-banner-row__image-controls {
+    display: flex;
+    gap: var(--mu-space-sm, 10px);
+    align-items: stretch;
+}
+
+.mu-hero-banner-row__image-controls .mu-hero-banner-row__image-url { flex: 1; }
+
+.mu-hero-banner-row__image-preview {
+    display: block;
+    margin-top: var(--mu-space-sm, 10px);
+    max-width: 320px;
+    width: 100%;
+    height: auto;
+    border-radius: var(--mu-radius-sm, 6px);
+    border: 1px solid #e0e0e0;
+}
+
+@media (max-width: 782px) {
+    .mu-hero-banner-row__grid { grid-template-columns: 1fr; }
+}

@@ -131,6 +131,7 @@ mu_load_module( 'login' );               // wp-login.php customization (hooks on
 mu_load_module( 'checkout' );            // Checkout optimizations
 mu_load_module( 'cart' );               // Cart functionality
 mu_load_module( 'flexible-price' );      // Sistema de Precio Flexible v4.0 — encola js/flexible-price.js via mu_flexible_price_enqueue(). NO agregar a mu_enqueue_assets() para evitar duplicado.
+mu_load_module( 'hero-banners' );        // Hero Banners Manager (admin submenu bajo WC Marketing) — debe ir antes de ui.php para que mu_get_hero_banners() esté disponible al renderizar [mu_hero_section]
 mu_load_module( 'ui' );                  // UI components (header, footer, search, wplng body class)
 mu_load_module( 'orders-files' );        // Order File Manager (Admin/Frontend)
 mu_load_module( 'orders-workflow' );     // Order Workflow (Status, Email, WhatsApp)
