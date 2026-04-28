@@ -1,6 +1,6 @@
 MUY ÜNCOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Modular Pragmático · v2.9.2 · Apr 28, 2026
+Estado: Modular Pragmático · v2.9.3 · Apr 28, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -41,6 +41,14 @@ muyunicos/ (generatepress-child)
 │
 ├── inc/                    # Módulos PHP — lógica de negocio y hooks
 │   ├── icons.php           # [PRIMERO] mu_get_icon() — repositorio SVG
+│   ├── compat-litespeed.php # [SEGUNDO] Compatibilidad LiteSpeed Cache v1.0.0
+│   │                        # Problema: gla-gtag-events.js (Google Listings & Ads) depende
+│   │                        # de window.wp.hooks. El JS Delay de LiteSpeed ejecuta scripts
+│   │                        # de forma asíncrona sin respetar dependencias WP, causando
+│   │                        # TypeError en visitantes (sin admin bar). Solución: filtro
+│   │                        # 'litespeed_optimize_js_excludes' para excluir programáticamente
+│   │                        # gtag-events.js y su chunk 101.js del delay. No depende de la
+│   │                        # config del plugin (no se resetea con actualizaciones).
 │   ├── coming-soon.php     # Coming Soon override v1.0.0. Intercepta template_redirect
 │   │                       # (prioridad 0) cuando Hostinger Coming Soon está activo.
 │   │                       # Sirve templates/coming-soon.php con status 503 y exit().
@@ -203,6 +211,7 @@ Hero promos dinámicas (render)      | ui.php (mu_hero_section) | home.css      
 Nuevo icóno SVG                     | icons.php                | —                            | —
 Breadcrumb (estilos)                | navigation-chips.php     | components/global-ui.css     | —
 Pantalla Coming Soon custom         | coming-soon.php          | inline en template           | inline en template
+Compatibilidad plugins/caché        | compat-litespeed.php     | —                            | —
 
 ════════════════════════════════════════════════════════════════
 4. SISTEMA DE DISEÑO (API EXCLUSIVA)

@@ -8,7 +8,7 @@
  * - CSS/JS condicional por página
  *
  * @package GeneratePress_Child
- * @version 1.3.0
+ * @version 1.3.1
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
@@ -123,6 +123,7 @@ function mu_load_module( $module ) {
 
 // Orden de carga (respetando dependencias)
 mu_load_module( 'icons' );               // SVG icons repository
+mu_load_module( 'compat-litespeed' );    // Compatibilidad LiteSpeed Cache — exclusiones JS Delay
 mu_load_module( 'coming-soon' );         // Coming Soon override (intercepta template_redirect antes que Hostinger)
 mu_load_module( 'geo' );                 // Multi-country system
 mu_load_module( 'digital-restriction' ); // Digital Restriction System
