@@ -1,6 +1,6 @@
 MUY ÜNCOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Modular Pragmático · v2.9.1 · Apr 28, 2026
+Estado: Modular Pragmático · v2.9.2 · Apr 28, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -103,12 +103,17 @@ muyunicos/ (generatepress-child)
 │
 ├── css/                    # CSS modular — siempre carga condicional
 │   ├── components/
-│   │   ├── global-ui.css        # Global: Share, WhatsApp, Search, WPLingua, Carrusel
+│   │   ├── global-ui.css        # Global: Share, WhatsApp, Search, WPLingua, Carrusel,
+│   │   │                        # BREADCRUMB (.mu-navchips-breadcrumb y selectores relacionados)
+│   │   │                        # Fix v2.9.2: breadcrumbs movidos aquí desde navigation-chips.css
+│   │   │                        # para que sean visibles en entradas, cuenta, descargas, etc.
 │   │   ├── header.css           # Global
 │   │   ├── footer.css           # Global
 │   │   ├── modal-auth.css       # !is_user_logged_in()
 │   │   ├── country-modal.css    # Condicional (inc/geo.php → mu_country_modal_enqueue)
 │   │   └── navigation-chips.css # is_shop() || is_product_category() || is_product_tag() || is_product()
+│   │                            # SOLO chips/filtros del catálogo (.mu-navchips-wrapper,
+│   │                            # .mu-navchips-chip-*, .mu-navchips-label, .mu-navchips-list).
 │   │                            # Fix v2.8.3: chip actual (.mu-navchips-current span) normalizado
 │   │                            # con font-size/padding/line-height iguales a los crumbs anteriores.
 │   │                            # .mu-share-btn dentro del chip: display:inline-flex, padding:0,
@@ -196,6 +201,7 @@ Shortcodes Home (carrusel/sección)  | ui.php                   | home.css      
 Hero promos dinámicas (storage)     | hero-banners.php         | admin-hero-banners.css       | admin-hero-banners.js
 Hero promos dinámicas (render)      | ui.php (mu_hero_section) | home.css                     | hero.js
 Nuevo icóno SVG                     | icons.php                | —                            | —
+Breadcrumb (estilos)                | navigation-chips.php     | components/global-ui.css     | —
 Pantalla Coming Soon custom         | coming-soon.php          | inline en template           | inline en template
 
 ════════════════════════════════════════════════════════════════
