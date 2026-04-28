@@ -1,121 +1,7 @@
 /* ========================================
-   MUYUNICOS - Navigation Chips (Breadcrumb + Filters)
+   MUYUNICOS - Navigation Chips (Filters)
    Contexto: Catálogo WooCommerce (shop, category, tag, product)
    ======================================== */
-
-/* Breadcrumb global basado en chips */
-.mu-navchips-breadcrumb {
-    margin: 0 0 20px 0;
-    font-size: 14px;
-    width: 100%;
-}
-
-.mu-navchips-breadcrumb ul {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px;
-}
-
-.mu-navchips-breadcrumb li {
-    display: inline-flex;
-    align-items: center;
-}
-
-.mu-navchips-icon-link a {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background-color: var(--primario, #2367a7);
-    color: var(--blanco, #fff);
-    transition: all 0.2s ease;
-}
-
-/* override GP: normalizar tamaño SVG dentro del chip circular */
-.mu-navchips-icon-link a .mu-icon-svg,
-.mu-navchips-icon-link a svg {
-    width: 16px;
-    height: 16px;
-    stroke: currentColor;
-    fill: none;
-    flex-shrink: 0;
-}
-
-.mu-navchips-icon-link a:hover {
-    opacity: 0.9;
-    transform: translateY(-1px);
-}
-
-.mu-navchips-crumb a {
-    padding: 5px 12px;
-    background: var(--fondo, #f0f4f8);
-    color: var(--texto, #555);
-    border-radius: 15px;
-    text-decoration: none;
-    font-weight: 500;
-    font-size: 13px;
-    transition: all 0.2s ease;
-}
-
-.mu-navchips-crumb a:hover {
-    opacity: 0.8;
-}
-
-/* override GP: chip actual — padding igualado a .mu-navchips-crumb a (5px 12px) */
-.mu-navchips-current span {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 5px 12px;
-    background: var(--primario, #1c5285);
-    color: var(--blanco, #fff);
-    border-radius: 15px;
-    font-weight: 600;
-    font-size: 13px;
-    line-height: 1.4;
-    box-shadow: 0 1px 2px rgba(0,0,0,.1);
-}
-
-/* El botón share dentro del chip actual no debe alterar la altura */
-.mu-navchips-current .mu-share-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    margin: 0;
-    background: none;
-    border: none;
-    color: inherit;
-    opacity: 0.8;
-    line-height: 1;
-    flex-shrink: 0;
-}
-
-.mu-navchips-current .mu-share-btn:hover {
-    opacity: 1;
-}
-
-.mu-navchips-current .mu-share-btn svg {
-    display: block;
-    width: 14px;
-    height: 14px;
-}
-
-.mu-navchips-current--tag span {
-    background: #e3fff2;
-    color: #107556;
-    border: 1px solid #99e7cf;
-}
-
-.mu-navchips-current--tag .mu-share-btn {
-    color: #107556 !important;
-}
 
 /* Wrapper y etiquetas */
 .mu-navchips-wrapper {
@@ -283,10 +169,6 @@
         gap: 6px;
     }
 
-    .mu-navchips-breadcrumb ul {
-        gap: 4px;
-    }
-
     .mu-navchips-label {
         font-size: 14px;
     }
@@ -294,21 +176,8 @@
     .mu-navchips-chip--reset a,
     .mu-navchips-chip--cat a,
     .mu-navchips-chip--tag .mu-navchips-chip-link,
-    .mu-navchips-chip--extra a,
-    .mu-navchips-crumb a,
-    .mu-navchips-current span {
+    .mu-navchips-chip--extra a {
         padding: 5px 10px;
         font-size: 13px;
-    }
-
-    .mu-navchips-icon-link a {
-        width: 28px;
-        height: 28px;
-    }
-
-    .mu-navchips-icon-link a .mu-icon-svg,
-    .mu-navchips-icon-link a svg {
-        width: 14px;
-        height: 14px;
     }
 }
