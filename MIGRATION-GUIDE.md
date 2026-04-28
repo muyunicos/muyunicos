@@ -1,6 +1,6 @@
 MUY ÜNCOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Modular Pragmático · v2.9.0 · Apr 28, 2026
+Estado: Modular Pragmático · v2.9.1 · Apr 28, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -59,7 +59,7 @@ muyunicos/ (generatepress-child)
 │   ├── flexible-price.php  # Precio Flexible v4.0: mapa O(1), validación, AJAX handler.
 │   │                       # Encola flexible-price.js vía mu_flexible_price_enqueue().
 │   │                       # NO agregar a mu_enqueue_assets() — causaría duplicado.
-│   ├── hero-banners.php    # Hero Banners Manager v1.0.0 — admin submenu bajo WC Marketing
+│   ├── hero-banners.php    # Hero Banners Manager v1.0.1 — admin submenu bajo WC Marketing
 │   │                       # (parent slug 'woocommerce-marketing' → screen
 │   │                       # 'marketing_page_mu-hero-banners'). Storage en wp_option
 │   │                       # 'mu_hero_banners' (array de promos). Cache transient
@@ -71,6 +71,8 @@ muyunicos/ (generatepress-child)
 │   │                       # mu_hero_banners_default_seed() provee la semilla legacy.
 │   │                       # Admin UI: WP Media picker para imagen, add/remove rows,
 │   │                       # PRG redirect tras guardar. Capability: 'manage_woocommerce'.
+│   │                       # Inputs de CTA/badge aceptan URL absoluta o ruta relativa
+│   │                       # (ej. /tienda/escolares/) para soportar multi-dominio.
 │   │                       # Assets admin (css/admin-hero-banners.css + js/admin-hero-banners.js)
 │   │                       # SOLO en hook 'marketing_page_mu-hero-banners'.
 │   ├── ui.php              # Header icons, Cart badge, WhatsApp, Search, Footer custom,
@@ -245,6 +247,7 @@ PHP
 - Geolocalización: SIEMPRE muyu_get_cached_geolocation(). NUNCA wc_get_customer_geolocation() directo.
 - Hero promos: fechas con DateTime::createFromFormat('dmY'). Primer slide: loading="eager" fetchpriority="high".
   Datos vienen de mu_get_hero_banners() (inc/hero-banners.php) — NO hardcodear arrays nuevos en mu_hero_section().
+  Admin UI acepta rutas relativas o URLs absolutas para CTAs y badge promo.
   Para editar contenido: WP Admin → WooCommerce → Marketing → Hero Banners.
 - Coming Soon standalone: logo y número WA hardcodeados. Cambios → editar templates/coming-soon.php directamente.
 

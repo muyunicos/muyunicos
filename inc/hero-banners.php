@@ -358,8 +358,8 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                     <input type="text" name="<?php echo esc_attr( $name ); ?>[cta_texto]" value="<?php echo esc_attr( $b['cta_texto'] ); ?>" class="regular-text">
                 </p>
                 <p>
-                    <label><strong><?php esc_html_e( 'CTA principal — URL', 'mu' ); ?></strong></label>
-                    <input type="url" name="<?php echo esc_attr( $name ); ?>[cta_url]" value="<?php echo esc_attr( $b['cta_url'] ); ?>" class="regular-text">
+                    <label><strong><?php esc_html_e( 'CTA principal — URL o ruta relativa', 'mu' ); ?></strong></label>
+                    <input type="text" name="<?php echo esc_attr( $name ); ?>[cta_url]" value="<?php echo esc_attr( $b['cta_url'] ); ?>" class="regular-text" placeholder="/tienda/escolares/">
                 </p>
 
                 <p>
@@ -367,8 +367,8 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                     <input type="text" name="<?php echo esc_attr( $name ); ?>[cta_secundario_texto]" value="<?php echo esc_attr( $b['cta_secundario_texto'] ); ?>" class="regular-text">
                 </p>
                 <p>
-                    <label><strong><?php esc_html_e( 'CTA secundario — URL', 'mu' ); ?></strong></label>
-                    <input type="url" name="<?php echo esc_attr( $name ); ?>[cta_secundario_url]" value="<?php echo esc_attr( $b['cta_secundario_url'] ); ?>" class="regular-text">
+                    <label><strong><?php esc_html_e( 'CTA secundario — URL o ruta relativa', 'mu' ); ?></strong></label>
+                    <input type="text" name="<?php echo esc_attr( $name ); ?>[cta_secundario_url]" value="<?php echo esc_attr( $b['cta_secundario_url'] ); ?>" class="regular-text" placeholder="/guia-etiquetas-personalizadas/">
                 </p>
 
                 <p>
@@ -378,8 +378,8 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                     </label>
                 </p>
                 <p>
-                    <label><strong><?php esc_html_e( 'Badge — URL', 'mu' ); ?></strong></label>
-                    <input type="url" name="<?php echo esc_attr( $name ); ?>[free_badge_url]" value="<?php echo esc_attr( $b['free_badge_url'] ); ?>" class="regular-text">
+                    <label><strong><?php esc_html_e( 'Badge — URL o ruta relativa', 'mu' ); ?></strong></label>
+                    <input type="text" name="<?php echo esc_attr( $name ); ?>[free_badge_url]" value="<?php echo esc_attr( $b['free_badge_url'] ); ?>" class="regular-text" placeholder="/tienda/escolares/">
                 </p>
                 <p class="mu-hero-banner-row__full">
                     <label><strong><?php esc_html_e( 'Badge — Texto (HTML permitido)', 'mu' ); ?></strong></label>
