@@ -1,27 +1,39 @@
 <?php
 /**
- * Muy Únicos — Coming Soon Override v2.2.0
+ * Muy Únicos — Coming Soon Override v2.3.0
  *
- * Basado en lectura directa de ComingSoon.php del plugin Hostinger Tools.
+ * Cómo funciona el plugin Hostinger Tools (CONFIRMADO leyendo código fuente real):
  *
- * Cómo funciona el plugin (confirmado en código fuente):
- *   - Registra: add_action( 'template_redirect', [$this, 'coming_soon'] ) — prioridad 10.
- *   - Dentro de coming_soon(): si can_bypass() es false → include_once View + die.
- *   - La clase está bajo un namespace PHP → class_exists('ComingSoon') FALLA en scope global.
- *   - HOSTINGER_ABSPATH es una constante que el plugin define al cargarse.
+ *   TODA la configuración vive en UNA sola WP option:
+ *       get_option( 'hostinger_tools' )  →  array(
+ *           'maintenance_mode' => bool,
+ *           'bypass_code'      => string (16 chars, generado en activación),
+ *           ...
+ *       )
+ *   Constante: HOSTINGER_PLUGIN_SETTINGS_OPTION = 'hostinger_tools'.
  *
- * Nuestra estrategia (v2.2.0):
- *   - Detección: defined('HOSTINGER_ABSPATH') — sin queries DB, sin namespace issues.
- *   - Fallback: verificar si el View file existe en disco (extra seguridad).
- *   - Hook: template_redirect prioridad 1 → corremos ANTES que el plugin (prioridad 10).
- *   - Bypass espejo exacto del plugin: is_admin, update_plugins, cookie, AJAX, REST, wc-ajax.
- *   - FIX v2.2.0: GET bypass_code validado ANTES de mostrar pantalla (Hostinger en p10
- *     nunca llegaba a setear el cookie porque nosotros hacíamos die en p1).
- *   - FIX v2.2.0: Eliminado add_action('wp_enqueue_scripts') — la plantilla es standalone
- *     (sin wp_head()), ese enqueue era código muerto.
+ *   El plugin instancia ComingSoon.php solo cuando el modo está activo.
+ *   add_action( 'template_redirect', [$this, 'coming_soon'] )  <- sin prioridad = p10.
+ *
+ *   can_bypass_coming_soon() del plugin (orden exacto):
+ *       1. Lee $_COOKIE['hostinger_bypass_code']
+ *       2. Si GET bypass_code === stored_code  →  setcookie() simple (sin flags) + $bypass_cookie = stored
+ *       3. is_admin()                          →  true
+ *       4. current_user_can('update_plugins')  →  true
+ *       5. $bypass_cookie != '' && === stored  →  true
+ *
+ * Nuestra estrategia (v2.3.0):
+ *   - Detección: leer hostinger_tools['maintenance_mode']
+ *     BUGS anteriores: v2.1 usaba file_exists() (siempre true si plugin instalado).
+ *                      v2.2 usaba get_option('hostinger_maintenance_mode') (option inexistente).
+ *   - Bypass: leer hostinger_tools['bypass_code']
+ *     BUG anterior: v2.2 usaba get_option('hostinger_coming_soon_bypass_code') (inexistente).
+ *   - Cookie: setcookie() simple sin flags, igual que el plugin original.
+ *   - Hook: template_redirect p1 (antes del plugin en p10).
+ *   - Helper estático: mu_get_hostinger_settings() — UNA sola query DB por request.
  *
  * @package GeneratePress_Child
- * @since   2.2.0
+ * @since   2.3.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -29,109 +41,95 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 1. Bypass: replicar exactamente can_bypass_coming_soon() del plugin
-//    + validar GET bypass_code ANTES de mostrar pantalla (fix v2.2.0)
+// Helper: leer hostinger_tools una sola vez por request (static cache).
+//
+// Hardcodeamos 'hostinger_tools' en lugar de usar HOSTINGER_PLUGIN_SETTINGS_OPTION
+// porque corremos en p1 y la constante puede no estar definida todavía si el
+// plugin se carga después de nuestro inc/. En la práctica la constante siempre
+// está disponible en plugins_loaded, pero este método es más robusto.
+// ─────────────────────────────────────────────────────────────────────────────
+
+if ( ! function_exists( 'mu_get_hostinger_settings' ) ) {
+	function mu_get_hostinger_settings(): array {
+		static $settings = null;
+		if ( null === $settings ) {
+			$raw      = get_option( 'hostinger_tools', array() );
+			$settings = is_array( $raw ) ? $raw : array();
+		}
+		return $settings;
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 1. Detección: ¿está activo el modo mantenimiento de Hostinger?
+// ─────────────────────────────────────────────────────────────────────────────
+
+if ( ! function_exists( 'mu_is_hostinger_coming_soon_active' ) ) {
+	function mu_is_hostinger_coming_soon_active(): bool {
+		$settings = mu_get_hostinger_settings();
+		return ! empty( $settings['maintenance_mode'] );
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 2. Bypass: espejo de can_bypass_coming_soon() del plugin
 // ─────────────────────────────────────────────────────────────────────────────
 
 if ( ! function_exists( 'mu_coming_soon_should_bypass' ) ) {
 	function mu_coming_soon_should_bypass(): bool {
-		// Admin panel.
 		if ( is_admin() ) {
 			return true;
 		}
 
-		// AJAX, Cron, REST API.
 		if ( wp_doing_ajax() || wp_doing_cron() ) {
 			return true;
 		}
+
 		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
 			return true;
 		}
 
-		// WooCommerce AJAX personalizado (wc-ajax=*).
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		if ( isset( $_GET['wc-ajax'] ) ) {
 			return true;
 		}
 
-		// El plugin usa update_plugins (más restrictivo que manage_options).
 		if ( current_user_can( 'update_plugins' ) ) {
 			return true;
 		}
 
-		// ── FIX v2.2.0: GET bypass_code ──────────────────────────────────────
-		// El plugin Hostinger valida ?bypass_code= en su can_bypass() y setea
-		// el cookie en prioridad 10. Como nosotros corremos en prioridad 1,
-		// nunca le dábamos chance al plugin de validar el código ni setear el
-		// cookie — hacíamos die antes. Solución: replicar la misma lógica aquí.
-		//
-		// El plugin lee el bypass_code desde las opciones de Hostinger:
-		//   get_option('hostinger_coming_soon_bypass_code')
-		// y compara con el valor del GET. Si coincide, setea el cookie.
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$get_code = isset( $_GET['bypass_code'] )
-			? sanitize_text_field( wp_unslash( $_GET['bypass_code'] ) )
-			: '';
+		// Leer bypass_code desde hostinger_tools['bypass_code'].
+		$settings    = mu_get_hostinger_settings();
+		$stored_code = isset( $settings['bypass_code'] ) ? (string) $settings['bypass_code'] : '';
 
-		if ( ! empty( $get_code ) ) {
-			$stored_code = get_option( 'hostinger_coming_soon_bypass_code', '' );
-			if ( ! empty( $stored_code ) && hash_equals( (string) $stored_code, $get_code ) ) {
-				// Replicar el setcookie del plugin para que las visitas siguientes
-				// también tengan bypass sin necesitar el GET de nuevo.
-				setcookie(
-					'hostinger_bypass_code',
-					$get_code,
-					[
-						'expires'  => time() + WEEK_IN_SECONDS,
-						'path'     => '/',
-						'secure'   => is_ssl(),
-						'httponly' => true,
-						'samesite' => 'Lax',
-					]
-				);
-				return true;
-			}
+		if ( empty( $stored_code ) ) {
+			return false;
 		}
 
-		// Bypass por cookie (seteado por el plugin o por nosotros arriba).
+		// El plugin lee primero el cookie y luego procesa el GET.
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$bypass_cookie = isset( $_COOKIE['hostinger_bypass_code'] )
 			? sanitize_text_field( wp_unslash( $_COOKIE['hostinger_bypass_code'] ) )
 			: '';
-		if ( ! empty( $bypass_cookie ) ) {
-			// Validar que el cookie coincida con el código almacenado
-			// (el plugin hace la misma verificación).
-			$stored_code = get_option( 'hostinger_coming_soon_bypass_code', '' );
-			if ( ! empty( $stored_code ) && hash_equals( (string) $stored_code, $bypass_cookie ) ) {
-				return true;
+
+		// GET bypass_code: si coincide, setear cookie (mismo comportamiento que el plugin).
+		// El plugin usa setcookie() simple sin flags — replicamos igual para compatibilidad.
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( isset( $_GET['bypass_code'] ) ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			$get_code = sanitize_text_field( wp_unslash( $_GET['bypass_code'] ) );
+			if ( hash_equals( $stored_code, $get_code ) ) {
+				setcookie( 'hostinger_bypass_code', $stored_code ); // igual que el plugin original.
+				$bypass_cookie = $stored_code;
 			}
 		}
 
-		return false;
-	}
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 2. Detección: ¿está activo el Coming Soon de Hostinger?
-//
-//    v2.1.0 FIX: Reemplaza class_exists() que fallaba por namespace PHP.
-//    HOSTINGER_ABSPATH es definida por el plugin al cargarse — es O(1),
-//    sin queries DB y 100% agnóstica al namespace de la clase.
-//    Doble verificación con el View file como fallback extra.
-// ─────────────────────────────────────────────────────────────────────────────
-
-if ( ! function_exists( 'mu_is_hostinger_coming_soon_active' ) ) {
-	function mu_is_hostinger_coming_soon_active(): bool {
-		// Constante definida por Hostinger Tools al activarse.
-		if ( ! defined( 'HOSTINGER_ABSPATH' ) ) {
-			return false;
+		// Cookie válido → bypass.
+		if ( ! empty( $bypass_cookie ) && hash_equals( $stored_code, $bypass_cookie ) ) {
+			return true;
 		}
 
-		// El plugin tiene su View en includes/Views/ComingSoon.php.
-		// Si ese archivo existe → el plugin está instalado y activo.
-		$view_file = HOSTINGER_ABSPATH . 'includes/Views/ComingSoon.php';
-
-		return file_exists( $view_file );
+		return false;
 	}
 }
 
@@ -152,7 +150,7 @@ if ( ! function_exists( 'mu_render_coming_soon_override' ) ) {
 		$template = get_stylesheet_directory() . '/templates/coming-soon.php';
 
 		if ( ! file_exists( $template ) ) {
-			// Fallback seguro: dejamos que el plugin sirva su pantalla.
+			// Fallback seguro: el plugin sirve su propia pantalla.
 			return;
 		}
 
@@ -160,12 +158,9 @@ if ( ! function_exists( 'mu_render_coming_soon_override' ) ) {
 		header( 'Retry-After: 3600' );
 		nocache_headers();
 
-		// NOTA: NO llamar mu_coming_soon_enqueue() aquí.
-		// La plantilla es standalone (sin wp_head/wp_footer) — v2.0.0+.
-		// Todo el CSS y JS van inlineados directamente en templates/coming-soon.php.
-
+		// Plantilla standalone v2.0.0+: CSS y JS inlineados, sin wp_head/wp_footer.
 		include $template;
-		die; // Bloquea que el plugin sirva su propia pantalla.
+		die;
 	}
 }
 add_action( 'template_redirect', 'mu_render_coming_soon_override', 1 );
