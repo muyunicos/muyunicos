@@ -1,6 +1,6 @@
 MUY ÜNCOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Modular Pragmático · v2.8.3 · Apr 27, 2026
+Estado: Modular Pragmático · v2.9.0 · Apr 28, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -59,11 +59,26 @@ muyunicos/ (generatepress-child)
 │   ├── flexible-price.php  # Precio Flexible v4.0: mapa O(1), validación, AJAX handler.
 │   │                       # Encola flexible-price.js vía mu_flexible_price_enqueue().
 │   │                       # NO agregar a mu_enqueue_assets() — causaría duplicado.
+│   ├── hero-banners.php    # Hero Banners Manager v1.0.0 — admin submenu bajo WC Marketing
+│   │                       # (parent slug 'woocommerce-marketing' → screen
+│   │                       # 'marketing_page_mu-hero-banners'). Storage en wp_option
+│   │                       # 'mu_hero_banners' (array de promos). Cache transient
+│   │                       # 'mu_hero_banners_active' (TTL 12h, invalidado en
+│   │                       # update_option/add_option). Helpers públicos:
+│   │                       # mu_get_hero_banners() — devuelve activos por fecha (filtrado
+│   │                       # con DateTime::createFromFormat 'dmY'); mu_get_hero_banners_raw()
+│   │                       # — devuelve la lista cruda (admin). Si la opción no existe,
+│   │                       # mu_hero_banners_default_seed() provee la semilla legacy.
+│   │                       # Admin UI: WP Media picker para imagen, add/remove rows,
+│   │                       # PRG redirect tras guardar. Capability: 'manage_woocommerce'.
+│   │                       # Assets admin (css/admin-hero-banners.css + js/admin-hero-banners.js)
+│   │                       # SOLO en hook 'marketing_page_mu-hero-banners'.
 │   ├── ui.php              # Header icons, Cart badge, WhatsApp, Search, Footer custom,
 │   │                       # Share shortcode, canonical GSK, WPLingua body class,
 │   │                       # Category desc mover, precio $0, disable GP featured img.
 │   │                       # Shortcodes: [mu_testimonios_section] [mu_bestsellers_section]
 │   │                       #             [mu_popcat_section] [mu_hero_section]
+│   │                       # [mu_hero_section] consume mu_get_hero_banners() de hero-banners.php.
 │   │                       # mu_home_sections_enqueue() → home.css + hero.js en front_page.
 │   ├── orders-files.php    # Gestor de archivos de pedido: Admin + Email + Mi Cuenta
 │   ├── orders-workflow.php # Estado 'wc-production', emails inteligentes, Admin UI
@@ -98,6 +113,7 @@ muyunicos/ (generatepress-child)
 │   │                            # svg 14×14px — no altera la altura del chip.
 │   │                            # SVGs dentro de .mu-navchips-icon-link forzados a 16×16px.
 │   ├── admin.css                # is_admin()
+│   ├── admin-hero-banners.css   # SOLO hook 'marketing_page_mu-hero-banners' (hero-banners.php)
 │   ├── admin-order-files.css    # is_admin() + order edit
 │   ├── admin-orders.css         # is_admin() + order edit
 │   ├── login.css                # login_enqueue_scripts
@@ -146,6 +162,7 @@ muyunicos/ (generatepress-child)
     │                            # Click en .mu-refresh-satellite: clase .is-spinning
     │                            # (sin style.transform inline). Sync con animación CSS 400ms.
     ├── admin.js                 # is_admin()
+    ├── admin-hero-banners.js    # SOLO hook 'marketing_page_mu-hero-banners' (jQuery + wp.media picker)
     ├── admin-order-files.js     # is_admin() + order edit
     └── admin-orders.js          # is_admin() + order edit
 
@@ -174,7 +191,8 @@ Addon campo nombre                  | addon-nombre.php         | product-builder
 Addon builder etiquetas             | addon-etiquetas.php      | product-builder.css          | addon-etiquetas.js
 Shortcode Testimonios               | ui.php                   | testimonials.css             | testimonials.js
 Shortcodes Home (carrusel/sección)  | ui.php                   | home.css                     | — (reutiliza initCarousels)
-Hero promos dinámicas               | ui.php                   | home.css                     | hero.js
+Hero promos dinámicas (storage)     | hero-banners.php         | admin-hero-banners.css       | admin-hero-banners.js
+Hero promos dinámicas (render)      | ui.php (mu_hero_section) | home.css                     | hero.js
 Nuevo icóno SVG                     | icons.php                | —                            | —
 Pantalla Coming Soon custom         | coming-soon.php          | inline en template           | inline en template
 
@@ -226,6 +244,8 @@ PHP
 - Transients: clave mu_[contexto]_{id}. TTL razonable. Invalidar en el hook de cambio de estado.
 - Geolocalización: SIEMPRE muyu_get_cached_geolocation(). NUNCA wc_get_customer_geolocation() directo.
 - Hero promos: fechas con DateTime::createFromFormat('dmY'). Primer slide: loading="eager" fetchpriority="high".
+  Datos vienen de mu_get_hero_banners() (inc/hero-banners.php) — NO hardcodear arrays nuevos en mu_hero_section().
+  Para editar contenido: WP Admin → WooCommerce → Marketing → Hero Banners.
 - Coming Soon standalone: logo y número WA hardcodeados. Cambios → editar templates/coming-soon.php directamente.
 
 JavaScript

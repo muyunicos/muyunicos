@@ -555,70 +555,17 @@ if ( ! function_exists( 'mu_popcat_section' ) ) {
 // ============================================
 // SHORTCODE HERO PROMOS DINÁMICAS
 // Uso: [mu_hero_section]
+// Datos: gestionados desde inc/hero-banners.php (admin: WC → Marketing → Hero Banners)
 // CSS: css/home.css (sección Hero, encolado por mu_home_sections_enqueue)
 // JS:  js/hero.js  (IIFE, autoplay 7s, swipe, dots — encolado por mu_home_sections_enqueue)
-// Las promos se filtran por fecha en PHP: DateTime::createFromFormat('dmY', ...)
+// El filtrado por fecha y el cache de transient los aplica mu_get_hero_banners().
 // ============================================
 
 if ( ! function_exists( 'mu_hero_section' ) ) {
     function mu_hero_section() {
         if ( is_admin() || ( defined( 'DOING_AJAX' ) && DOING_AJAX ) ) return '';
 
-        // --- CONFIGURACIÓN DE PROMOS ---
-        // Para agregar/editar promos solo modificar este array.
-        // 'inicio' y 'fin' en formato 'dmY' (día-mes-año).
-        // Omitir ambas claves para mostrar siempre.
-        $promos_data = [
-            [
-                'id'                    => 'vuelta-al-cole',
-                'inicio'                => '01012024',
-                'fin'                   => '01032027',
-                'imagen'                => '/wp-content/uploads/2026/02/fondo0126.webp',
-                'eyebrow'               => 'Vuelta a Clases 2026',
-                'titulo'                => 'Etiquetas escolares <span class="mu-highlight">únicas</span>',
-                'descripcion'           => 'Personalizadas a mano. Más de 150 diseños diferentes para que nada se pierda.',
-                'cta_texto'             => 'Ver Diseños',
-                'cta_url'               => '/tienda/escolares/',
-                'cta_secundario_texto'  => 'Guía de uso',
-                'cta_secundario_url'    => '/guia-etiquetas-personalizadas/',
-                'show_free_badge'       => true,
-                'free_badge_text'       => '<strong>¡20% OFF!</strong><span>cupón: COLE26</span>',
-            ],
-            [
-                'id'                    => 'san-valentin',
-                'inicio'                => '01022026',
-                'fin'                   => '20022026',
-                'imagen'                => '/wp-content/uploads/2026/02/sanvalentin.webp',
-                'eyebrow'               => 'San Valentín 14/02',
-                'titulo'                => 'Stickers para <span class="mu-highlight">enamorarse</span>',
-                'descripcion'           => 'Visitá nuestra selección de etiquetas imprimibles para celebrar el amor.',
-                'cta_texto'             => 'Ver Diseños',
-                'cta_url'               => '/tienda/eventos/',
-                'show_free_badge'       => false,
-            ],
-        ];
-
-        // --- FILTRADO POR FECHA ---
-        $active_promos = [];
-        $now           = time();
-
-        foreach ( $promos_data as $p ) {
-            if ( empty( $p['inicio'] ) || empty( $p['fin'] ) ) {
-                $active_promos[] = $p;
-                continue;
-            }
-            $dt_start = DateTime::createFromFormat( 'dmY', $p['inicio'] );
-            $dt_end   = DateTime::createFromFormat( 'dmY', $p['fin'] );
-            if ( ! $dt_start || ! $dt_end ) continue;
-
-            $start = $dt_start->setTime( 0, 0, 0 )->getTimestamp();
-            $end   = $dt_end->setTime( 23, 59, 59 )->getTimestamp();
-
-            if ( $now >= $start && $now <= $end ) {
-                $active_promos[] = $p;
-            }
-        }
-
+        $active_promos = function_exists( 'mu_get_hero_banners' ) ? mu_get_hero_banners() : [];
         if ( empty( $active_promos ) ) return '';
 
         // --- DEFAULTS PARA BADGE ---
