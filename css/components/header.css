@@ -112,7 +112,6 @@
    ITEMS DE MENÚ - NIVEL SUPERIOR
    ======================================== */
 
-/* Items del menú nativo de WordPress */
 .main-navigation .main-nav ul li a {
     display: flex;
     align-items: center;
@@ -126,7 +125,6 @@
     margin: 0;
 }
 
-/* Iconos personalizados del header (cuenta, carrito, búsqueda, ayuda) */
 .mu-header-icon {
     display: flex !important;
     flex-direction: row !important;
@@ -141,7 +139,6 @@
     line-height: 1.6em;
 }
 
-/* Hover unificado para todos los items */
 .main-navigation .main-nav ul li a:hover,
 .mu-header-icon:hover,
 .mu-account-dropdown-wrap:hover .mu-header-icon {
@@ -149,7 +146,6 @@
     color: var(--blanco);
 }
 
-/* Items activos (página actual) */
 .main-navigation .main-nav ul li.current-menu-item > a,
 .main-navigation .main-nav ul li.current_page_item > a {
     background-color: var(--blanco);
@@ -177,17 +173,14 @@
     height: 100%;
 }
 
-/* Asegurar posición relativa para centrado de submenús */
 .main-navigation .main-nav ul li {
     position: relative;
 }
 
 /* ========================================
    SUBMENÚS - DESKTOP (UNIFIED)
-   Estilos compartidos para submenú nativo y custom
    ======================================== */
 @media (min-width: 769px) {
-    /* Submenú nativo (.sub-menu) y custom (.mu-sub-menu) */
     .main-navigation .main-nav ul li.menu-item-has-children .sub-menu,
     .mu-sub-menu {
         position: absolute;
@@ -209,7 +202,6 @@
         text-align: left;
     }
     
-    /* Flecha decorativa superior */
     .main-navigation .main-nav ul li.menu-item-has-children .sub-menu::before,
     .mu-sub-menu::before {
         content: '';
@@ -222,14 +214,12 @@
         border-color: transparent transparent var(--blanco) transparent;
     }
 
-    /* Mostrar al hover - Menú nativo */
     .main-navigation .main-nav ul li.menu-item-has-children:hover > .sub-menu {
         opacity: 1;
         visibility: visible;
         top: 100%;
     }
 
-    /* Mostrar al hover - Mi Cuenta custom */
     .mu-account-dropdown-wrap:hover .mu-sub-menu {
         opacity: 1;
         visibility: visible;
@@ -237,7 +227,7 @@
     }
 }
 
-/* Enlaces dentro de submenús (estilos compartidos) */
+/* Links dentro de submenús */
 .main-navigation .main-nav ul li.menu-item-has-children .sub-menu li a,
 .mu-sub-menu li a {
     display: block;
@@ -259,7 +249,6 @@
     color: var(--primario) !important;
 }
 
-/* Separador para item de logout */
 .mu-logout-item {
     border-top: 1px solid var(--fondo);
     margin-top: 5px !important;
@@ -295,8 +284,6 @@
 /* ============================================
    COUNTRY SELECTOR (Header Left)
    ============================================ */
-
-/* Envoltorio inyectado por GeneratePress al inicio del header */
 .mu-header-country-item {
     position: absolute;
     left: 30px;
@@ -304,13 +291,11 @@
     z-index: 1000;
 }
 
-/* Contenedor relativo para el dropdown */
 .country-redirect-container {
     position: relative;
     display: inline-block;
 }
 
-/* Botón disparador */
 .country-selector-trigger {
     cursor: pointer;
     padding: 0;
@@ -340,7 +325,6 @@
     border: 2px solid var(--primario);
 }
 
-/* Dropdown / Lista de países */
 .country-selector-dropdown {
     display: none;
     position: absolute;
@@ -362,7 +346,6 @@
     pointer-events: none;
 }
 
-/* Estado visible del dropdown con animación */
 .country-selector-dropdown[style*="display: block"] {
     opacity: 1;
     transform: translateY(0);
@@ -419,22 +402,18 @@
    RESPONSIVE - MÓVIL
    ======================================== */
 @media (max-width: 768px) {
-    /* Logo más pequeño */
     .site-logo img {
         max-height: 60px;
     }
     
-    /* Ocultar labels de iconos en barra superior */
     .mu-icon-label {
         display: none;
     }
     
-    /* Reducir gap entre iconos */
     .mu-header-icons {
         gap: 8px;
     }
     
-    /* Menú hamburguesa desplegado */
     .main-navigation.toggled .main-nav {
         background-color: var(--primario);
         padding: 10px;
@@ -449,34 +428,32 @@
     /* =============================================
        SUBMENÚS NATIVOS EN MÓVIL — Patrón acordeón
 
-       PROBLEMA RESUELTO (v2): dos bugs simultáneos:
+       GeneratePress maneja el toggle via el
+       <span class="dropdown-menu-toggle"> que inyecta
+       dentro del <a> padre. GP añade/quita .toggled-on
+       en el <li> automáticamente — no reemplazamos esa lógica.
 
-       BUG 1 — Visibilidad: overflow:hidden en el <ul> bloqueaba el
-       contenido aunque max-height se expandiera. GP además inyecta
-       visibility:hidden en .main-navigation.toggled .main-nav ul ul
-       via main.min.css, lo que anulaba la visibilidad.
+       Nuestra responsabilidad (solo CSS):
+       1. Override display:none/visibility:hidden que GP
+          aplica en main.min.css al .sub-menu colapsado.
+       2. Acordeón visual (max-height) sincronizado con
+          las clases que GP inyecta (.toggled-on).
+       3. Garantizar que los <a> hijos sean clicables
+          (pointer-events, z-index, display:block).
 
-       BUG 2 — Clicks: pointer-events:none en estado cerrado es correcto,
-       pero en iOS Safari overflow:hidden + height:auto puede dejar el
-       área de eventos sin recalcular, haciendo que los <a> hijos no
-       respondan aunque pointer-events pase a auto.
+       PROBLEMA ANTERIOR: el sub-menu tenía
+       overflow:hidden en estado abierto, lo que en
+       iOS Safari impide el cálculo correcto del hit-area
+       de los <a> hijos, haciendo que los taps no naveguen.
+       SOLUCIÓN: overflow:visible en estado abierto.
+    ============================================= */
 
-       SOLUCIÓN:
-       - Estado CERRADO: max-height:0 + overflow:hidden + pointer-events:none
-         + visibility:hidden (evita que elementos ocultos reciban eventos)
-       - Estado ABIERTO: max-height:600px + overflow:visible (permite
-         que el layout de <a> sea calculado correctamente) +
-         pointer-events:auto + visibility:visible
-       - Los <a> hijos tienen position:relative + z-index:1 para
-         garantizar que el hit-area esté por encima del contenedor.
-       ============================================= */
-
-    /* Estado BASE (cerrado) */
+    /* Estado BASE (cerrado) — override GP display:none y visibility:hidden */
     .main-navigation .main-nav ul li.menu-item-has-children .sub-menu {
         display: block !important;       /* override GP: evita display:none */
         max-height: 0;
         overflow: hidden;
-        visibility: hidden;              /* oculto del todo — evita eventos en cerrado */
+        visibility: hidden;              /* override GP: mantenemos oculto limpiamente */
         opacity: 0;
         pointer-events: none;
         position: static;
@@ -487,19 +464,16 @@
         transform: none;
         padding: 0;
         margin-top: 0;
-        /* override GP: anula visibility:hidden del parent en .toggled */
         transition: max-height 0.35s ease, opacity 0.35s ease,
                     visibility 0.35s ease, margin-top 0.35s ease;
         left: auto;
         top: auto;
     }
 
-    /* Estado ABIERTO: clases que GP JS inyecta al hacer toggle */
-    .main-navigation .main-nav ul li.menu-item-has-children.sfHover > .sub-menu,
-    .main-navigation .main-nav ul li.menu-item-has-children.toggled-on > .sub-menu,
-    .main-navigation .main-nav ul li.menu-item-has-children.open > .sub-menu {
+    /* Estado ABIERTO — GP inyecta .toggled-on en el <li> via dropdown-menu-toggle */
+    .main-navigation .main-nav ul li.menu-item-has-children.toggled-on > .sub-menu {
         max-height: 600px;
-        overflow: visible;               /* FIX BUG 2: permite hit-area correcto en iOS */
+        overflow: visible;               /* override GP: fix hit-area iOS Safari */
         opacity: 1;
         visibility: visible !important;  /* override GP main.min.css */
         pointer-events: auto;
@@ -507,22 +481,19 @@
     }
 
     /* Links dentro del sub-menu en móvil.
-       position:relative + z-index:1 garantizan que el área de click
-       esté bien calculada por el compositor del browser (fix iOS Safari). */
-    .main-navigation .main-nav ul li.menu-item-has-children .sub-menu li {
-        position: relative;
-        z-index: 1;
-    }
-
+       display:block + min-height garantizan target táctil de 44px.
+       position:relative + z-index:1 aseguran hit-area correcto
+       por encima del contenedor con overflow:visible. */
     .main-navigation .main-nav ul li.menu-item-has-children .sub-menu li a {
+        display: block !important;       /* override GP: garantiza área táctil completa */
         color: var(--blanco);
         padding: 12px 20px;
+        min-height: 44px;                /* touch target mínimo WCAG */
         font-size: 14px;
         opacity: 0.9;
-        display: block;                  /* garantiza área táctil completa */
         position: relative;
         z-index: 1;
-        pointer-events: auto;            /* refuerzo explícito — hereda del padre pero lo declaramos */
+        pointer-events: auto;
     }
 
     .main-navigation .main-nav ul li.menu-item-has-children .sub-menu li a:hover,
@@ -550,7 +521,6 @@
         transition: all 0.2s ease;
     }
 
-    /* Clase active controlada por JS */
     .mu-account-dropdown-wrap.active .mu-sub-menu {
         display: block;
         visibility: visible;
@@ -558,20 +528,17 @@
         opacity: 1;
     }
 
-    /* Flecha alineada a la derecha en móvil */
     .mu-sub-menu::before {
         left: auto;
         right: 15px;
         transform: none;
     }
 
-    /* Country selector Mobile Override */
     .mu-header-country-item {
         left: 20px;
         top: 20px;
     }
     
-    /* Dropdown más rápido en móvil */
     .country-selector-dropdown {
         transition: opacity 0.15s ease, transform 0.15s ease;
     }
