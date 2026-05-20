@@ -1,142 +1,155 @@
 /**
  * Header - Interacciones JavaScript
  * Migrado desde snippet "Header"
- * Actualizado para soportar menús nativos de GeneratePress
+ * fix/mobile-submenu-notros: reescritura initNativeSubmenus con delegación
+ * de eventos para corregir clicks en links hijos del sub-menu en móvil.
  */
 
-(function() {
+(function () {
     'use strict';
 
-    /**
-     * Inicializa la funcionalidad del dropdown de Mi Cuenta en móvil
-     */
+    /* ------------------------------------------------------------------
+       Mi Cuenta dropdown (móvil)
+    ------------------------------------------------------------------ */
     function initAccountDropdown() {
-        const accountWraps = document.querySelectorAll('.mu-account-dropdown-wrap');
+        var accountWraps = document.querySelectorAll('.mu-account-dropdown-wrap');
 
-        accountWraps.forEach(function(wrap) {
-            const trigger = wrap.querySelector('.mu-open-auth-modal');
-            const hasSubMenu = wrap.querySelector('.mu-sub-menu');
+        accountWraps.forEach(function (wrap) {
+            var trigger  = wrap.querySelector('.mu-open-auth-modal');
+            var hasSubMenu = wrap.querySelector('.mu-sub-menu');
 
             if (trigger) {
-                trigger.addEventListener('click', function(e) {
-                    // Solo actuar en móvil
-                    if (window.innerWidth <= 768) {
-                        // Solo prevenir clic si existe submenú
-                        if (hasSubMenu) {
-                            e.preventDefault();
-                            e.stopPropagation();
-
-                            // Cerrar otros dropdowns
-                            accountWraps.forEach(function(w) {
-                                if (w !== wrap) {
-                                    w.classList.remove('active');
-                                }
-                            });
-
-                            // Toggle de la clase active
-                            wrap.classList.toggle('active');
-                        }
-                        // Si no hay submenú, dejar que el enlace funcione normalmente
+                trigger.addEventListener('click', function (e) {
+                    if (window.innerWidth <= 768 && hasSubMenu) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        accountWraps.forEach(function (w) {
+                            if (w !== wrap) { w.classList.remove('active'); }
+                        });
+                        wrap.classList.toggle('active');
                     }
                 });
             }
         });
 
-        // Cerrar al hacer clic fuera
-        document.addEventListener('click', function(e) {
+        document.addEventListener('click', function (e) {
             if (window.innerWidth <= 768) {
-                accountWraps.forEach(function(wrap) {
-                    if (!wrap.contains(e.target)) {
-                        wrap.classList.remove('active');
-                    }
+                accountWraps.forEach(function (wrap) {
+                    if (!wrap.contains(e.target)) { wrap.classList.remove('active'); }
                 });
             }
         });
 
-        // FIX: debounce de 100ms para evitar disparos excesivos al redimensionar.
-        // Antes: listener sin debounce, se ejecutaba decenas de veces por segundo.
-        let resizeAccountTimer;
-        window.addEventListener('resize', function() {
+        var resizeAccountTimer;
+        window.addEventListener('resize', function () {
             clearTimeout(resizeAccountTimer);
-            resizeAccountTimer = setTimeout(function() {
+            resizeAccountTimer = setTimeout(function () {
                 if (window.innerWidth > 768) {
-                    accountWraps.forEach(function(wrap) {
-                        wrap.classList.remove('active');
-                    });
+                    accountWraps.forEach(function (wrap) { wrap.classList.remove('active'); });
                 }
             }, 100);
         });
     }
 
-    /**
-     * Inicializa los submenús nativos de GeneratePress
-     * Añade funcionalidad hover/click que puede haber sido interrumpida por CSS custom
-     */
+    /* ------------------------------------------------------------------
+       Submenús nativos en móvil — delegación de eventos
+
+       ESTRATEGIA:
+       - Un solo listener delegado en .main-nav captura todos los clicks.
+       - Si el click es en un <a> que es hijo directo de un
+         .menu-item-has-children Y el menú está en modo toggled:
+           → preventDefault + toggle de sfHover/toggled-on en el <li>.
+       - Si el click es en un <a> que está DENTRO de un .sub-menu:
+           → se deja pasar (no preventDefault). El browser navega.
+       - Esto evita el problema anterior de clonar nodos y perder
+         referencias, y garantiza que los links hijos siempre naveguen.
+    ------------------------------------------------------------------ */
     function initNativeSubmenus() {
-        const menuItems = document.querySelectorAll('.main-navigation .menu-item-has-children');
-        
-        // En móvil (cuando el menú está colapsado)
-        if (window.innerWidth <= 768) {
-            menuItems.forEach(function(item) {
-                const link = item.querySelector('a');
-                const submenu = item.querySelector('.sub-menu');
-                
-                if (link && submenu) {
-                    // Clonar el link para remover listeners anteriores
-                    const newLink = link.cloneNode(true);
-                    link.parentNode.replaceChild(newLink, link);
-                    
-                    newLink.addEventListener('click', function(e) {
-                        // Solo en móvil cuando el menú está abierto
-                        if (document.querySelector('.main-navigation.toggled')) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            
-                            // Toggle del item
-                            item.classList.toggle('sfHover');
-                            item.classList.toggle('toggled-on');
-                        }
-                    });
-                }
-            });
+        var nav = document.querySelector('.main-navigation .main-nav');
+        if (!nav) { return; }
+
+        // Eliminar listener previo si existe (evita duplicados en reinit)
+        if (nav._muSubMenuHandler) {
+            nav.removeEventListener('click', nav._muSubMenuHandler);
         }
+
+        nav._muSubMenuHandler = function (e) {
+            // Solo actuar en modo mobile (menú colapsado visible)
+            var navigation = document.querySelector('.main-navigation');
+            if (!navigation || !navigation.classList.contains('toggled')) { return; }
+
+            var target = e.target;
+
+            // Subir hasta encontrar el <a> que fue clickeado
+            while (target && target !== nav && target.tagName !== 'A') {
+                target = target.parentNode;
+            }
+            if (!target || target.tagName !== 'A') { return; }
+
+            var parentLi = target.parentNode;
+
+            // CASO 1: Click en link HIJO del sub-menu → dejar navegar
+            if (target.closest('.sub-menu')) {
+                // No hacemos nada; el browser navega normalmente.
+                // pointer-events:auto ya está garantizado por CSS en estado abierto.
+                return;
+            }
+
+            // CASO 2: Click en link padre de un item con hijos → acordeón
+            if (parentLi && parentLi.classList.contains('menu-item-has-children')) {
+                e.preventDefault();
+
+                var isOpen = parentLi.classList.contains('toggled-on') ||
+                             parentLi.classList.contains('sfHover');
+
+                // Cerrar todos los items abiertos del mismo nivel
+                var siblings = nav.querySelectorAll(
+                    '.menu-item-has-children.toggled-on, .menu-item-has-children.sfHover'
+                );
+                siblings.forEach(function (s) {
+                    if (s !== parentLi) {
+                        s.classList.remove('toggled-on', 'sfHover', 'open');
+                    }
+                });
+
+                // Toggle del item clickeado
+                parentLi.classList.toggle('toggled-on', !isOpen);
+                parentLi.classList.toggle('sfHover',    !isOpen);
+                parentLi.classList.toggle('open',       !isOpen);
+            }
+        };
+
+        nav.addEventListener('click', nav._muSubMenuHandler);
     }
 
-    /**
-     * Re-inicializa funcionalidad después de que GeneratePress modifica el DOM
-     */
-    function reinitOnMenuToggle() {
-        const menuToggle = document.querySelector('.menu-toggle');
-        
-        if (menuToggle) {
-            menuToggle.addEventListener('click', function() {
-                // Esperar a que GeneratePress termine de animar
-                setTimeout(function() {
-                    initNativeSubmenus();
-                }, 100);
-            });
-        }
-    }
+    /* ------------------------------------------------------------------
+       Re-init al abrir/cerrar el menú hamburguesa
+    ------------------------------------------------------------------ */
+    function initMenuToggleListener() {
+        var menuToggle = document.querySelector('.menu-toggle');
+        if (!menuToggle) { return; }
 
-    /**
-     * Inicialización principal
-     */
-    function init() {
-        initAccountDropdown();
-        initNativeSubmenus();
-        reinitOnMenuToggle();
-        
-        // Re-inicializar submenús en resize
-        let resizeTimer;
-        window.addEventListener('resize', function() {
-            clearTimeout(resizeTimer);
-            resizeTimer = setTimeout(function() {
-                initNativeSubmenus();
-            }, 250);
+        menuToggle.addEventListener('click', function () {
+            // GP tarda ~50ms en añadir .toggled; esperamos 120ms por seguridad.
+            setTimeout(initNativeSubmenus, 120);
         });
     }
 
-    // Inicializar cuando el DOM esté listo
+    /* ------------------------------------------------------------------
+       Init
+    ------------------------------------------------------------------ */
+    function init() {
+        initAccountDropdown();
+        initNativeSubmenus();
+        initMenuToggleListener();
+
+        var resizeTimer;
+        window.addEventListener('resize', function () {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(initNativeSubmenus, 250);
+        });
+    }
+
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {

@@ -449,26 +449,36 @@
     /* =============================================
        SUBMENÚS NATIVOS EN MÓVIL — Patrón acordeón
 
-       PROBLEMA RESUELTO: el sub-menu colapsado (max-height:0) era
-       visualmente invisible pero seguia ocupando area de eventos tactiles,
-       interceptando taps del <li> padre e impidiendo hacer click.
+       PROBLEMA RESUELTO (v2): dos bugs simultáneos:
+
+       BUG 1 — Visibilidad: overflow:hidden en el <ul> bloqueaba el
+       contenido aunque max-height se expandiera. GP además inyecta
+       visibility:hidden en .main-navigation.toggled .main-nav ul ul
+       via main.min.css, lo que anulaba la visibilidad.
+
+       BUG 2 — Clicks: pointer-events:none en estado cerrado es correcto,
+       pero en iOS Safari overflow:hidden + height:auto puede dejar el
+       área de eventos sin recalcular, haciendo que los <a> hijos no
+       respondan aunque pointer-events pase a auto.
 
        SOLUCIÓN:
-       - Estado CERRADO: pointer-events:none  → el sub-menu no captura eventos
-       - Estado ABIERTO: pointer-events:auto  → los links son clicables
-       - visibility:visible !important         → anula GP padre (main.min.css)
-         que aplica visibility:hidden en .main-navigation.toggled .main-nav ul ul
+       - Estado CERRADO: max-height:0 + overflow:hidden + pointer-events:none
+         + visibility:hidden (evita que elementos ocultos reciban eventos)
+       - Estado ABIERTO: max-height:600px + overflow:visible (permite
+         que el layout de <a> sea calculado correctamente) +
+         pointer-events:auto + visibility:visible
+       - Los <a> hijos tienen position:relative + z-index:1 para
+         garantizar que el hit-area esté por encima del contenedor.
        ============================================= */
 
     /* Estado BASE (cerrado) */
     .main-navigation .main-nav ul li.menu-item-has-children .sub-menu {
-        display: block !important;      /* override GP: evita display:none */
+        display: block !important;       /* override GP: evita display:none */
         max-height: 0;
-        height: auto;
         overflow: hidden;
-        visibility: visible !important; /* override GP main.min.css: anula visibility:hidden */
-        opacity: 1;
-        pointer-events: none;           /* CLAVE: cerrado no captura eventos tactiles */
+        visibility: hidden;              /* oculto del todo — evita eventos en cerrado */
+        opacity: 0;
+        pointer-events: none;
         position: static;
         background-color: rgba(255, 255, 255, 0.12);
         box-shadow: none;
@@ -477,30 +487,46 @@
         transform: none;
         padding: 0;
         margin-top: 0;
-        transition: max-height 0.4s ease, margin-top 0.4s ease;
+        /* override GP: anula visibility:hidden del parent en .toggled */
+        transition: max-height 0.35s ease, opacity 0.35s ease,
+                    visibility 0.35s ease, margin-top 0.35s ease;
         left: auto;
         top: auto;
     }
 
-    /* Estado ABIERTO: clase inyectada por GP JS (toggled-on, sfHover u open) */
+    /* Estado ABIERTO: clases que GP JS inyecta al hacer toggle */
     .main-navigation .main-nav ul li.menu-item-has-children.sfHover > .sub-menu,
     .main-navigation .main-nav ul li.menu-item-has-children.toggled-on > .sub-menu,
     .main-navigation .main-nav ul li.menu-item-has-children.open > .sub-menu {
         max-height: 600px;
+        overflow: visible;               /* FIX BUG 2: permite hit-area correcto en iOS */
+        opacity: 1;
+        visibility: visible !important;  /* override GP main.min.css */
+        pointer-events: auto;
         margin-top: 5px;
-        pointer-events: auto;           /* CLAVE: abierto habilita clicks en links */
-        visibility: visible !important; /* override GP: garantiza visibilidad */
     }
 
-    /* Links dentro del sub-menu en móvil */
+    /* Links dentro del sub-menu en móvil.
+       position:relative + z-index:1 garantizan que el área de click
+       esté bien calculada por el compositor del browser (fix iOS Safari). */
+    .main-navigation .main-nav ul li.menu-item-has-children .sub-menu li {
+        position: relative;
+        z-index: 1;
+    }
+
     .main-navigation .main-nav ul li.menu-item-has-children .sub-menu li a {
         color: var(--blanco);
-        padding: 10px 20px;
+        padding: 12px 20px;
         font-size: 14px;
         opacity: 0.9;
+        display: block;                  /* garantiza área táctil completa */
+        position: relative;
+        z-index: 1;
+        pointer-events: auto;            /* refuerzo explícito — hereda del padre pero lo declaramos */
     }
 
-    .main-navigation .main-nav ul li.menu-item-has-children .sub-menu li a:hover {
+    .main-navigation .main-nav ul li.menu-item-has-children .sub-menu li a:hover,
+    .main-navigation .main-nav ul li.menu-item-has-children .sub-menu li a:active {
         background-color: rgba(255, 255, 255, 0.15);
         color: var(--blanco) !important;
         opacity: 1;
