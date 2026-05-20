@@ -356,7 +356,6 @@
     padding: var(--mu-space-xs) 0;
     margin: 0;
     text-align: left;
-    /* Transiciones suaves para hover */
     opacity: 0;
     transform: translateY(-10px);
     transition: opacity 0.2s ease, transform 0.2s ease;
@@ -449,23 +448,27 @@
 
     /* =============================================
        SUBMENÚS NATIVOS EN MÓVIL — Patrón acordeón
-       override GP: GP fuerza display:none/block vía JS inline;
-       max-height:0 + height:auto + overflow:hidden nos independiza de eso
-       sin bloquear eventos de click en el <li> padre.
 
-       IMPORTANTE: usar max-height (no height) para el colapsado.
-       Con height:0 + overflow:hidden el área invisible del submenu
-       puede interceptar eventos táctiles del li padre en mobile.
-       max-height:0 no genera área de intercepción de eventos.
+       PROBLEMA RESUELTO: el sub-menu colapsado (max-height:0) era
+       visualmente invisible pero seguia ocupando area de eventos tactiles,
+       interceptando taps del <li> padre e impidiendo hacer click.
+
+       SOLUCIÓN:
+       - Estado CERRADO: pointer-events:none  → el sub-menu no captura eventos
+       - Estado ABIERTO: pointer-events:auto  → los links son clicables
+       - visibility:visible !important         → anula GP padre (main.min.css)
+         que aplica visibility:hidden en .main-navigation.toggled .main-nav ul ul
        ============================================= */
+
+    /* Estado BASE (cerrado) */
     .main-navigation .main-nav ul li.menu-item-has-children .sub-menu {
-        /* override GP: acordeón via max-height */
-        display: block !important;
+        display: block !important;      /* override GP: evita display:none */
         max-height: 0;
         height: auto;
         overflow: hidden;
-        visibility: visible;
+        visibility: visible !important; /* override GP main.min.css: anula visibility:hidden */
         opacity: 1;
+        pointer-events: none;           /* CLAVE: cerrado no captura eventos tactiles */
         position: static;
         background-color: rgba(255, 255, 255, 0.12);
         box-shadow: none;
@@ -475,17 +478,18 @@
         padding: 0;
         margin-top: 0;
         transition: max-height 0.4s ease, margin-top 0.4s ease;
-        /* Anular estilos desktop que puedan colarse */
         left: auto;
         top: auto;
     }
 
-    /* Estado abierto: cualquier clase que GP inyecte (toggled-on, sfHover, open) */
+    /* Estado ABIERTO: clase inyectada por GP JS (toggled-on, sfHover u open) */
     .main-navigation .main-nav ul li.menu-item-has-children.sfHover > .sub-menu,
     .main-navigation .main-nav ul li.menu-item-has-children.toggled-on > .sub-menu,
     .main-navigation .main-nav ul li.menu-item-has-children.open > .sub-menu {
         max-height: 600px;
         margin-top: 5px;
+        pointer-events: auto;           /* CLAVE: abierto habilita clicks en links */
+        visibility: visible !important; /* override GP: garantiza visibilidad */
     }
 
     /* Links dentro del sub-menu en móvil */
