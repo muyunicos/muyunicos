@@ -147,7 +147,7 @@
 }
 
 .main-navigation .main-nav ul li.current-menu-item > a {
-    background-color: var(--blanco);
+    background-color: var(--blanco) !important;
     color: var(--primario) !important;
     border-radius: 8px;
 }
