@@ -146,9 +146,15 @@
     color: var(--blanco);
 }
 
-.main-navigation .main-nav ul li.current-menu-item > a, .main-navigation .main-nav ul li.current_page_item > a {
+.main-navigation .main-nav ul li.current-menu-item > a {
     background-color: var(--blanco);
     color: var(--primario) !important;
+    border-radius: 8px;
+}
+
+.main-navigation .main-nav ul li.current_page_item > a {
+    background-color: var(--primario) !important;
+    color: var(--blanco) !important;
     border-radius: 8px;
 }
 
