@@ -151,14 +151,10 @@
     color: var(--primario) !important;
     border-radius: 8px;
 }
-.main-navigation .main-nav ul li ul li.current_page_item > a {
-    background-color: var(--primario) !important;
-    color: var(--blanco) !important;
-    border-radius: 8px;
-}
 
 .main-navigation .main-nav ul li[class*="current-menu-"] > a {
-   color: var(--texto);
+   background-color: rgba(255, 255, 255, 0.1);
+   color: var(--blanco);
 }
 
 /* ========================================
@@ -247,7 +243,6 @@
     transition: var(--mu-transition-fast);
     text-align: left;
     white-space: normal;
-    background: transparent;
     border-radius: 0;
 }
 
