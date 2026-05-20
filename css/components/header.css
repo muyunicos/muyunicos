@@ -449,16 +449,20 @@
 
     /* =============================================
        SUBMENÚS NATIVOS EN MÓVIL — Patrón acordeón
-       Usamos max-height en lugar de display:none/block
-       para que la transición funcione y no depender
-       de exactamente qué clase inyecta GeneratePress.
-       override GP: GP fuerza display:none vía JS inline;
-       max-height:0 + overflow:hidden nos independiza de eso.
+       override GP: GP fuerza display:none/block vía JS inline;
+       max-height:0 + height:auto + overflow:hidden nos independiza de eso
+       sin bloquear eventos de click en el <li> padre.
+
+       IMPORTANTE: usar max-height (no height) para el colapsado.
+       Con height:0 + overflow:hidden el área invisible del submenu
+       puede interceptar eventos táctiles del li padre en mobile.
+       max-height:0 no genera área de intercepción de eventos.
        ============================================= */
     .main-navigation .main-nav ul li.menu-item-has-children .sub-menu {
-        /* override GP: reemplaza display:none/block con acordeón max-height */
+        /* override GP: acordeón via max-height */
         display: block !important;
-        height: 0;
+        max-height: 0;
+        height: auto;
         overflow: hidden;
         visibility: visible;
         opacity: 1;
@@ -470,7 +474,7 @@
         transform: none;
         padding: 0;
         margin-top: 0;
-        transition: height 0.5s ease, margin-top 0.5s ease;
+        transition: max-height 0.4s ease, margin-top 0.4s ease;
         /* Anular estilos desktop que puedan colarse */
         left: auto;
         top: auto;
@@ -480,7 +484,7 @@
     .main-navigation .main-nav ul li.menu-item-has-children.sfHover > .sub-menu,
     .main-navigation .main-nav ul li.menu-item-has-children.toggled-on > .sub-menu,
     .main-navigation .main-nav ul li.menu-item-has-children.open > .sub-menu {
-        height: auto;
+        max-height: 600px;
         margin-top: 5px;
     }
 
