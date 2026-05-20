@@ -447,26 +447,57 @@
         width: 100%;
     }
 
-    /* Submenús nativos en móvil (estilo bloque) */
+    /* =============================================
+       SUBMENÚS NATIVOS EN MÓVIL — Patrón acordeón
+       Usamos max-height en lugar de display:none/block
+       para que la transición funcione y no depender
+       de exactamente qué clase inyecta GeneratePress.
+       override GP: GP fuerza display:none vía JS inline;
+       max-height:0 + overflow:hidden nos independiza de eso.
+       ============================================= */
     .main-navigation .main-nav ul li.menu-item-has-children .sub-menu {
-        position: static;
-        display: none;
+        /* override GP: reemplaza display:none/block con acordeón max-height */
+        display: block !important;
+        max-height: 0;
+        overflow: hidden;
         visibility: visible;
         opacity: 1;
-        background-color: var(--fondo);
+        position: static;
+        background-color: rgba(255, 255, 255, 0.12);
         box-shadow: none;
         width: 100%;
         border-radius: 10px;
         transform: none;
         padding: 0;
+        margin-top: 0;
+        transition: max-height 0.3s ease, margin-top 0.3s ease;
+        /* Anular estilos desktop que puedan colarse */
+        left: auto;
+        top: auto;
+    }
+
+    /* Estado abierto: cualquier clase que GP inyecte (toggled-on, sfHover, open) */
+    .main-navigation .main-nav ul li.menu-item-has-children.sfHover > .sub-menu,
+    .main-navigation .main-nav ul li.menu-item-has-children.toggled-on > .sub-menu,
+    .main-navigation .main-nav ul li.menu-item-has-children.open > .sub-menu {
+        max-height: 600px; /* suficiente para el contenido más largo posible */
         margin-top: 5px;
     }
-    
-    .main-navigation .main-nav ul li.menu-item-has-children.sfHover > .sub-menu,
-    .main-navigation .main-nav ul li.menu-item-has-children.toggled-on > .sub-menu {
-        display: block !important;
+
+    /* Links dentro del sub-menu en móvil */
+    .main-navigation .main-nav ul li.menu-item-has-children .sub-menu li a {
+        color: var(--blanco);
+        padding: 10px 20px;
+        font-size: 14px;
+        opacity: 0.9;
     }
-    
+
+    .main-navigation .main-nav ul li.menu-item-has-children .sub-menu li a:hover {
+        background-color: rgba(255, 255, 255, 0.15);
+        color: var(--blanco) !important;
+        opacity: 1;
+    }
+
     /* Submenú Mi Cuenta en móvil (flotante) */
     .mu-sub-menu {
         position: absolute;
