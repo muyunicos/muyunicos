@@ -460,7 +460,6 @@
     /* Estado BASE (cerrado) — override GP display:none y visibility:hidden */
     .main-navigation .main-nav ul li.menu-item-has-children .sub-menu {
         display: block !important;       /* override GP: evita display:none */
-        max-height: 0;
         overflow: hidden;
         visibility: hidden;              /* override GP: mantenemos oculto limpiamente */
         opacity: 0;
