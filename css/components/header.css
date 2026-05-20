@@ -146,11 +146,14 @@
     color: var(--blanco);
 }
 
-.main-navigation .main-nav ul li.current-menu-item > a,
-.main-navigation .main-nav ul li.current_page_item > a {
+.main-navigation .main-nav ul li.current-menu-item > a, .main-navigation .main-nav ul li.current_page_item > a {
     background-color: var(--blanco);
     color: var(--primario) !important;
     border-radius: 8px;
+}
+
+.main-navigation .main-nav ul li[class*="current-menu-"] > a {
+   color: var(--texto);
 }
 
 /* ========================================
@@ -243,10 +246,8 @@
     border-radius: 0;
 }
 
-.main-navigation .main-nav ul li.menu-item-has-children .sub-menu li a:hover,
-.mu-sub-menu li a:hover {
+.main-navigation .main-nav ul li.menu-item-has-children .sub-menu li a:hover, .mu-sub-menu li a:hover {
     background-color: var(--fondo);
-    color: var(--primario) !important;
 }
 
 .mu-logout-item {
