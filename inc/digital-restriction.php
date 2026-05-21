@@ -1,10 +1,19 @@
 <?php
 /**
  * Muy Únicos - Digital Restriction System
- * * Sistema de restricción de contenido digital v4.3.2 (Category Redirect Simplified + 404-safe fallback)
+ * * Sistema de restricción de contenido digital v4.3.3 (Category Redirect MX 404-safe)
  * Propósito: Restringir productos físicos en subdominios, mostrando solo 
  * productos digitales. Optimizado para rendimiento y compatibilidad.
- * * @package GeneratePress_Child
+ *
+ * Nota v4.3.3:
+ * - Mejora el manejo de categorías en subdominios restringidos (ej. mexico.muyunicos.com)
+ *   cuando la categoría existe pero termina en 404 porque no hay productos digitales
+ *   asociados todavía.
+ * - En lugar de dejar que WooCommerce sirva un 404, redirigimos suavemente a la
+ *   tienda del subdominio, manteniendo una experiencia consistente y evitando
+ *   URLs rotas en NavChips/menús.
+ *
+ * @package GeneratePress_Child
  * @since 4.2.0
  */
 
@@ -75,7 +84,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
 
         public function is_restricted_user(): bool {
             $host = sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ?? '' ) );
-            $host = preg_replace( '/:\d+$/', '', $host );
+            $host = preg_replace( '/:\\d+$/', '', $host );
             return 'muyunicos.com' !== str_replace( 'www.', '', $host );
         }
 
@@ -270,9 +279,9 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             if ( is_admin() || ! $this->is_restricted_user() ) return;
             if ( ! is_product() && ! is_product_category() && ! is_product_tag() ) return;
             
-            $target_url     = '';
+            $target_url      = '';
             $should_redirect = false;
-            
+
             if ( is_product_category() ) {
                 list( $should_redirect, $target_url ) = $this->handle_category_redirect();
             } elseif ( is_product_tag() ) {
@@ -281,8 +290,11 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 list( $should_redirect, $target_url ) = $this->handle_product_redirect();
             }
 
-            // Fallback 404 seguro: si Woo sigue respondiendo 404 en una categoría de producto
-            // y no se decidió redirigir, enviamos al catálogo principal del subdominio.
+            // Fallback 404 seguro para subdominios restringidos:
+            // - Si estamos en categoría de producto, WooCommerce marcó 404
+            //   y no se decidió ninguna redirección específica, en lugar de
+            //   dejar al usuario en un 404 genérico, lo enviamos a la tienda
+            //   principal del subdominio (respetando prefijo de idioma).
             if ( ! $should_redirect && is_product_category() && is_404() ) {
                 $should_redirect = true;
                 $target_url      = wc_get_page_permalink( 'shop' );
