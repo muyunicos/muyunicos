@@ -1,6 +1,6 @@
 MUY ÜNCOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Modular Pragmático · v2.9.4 · May 21, 2026
+Estado: Modular Pragmático · v2.10.0 · May 21, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -58,13 +58,28 @@ muyunicos/ (generatepress-child)
 │   ├── geo.php             # Multi-país: detección por subdominio, decimales, modal
 │   │                       # sugerencia de país, selector de header, prefijo idioma.
 │   │                       # muyu_get_cached_geolocation() — una sola llamada/request.
-│   ├── digital-restriction.php  # Restricción productos físicos por subdominio v4.3.0.
+│   ├── digital-restriction.php  # Restricción productos físicos por subdominio v4.4.0.
 │   │                            # Rebuild de índice vía wp_schedule_single_event().
-│   │                            # Integración NavChips: categorías puramente físicas en
-│   │                            # subdominios restringidos se redirigen al primer padre
-│   │                            # que tenga productos digitales reales (índices digitales
-│   │                            # + mu_navchips_get_products_in_category_tree()). Evita
-│   │                            # vistas vacías/404 en MX, CL, etc.
+│   │                            # ÍNDICES DISPONIBLES:
+│   │                            #   OPTION_PRODUCT_IDS           → IDs productos digitales
+│   │                            #   OPTION_CATEGORY_IDS          → IDs categorías con cobertura digital
+│   │                            #   OPTION_TAG_IDS               → IDs tags digitales
+│   │                            #   OPTION_REDIRECT_MAP          → product_id físico → product_id digital
+│   │                            #   OPTION_CATEGORY_REDIRECT_MAP → mapa cat redirect (v4.4.0)
+│   │                            #     'by_id'   => [ source_term_id => dest_term_id ]
+│   │                            #     'by_slug' => [ source_slug    => dest_slug    ]
+│   │                            # FLUJO DE REDIRECCIÓN (template_redirect prio 20):
+│   │                            #   is_product_category() → handle_category_redirect()
+│   │                            #     1. Consulta OPTION_CATEGORY_REDIRECT_MAP by_id (O(1))
+│   │                            #     2. Fallback: sube por padres en runtime
+│   │                            #   is_404() → handle_404_category_redirect() [NUEVO v4.4.0]
+│   │                            #     Resuelve slug desde $_SERVER['REQUEST_URI']
+│   │                            #     → get_term_by('slug', ..., 'product_cat')
+│   │                            #     → consulta OPTION_CATEGORY_REDIRECT_MAP by_id
+│   │                            #     → fallback: sube padres + schedule_rebuild()
+│   │                            #   Cubre el caso: categoría existe en taxonomía pero
+│   │                            #   WP/WC responde 404 porque todos sus productos son
+│   │                            #   físicos (filtrados en subdominio restringido).
 │   ├── auth-modal.php      # Modal Login/Registro + endpoints wc_ajax_mu_*
 │   ├── login.php           # Personalización wp-login.php v2.1.0
 │   ├── checkout.php        # Checkout Híbrido + Login Gate (mu_checkout_login_notice p5)
@@ -196,6 +211,7 @@ Ajuste UI pequeño (< 50 líneas)     | ui.php                   | components/gl
 Header / Footer (elemento pesado)   | ui.php                   | header.css / footer.css      | header.js / footer.js
 Multi-país / Geolocalización       | geo.php                  | components/country-modal.css | country-modal.js
 Restricción subdominios             | digital-restriction.php  | shop.css / admin.css         | shop.js / admin.js
+Redirección categoría en 404        | digital-restriction.php  | —                            | —
 Carrito                             | cart.php                 | cart.css                     | cart.js
 Precio Flexible                     | flexible-price.php       | cart.css                     | flexible-price.js
 Login/Registro Modal                | auth-modal.php           | components/modal-auth.css    | modal-auth.js
@@ -270,6 +286,8 @@ PHP
   Admin UI acepta rutas relativas o URLs absolutas para CTAs y badge promo.
   Para editar contenido: WP Admin → WooCommerce → Marketing → Hero Banners.
 - Coming Soon standalone: logo y número WA hardcodeados. Cambios → editar templates/coming-soon.php directamente.
+- Category Redirect Map: OPTION_CATEGORY_REDIRECT_MAP se construye en rebuild_digital_indexes().
+  Tras agregar productos a una categoría nueva, forzar rebuild desde Admin → Productos → Reindexar Digitales.
 
 JavaScript
 - IIFE + 'use strict' + DOMContentLoaded. Cero jQuery salvo obligación WC legacy.
@@ -299,3 +317,5 @@ CSS
 - [ ] digital-restriction.php: N+1 en display_digital_price_in_catalog — evaluar get_post_meta() directo.
 - [ ] coming-soon.css: archivo deprecado pero presente. Evaluar eliminarlo si inc/coming-soon.php
       ya no lo encola tras esta migración.
+- [ ] digital-restriction.php: OPTION_CATEGORY_REDIRECT_MAP se invalida solo al actualizar productos.
+      Evaluar también invalidar en save_term / delete_term si se crean/eliminan categorías.
