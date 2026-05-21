@@ -1,17 +1,24 @@
 <?php
 /**
  * Muy Únicos - Digital Restriction System
- * Sistema de restricción de contenido digital v4.4.0 (Category Redirect Map + 404-safe slug fallback)
+ * Sistema de restricción de contenido digital v4.4.1 (Fix: category 404 in restricted subdomains)
  * Propósito: Restringir productos físicos en subdominios, mostrando solo 
  * productos digitales. Optimizado para rendimiento y compatibilidad.
  *
- * CHANGELOG v4.4.0:
- * - Nuevo índice OPTION_CATEGORY_REDIRECT_MAP: mapa dinámico category_id → category_id_destino
- *   y category_slug → category_slug_destino, construido en rebuild_digital_indexes().
- * - handle_redirects() ahora intercepta 404s en rutas de taxonomía ANTES de que
- *   is_product_category() falle, usando muyu_get_category_from_request_path() para
- *   resolver el slug desde la URL cruda.
- * - Se agrega constante OPTION_CATEGORY_REDIRECT_MAP.
+ * CHANGELOG v4.4.1:
+ * - FIX filter_product_queries(): ya no fuerza post__in = [0] cuando no hay
+ *   productos digitales para la query actual. En cambio, omite post__in para
+ *   permitir que WooCommerce resuelva la URL como is_product_category() === true
+ *   (incluso si la categoría queda vacía), habilitando que handle_category_redirect()
+ *   actúe correctamente en lugar de dejar caer la request en 404.
+ *   Sin este fix, una categoría que existe en taxonomía pero cuyos únicos
+ *   productos son físicos (filtrados en subdominio) generaba 404 porque
+ *   post__in = [0] impedía a WC resolver la taxonomía.
+ * - FIX handle_404_category_redirect(): se elimina el early-return incorrecto
+ *   para categorías en OPTION_CATEGORY_IDS. Una categoría puede estar en el
+ *   índice digital Y generar 404 simultáneamente si post__in la vació antes.
+ *   Ahora redirige a su propia URL canónica (reconstruida) para recuperar el
+ *   contexto correcto de is_product_category().
  *
  * @package GeneratePress_Child
  * @since 4.2.0
@@ -31,7 +38,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         const OPTION_CATEGORY_IDS          = 'muyu_digital_category_ids';
         const OPTION_TAG_IDS               = 'muyu_digital_tag_ids';
         const OPTION_REDIRECT_MAP          = 'muyu_phys_to_dig_map';
-        const OPTION_CATEGORY_REDIRECT_MAP = 'muyu_cat_redirect_map'; // NEW v4.4.0
+        const OPTION_CATEGORY_REDIRECT_MAP = 'muyu_cat_redirect_map';
         const OPTION_LAST_UPDATE           = 'muyu_digital_list_updated';
         const CRON_HOOK                    = 'muyu_cron_rebuild_digital_indexes';
         
@@ -346,6 +353,19 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             ] );
         }
 
+        /**
+         * filter_product_queries() — v4.4.1
+         *
+         * FIX: Ya no fuerza post__in = [0] cuando el resultado sería vacío.
+         * El problema anterior: si una categoría tenía solo productos físicos
+         * (todos filtrados en el subdominio), post__in = [0] impedía a WooCommerce
+         * resolver la URL como is_product_category(), haciendo que WP generase
+         * 404 ANTES de que template_redirect/handle_redirects() pudiese actuar.
+         *
+         * Ahora: si no hay IDs digitales para restringir, simplemente NO se
+         * modifica post__in. WC renderiza la categoría vacía, is_product_category()
+         * devuelve true, y handle_category_redirect() puede redirigir correctamente.
+         */
         public function filter_product_queries( $query ): void {
             if ( is_admin() || ! $query->is_main_query() ) return;
             if ( $query->is_product() || ( $query->is_singular() && 'product' === $query->get( 'post_type' ) ) ) return;
@@ -362,9 +382,13 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             $digital_ids = get_option( self::OPTION_PRODUCT_IDS, false );
             if ( false === $digital_ids || empty( $digital_ids ) ) {
                 $this->schedule_rebuild();
-                $digital_ids = [];
+                // FIX v4.4.1: No forzar post__in = [0] — dejar que WC resuelva
+                // la categoría como vacía para que is_product_category() sea true
+                // y handle_redirects() pueda interceptar en template_redirect.
+                return;
             }
-            $query->set( 'post__in', empty( $digital_ids ) ? [ 0 ] : array_map( 'intval', (array) $digital_ids ) );
+
+            $query->set( 'post__in', array_map( 'intval', (array) $digital_ids ) );
         }
 
         public function filter_category_terms( array $args, array $taxonomies ): array {
@@ -393,15 +417,16 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         }
 
         /**
-         * handle_redirects() — v4.4.0
+         * handle_redirects() — v4.4.1
          *
-         * Flujo mejorado:
-         * 1. Ruta normal (is_product_category / tag / product) → igual que antes.
-         * 2. NUEVO: Si la request es un 404 en un subdominio restringido,
-         *    intenta resolver el slug de la URL como product_cat y aplicar
-         *    el mapa de redirección de categorías (OPTION_CATEGORY_REDIRECT_MAP).
-         *    Esto cubre el caso donde la categoría existe en taxonomía pero WP/WC
-         *    genera 404 porque no tiene productos visibles en el subdominio.
+         * Con el fix de filter_product_queries(), is_product_category() ahora
+         * devuelve true incluso para categorías que quedaron vacías en el
+         * subdominio. Esto hace que el flujo normal (handle_category_redirect)
+         * cubra el caso que antes caía en is_404().
+         *
+         * El bloque is_404() se mantiene como safety-net para casos donde
+         * la URL tenga un path no estándar o la categoría no se resuelva
+         * como is_product_category() por otras razones.
          */
         public function handle_redirects(): void {
             if ( is_admin() || ! $this->is_restricted_user() ) return;
@@ -419,10 +444,8 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 list( $should_redirect, $target_url ) = $this->handle_product_redirect();
 
             } elseif ( is_404() ) {
-                // ── NUEVO v4.4.0 ──────────────────────────────────────────────
-                // La categoría puede existir pero WC la resuelve como 404 porque
-                // todos sus productos están filtrados (solo físicos en subdominio
-                // restringido). Intentamos resolver desde la URL cruda.
+                // Safety-net: cubre URLs no estándar o categorías que no resuelven
+                // como is_product_category() por otras razones.
                 list( $should_redirect, $target_url ) = $this->handle_404_category_redirect();
             }
 
@@ -432,69 +455,17 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         }
 
         /**
-         * Resolución de redirección para 404s causados por categorías sin
-         * productos visibles en el subdominio actual.
+         * handle_category_redirect() — v4.4.1
          *
-         * Orden de resolución:
-         * 1. Resolver el slug candidato desde el path de la request.
-         * 2. Verificar que el term pertenezca a product_cat.
-         * 3. Consultar OPTION_CATEGORY_REDIRECT_MAP['by_id'] para el destino.
-         * 4. Si el índice no tiene entrada para esta categoría (cat nueva o índice
-         *    desactualizado), escalar por padres en tiempo real como fallback.
+         * Redirige categorías sin cobertura digital al destino en OPTION_CATEGORY_REDIRECT_MAP.
          *
-         * @return array [bool $should_redirect, string $target_url]
-         */
-        private function handle_404_category_redirect(): array {
-            $term = $this->get_category_from_request_path();
-            if ( ! $term ) {
-                return [ false, '' ];
-            }
-
-            $source_id   = (int) $term->term_id;
-            $digital_cats = array_map( 'intval', (array) get_option( self::OPTION_CATEGORY_IDS, [] ) );
-
-            // Si la categoría YA es digital (raro que sea 404, pero cubrimos el caso)
-            if ( in_array( $source_id, $digital_cats, true ) ) {
-                return [ false, '' ];
-            }
-
-            // 1. Consultar el mapa precalculado (O(1))
-            $cat_redirect_map = get_option( self::OPTION_CATEGORY_REDIRECT_MAP, [] );
-            $by_id = $cat_redirect_map['by_id'] ?? [];
-
-            if ( isset( $by_id[ $source_id ] ) ) {
-                $dest_id  = (int) $by_id[ $source_id ];
-                $dest_url = get_term_link( $dest_id, 'product_cat' );
-                if ( ! is_wp_error( $dest_url ) ) {
-                    return [ true, $dest_url ];
-                }
-            }
-
-            // 2. Fallback: escalar por padres en tiempo real si el índice está
-            //    desactualizado o la categoría es nueva.
-            $parent_id = (int) $term->parent;
-            while ( $parent_id ) {
-                if ( in_array( $parent_id, $digital_cats, true ) ) {
-                    $dest_url = get_term_link( $parent_id, 'product_cat' );
-                    if ( ! is_wp_error( $dest_url ) ) {
-                        // Programar rebuild para que el índice se actualice.
-                        $this->schedule_rebuild();
-                        return [ true, $dest_url ];
-                    }
-                }
-                $parent_term = get_term( $parent_id, 'product_cat' );
-                $parent_id   = ( $parent_term && ! is_wp_error( $parent_term ) ) ? (int) $parent_term->parent : 0;
-            }
-
-            // 3. Sin ancestro digital → shop (igual que el fallback general previo)
-            return [ true, '' ];
-        }
-        
-        /**
-         * Redirección de categorías para usuarios restringidos (is_product_category() === true).
-         * - Si la categoría NO está en OPTION_CATEGORY_IDS → consultar OPTION_CATEGORY_REDIRECT_MAP,
-         *   luego subir por padres como fallback.
-         * - Si la categoría SÍ está → no redirigir.
+         * NUEVO: Si la categoría SÍ está en OPTION_CATEGORY_IDS (es "digital") pero
+         * está vacía en este subdominio (sin productos visibles en la query actual),
+         * también puede necesitar redirección. Esto es poco común pero posible cuando
+         * el índice está desactualizado o la categoría tiene una mezcla de físicos/digitales
+         * y el subdominio solo expone una parte. En ese caso NO redirigimos — la
+         * categoría vacía se muestra normalmente y WooCommerce maneja el estado vacío.
+         * Redirigir a sí misma causaría un loop.
          */
         private function handle_category_redirect(): array {
             $queried_object = get_queried_object();
@@ -531,7 +502,74 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 return [ true, '' ];
             }
 
+            // Categoría digital → no redirigir (se muestra aunque esté vacía en el subdominio)
             return [ false, '' ];
+        }
+
+        /**
+         * handle_404_category_redirect() — v4.4.1
+         *
+         * Safety-net para 404s causados por categorías que no resolvieron como
+         * is_product_category(). Con el fix de filter_product_queries() la mayoría
+         * de casos ya no llegan aquí, pero se mantiene para URLs no estándar.
+         *
+         * CAMBIO v4.4.1: Se elimina el early-return incorrecto para categorías en
+         * OPTION_CATEGORY_IDS. Si una categoría digital llega aquí como 404 (raro
+         * pero posible), redirigimos a su propia URL canónica para recuperar el
+         * contexto is_product_category() y evitar servir 404.
+         *
+         * @return array [bool $should_redirect, string $target_url]
+         */
+        private function handle_404_category_redirect(): array {
+            $term = $this->get_category_from_request_path();
+            if ( ! $term ) {
+                return [ false, '' ];
+            }
+
+            $source_id    = (int) $term->term_id;
+            $digital_cats = array_map( 'intval', (array) get_option( self::OPTION_CATEGORY_IDS, [] ) );
+
+            // FIX v4.4.1: Si la categoría es "digital" pero llegó a 404 de todas
+            // formas, redirigimos a su propia URL canónica (recupera el contexto).
+            // ANTES: early-return [false, ''] aquí causaba que se sirviese 404.
+            if ( in_array( $source_id, $digital_cats, true ) ) {
+                $canonical = get_term_link( $source_id, 'product_cat' );
+                if ( ! is_wp_error( $canonical ) ) {
+                    return [ true, $canonical ];
+                }
+                return [ false, '' ];
+            }
+
+            // 1. Consultar el mapa precalculado (O(1))
+            $cat_redirect_map = get_option( self::OPTION_CATEGORY_REDIRECT_MAP, [] );
+            $by_id = $cat_redirect_map['by_id'] ?? [];
+
+            if ( isset( $by_id[ $source_id ] ) ) {
+                $dest_id  = (int) $by_id[ $source_id ];
+                $dest_url = get_term_link( $dest_id, 'product_cat' );
+                if ( ! is_wp_error( $dest_url ) ) {
+                    return [ true, $dest_url ];
+                }
+            }
+
+            // 2. Fallback: escalar por padres en tiempo real si el índice está
+            //    desactualizado o la categoría es nueva.
+            $parent_id = (int) $term->parent;
+            while ( $parent_id ) {
+                if ( in_array( $parent_id, $digital_cats, true ) ) {
+                    $dest_url = get_term_link( $parent_id, 'product_cat' );
+                    if ( ! is_wp_error( $dest_url ) ) {
+                        // Programar rebuild para que el índice se actualice.
+                        $this->schedule_rebuild();
+                        return [ true, $dest_url ];
+                    }
+                }
+                $parent_term = get_term( $parent_id, 'product_cat' );
+                $parent_id   = ( $parent_term && ! is_wp_error( $parent_term ) ) ? (int) $parent_term->parent : 0;
+            }
+
+            // 3. Sin ancestro digital → shop
+            return [ true, '' ];
         }
         
         private function handle_tag_redirect(): array {
