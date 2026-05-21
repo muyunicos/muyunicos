@@ -1,7 +1,7 @@
 <?php
 /**
  * Muy Únicos - Digital Restriction System
- * * Sistema de restricción de contenido digital v4.3.0 (Category Redirect + NavChips Integration)
+ * * Sistema de restricción de contenido digital v4.3.2 (Category Redirect Simplified + 404-safe fallback)
  * Propósito: Restringir productos físicos en subdominios, mostrando solo 
  * productos digitales. Optimizado para rendimiento y compatibilidad.
  * * @package GeneratePress_Child
@@ -270,7 +270,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             if ( is_admin() || ! $this->is_restricted_user() ) return;
             if ( ! is_product() && ! is_product_category() && ! is_product_tag() ) return;
             
-            $target_url   = '';
+            $target_url     = '';
             $should_redirect = false;
             
             if ( is_product_category() ) {
@@ -280,6 +280,13 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             } elseif ( is_product() ) {
                 list( $should_redirect, $target_url ) = $this->handle_product_redirect();
             }
+
+            // Fallback 404 seguro: si Woo sigue respondiendo 404 en una categoría de producto
+            // y no se decidió redirigir, enviamos al catálogo principal del subdominio.
+            if ( ! $should_redirect && is_product_category() && is_404() ) {
+                $should_redirect = true;
+                $target_url      = wc_get_page_permalink( 'shop' );
+            }
             
             if ( $should_redirect ) {
                 $this->execute_redirect( $target_url );
@@ -288,9 +295,13 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         
         /**
          * Redirección de categorías para usuarios restringidos.
-         * Si la categoría es puramente física, intenta subir a un padre que sí tenga
-         * productos digitales (usando índices digitales + NavChips). Si no hay
-         * ningún padre válido, delega en execute_redirect() para evitar 404.
+         * Lógica simplificada:
+         * - Si la categoría NO está en OPTION_CATEGORY_IDS → subir por padres hasta uno que sí esté.
+         *   Si no se encuentra ninguno, delegar en execute_redirect() (shop/búsqueda).
+         * - Si la categoría SÍ está en OPTION_CATEGORY_IDS → no redirigir, confiar en el índice digital.
+         *
+         * No usa NavChips ni OPTION_PRODUCT_IDS aquí; toda la inteligencia está en
+         * el índice precalculado de categorías digitales.
          */
         private function handle_category_redirect(): array {
             $queried_object = get_queried_object();
@@ -298,12 +309,13 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 return [ false, '' ];
             }
 
-            $term_id     = (int) $queried_object->term_id;
+            $term_id      = (int) $queried_object->term_id;
             $digital_cats = array_map( 'intval', (array) get_option( self::OPTION_CATEGORY_IDS, [] ) );
 
-            // Si la categoría no está marcada como digital en los índices, subimos a padres.
+            // Caso 1: categoría NO está en el índice digital → subir a padres.
             if ( ! in_array( $term_id, $digital_cats, true ) ) {
                 $parent_id = $queried_object->parent;
+
                 while ( $parent_id ) {
                     if ( in_array( (int) $parent_id, $digital_cats, true ) ) {
                         return [ true, get_term_link( $parent_id, 'product_cat' ) ];
@@ -311,47 +323,13 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                     $term      = get_term( $parent_id, 'product_cat' );
                     $parent_id = ( $term && ! is_wp_error( $term ) ) ? $term->parent : 0;
                 }
-                // No hay padres digitales claros → permitir fallback genérico.
+
+                // Sin ningún padre digital → dejar que execute_redirect() lleve a shop/búsqueda.
                 return [ true, '' ];
             }
 
-            // Si está marcada como digital, pero el índice de productos digitales está vacío
-            // o el árbol no tiene productos digitales visibles, intentamos subir a un padre
-            // que sí tenga productos digitales. Esto evita mostrar categorías "vacías".
-            $digital_products = $this->get_cached_digital_product_ids();
-            if ( empty( $digital_products ) ) {
-                // Sin índice de productos digitales no podemos decidir mejor, delegamos.
-                return [ false, '' ];
-            }
-
-            // NavChips: necesitamos mu_navchips_get_products_in_category_tree() disponible.
-            if ( ! function_exists( 'mu_navchips_get_products_in_category_tree' ) ) {
-                return [ false, '' ];
-            }
-
-            $products_in_tree = mu_navchips_get_products_in_category_tree( $term_id );
-            $has_digital_here = ! empty( array_intersect( $products_in_tree, $digital_products ) );
-
-            if ( $has_digital_here ) {
-                // Categoría digital con productos digitales visibles → sin redirección.
-                return [ false, '' ];
-            }
-
-            // Buscar el primer padre que esté en índices digitales Y tenga productos digitales reales.
-            $parent_id = $queried_object->parent;
-            while ( $parent_id ) {
-                if ( in_array( (int) $parent_id, $digital_cats, true ) ) {
-                    $parent_products = mu_navchips_get_products_in_category_tree( $parent_id );
-                    if ( ! empty( array_intersect( $parent_products, $digital_products ) ) ) {
-                        return [ true, get_term_link( $parent_id, 'product_cat' ) ];
-                    }
-                }
-                $term      = get_term( $parent_id, 'product_cat' );
-                $parent_id = ( $term && ! is_wp_error( $term ) ) ? $term->parent : 0;
-            }
-
-            // Sin padres con digitales: delegamos en execute_redirect() para enviar a shop/búsqueda.
-            return [ true, '' ];
+            // Caso 2: categoría SÍ está en el índice digital → confiar en el índice y quedarse.
+            return [ false, '' ];
         }
         
         private function handle_tag_redirect(): array {
