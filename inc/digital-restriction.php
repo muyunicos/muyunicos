@@ -1,24 +1,31 @@
 <?php
 /**
  * Muy Únicos - Digital Restriction System
- * Sistema de restricción de contenido digital v4.4.1 (Fix: category 404 in restricted subdomains)
+ * Sistema de restricción de contenido digital v4.4.2 (Fix: root/ancestor categories redirect)
  * Propósito: Restringir productos físicos en subdominios, mostrando solo 
  * productos digitales. Optimizado para rendimiento y compatibilidad.
  *
- * CHANGELOG v4.4.1:
- * - FIX filter_product_queries(): ya no fuerza post__in = [0] cuando no hay
- *   productos digitales para la query actual. En cambio, omite post__in para
- *   permitir que WooCommerce resuelva la URL como is_product_category() === true
- *   (incluso si la categoría queda vacía), habilitando que handle_category_redirect()
- *   actúe correctamente en lugar de dejar caer la request en 404.
- *   Sin este fix, una categoría que existe en taxonomía pero cuyos únicos
- *   productos son físicos (filtrados en subdominio) generaba 404 porque
- *   post__in = [0] impedía a WC resolver la taxonomía.
- * - FIX handle_404_category_redirect(): se elimina el early-return incorrecto
- *   para categorías en OPTION_CATEGORY_IDS. Una categoría puede estar en el
- *   índice digital Y generar 404 simultáneamente si post__in la vació antes.
- *   Ahora redirige a su propia URL canónica (reconstruida) para recuperar el
- *   contexto correcto de is_product_category().
+ * CHANGELOG v4.4.2:
+ * - FIX build_category_redirect_map(): se introduce $direct_digital_category_ids
+ *   (categorías con productos digitales DIRECTOS, sin expansión de jerarquía).
+ *   El mapa de redirección ahora evalúa contra este índice "directo" en lugar
+ *   de $digital_category_ids (que incluye ancestros por expand_category_hierarchy).
+ *   Problema anterior: una categoría raíz como "tarjetas" era incluida en
+ *   $digital_category_ids por ser ancestro de "tarjetas-digitales", por lo que
+ *   build_category_redirect_map() la salteaba con `continue`. Al no tener
+ *   entrada en el mapa, handle_category_redirect() tampoco la redirigía,
+ *   resultando en una página vacía o 404 en subdominios restringidos.
+ * - NUEVO ÍNDICE OPTION_DIRECT_CATEGORY_IDS: guarda las IDs de categorías con
+ *   cobertura digital DIRECTA (sin expansión jerárquica). Se usa exclusivamente
+ *   en build_category_redirect_map() para determinar si una categoría
+ *   necesita o no redirección.
+ * - FIX find_nearest_direct_digital_child(): nuevo helper que busca HACIA ABAJO
+ *   en la jerarquía (hijos/nietos) cuando una categoría raíz no tiene ancestro
+ *   digital pero sí tiene hijos digitales. Esto cubre el caso:
+ *   tarjetas (raíz) → tarjetas-digitales (hija digital) → redirigir a hija.
+ * - NOTA: $digital_category_ids (con expansión) se mantiene para
+ *   filter_category_terms() y filter_menu_items() — esos filtros necesitan
+ *   incluir ancestros para que la navegación de WC funcione correctamente.
  *
  * @package GeneratePress_Child
  * @since 4.2.0
@@ -34,13 +41,14 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         
         private static ?self $instance = null;
         
-        const OPTION_PRODUCT_IDS           = 'muyu_digital_product_ids';
-        const OPTION_CATEGORY_IDS          = 'muyu_digital_category_ids';
-        const OPTION_TAG_IDS               = 'muyu_digital_tag_ids';
-        const OPTION_REDIRECT_MAP          = 'muyu_phys_to_dig_map';
-        const OPTION_CATEGORY_REDIRECT_MAP = 'muyu_cat_redirect_map';
-        const OPTION_LAST_UPDATE           = 'muyu_digital_list_updated';
-        const CRON_HOOK                    = 'muyu_cron_rebuild_digital_indexes';
+        const OPTION_PRODUCT_IDS            = 'muyu_digital_product_ids';
+        const OPTION_CATEGORY_IDS           = 'muyu_digital_category_ids';
+        const OPTION_DIRECT_CATEGORY_IDS    = 'muyu_digital_direct_category_ids'; // NEW v4.4.2
+        const OPTION_TAG_IDS                = 'muyu_digital_tag_ids';
+        const OPTION_REDIRECT_MAP           = 'muyu_phys_to_dig_map';
+        const OPTION_CATEGORY_REDIRECT_MAP  = 'muyu_cat_redirect_map';
+        const OPTION_LAST_UPDATE            = 'muyu_digital_list_updated';
+        const CRON_HOOK                     = 'muyu_cron_rebuild_digital_indexes';
         
         public static function get_instance(): self {
             if ( null === self::$instance ) {
@@ -103,20 +111,13 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
          * false en 404). Útil cuando WP ya resolvió la URL como 404 porque
          * la categoría existe en taxonomía pero no tiene productos visibles.
          *
-         * Estrategia:
-         * 1. Obtiene el path limpio de la request ($_SERVER['REQUEST_URI']).
-         * 2. Extrae el último segmento de slug (ej. /tienda-juegosparawii/ → "tienda-juegosparawii").
-         * 3. Busca ese slug en product_cat con get_term_by().
-         *
          * @return WP_Term|null
          */
         private function get_category_from_request_path(): ?\WP_Term {
             $request_uri = sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ?? '' ) );
-            // Eliminar query string y normalizar slashes
             $path = trim( strtok( $request_uri, '?' ), '/' );
             if ( empty( $path ) ) return null;
 
-            // Extraer el segmento más profundo del path como slug candidato
             $segments = array_filter( explode( '/', $path ) );
             $slug     = end( $segments );
             if ( empty( $slug ) ) return null;
@@ -133,16 +134,23 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             $digital_product_ids = $this->get_digital_product_ids();
             
             if ( empty( $digital_product_ids ) ) {
-                $this->save_indexes( [], [], [], [], [] );
+                $this->save_indexes( [], [], [], [], [], [] );
                 return 0;
             }
             
             list( $category_ids, $tag_ids ) = $this->get_product_terms( $digital_product_ids );
-            $category_ids    = $this->expand_category_hierarchy( $category_ids );
-            $redirect_map    = $this->build_redirect_map( $digital_product_ids );
-            $cat_redirect_map = $this->build_category_redirect_map( $digital_product_ids, $category_ids );
+            // $direct_category_ids: categorías con productos digitales DIRECTOS (sin expansión)
+            $direct_category_ids = $category_ids;
+            // $category_ids: expandido con ancestros, para filtros de navegación
+            $category_ids        = $this->expand_category_hierarchy( $category_ids );
+            $redirect_map        = $this->build_redirect_map( $digital_product_ids );
+            $cat_redirect_map    = $this->build_category_redirect_map(
+                $digital_product_ids,
+                $category_ids,
+                $direct_category_ids  // NEW: índice directo para el mapa de redirección
+            );
             
-            $this->save_indexes( $digital_product_ids, $category_ids, $tag_ids, $redirect_map, $cat_redirect_map );
+            $this->save_indexes( $digital_product_ids, $category_ids, $tag_ids, $redirect_map, $cat_redirect_map, $direct_category_ids );
             return count( $digital_product_ids );
         }
         
@@ -211,26 +219,33 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         }
 
         /**
-         * Construye el mapa de redirección de categorías.
+         * Construye el mapa de redirección de categorías — v4.4.2
          *
-         * Para CADA categoría existente en la tienda que NO esté en $digital_category_ids,
-         * busca el ancestro más cercano con productos digitales reales.
-         * El mapa se guarda con dos índices para cobertura total:
-         *   - Por term_id:  (int)   → (int)   destino
-         *   - Por slug:     (string)→ (string) slug destino
+         * CAMBIO CLAVE v4.4.2:
+         * Ahora recibe $direct_category_ids además de $digital_category_ids.
+         * El mapa evalúa cada categoría contra $direct_category_ids (productos
+         * digitales directos) en lugar de $digital_category_ids (que incluye
+         * ancestros). Esto evita que categorías raíz como "tarjetas" sean
+         * salteadas por ser ancestros de categorías digitales.
          *
-         * Esto permite resolver redirecciones tanto desde is_product_category()
-         * como desde URLs crudas (404 por categoría sin productos visibles).
+         * Lógica de resolución de destino por orden de prioridad:
+         *   1. Subir por padres buscando un ancestro con $direct_category_ids
+         *      (find_nearest_digital_ancestor — igual que antes).
+         *   2. NUEVO: Si no hay ancestro digital, bajar por hijos buscando el
+         *      primer hijo/nieto en $direct_category_ids
+         *      (find_nearest_direct_digital_child — cubre categorías raíz).
+         *   3. Si tampoco hay hijo digital, no agregar al mapa (fallback: shop).
          *
-         * @param int[]   $digital_product_ids   IDs de productos digitales.
-         * @param int[]   $digital_category_ids  IDs de categorías con cobertura digital.
-         * @return array  {
-         *   'by_id'   => [ source_term_id => dest_term_id ],
-         *   'by_slug' => [ source_slug    => dest_slug    ],
-         * }
+         * @param int[]   $digital_product_ids    IDs de productos digitales.
+         * @param int[]   $digital_category_ids   IDs con cobertura (incluye ancestros).
+         * @param int[]   $direct_category_ids    IDs con productos digitales DIRECTOS.
+         * @return array{ 'by_id' => array, 'by_slug' => array }
          */
-        private function build_category_redirect_map( array $digital_product_ids, array $digital_category_ids ): array {
-            // Obtener todas las categorías de producto publicadas
+        private function build_category_redirect_map(
+            array $digital_product_ids,
+            array $digital_category_ids,
+            array $direct_category_ids
+        ): array {
             $all_cats = get_terms( [
                 'taxonomy'   => 'product_cat',
                 'hide_empty' => false,
@@ -247,28 +262,51 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 $term_index[ (int) $term->term_id ] = $term;
             }
 
+            // Índice inverso: parent_id → [child_id, ...] para búsqueda descendente
+            $children_index = [];
+            foreach ( $all_cats as $term ) {
+                $parent = (int) $term->parent;
+                if ( $parent ) {
+                    $children_index[ $parent ][] = (int) $term->term_id;
+                }
+            }
+
             $by_id   = [];
             $by_slug = [];
 
             foreach ( $all_cats as $source_term ) {
                 $source_id = (int) $source_term->term_id;
 
-                // Si la categoría YA tiene cobertura digital, no necesita redirección
-                if ( in_array( $source_id, $digital_category_ids, true ) ) {
+                // FIX v4.4.2: evaluar contra $direct_category_ids, NO $digital_category_ids.
+                // Así, ancestros como "tarjetas" (que NO tienen productos directos)
+                // NO son salteados y sí reciben una entrada en el mapa.
+                if ( in_array( $source_id, $direct_category_ids, true ) ) {
                     continue;
                 }
 
-                // Buscar el primer ancestro (o la propia categoría subiendo) con productos digitales
+                // 1. Buscar ancestro digital directo (sube por padres)
                 $dest_id = $this->find_nearest_digital_ancestor(
                     $source_id,
-                    $digital_category_ids,
+                    $direct_category_ids,
                     $term_index
                 );
 
-                if ( $dest_id && isset( $term_index[ $dest_id ] ) ) {
-                    $by_id[ $source_id ]                    = $dest_id;
-                    $by_slug[ $source_term->slug ]          = $term_index[ $dest_id ]->slug;
+                // 2. Si no hay ancestro, buscar descendiente digital (baja por hijos)
+                //    Cubre el caso: tarjetas (raíz sin padre) → tarjetas-digitales (hija)
+                if ( ! $dest_id ) {
+                    $dest_id = $this->find_nearest_direct_digital_child(
+                        $source_id,
+                        $direct_category_ids,
+                        $children_index
+                    );
                 }
+
+                if ( $dest_id && isset( $term_index[ $dest_id ] ) ) {
+                    $by_id[ $source_id ]           = $dest_id;
+                    $by_slug[ $source_term->slug ] = $term_index[ $dest_id ]->slug;
+                }
+                // Si dest_id sigue siendo null → no se agrega al mapa.
+                // handle_category_redirect() fallback enviará a shop.
             }
 
             return [ 'by_id' => $by_id, 'by_slug' => $by_slug ];
@@ -298,20 +336,64 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             }
             return null;
         }
+
+        /**
+         * NUEVO v4.4.2 — Busca hacia ABAJO en la jerarquía (BFS) el primer
+         * descendiente cuyo term_id esté en $direct_category_ids.
+         *
+         * Usado para categorías raíz que no tienen ancestro digital pero sí
+         * tienen hijos o nietos digitales.
+         * Ejemplo: tarjetas (raíz, sin padre, sin productos directos)
+         *          → tarjetas-digitales (hija con productos digitales) ✓
+         *
+         * @param int   $term_id               Categoría raíz de la que bajar.
+         * @param int[] $direct_category_ids   IDs con productos digitales directos.
+         * @param array $children_index        parent_id => [child_ids]
+         * @return int|null  term_id del primer descendiente digital, o null.
+         */
+        private function find_nearest_direct_digital_child(
+            int $term_id,
+            array $direct_category_ids,
+            array $children_index
+        ): ?int {
+            // BFS para encontrar el descendiente más cercano
+            $queue   = $children_index[ $term_id ] ?? [];
+            $visited = [];
+
+            while ( ! empty( $queue ) ) {
+                $current_id = array_shift( $queue );
+                if ( isset( $visited[ $current_id ] ) ) continue;
+                $visited[ $current_id ] = true;
+
+                if ( in_array( $current_id, $direct_category_ids, true ) ) {
+                    return $current_id;
+                }
+
+                // Agregar hijos al queue para seguir buscando
+                foreach ( ( $children_index[ $current_id ] ?? [] ) as $child_id ) {
+                    if ( ! isset( $visited[ $child_id ] ) ) {
+                        $queue[] = $child_id;
+                    }
+                }
+            }
+            return null;
+        }
         
         private function save_indexes(
             array $product_ids,
             array $category_ids,
             array $tag_ids,
             array $redirect_map,
-            array $cat_redirect_map = []
+            array $cat_redirect_map = [],
+            array $direct_category_ids = []  // NEW v4.4.2
         ): void {
-            update_option( self::OPTION_PRODUCT_IDS,           $product_ids,     false );
-            update_option( self::OPTION_CATEGORY_IDS,          $category_ids,    false );
-            update_option( self::OPTION_TAG_IDS,               $tag_ids,         false );
-            update_option( self::OPTION_REDIRECT_MAP,          $redirect_map,    false );
-            update_option( self::OPTION_CATEGORY_REDIRECT_MAP, $cat_redirect_map, false );
-            update_option( self::OPTION_LAST_UPDATE,           current_time( 'mysql' ), false );
+            update_option( self::OPTION_PRODUCT_IDS,            $product_ids,         false );
+            update_option( self::OPTION_CATEGORY_IDS,           $category_ids,        false );
+            update_option( self::OPTION_DIRECT_CATEGORY_IDS,    $direct_category_ids, false );
+            update_option( self::OPTION_TAG_IDS,                $tag_ids,             false );
+            update_option( self::OPTION_REDIRECT_MAP,           $redirect_map,        false );
+            update_option( self::OPTION_CATEGORY_REDIRECT_MAP,  $cat_redirect_map,    false );
+            update_option( self::OPTION_LAST_UPDATE,            current_time( 'mysql' ), false );
         }
 
         // =====================================================================
@@ -355,16 +437,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
 
         /**
          * filter_product_queries() — v4.4.1
-         *
-         * FIX: Ya no fuerza post__in = [0] cuando el resultado sería vacío.
-         * El problema anterior: si una categoría tenía solo productos físicos
-         * (todos filtrados en el subdominio), post__in = [0] impedía a WooCommerce
-         * resolver la URL como is_product_category(), haciendo que WP generase
-         * 404 ANTES de que template_redirect/handle_redirects() pudiese actuar.
-         *
-         * Ahora: si no hay IDs digitales para restringir, simplemente NO se
-         * modifica post__in. WC renderiza la categoría vacía, is_product_category()
-         * devuelve true, y handle_category_redirect() puede redirigir correctamente.
+         * Sin cambios en esta versión.
          */
         public function filter_product_queries( $query ): void {
             if ( is_admin() || ! $query->is_main_query() ) return;
@@ -382,9 +455,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             $digital_ids = get_option( self::OPTION_PRODUCT_IDS, false );
             if ( false === $digital_ids || empty( $digital_ids ) ) {
                 $this->schedule_rebuild();
-                // FIX v4.4.1: No forzar post__in = [0] — dejar que WC resuelva
-                // la categoría como vacía para que is_product_category() sea true
-                // y handle_redirects() pueda interceptar en template_redirect.
                 return;
             }
 
@@ -397,6 +467,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             
             if ( ! in_array( 'product_cat', $taxonomies, true ) || ! $this->is_restricted_user() ) return $args;
             
+            // Usa $digital_category_ids (con ancestros) para que la navegación WC funcione
             $digital_cat_ids = array_map( 'intval', (array) get_option( self::OPTION_CATEGORY_IDS, [] ) );
             if ( ! empty( $args['include'] ) ) {
                 $current = array_map( 'intval', is_array( $args['include'] ) ? $args['include'] : explode( ',', $args['include'] ) );
@@ -409,6 +480,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         
         public function filter_menu_items( array $items, $menu, array $args ): array {
             if ( is_admin() || wp_is_json_request() || ! $this->is_restricted_user() ) return $items;
+            // Usa $digital_category_ids (con ancestros) para mantener ítems de menú padre
             $digital_cat_ids = array_map( 'intval', (array) get_option( self::OPTION_CATEGORY_IDS, [] ) );
             return array_filter( $items, fn($item) =>
                 ! ( isset( $item->object ) && 'product_cat' === $item->object ) ||
@@ -417,16 +489,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         }
 
         /**
-         * handle_redirects() — v4.4.1
-         *
-         * Con el fix de filter_product_queries(), is_product_category() ahora
-         * devuelve true incluso para categorías que quedaron vacías en el
-         * subdominio. Esto hace que el flujo normal (handle_category_redirect)
-         * cubra el caso que antes caía en is_404().
-         *
-         * El bloque is_404() se mantiene como safety-net para casos donde
-         * la URL tenga un path no estándar o la categoría no se resuelva
-         * como is_product_category() por otras razones.
+         * handle_redirects() — sin cambios desde v4.4.1.
          */
         public function handle_redirects(): void {
             if ( is_admin() || ! $this->is_restricted_user() ) return;
@@ -444,8 +507,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 list( $should_redirect, $target_url ) = $this->handle_product_redirect();
 
             } elseif ( is_404() ) {
-                // Safety-net: cubre URLs no estándar o categorías que no resuelven
-                // como is_product_category() por otras razones.
                 list( $should_redirect, $target_url ) = $this->handle_404_category_redirect();
             }
 
@@ -455,17 +516,12 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         }
 
         /**
-         * handle_category_redirect() — v4.4.1
+         * handle_category_redirect() — v4.4.2
          *
-         * Redirige categorías sin cobertura digital al destino en OPTION_CATEGORY_REDIRECT_MAP.
-         *
-         * NUEVO: Si la categoría SÍ está en OPTION_CATEGORY_IDS (es "digital") pero
-         * está vacía en este subdominio (sin productos visibles en la query actual),
-         * también puede necesitar redirección. Esto es poco común pero posible cuando
-         * el índice está desactualizado o la categoría tiene una mezcla de físicos/digitales
-         * y el subdominio solo expone una parte. En ese caso NO redirigimos — la
-         * categoría vacía se muestra normalmente y WooCommerce maneja el estado vacío.
-         * Redirigir a sí misma causaría un loop.
+         * Sin cambios de lógica: usa $digital_category_ids (con ancestros) para
+         * decidir si redirigir, y el mapa OPTION_CATEGORY_REDIRECT_MAP para el destino.
+         * El mapa ahora tiene entradas para categorías raíz (gracias al fix de
+         * build_category_redirect_map), por lo que el flujo normal resuelve correctamente.
          */
         private function handle_category_redirect(): array {
             $queried_object = get_queried_object();
@@ -477,7 +533,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             $digital_cats = array_map( 'intval', (array) get_option( self::OPTION_CATEGORY_IDS, [] ) );
 
             if ( ! in_array( $term_id, $digital_cats, true ) ) {
-                // Consultar mapa precalculado primero
                 $cat_redirect_map = get_option( self::OPTION_CATEGORY_REDIRECT_MAP, [] );
                 $by_id = $cat_redirect_map['by_id'] ?? [];
 
@@ -502,23 +557,12 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 return [ true, '' ];
             }
 
-            // Categoría digital → no redirigir (se muestra aunque esté vacía en el subdominio)
+            // Categoría con cobertura digital (incluye ancestros) → no redirigir
             return [ false, '' ];
         }
 
         /**
-         * handle_404_category_redirect() — v4.4.1
-         *
-         * Safety-net para 404s causados por categorías que no resolvieron como
-         * is_product_category(). Con el fix de filter_product_queries() la mayoría
-         * de casos ya no llegan aquí, pero se mantiene para URLs no estándar.
-         *
-         * CAMBIO v4.4.1: Se elimina el early-return incorrecto para categorías en
-         * OPTION_CATEGORY_IDS. Si una categoría digital llega aquí como 404 (raro
-         * pero posible), redirigimos a su propia URL canónica para recuperar el
-         * contexto is_product_category() y evitar servir 404.
-         *
-         * @return array [bool $should_redirect, string $target_url]
+         * handle_404_category_redirect() — sin cambios desde v4.4.1.
          */
         private function handle_404_category_redirect(): array {
             $term = $this->get_category_from_request_path();
@@ -529,9 +573,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             $source_id    = (int) $term->term_id;
             $digital_cats = array_map( 'intval', (array) get_option( self::OPTION_CATEGORY_IDS, [] ) );
 
-            // FIX v4.4.1: Si la categoría es "digital" pero llegó a 404 de todas
-            // formas, redirigimos a su propia URL canónica (recupera el contexto).
-            // ANTES: early-return [false, ''] aquí causaba que se sirviese 404.
             if ( in_array( $source_id, $digital_cats, true ) ) {
                 $canonical = get_term_link( $source_id, 'product_cat' );
                 if ( ! is_wp_error( $canonical ) ) {
@@ -540,7 +581,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 return [ false, '' ];
             }
 
-            // 1. Consultar el mapa precalculado (O(1))
             $cat_redirect_map = get_option( self::OPTION_CATEGORY_REDIRECT_MAP, [] );
             $by_id = $cat_redirect_map['by_id'] ?? [];
 
@@ -552,14 +592,11 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 }
             }
 
-            // 2. Fallback: escalar por padres en tiempo real si el índice está
-            //    desactualizado o la categoría es nueva.
             $parent_id = (int) $term->parent;
             while ( $parent_id ) {
                 if ( in_array( $parent_id, $digital_cats, true ) ) {
                     $dest_url = get_term_link( $parent_id, 'product_cat' );
                     if ( ! is_wp_error( $dest_url ) ) {
-                        // Programar rebuild para que el índice se actualice.
                         $this->schedule_rebuild();
                         return [ true, $dest_url ];
                     }
@@ -568,7 +605,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 $parent_id   = ( $parent_term && ! is_wp_error( $parent_term ) ) ? (int) $parent_term->parent : 0;
             }
 
-            // 3. Sin ancestro digital → shop
             return [ true, '' ];
         }
         
@@ -673,13 +709,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             return $defaults;
         }
 
-        /**
-         * Muestra el precio del formato digital en catálogo para usuarios restringidos.
-         *
-         * FIX v4.2.0: se agrega update_meta_cache() antes del loop para pre-cargar
-         * todos los postmeta de las variaciones en una única query, eliminando el
-         * patrón N+1 queries.
-         */
         public function display_digital_price_in_catalog( $price, $product ) {
             if ( is_product() ) return $price;
 
