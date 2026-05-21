@@ -1,6 +1,6 @@
 MUY ÜNCOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Modular Pragmático · v2.9.4 · May 21, 2026
+Estado: Modular Pragmático · v2.9.5 · May 21, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -58,13 +58,18 @@ muyunicos/ (generatepress-child)
 │   ├── geo.php             # Multi-país: detección por subdominio, decimales, modal
 │   │                       # sugerencia de país, selector de header, prefijo idioma.
 │   │                       # muyu_get_cached_geolocation() — una sola llamada/request.
-│   ├── digital-restriction.php  # Restricción productos físicos por subdominio v4.3.0.
+│   ├── digital-restriction.php  # Restricción productos físicos por subdominio v4.3.3.
 │   │                            # Rebuild de índice vía wp_schedule_single_event().
 │   │                            # Integración NavChips: categorías puramente físicas en
 │   │                            # subdominios restringidos se redirigen al primer padre
 │   │                            # que tenga productos digitales reales (índices digitales
 │   │                            # + mu_navchips_get_products_in_category_tree()). Evita
 │   │                            # vistas vacías/404 en MX, CL, etc.
+│   │                            # Fallback 404-safe v4.3.3: si WooCommerce marca una
+│   │                            # categoría como 404 en un subdominio restringido y no hay
+│   │                            # redirección específica disponible, se redirige suave a la
+│   │                            # tienda del subdominio (wc_get_page_permalink('shop'))
+│   │                            # respetando prefijo de idioma.
 │   ├── auth-modal.php      # Modal Login/Registro + endpoints wc_ajax_mu_*
 │   ├── login.php           # Personalización wp-login.php v2.1.0
 │   ├── checkout.php        # Checkout Híbrido + Login Gate (mu_checkout_login_notice p5)
@@ -190,7 +195,7 @@ muyunicos/ (generatepress-child)
 3. ROUTING — ¿DÓNDE VA EL CÓDIGO NUEVO?
 ════════════════════════════════════════════════════════════════
 
-¿Qué necesitás agregar?             | PHP (inc/)               | CSS                          | JS
+¿Qué necesitás agregar?             | PHP (inc/)               | CSS (css/)                   | JS (js/)
 ------------------------------------|--------------------------|------------------------------|----------------------------
 Ajuste UI pequeño (< 50 líneas)     | ui.php                   | components/global-ui.css     | global-ui.js
 Header / Footer (elemento pesado)   | ui.php                   | header.css / footer.css      | header.js / footer.js
