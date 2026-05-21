@@ -1,15 +1,24 @@
 <?php
 /**
  * Muy Únicos - Digital Restriction System
- * * Sistema de restricción de contenido digital v4.3.2 (Category Redirect Simplified + 404-safe fallback)
+ * Sistema de restricción de contenido digital v4.4.0 (Category Redirect Map + 404-safe slug fallback)
  * Propósito: Restringir productos físicos en subdominios, mostrando solo 
  * productos digitales. Optimizado para rendimiento y compatibilidad.
- * * @package GeneratePress_Child
+ *
+ * CHANGELOG v4.4.0:
+ * - Nuevo índice OPTION_CATEGORY_REDIRECT_MAP: mapa dinámico category_id → category_id_destino
+ *   y category_slug → category_slug_destino, construido en rebuild_digital_indexes().
+ * - handle_redirects() ahora intercepta 404s en rutas de taxonomía ANTES de que
+ *   is_product_category() falle, usando muyu_get_category_from_request_path() para
+ *   resolver el slug desde la URL cruda.
+ * - Se agrega constante OPTION_CATEGORY_REDIRECT_MAP.
+ *
+ * @package GeneratePress_Child
  * @since 4.2.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
-    exit; // Exit if accessed directly
+    exit;
 }
 
 if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
@@ -18,12 +27,13 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         
         private static ?self $instance = null;
         
-        const OPTION_PRODUCT_IDS  = 'muyu_digital_product_ids';
-        const OPTION_CATEGORY_IDS = 'muyu_digital_category_ids';
-        const OPTION_TAG_IDS      = 'muyu_digital_tag_ids';
-        const OPTION_REDIRECT_MAP = 'muyu_phys_to_dig_map';
-        const OPTION_LAST_UPDATE  = 'muyu_digital_list_updated';
-        const CRON_HOOK           = 'muyu_cron_rebuild_digital_indexes';
+        const OPTION_PRODUCT_IDS           = 'muyu_digital_product_ids';
+        const OPTION_CATEGORY_IDS          = 'muyu_digital_category_ids';
+        const OPTION_TAG_IDS               = 'muyu_digital_tag_ids';
+        const OPTION_REDIRECT_MAP          = 'muyu_phys_to_dig_map';
+        const OPTION_CATEGORY_REDIRECT_MAP = 'muyu_cat_redirect_map'; // NEW v4.4.0
+        const OPTION_LAST_UPDATE           = 'muyu_digital_list_updated';
+        const CRON_HOOK                    = 'muyu_cron_rebuild_digital_indexes';
         
         public static function get_instance(): self {
             if ( null === self::$instance ) {
@@ -60,10 +70,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             
             // ---- Variaciones y Precios (Solo en subdominios restringidos) ----
             if ( $this->is_restricted_user() ) {
-                // 1. Ocultar del HTML la opción Impresas (Método seguro de la v2.2)
                 add_filter( 'woocommerce_dropdown_variation_attribute_options_args', [ $this, 'clean_variation_dropdown' ], 10, 1 );
-                
-                // 4. Arreglar Precio en Catálogos
                 add_filter( 'woocommerce_variable_price_html', [ $this, 'display_digital_price_in_catalog' ], 99, 2 );
                 add_filter( 'woocommerce_variable_sale_price_html', [ $this, 'display_digital_price_in_catalog' ], 99, 2 );
             }
@@ -79,11 +86,36 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             return 'muyunicos.com' !== str_replace( 'www.', '', $host );
         }
 
-        /**
-         * Devuelve IDs de productos digitales desde opción cacheada.
-         */
         private function get_cached_digital_product_ids(): array {
             return array_map( 'intval', (array) get_option( self::OPTION_PRODUCT_IDS, [] ) );
+        }
+
+        /**
+         * Intenta resolver un WP_Term de product_cat a partir del path de la
+         * request actual, sin depender de is_product_category() (que devuelve
+         * false en 404). Útil cuando WP ya resolvió la URL como 404 porque
+         * la categoría existe en taxonomía pero no tiene productos visibles.
+         *
+         * Estrategia:
+         * 1. Obtiene el path limpio de la request ($_SERVER['REQUEST_URI']).
+         * 2. Extrae el último segmento de slug (ej. /tienda-juegosparawii/ → "tienda-juegosparawii").
+         * 3. Busca ese slug en product_cat con get_term_by().
+         *
+         * @return WP_Term|null
+         */
+        private function get_category_from_request_path(): ?\WP_Term {
+            $request_uri = sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ?? '' ) );
+            // Eliminar query string y normalizar slashes
+            $path = trim( strtok( $request_uri, '?' ), '/' );
+            if ( empty( $path ) ) return null;
+
+            // Extraer el segmento más profundo del path como slug candidato
+            $segments = array_filter( explode( '/', $path ) );
+            $slug     = end( $segments );
+            if ( empty( $slug ) ) return null;
+
+            $term = get_term_by( 'slug', $slug, 'product_cat' );
+            return ( $term && ! is_wp_error( $term ) ) ? $term : null;
         }
 
         // =====================================================================
@@ -94,15 +126,16 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             $digital_product_ids = $this->get_digital_product_ids();
             
             if ( empty( $digital_product_ids ) ) {
-                $this->save_indexes( [], [], [], [] );
+                $this->save_indexes( [], [], [], [], [] );
                 return 0;
             }
             
             list( $category_ids, $tag_ids ) = $this->get_product_terms( $digital_product_ids );
-            $category_ids = $this->expand_category_hierarchy( $category_ids );
-            $redirect_map = $this->build_redirect_map( $digital_product_ids );
+            $category_ids    = $this->expand_category_hierarchy( $category_ids );
+            $redirect_map    = $this->build_redirect_map( $digital_product_ids );
+            $cat_redirect_map = $this->build_category_redirect_map( $digital_product_ids, $category_ids );
             
-            $this->save_indexes( $digital_product_ids, $category_ids, $tag_ids, $redirect_map );
+            $this->save_indexes( $digital_product_ids, $category_ids, $tag_ids, $redirect_map, $cat_redirect_map );
             return count( $digital_product_ids );
         }
         
@@ -169,13 +202,109 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             }
             return $redirect_map;
         }
+
+        /**
+         * Construye el mapa de redirección de categorías.
+         *
+         * Para CADA categoría existente en la tienda que NO esté en $digital_category_ids,
+         * busca el ancestro más cercano con productos digitales reales.
+         * El mapa se guarda con dos índices para cobertura total:
+         *   - Por term_id:  (int)   → (int)   destino
+         *   - Por slug:     (string)→ (string) slug destino
+         *
+         * Esto permite resolver redirecciones tanto desde is_product_category()
+         * como desde URLs crudas (404 por categoría sin productos visibles).
+         *
+         * @param int[]   $digital_product_ids   IDs de productos digitales.
+         * @param int[]   $digital_category_ids  IDs de categorías con cobertura digital.
+         * @return array  {
+         *   'by_id'   => [ source_term_id => dest_term_id ],
+         *   'by_slug' => [ source_slug    => dest_slug    ],
+         * }
+         */
+        private function build_category_redirect_map( array $digital_product_ids, array $digital_category_ids ): array {
+            // Obtener todas las categorías de producto publicadas
+            $all_cats = get_terms( [
+                'taxonomy'   => 'product_cat',
+                'hide_empty' => false,
+                'fields'     => 'all',
+            ] );
+
+            if ( is_wp_error( $all_cats ) || empty( $all_cats ) ) {
+                return [ 'by_id' => [], 'by_slug' => [] ];
+            }
+
+            // Índice rápido: term_id → WP_Term
+            $term_index = [];
+            foreach ( $all_cats as $term ) {
+                $term_index[ (int) $term->term_id ] = $term;
+            }
+
+            $by_id   = [];
+            $by_slug = [];
+
+            foreach ( $all_cats as $source_term ) {
+                $source_id = (int) $source_term->term_id;
+
+                // Si la categoría YA tiene cobertura digital, no necesita redirección
+                if ( in_array( $source_id, $digital_category_ids, true ) ) {
+                    continue;
+                }
+
+                // Buscar el primer ancestro (o la propia categoría subiendo) con productos digitales
+                $dest_id = $this->find_nearest_digital_ancestor(
+                    $source_id,
+                    $digital_category_ids,
+                    $term_index
+                );
+
+                if ( $dest_id && isset( $term_index[ $dest_id ] ) ) {
+                    $by_id[ $source_id ]                    = $dest_id;
+                    $by_slug[ $source_term->slug ]          = $term_index[ $dest_id ]->slug;
+                }
+            }
+
+            return [ 'by_id' => $by_id, 'by_slug' => $by_slug ];
+        }
+
+        /**
+         * Sube por la jerarquía de padres desde $term_id hasta encontrar
+         * el primer ancestro cuyo term_id esté en $digital_category_ids.
+         *
+         * @param int   $term_id
+         * @param int[] $digital_category_ids
+         * @param array $term_index  term_id => WP_Term
+         * @return int|null  term_id del ancestro digital, o null si no existe.
+         */
+        private function find_nearest_digital_ancestor( int $term_id, array $digital_category_ids, array $term_index ): ?int {
+            $visited   = [];
+            $current   = $term_index[ $term_id ] ?? null;
+            $parent_id = $current ? (int) $current->parent : 0;
+
+            while ( $parent_id && ! isset( $visited[ $parent_id ] ) ) {
+                $visited[ $parent_id ] = true;
+                if ( in_array( $parent_id, $digital_category_ids, true ) ) {
+                    return $parent_id;
+                }
+                $parent_term = $term_index[ $parent_id ] ?? null;
+                $parent_id   = $parent_term ? (int) $parent_term->parent : 0;
+            }
+            return null;
+        }
         
-        private function save_indexes( array $product_ids, array $category_ids, array $tag_ids, array $redirect_map ): void {
-            update_option( self::OPTION_PRODUCT_IDS, $product_ids, false );
-            update_option( self::OPTION_CATEGORY_IDS, $category_ids, false );
-            update_option( self::OPTION_TAG_IDS, $tag_ids, false );
-            update_option( self::OPTION_REDIRECT_MAP, $redirect_map, false );
-            update_option( self::OPTION_LAST_UPDATE, current_time( 'mysql' ), false );
+        private function save_indexes(
+            array $product_ids,
+            array $category_ids,
+            array $tag_ids,
+            array $redirect_map,
+            array $cat_redirect_map = []
+        ): void {
+            update_option( self::OPTION_PRODUCT_IDS,           $product_ids,     false );
+            update_option( self::OPTION_CATEGORY_IDS,          $category_ids,    false );
+            update_option( self::OPTION_TAG_IDS,               $tag_ids,         false );
+            update_option( self::OPTION_REDIRECT_MAP,          $redirect_map,    false );
+            update_option( self::OPTION_CATEGORY_REDIRECT_MAP, $cat_redirect_map, false );
+            update_option( self::OPTION_LAST_UPDATE,           current_time( 'mysql' ), false );
         }
 
         // =====================================================================
@@ -188,23 +317,12 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             wp_send_json_success( sprintf( 'Índice reconstruido correctamente. Total productos digitales: %d', $this->rebuild_digital_indexes() ) );
         }
         
-        /**
-         * Programa un rebuild en WP Cron para ejecutarse en background.
-         * Se usa en lugar de un transient + shutdown para no bloquear la
-         * petición actual ni saturar la memoria del proceso PHP en curso.
-         */
         public function schedule_rebuild(): void {
             if ( ! wp_next_scheduled( self::CRON_HOOK ) ) {
                 wp_schedule_single_event( time() + 30, self::CRON_HOOK );
             }
         }
         
-        /**
-         * Verificación silenciosa: si los índices no existen, programa un rebuild
-         * vía Cron en lugar de ejecutarlo síncronamente en admin_init.
-         * Esto evita queries pesadas en cada carga de admin cuando los índices
-         * están vacíos (ej: primera instalación o después de borrar opciones).
-         */
         public function ensure_indexes_exist(): void {
             $ids = get_option( self::OPTION_PRODUCT_IDS, false );
             if ( false === $ids || empty( $ids ) ) {
@@ -232,12 +350,17 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             if ( is_admin() || ! $query->is_main_query() ) return;
             if ( $query->is_product() || ( $query->is_singular() && 'product' === $query->get( 'post_type' ) ) ) return;
             
-            $is_shop_query = ( ( function_exists( 'is_shop' ) && is_shop() ) || ( function_exists( 'is_product_category' ) && is_product_category() ) || ( function_exists( 'is_product_tag' ) && is_product_tag() ) || is_search() || 'product' === $query->get( 'post_type' ) );
+            $is_shop_query = (
+                ( function_exists( 'is_shop' ) && is_shop() ) ||
+                ( function_exists( 'is_product_category' ) && is_product_category() ) ||
+                ( function_exists( 'is_product_tag' ) && is_product_tag() ) ||
+                is_search() ||
+                'product' === $query->get( 'post_type' )
+            );
             if ( ! $is_shop_query || ! $this->is_restricted_user() ) return;
             
             $digital_ids = get_option( self::OPTION_PRODUCT_IDS, false );
             if ( false === $digital_ids || empty( $digital_ids ) ) {
-                // Índices no disponibles: programar rebuild silencioso y mostrar catálogo vacío temporalmente.
                 $this->schedule_rebuild();
                 $digital_ids = [];
             }
@@ -263,45 +386,115 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         public function filter_menu_items( array $items, $menu, array $args ): array {
             if ( is_admin() || wp_is_json_request() || ! $this->is_restricted_user() ) return $items;
             $digital_cat_ids = array_map( 'intval', (array) get_option( self::OPTION_CATEGORY_IDS, [] ) );
-            return array_filter( $items, fn($item) => ! (isset($item->object) && 'product_cat' === $item->object) || in_array((int)$item->object_id, $digital_cat_ids, true) );
+            return array_filter( $items, fn($item) =>
+                ! ( isset( $item->object ) && 'product_cat' === $item->object ) ||
+                in_array( (int) $item->object_id, $digital_cat_ids, true )
+            );
         }
 
+        /**
+         * handle_redirects() — v4.4.0
+         *
+         * Flujo mejorado:
+         * 1. Ruta normal (is_product_category / tag / product) → igual que antes.
+         * 2. NUEVO: Si la request es un 404 en un subdominio restringido,
+         *    intenta resolver el slug de la URL como product_cat y aplicar
+         *    el mapa de redirección de categorías (OPTION_CATEGORY_REDIRECT_MAP).
+         *    Esto cubre el caso donde la categoría existe en taxonomía pero WP/WC
+         *    genera 404 porque no tiene productos visibles en el subdominio.
+         */
         public function handle_redirects(): void {
             if ( is_admin() || ! $this->is_restricted_user() ) return;
-            if ( ! is_product() && ! is_product_category() && ! is_product_tag() ) return;
-            
-            $target_url     = '';
+
+            $target_url      = '';
             $should_redirect = false;
-            
+
             if ( is_product_category() ) {
                 list( $should_redirect, $target_url ) = $this->handle_category_redirect();
+
             } elseif ( is_product_tag() ) {
                 list( $should_redirect, $target_url ) = $this->handle_tag_redirect();
+
             } elseif ( is_product() ) {
                 list( $should_redirect, $target_url ) = $this->handle_product_redirect();
+
+            } elseif ( is_404() ) {
+                // ── NUEVO v4.4.0 ──────────────────────────────────────────────
+                // La categoría puede existir pero WC la resuelve como 404 porque
+                // todos sus productos están filtrados (solo físicos en subdominio
+                // restringido). Intentamos resolver desde la URL cruda.
+                list( $should_redirect, $target_url ) = $this->handle_404_category_redirect();
             }
 
-            // Fallback 404 seguro: si Woo sigue respondiendo 404 en una categoría de producto
-            // y no se decidió redirigir, enviamos al catálogo principal del subdominio.
-            if ( ! $should_redirect && is_product_category() && is_404() ) {
-                $should_redirect = true;
-                $target_url      = wc_get_page_permalink( 'shop' );
-            }
-            
             if ( $should_redirect ) {
                 $this->execute_redirect( $target_url );
             }
         }
+
+        /**
+         * Resolución de redirección para 404s causados por categorías sin
+         * productos visibles en el subdominio actual.
+         *
+         * Orden de resolución:
+         * 1. Resolver el slug candidato desde el path de la request.
+         * 2. Verificar que el term pertenezca a product_cat.
+         * 3. Consultar OPTION_CATEGORY_REDIRECT_MAP['by_id'] para el destino.
+         * 4. Si el índice no tiene entrada para esta categoría (cat nueva o índice
+         *    desactualizado), escalar por padres en tiempo real como fallback.
+         *
+         * @return array [bool $should_redirect, string $target_url]
+         */
+        private function handle_404_category_redirect(): array {
+            $term = $this->get_category_from_request_path();
+            if ( ! $term ) {
+                return [ false, '' ];
+            }
+
+            $source_id   = (int) $term->term_id;
+            $digital_cats = array_map( 'intval', (array) get_option( self::OPTION_CATEGORY_IDS, [] ) );
+
+            // Si la categoría YA es digital (raro que sea 404, pero cubrimos el caso)
+            if ( in_array( $source_id, $digital_cats, true ) ) {
+                return [ false, '' ];
+            }
+
+            // 1. Consultar el mapa precalculado (O(1))
+            $cat_redirect_map = get_option( self::OPTION_CATEGORY_REDIRECT_MAP, [] );
+            $by_id = $cat_redirect_map['by_id'] ?? [];
+
+            if ( isset( $by_id[ $source_id ] ) ) {
+                $dest_id  = (int) $by_id[ $source_id ];
+                $dest_url = get_term_link( $dest_id, 'product_cat' );
+                if ( ! is_wp_error( $dest_url ) ) {
+                    return [ true, $dest_url ];
+                }
+            }
+
+            // 2. Fallback: escalar por padres en tiempo real si el índice está
+            //    desactualizado o la categoría es nueva.
+            $parent_id = (int) $term->parent;
+            while ( $parent_id ) {
+                if ( in_array( $parent_id, $digital_cats, true ) ) {
+                    $dest_url = get_term_link( $parent_id, 'product_cat' );
+                    if ( ! is_wp_error( $dest_url ) ) {
+                        // Programar rebuild para que el índice se actualice.
+                        $this->schedule_rebuild();
+                        return [ true, $dest_url ];
+                    }
+                }
+                $parent_term = get_term( $parent_id, 'product_cat' );
+                $parent_id   = ( $parent_term && ! is_wp_error( $parent_term ) ) ? (int) $parent_term->parent : 0;
+            }
+
+            // 3. Sin ancestro digital → shop (igual que el fallback general previo)
+            return [ true, '' ];
+        }
         
         /**
-         * Redirección de categorías para usuarios restringidos.
-         * Lógica simplificada:
-         * - Si la categoría NO está en OPTION_CATEGORY_IDS → subir por padres hasta uno que sí esté.
-         *   Si no se encuentra ninguno, delegar en execute_redirect() (shop/búsqueda).
-         * - Si la categoría SÍ está en OPTION_CATEGORY_IDS → no redirigir, confiar en el índice digital.
-         *
-         * No usa NavChips ni OPTION_PRODUCT_IDS aquí; toda la inteligencia está en
-         * el índice precalculado de categorías digitales.
+         * Redirección de categorías para usuarios restringidos (is_product_category() === true).
+         * - Si la categoría NO está en OPTION_CATEGORY_IDS → consultar OPTION_CATEGORY_REDIRECT_MAP,
+         *   luego subir por padres como fallback.
+         * - Si la categoría SÍ está → no redirigir.
          */
         private function handle_category_redirect(): array {
             $queried_object = get_queried_object();
@@ -312,10 +505,21 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             $term_id      = (int) $queried_object->term_id;
             $digital_cats = array_map( 'intval', (array) get_option( self::OPTION_CATEGORY_IDS, [] ) );
 
-            // Caso 1: categoría NO está en el índice digital → subir a padres.
             if ( ! in_array( $term_id, $digital_cats, true ) ) {
-                $parent_id = $queried_object->parent;
+                // Consultar mapa precalculado primero
+                $cat_redirect_map = get_option( self::OPTION_CATEGORY_REDIRECT_MAP, [] );
+                $by_id = $cat_redirect_map['by_id'] ?? [];
 
+                if ( isset( $by_id[ $term_id ] ) ) {
+                    $dest_id  = (int) $by_id[ $term_id ];
+                    $dest_url = get_term_link( $dest_id, 'product_cat' );
+                    if ( ! is_wp_error( $dest_url ) ) {
+                        return [ true, $dest_url ];
+                    }
+                }
+
+                // Fallback: subir por padres
+                $parent_id = $queried_object->parent;
                 while ( $parent_id ) {
                     if ( in_array( (int) $parent_id, $digital_cats, true ) ) {
                         return [ true, get_term_link( $parent_id, 'product_cat' ) ];
@@ -324,11 +528,9 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                     $parent_id = ( $term && ! is_wp_error( $term ) ) ? $term->parent : 0;
                 }
 
-                // Sin ningún padre digital → dejar que execute_redirect() lleve a shop/búsqueda.
                 return [ true, '' ];
             }
 
-            // Caso 2: categoría SÍ está en el índice digital → confiar en el índice y quedarse.
             return [ false, '' ];
         }
         
@@ -343,7 +545,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             
             $digital_ids = (array) get_option( self::OPTION_PRODUCT_IDS, [] );
             if ( empty( $digital_ids ) ) {
-                // Sin índice disponible: programar rebuild y no redirigir hasta próxima visita.
                 $this->schedule_rebuild();
                 return [ false, '' ];
             }
@@ -382,7 +583,9 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         private function execute_redirect( string $target_url ): void {
             global $post;
             if ( empty( $target_url ) || is_wp_error( $target_url ) ) {
-                $target_url = ( is_product() && isset( $post->post_title ) ) ? home_url( '/?s=' . urlencode( $post->post_title ) . '&post_type=product' ) : wc_get_page_permalink( 'shop' );
+                $target_url = ( is_product() && isset( $post->post_title ) )
+                    ? home_url( '/?s=' . urlencode( $post->post_title ) . '&post_type=product' )
+                    : wc_get_page_permalink( 'shop' );
             }
             
             if ( function_exists( 'insertar_prefijo_idioma' ) && function_exists( 'muyu_country_language_prefix' ) ) {
@@ -437,7 +640,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
          *
          * FIX v4.2.0: se agrega update_meta_cache() antes del loop para pre-cargar
          * todos los postmeta de las variaciones en una única query, eliminando el
-         * patrón N+1 queries (2 get_post_meta() por variación × N variaciones × M productos).
+         * patrón N+1 queries.
          */
         public function display_digital_price_in_catalog( $price, $product ) {
             if ( is_product() ) return $price;
@@ -445,7 +648,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             $variations = $product->get_children();
             if ( empty( $variations ) ) return $price;
 
-            // Pre-cargar todos los metas en una sola query antes del loop
             update_meta_cache( 'post', $variations );
 
             foreach ( $variations as $var_id ) {
@@ -459,24 +661,14 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             return $price;
         }
         
-        /**
-         * 4. Script exacto de la v2.2 que fuerza la selección y oculta suavemente la tabla
-         * CORRECCIÓN: Ahora SOLO aplica para usuarios restringidos.
-         */
         public function autoselect_format_variation() {
             global $product;
             if ( ! $product || ! $product->is_type( 'variable' ) ) return;
             
-            $is_restricted = $this->is_restricted_user();
-            
-            // FIX: Si el usuario NO está restringido (ej. Argentina), abandonamos la función.
-            // WooCommerce simplemente mostrará 'impresas' por defecto (establecido arriba)
-            // y permitirá al usuario cambiar a "digitales/pdf" sin forzarlo a volver.
-            if ( ! $is_restricted ) {
+            if ( ! $this->is_restricted_user() ) {
                 return;
             }
 
-            // Si llegamos aquí, el usuario ESTÁ restringido (ej. México, Chile, etc.)
             $target_slug = 'digitales'; 
             ?>
             <script type="text/javascript">
@@ -518,7 +710,6 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                         if ( $form.find('table.variations tr:visible').length === 0 ) {
                             $form.find('.variations').fadeOut(200);
                         }
-                        // Ocultar botón de limpiar opciones
                         $form.find('.reset_variations').hide();
                     }
                 });
