@@ -1,7 +1,7 @@
 <?php
 /**
  * Muy Únicos - Digital Restriction System
- * * Sistema de restricción de contenido digital v4.3.0 (Category Redirect + NavChips Integration)
+ * * Sistema de restricción de contenido digital v4.3.1 (Category Redirect + NavChips Integration + 404-safe fallback)
  * Propósito: Restringir productos físicos en subdominios, mostrando solo 
  * productos digitales. Optimizado para rendimiento y compatibilidad.
  * * @package GeneratePress_Child
@@ -270,7 +270,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             if ( is_admin() || ! $this->is_restricted_user() ) return;
             if ( ! is_product() && ! is_product_category() && ! is_product_tag() ) return;
             
-            $target_url   = '';
+            $target_url     = '';
             $should_redirect = false;
             
             if ( is_product_category() ) {
@@ -279,6 +279,13 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 list( $should_redirect, $target_url ) = $this->handle_tag_redirect();
             } elseif ( is_product() ) {
                 list( $should_redirect, $target_url ) = $this->handle_product_redirect();
+            }
+
+            // Si no hay redirección decidida pero estamos en categoría/taxonomía de producto y la query está vacía,
+            // evitamos 404 forzando un fallback a shop.
+            if ( ! $should_redirect && is_product_category() && is_404() ) {
+                $should_redirect = true;
+                $target_url      = wc_get_page_permalink( 'shop' );
             }
             
             if ( $should_redirect ) {
