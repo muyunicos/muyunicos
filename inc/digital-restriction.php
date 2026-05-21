@@ -1,7 +1,7 @@
 <?php
 /**
  * Muy Únicos - Digital Restriction System
- * * Sistema de restricción de contenido digital v4.2.0 (Fix Memory: N+1 Queries Catálogo)
+ * * Sistema de restricción de contenido digital v4.3.0 (Category Redirect + NavChips Integration)
  * Propósito: Restringir productos físicos en subdominios, mostrando solo 
  * productos digitales. Optimizado para rendimiento y compatibilidad.
  * * @package GeneratePress_Child
@@ -77,6 +77,13 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             $host = sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ?? '' ) );
             $host = preg_replace( '/:\d+$/', '', $host );
             return 'muyunicos.com' !== str_replace( 'www.', '', $host );
+        }
+
+        /**
+         * Devuelve IDs de productos digitales desde opción cacheada.
+         */
+        private function get_cached_digital_product_ids(): array {
+            return array_map( 'intval', (array) get_option( self::OPTION_PRODUCT_IDS, [] ) );
         }
 
         // =====================================================================
@@ -263,32 +270,93 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             if ( is_admin() || ! $this->is_restricted_user() ) return;
             if ( ! is_product() && ! is_product_category() && ! is_product_tag() ) return;
             
-            $target_url = ''; $should_redirect = false;
+            $target_url   = '';
+            $should_redirect = false;
             
-            if ( is_product_category() ) list( $should_redirect, $target_url ) = $this->handle_category_redirect();
-            elseif ( is_product_tag() ) list( $should_redirect, $target_url ) = $this->handle_tag_redirect();
-            elseif ( is_product() ) list( $should_redirect, $target_url ) = $this->handle_product_redirect();
+            if ( is_product_category() ) {
+                list( $should_redirect, $target_url ) = $this->handle_category_redirect();
+            } elseif ( is_product_tag() ) {
+                list( $should_redirect, $target_url ) = $this->handle_tag_redirect();
+            } elseif ( is_product() ) {
+                list( $should_redirect, $target_url ) = $this->handle_product_redirect();
+            }
             
-            if ( $should_redirect ) $this->execute_redirect( $target_url );
+            if ( $should_redirect ) {
+                $this->execute_redirect( $target_url );
+            }
         }
         
+        /**
+         * Redirección de categorías para usuarios restringidos.
+         * Si la categoría es puramente física, intenta subir a un padre que sí tenga
+         * productos digitales (usando índices digitales + NavChips). Si no hay
+         * ningún padre válido, delega en execute_redirect() para evitar 404.
+         */
         private function handle_category_redirect(): array {
             $queried_object = get_queried_object();
+            if ( ! $queried_object || ! isset( $queried_object->term_id ) ) {
+                return [ false, '' ];
+            }
+
+            $term_id     = (int) $queried_object->term_id;
             $digital_cats = array_map( 'intval', (array) get_option( self::OPTION_CATEGORY_IDS, [] ) );
-            if ( ! $queried_object || in_array( (int) $queried_object->term_id, $digital_cats, true ) ) return [ false, '' ];
-            
+
+            // Si la categoría no está marcada como digital en los índices, subimos a padres.
+            if ( ! in_array( $term_id, $digital_cats, true ) ) {
+                $parent_id = $queried_object->parent;
+                while ( $parent_id ) {
+                    if ( in_array( (int) $parent_id, $digital_cats, true ) ) {
+                        return [ true, get_term_link( $parent_id, 'product_cat' ) ];
+                    }
+                    $term      = get_term( $parent_id, 'product_cat' );
+                    $parent_id = ( $term && ! is_wp_error( $term ) ) ? $term->parent : 0;
+                }
+                // No hay padres digitales claros → permitir fallback genérico.
+                return [ true, '' ];
+            }
+
+            // Si está marcada como digital, pero el índice de productos digitales está vacío
+            // o el árbol no tiene productos digitales visibles, intentamos subir a un padre
+            // que sí tenga productos digitales. Esto evita mostrar categorías "vacías".
+            $digital_products = $this->get_cached_digital_product_ids();
+            if ( empty( $digital_products ) ) {
+                // Sin índice de productos digitales no podemos decidir mejor, delegamos.
+                return [ false, '' ];
+            }
+
+            // NavChips: necesitamos mu_navchips_get_products_in_category_tree() disponible.
+            if ( ! function_exists( 'mu_navchips_get_products_in_category_tree' ) ) {
+                return [ false, '' ];
+            }
+
+            $products_in_tree = mu_navchips_get_products_in_category_tree( $term_id );
+            $has_digital_here = ! empty( array_intersect( $products_in_tree, $digital_products ) );
+
+            if ( $has_digital_here ) {
+                // Categoría digital con productos digitales visibles → sin redirección.
+                return [ false, '' ];
+            }
+
+            // Buscar el primer padre que esté en índices digitales Y tenga productos digitales reales.
             $parent_id = $queried_object->parent;
             while ( $parent_id ) {
-                if ( in_array( (int) $parent_id, $digital_cats, true ) ) return [ true, get_term_link( $parent_id, 'product_cat' ) ];
-                $term = get_term( $parent_id, 'product_cat' );
+                if ( in_array( (int) $parent_id, $digital_cats, true ) ) {
+                    $parent_products = mu_navchips_get_products_in_category_tree( $parent_id );
+                    if ( ! empty( array_intersect( $parent_products, $digital_products ) ) ) {
+                        return [ true, get_term_link( $parent_id, 'product_cat' ) ];
+                    }
+                }
+                $term      = get_term( $parent_id, 'product_cat' );
                 $parent_id = ( $term && ! is_wp_error( $term ) ) ? $term->parent : 0;
             }
+
+            // Sin padres con digitales: delegamos en execute_redirect() para enviar a shop/búsqueda.
             return [ true, '' ];
         }
         
         private function handle_tag_redirect(): array {
             $queried_object = get_queried_object();
-            $digital_tags = array_map( 'intval', (array) get_option( self::OPTION_TAG_IDS, [] ) );
+            $digital_tags   = array_map( 'intval', (array) get_option( self::OPTION_TAG_IDS, [] ) );
             return [ ( $queried_object && ! in_array( (int) $queried_object->term_id, $digital_tags, true ) ), '' ];
         }
         
@@ -340,10 +408,21 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             }
             
             if ( function_exists( 'insertar_prefijo_idioma' ) && function_exists( 'muyu_country_language_prefix' ) ) {
-                $sub = strtolower( explode( '.', $_SERVER['HTTP_HOST'] ?? '' )[0] );
-                $country = match($sub) { 'mexico'=>'MX','br'=>'BR','co'=>'CO','ec'=>'EC','cl'=>'CL','pe'=>'PE','ar'=>'AR', default=> strtoupper(substr($sub,0,2)) };
+                $sub     = strtolower( explode( '.', $_SERVER['HTTP_HOST'] ?? '' )[0] );
+                $country = match ( $sub ) {
+                    'mexico' => 'MX',
+                    'br'     => 'BR',
+                    'co'     => 'CO',
+                    'ec'     => 'EC',
+                    'cl'     => 'CL',
+                    'pe'     => 'PE',
+                    'ar'     => 'AR',
+                    default  => strtoupper( substr( $sub, 0, 2 ) ),
+                };
                 $prefix = muyu_country_language_prefix( $country );
-                if ( $prefix ) $target_url = insertar_prefijo_idioma( $target_url, $prefix );
+                if ( $prefix ) {
+                    $target_url = insertar_prefijo_idioma( $target_url, $prefix );
+                }
             }
             
             wp_redirect( $target_url, 302 );
