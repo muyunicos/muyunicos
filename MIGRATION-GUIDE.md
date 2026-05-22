@@ -1,6 +1,6 @@
 MUY ÜNCOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Modular Pragmático · v2.10.0 · May 21, 2026
+Estado: Modular Pragmático · v2.11.0 · May 21, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -58,11 +58,12 @@ muyunicos/ (generatepress-child)
 │   ├── geo.php             # Multi-país: detección por subdominio, decimales, modal
 │   │                       # sugerencia de país, selector de header, prefijo idioma.
 │   │                       # muyu_get_cached_geolocation() — una sola llamada/request.
-│   ├── digital-restriction.php  # Restricción productos físicos por subdominio v4.4.0.
+│   ├── digital-restriction.php  # Restricción productos físicos por subdominio v4.5.0.
 │   │                            # Rebuild de índice vía wp_schedule_single_event().
 │   │                            # ÍNDICES DISPONIBLES:
 │   │                            #   OPTION_PRODUCT_IDS           → IDs productos digitales
 │   │                            #   OPTION_CATEGORY_IDS          → IDs categorías con cobertura digital
+│   │                            #   OPTION_DIRECT_CATEGORY_IDS   → IDs categorías con digital DIRECTO
 │   │                            #   OPTION_TAG_IDS               → IDs tags digitales
 │   │                            #   OPTION_REDIRECT_MAP          → product_id físico → product_id digital
 │   │                            #   OPTION_CATEGORY_REDIRECT_MAP → mapa cat redirect (v4.4.0)
@@ -72,14 +73,19 @@ muyunicos/ (generatepress-child)
 │   │                            #   is_product_category() → handle_category_redirect()
 │   │                            #     1. Consulta OPTION_CATEGORY_REDIRECT_MAP by_id (O(1))
 │   │                            #     2. Fallback: sube por padres en runtime
-│   │                            #   is_404() → handle_404_category_redirect() [NUEVO v4.4.0]
+│   │                            #   is_404() → handle_404_category_redirect() [v4.5.0]
 │   │                            #     Resuelve slug desde $_SERVER['REQUEST_URI']
+│   │                            #     iterando TODOS los segmentos del path (no solo el último)
 │   │                            #     → get_term_by('slug', ..., 'product_cat')
-│   │                            #     → consulta OPTION_CATEGORY_REDIRECT_MAP by_id
+│   │                            #     → lookup by_slug (O(1), PRIMERO) [FIX v4.5.0]
+│   │                            #     → lookup by_id (fallback del mapa)
 │   │                            #     → fallback: sube padres + schedule_rebuild()
-│   │                            #   Cubre el caso: categoría existe en taxonomía pero
-│   │                            #   WP/WC responde 404 porque todos sus productos son
-│   │                            #   físicos (filtrados en subdominio restringido).
+│   │                            #     Anti-loop: si categoría digital genera 404, solo
+│   │                            #     redirigir si URL actual ≠ canonical de get_term_link()
+│   │                            #   filter_category_terms(): guard is_404() [FIX v4.5.0]
+│   │                            #     Si WP resolvió como 404, no filtrar terms.
+│   │                            #     Evita que WC_Query excluya del include la categoría
+│   │                            #     cuya URL intenta resolverse como ruta válida.
 │   ├── auth-modal.php      # Modal Login/Registro + endpoints wc_ajax_mu_*
 │   ├── login.php           # Personalización wp-login.php v2.1.0
 │   ├── checkout.php        # Checkout Híbrido + Login Gate (mu_checkout_login_notice p5)
@@ -288,6 +294,8 @@ PHP
 - Coming Soon standalone: logo y número WA hardcodeados. Cambios → editar templates/coming-soon.php directamente.
 - Category Redirect Map: OPTION_CATEGORY_REDIRECT_MAP se construye en rebuild_digital_indexes().
   Tras agregar productos a una categoría nueva, forzar rebuild desde Admin → Productos → Reindexar Digitales.
+- 404 routing: filter_category_terms() NO filtra cuando is_404() = true. Esto es intencional.
+  Si WP resolvió como 404, filtrar terms rompe el contexto de handle_404_category_redirect().
 
 JavaScript
 - IIFE + 'use strict' + DOMContentLoaded. Cero jQuery salvo obligación WC legacy.
