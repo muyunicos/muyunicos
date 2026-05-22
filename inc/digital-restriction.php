@@ -1,7 +1,17 @@
 <?php
 /**
  * Muy Únicos - Digital Restriction System
- * Sistema de restricción de contenido digital v4.5.0
+ * Sistema de restricción de contenido digital v4.6.0
+ *
+ * CHANGELOG v4.6.0:
+ * - FIX: categoría con cobertura digital pero único producto oculto del catálogo
+ *   (publish + hidden / exclude-from-catalog) entraba como ruta válida y mostraba
+ *   página vacía tras filter_product_queries. handle_category_redirect() ahora
+ *   redirige al shop si la categoría no tiene ningún producto digital visible.
+ *   filter_menu_items() excluye esas categorías del menú con el mismo criterio.
+ * - NEW: category_has_visible_digital_products() helper — WP_Query limitada a 1,
+ *   tax_query con product_visibility NOT IN exclude-from-catalog, cache transient
+ *   mu_digital_cat_has_visible_{term_id} (TTL 12h, invalidado en save_indexes()).
  *
  * CHANGELOG v4.5.0:
  * - FIX #1: handle_404_category_redirect(): lookup by_slug ANTES del by_id.
@@ -127,6 +137,67 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 }
             }
             return null;
+        }
+
+        /**
+         * ¿La categoría tiene al menos 1 producto visible en catálogo?
+         *
+         * En subdominios digitales, OPTION_CATEGORY_IDS incluye categorías cuyo
+         * único producto digital puede estar oculto (catalog_visibility=hidden o
+         * exclude-from-catalog). Esas categorías no se redirigen por índice pero
+         * al entrar muestran 0 resultados tras filter_product_queries.
+         *
+         * Este helper detecta esos casos: contra el set de OPTION_PRODUCT_IDS
+         * (productos digitales publicados), verifica que al menos 1 esté en la
+         * categoría y NO esté excluido del catálogo via product_visibility.
+         *
+         * Transient mu_digital_cat_has_visible_{term_id} (TTL 12h),
+         * invalidado en save_indexes() tras rebuild.
+         */
+        private function category_has_visible_digital_products( int $term_id ): bool {
+            if ( $term_id <= 0 ) return false;
+
+            $cache_key = 'mu_digital_cat_has_visible_' . $term_id;
+            $cached    = get_transient( $cache_key );
+            if ( false !== $cached ) {
+                return '1' === $cached;
+            }
+
+            $digital_ids = $this->get_cached_digital_product_ids();
+            if ( empty( $digital_ids ) ) {
+                set_transient( $cache_key, '0', 12 * HOUR_IN_SECONDS );
+                return false;
+            }
+
+            $query = new \WP_Query( [
+                'post_type'              => 'product',
+                'post_status'            => 'publish',
+                'posts_per_page'         => 1,
+                'fields'                 => 'ids',
+                'no_found_rows'          => true,
+                'update_post_meta_cache' => false,
+                'update_post_term_cache' => false,
+                'post__in'               => $digital_ids,
+                'tax_query'              => [
+                    'relation' => 'AND',
+                    [
+                        'taxonomy'         => 'product_cat',
+                        'field'            => 'term_id',
+                        'terms'            => [ $term_id ],
+                        'include_children' => true,
+                    ],
+                    [
+                        'taxonomy' => 'product_visibility',
+                        'field'    => 'name',
+                        'terms'    => [ 'exclude-from-catalog' ],
+                        'operator' => 'NOT IN',
+                    ],
+                ],
+            ] );
+
+            $has = ! empty( $query->posts );
+            set_transient( $cache_key, $has ? '1' : '0', 12 * HOUR_IN_SECONDS );
+            return $has;
         }
 
         // =====================================================================
@@ -340,6 +411,8 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             array $cat_redirect_map = [],
             array $direct_category_ids = []
         ): void {
+            $previous_category_ids = array_map( 'intval', (array) get_option( self::OPTION_CATEGORY_IDS, [] ) );
+
             update_option( self::OPTION_PRODUCT_IDS,            $product_ids,         false );
             update_option( self::OPTION_CATEGORY_IDS,           $category_ids,        false );
             update_option( self::OPTION_DIRECT_CATEGORY_IDS,    $direct_category_ids, false );
@@ -347,6 +420,13 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             update_option( self::OPTION_REDIRECT_MAP,           $redirect_map,        false );
             update_option( self::OPTION_CATEGORY_REDIRECT_MAP,  $cat_redirect_map,    false );
             update_option( self::OPTION_LAST_UPDATE,            current_time( 'mysql' ), false );
+
+            // Invalidar transients de visibilidad de categorías (helper
+            // category_has_visible_digital_products). Cubre tanto las categorías
+            // previas como las actuales por si una saliera del índice.
+            foreach ( array_unique( array_merge( $previous_category_ids, $category_ids ) ) as $cid ) {
+                delete_transient( 'mu_digital_cat_has_visible_' . (int) $cid );
+            }
         }
 
         // =====================================================================
@@ -447,10 +527,16 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         public function filter_menu_items( array $items, $menu, array $args ): array {
             if ( is_admin() || wp_is_json_request() || ! $this->is_restricted_user() ) return $items;
             $digital_cat_ids = array_map( 'intval', (array) get_option( self::OPTION_CATEGORY_IDS, [] ) );
-            return array_filter( $items, fn($item) =>
-                ! ( isset( $item->object ) && 'product_cat' === $item->object ) ||
-                in_array( (int) $item->object_id, $digital_cat_ids, true )
-            );
+            return array_filter( $items, function( $item ) use ( $digital_cat_ids ) {
+                if ( ! isset( $item->object ) || 'product_cat' !== $item->object ) {
+                    return true;
+                }
+                $cat_id = (int) $item->object_id;
+                if ( ! in_array( $cat_id, $digital_cat_ids, true ) ) {
+                    return false;
+                }
+                return $this->category_has_visible_digital_products( $cat_id );
+            } );
         }
 
         public function handle_redirects(): void {
@@ -507,6 +593,13 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                     $parent_id = ( $term && ! is_wp_error( $term ) ) ? $term->parent : 0;
                 }
 
+                return [ true, '' ];
+            }
+
+            // Segundo check: categoría en índice digital pero sin productos
+            // visibles en catálogo (oculto / exclude-from-catalog). Redirigir
+            // al shop para evitar página vacía tras filter_product_queries.
+            if ( ! $this->category_has_visible_digital_products( $term_id ) ) {
                 return [ true, '' ];
             }
 

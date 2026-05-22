@@ -1,6 +1,6 @@
 MUY ÜNCOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Modular Pragmático · v2.11.0 · May 21, 2026
+Estado: Modular Pragmático · v2.11.1 · May 22, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -58,7 +58,7 @@ muyunicos/ (generatepress-child)
 │   ├── geo.php             # Multi-país: detección por subdominio, decimales, modal
 │   │                       # sugerencia de país, selector de header, prefijo idioma.
 │   │                       # muyu_get_cached_geolocation() — una sola llamada/request.
-│   ├── digital-restriction.php  # Restricción productos físicos por subdominio v4.5.0.
+│   ├── digital-restriction.php  # Restricción productos físicos por subdominio v4.6.0.
 │   │                            # Rebuild de índice vía wp_schedule_single_event().
 │   │                            # ÍNDICES DISPONIBLES:
 │   │                            #   OPTION_PRODUCT_IDS           → IDs productos digitales
@@ -69,10 +69,22 @@ muyunicos/ (generatepress-child)
 │   │                            #   OPTION_CATEGORY_REDIRECT_MAP → mapa cat redirect (v4.4.0)
 │   │                            #     'by_id'   => [ source_term_id => dest_term_id ]
 │   │                            #     'by_slug' => [ source_slug    => dest_slug    ]
+│   │                            # HELPER (v4.6.0):
+│   │                            #   category_has_visible_digital_products(int $term_id): bool
+│   │                            #     WP_Query post__in=OPTION_PRODUCT_IDS limit 1 + tax_query
+│   │                            #     product_visibility NOT IN exclude-from-catalog.
+│   │                            #     Transient mu_digital_cat_has_visible_{id} (TTL 12h),
+│   │                            #     invalidado en save_indexes() para ids previos+actuales.
 │   │                            # FLUJO DE REDIRECCIÓN (template_redirect prio 20):
 │   │                            #   is_product_category() → handle_category_redirect()
 │   │                            #     1. Consulta OPTION_CATEGORY_REDIRECT_MAP by_id (O(1))
 │   │                            #     2. Fallback: sube por padres en runtime
+│   │                            #     3. [v4.6.0] Si la cat está en índice digital pero
+│   │                            #        category_has_visible_digital_products() = false,
+│   │                            #        redirige al shop (evita página vacía cuando el
+│   │                            #        producto digital está oculto del catálogo).
+│   │                            #   filter_menu_items(): mismo criterio — excluye del menú
+│   │                            #     categorías sin productos digitales visibles. [v4.6.0]
 │   │                            #   is_404() → handle_404_category_redirect() [v4.5.0]
 │   │                            #     Resuelve slug desde $_SERVER['REQUEST_URI']
 │   │                            #     iterando TODOS los segmentos del path (no solo el último)
