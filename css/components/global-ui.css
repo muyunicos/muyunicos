@@ -1,535 +1,284 @@
-/* ========================================
-   MUYUNICOS - Global UI Components
-   Consolidated: Share Button, WPLingua Switcher, WhatsApp Button, Search Form, Carousel,
-                 Breadcrumb (Navigation Chips)
-   ======================================== */
+/* ==================================================
+   GLOBAL UI — Ajustes pequeños de interfaz global
+   Agrupa: Share, WhatsApp, Search, WPLingua, Carrusel,
+   Breadcrumb, Modal Base
+   Carga: Global (mu_enqueue_assets)
+   ================================================== */
 
-/* --- WPLingua Switcher — Ocultar en subdominios sin múltiples idiomas --- */
-/* override GP: WPLingua inyecta .wplng-switcher globalmente;
-   solo es útil en us.muyunicos.com y br.muyunicos.com.
-   La clase .mu-wplng-hide es inyectada en <body> por inc/ui.php → mu_wplng_body_class()
-   vía add_filter('body_class'). Este bloque actúa como fallback visual
-   antes de que la clase esté disponible en los subdominios no multilingüe. */
-body.mu-wplng-hide .wplng-switcher {
-    display: none !important;
-}
-
-/* ============================================
-   WPLINGUA SWITCHER UI (Toggle + Restore Tab)
-   ============================================ */
-.wplng-close-btn {
-    background-color: var(--blanco, #fff);
-    color: var(--texto, #1d2327);
-    border: none;
-    border-radius: 9px;
-    margin: 0;
-    width: 30px;
-    height: 30px;
-    padding: 0px 0px;
-    display: inline-block;
-    cursor: pointer;
-    font-size: 16px;
-    font-weight: bold;
-    vertical-align: text-bottom;
-}
-.wplng-close-btn:hover {
-    background-color: #f0f0f1;
-}
-
-.wplng-switcher.wplng-collapsed {
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(20px);
-    transition: all 0.3s;
-}
-
-.wplng-switcher.theme-light-simple-smooth .switcher-content {
+/* =====================
+   SHARE BUTTON
+   ===================== */
+.mu-share-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--mu-space-xs, 5px);
+    background: transparent;
     border: 0;
-    box-shadow: rgba(0, 0, 0, 0.19) 0px 10px 20px, rgba(0, 0, 0, 0.23) 0px 6px 6px;
-}
-
-.wplng-restore-tab {
-    position: fixed;
-    bottom: 0;
-    right: 18px;
-    background-color: var(--blanco, #fff);
-    box-shadow: rgba(0, 0, 0, 0.19) 0px 10px 20px, rgba(0, 0, 0, 0.23) 0px 6px 6px;
-    border-radius: 9px 9px 0 0;
-    padding: 4px 10px 4px 10px;
     cursor: pointer;
-    min-width: 50px;
-    min-height: 28px;
-    z-index: 10500;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.wplng-restore-tab span {
-    font-size: 20px;
-    line-height: 20px;
-}
-.wplng-restore-tab span img.emoji {
-    display: inline !important;
-    border: none !important;
-    box-shadow: none !important;
-    height: 1em !important;
-    width: 1em !important;
-    margin: 0 0.07em !important;
-    vertical-align: -0.1em !important;
-    background: none !important;
-    padding: 0 !important;
-}
-.wplng-restore-tab:hover {
-    background: #f0f0f1;
-}
-
-/* ============================================
-   WHATSAPP FLOATING BUTTON
-   ============================================ */
-.boton-whatsapp {
-    position: fixed;
-    width: 50px;
-    height: 50px;
-    bottom: 82px;
-    right: 25px;
-    background-color: #25d366;
-    color: var(--blanco, #FFF);
-    border-radius: 50px;
-    text-align: center;
-    font-size: 30px;
-    box-shadow: 2px 2px 0px 0px #339db7;
-    z-index: 100;
-}
-.boton-whatsapp img {
-    width: 100%;
-}
-
-/* ============================================
-   SEARCH FORM (WooCommerce Product Search)
-   ============================================ */
-.mu-search-group {
-    display: flex;
-    width: 100%;
-    position: relative;
-    align-items: center;
-}
-
-.mu-product-search .search-field {
-    width: 100%;
-    height: 40px;
-    padding: 0 15px;
-    padding-right: 50px;
-    border: 1px solid transparent;
-    border-radius: 4px;
-    background-color: var(--blanco, #ffffff);
-    color: var(--primario, #111111);
-    font-size: 14px;
-    box-shadow: none;
-    outline: none;
-}
-
-.mu-product-search .mu-search-submit {
-    position: absolute;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    width: 45px;
-    height: 40px;
-    background-color: var(--secundario, #FFD77A);
-    color: var(--primario, #111111);
-    border: none;
-    border-radius: 0 4px 4px 0;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    color: var(--primario, #2b9fcf);
+    font-size: 0.875rem;
     padding: 0;
-    transition: background-color 0.2s ease;
-    line-height: 0;
+    transition: var(--mu-transition-fast, all 0.2s ease);
 }
 
-.mu-product-search .mu-search-submit:hover {
-    background-color: #ffe099;
-    color: #000;
+.mu-share-btn:hover {
+    color: var(--resaltado, #2387b0);
 }
 
-.mu-product-search .mu-search-submit svg {
-    width: 18px;
-    height: 18px;
-    stroke-width: 2.5px;
-    fill: none;
-    stroke: currentColor;
-}
-
-/* ============================================
-   SISTEMA DE CARRUSEL HÍBRIDO GLOBAL
-   ============================================ */
-.mu-carousel-wrapper {
-    position: relative;
-    max-width: 100%;
-    margin: 0 auto;
-}
-
-.mu-carousel-track {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 20px;
-    width: 100%;
-    padding: 10px 0 20px 0;
-}
-
-.mu-carousel-item {
-    user-select: none;
-}
-
-/* ============================================
-   BASE COMPARTIDA: BOTÓN CÍRCULO
-   Patrón: .mu-nav-btn [modificador]
-     .mu-nav-btn.prev    — carrusel, flecha izquierda
-     .mu-nav-btn.next    — carrusel, flecha derecha
-     .mu-nav-btn.refresh — testimonios, rotar reseñas
-   Cada modificador solo agrega lo que lo diferencia.
-   ============================================ */
-.mu-nav-btn {
-    position: absolute;
-    width: 44px;
-    height: 44px;
-    padding: 0;
-    box-sizing: border-box;
-    line-height: 0;
-    border-radius: 50%;
-    background: var(--primario, #2B9FCF);
-    color: var(--blanco, #fff);
-    border: 3px solid var(--blanco, #fff);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    /* Solo transicionamos propiedades del botón — transform va en el SVG hijo */
-    transition: background 0.3s ease, box-shadow 0.3s ease;
-}
-
-.mu-nav-btn:hover {
-    background: var(--resaltado, #1A7BA5);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
-}
-
-/* SVG hijo — capa de composición propia (GPU)
-   transition: 0.4s para que hover y spin se sientan consistentes */
-.mu-nav-btn svg {
-    display: block;
-    margin: 0;
-    flex-shrink: 0;
-    width: 20px;
-    height: 20px;
-    stroke: currentColor;
-    stroke-width: 2.5;
-    fill: none;
-    will-change: transform;
-    transition: transform 0.4s ease;
-}
-
-/* ============================================
-   .mu-nav-btn.prev / .mu-nav-btn.next
-   Solo agrega visibilidad, posición y feedback de click.
-   ============================================ */
-.mu-nav-btn.prev,
-.mu-nav-btn.next {
-    display: none; /* Oculto en desktop; visible en <= 968px */
-    top: 40%;
-    z-index: 20;
-}
-
-.mu-nav-btn.prev { left: -10px; }
-.mu-nav-btn.next { right: -10px; }
-
-/* Scale sutil en click — solo en el SVG, sin tocar el contenedor */
-.mu-nav-btn.prev:active svg,
-.mu-nav-btn.next:active svg {
-    transform: scale(0.9);
-}
-
-/* --- MODO CARRUSEL (Tablets y Móviles <= 968px) --- */
-@media (max-width: 968px) {
-    .mu-carousel-track {
-        display: flex;
-        overflow-x: auto;
-        scroll-snap-type: x mandatory;
-        scroll-behavior: smooth;
-        padding-bottom: 40px;
-        scrollbar-width: none;
-        -ms-overflow-style: none;
-    }
-
-    .mu-carousel-track::-webkit-scrollbar { display: none; }
-
-    .mu-carousel-item {
-        flex: 0 0 auto;
-        width: 260px;
-        scroll-snap-align: center;
-    }
-
-    .mu-nav-btn.prev,
-    .mu-nav-btn.next { display: flex; }
-}
-
-/* --- MODO MÓVIL PEQUEÑO (< 480px) --- */
-@media (max-width: 480px) {
-    .mu-carousel-track { gap: 15px; }
-
-    .mu-carousel-item {
-        width: 100%;
-        margin-right: 0;
-    }
-
-    .mu-nav-btn.prev,
-    .mu-nav-btn.next {
-        width: 36px;
-        height: 36px;
-    }
-
-    .mu-nav-btn.prev svg,
-    .mu-nav-btn.next svg {
-        width: 16px;
-        height: 16px;
-    }
-}
-
-/* ============================================
-   SHARE BUTTON (Native + Fallback)
-   ============================================ */
-.mu-share-btn,
-.dcms-share-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0;
-    background-color: transparent;
-    color: var(--primario, #2367a7);
-    border: none;
-    padding: 6px;
-    cursor: pointer;
-    border-radius: var(--mu-radius-full, 9999px);
-    transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
-    line-height: 0;
-    vertical-align: middle;
-}
-
-.mu-share-btn:hover,
-.dcms-share-btn:hover {
-    transform: scale(1.12);
-    background-color: transparent;
-}
-
-.mu-share-btn:focus-visible,
-.dcms-share-btn:focus-visible {
-    outline: 2px solid currentColor;
-    outline-offset: 3px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .mu-share-btn,
-    .dcms-share-btn { transition: none; }
-    .mu-share-btn:hover,
-    .dcms-share-btn:hover { transform: none; }
-}
-
-.dcms-share-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.dcms-share-icon svg { display: block; }
-
-.dcms-share-btn.is-copied {
-    background-color: color-mix(in srgb, currentColor 10%, transparent);
-    color: var(--mu-success, #27ae60);
-}
-
-.dcms-share-btn .dcms-share-icon--check { display: none; }
-.dcms-share-btn.is-copied .dcms-share-icon--share { display: none; }
-.dcms-share-btn.is-copied .dcms-share-icon--check { display: inline-flex; }
-
-.dcms-share-tooltip {
-    position: absolute;
-    bottom: 110%;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: #333;
-    color: var(--blanco, #fff);
-    padding: 5px 10px;
-    border-radius: var(--mu-radius-sm, 6px);
-    font-size: 12px;
-    white-space: nowrap;
-    pointer-events: none;
-    opacity: 0;
-    animation: dcmsFadeIn 0.3s forwards;
-    z-index: 999;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-}
-
-.dcms-share-tooltip::after {
-    content: "";
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    margin-left: -5px;
-    border-width: 5px;
-    border-style: solid;
-    border-color: #333 transparent transparent transparent;
-}
-
-@keyframes dcmsFadeIn {
-    from { opacity: 0; transform: translate(-50%, 5px); }
-    to   { opacity: 1; transform: translate(-50%, 0); }
-}
-
-@media (max-width: 768px) {
-    .dcms-share-tooltip { font-size: 11px; }
-}
-
-/* ============================================
-   BREADCRUMB (Navigation Chips — Todas las páginas)
-   Movido desde navigation-chips.css (fix: breadcrumbs invisibles fuera de la tienda)
-   Los chips/filtros del catálogo permanecen en navigation-chips.css
-   ============================================ */
-
-/* Breadcrumb global basado en chips */
-.mu-navchips-breadcrumb {
-    margin: 0 0 20px 0;
-    font-size: 14px;
-    width: 100%;
-}
-
-.mu-navchips-breadcrumb ul {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px;
-}
-
-.mu-navchips-breadcrumb li {
-    display: inline-flex;
-    align-items: center;
-}
-
-.mu-navchips-icon-link a {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background-color: var(--primario, #2367a7);
-    color: var(--blanco, #fff);
-    transition: all 0.2s ease;
-}
-
-/* override GP: normalizar tamaño SVG dentro del chip circular */
-.mu-navchips-icon-link a .mu-icon-svg,
-.mu-navchips-icon-link a svg {
+.mu-share-btn svg {
     width: 16px;
     height: 16px;
-    stroke: currentColor;
-    fill: none;
     flex-shrink: 0;
 }
 
-.mu-navchips-icon-link a:hover {
-    opacity: 0.9;
-    transform: translateY(-1px);
-}
-
-.mu-navchips-crumb a {
-    padding: 5px 12px;
-    background: var(--fondo, #f0f4f8);
-    color: var(--texto, #555);
-    border-radius: 15px;
-    text-decoration: none;
-    font-weight: 500;
-    font-size: 13px;
-    transition: all 0.2s ease;
-}
-
-.mu-navchips-crumb a:hover {
-    opacity: 0.8;
-}
-
-/* override GP: chip actual — padding igualado a .mu-navchips-crumb a (5px 12px) */
-.mu-navchips-current span {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 5px 12px;
-    background: var(--primario, #1c5285);
-    color: var(--blanco, #fff);
-    border-radius: 15px;
-    font-weight: 600;
-    font-size: 13px;
-    line-height: 1.4;
-    box-shadow: 0 1px 2px rgba(0,0,0,.1);
-}
-
-/* El botón share dentro del chip actual no debe alterar la altura */
-.mu-navchips-current .mu-share-btn {
-    display: inline-flex;
+/* =====================
+   WHATSAPP BUTTON
+   ===================== */
+.mu-whatsapp-btn {
+    position: fixed;
+    bottom: var(--mu-space-md, 20px);
+    right: var(--mu-space-md, 20px);
+    z-index: 9999;
+    background: #25d366;
+    border-radius: var(--mu-radius-full, 9999px);
+    width: 56px;
+    height: 56px;
+    display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0;
-    margin: 0;
-    background: none;
-    border: none;
-    color: inherit;
-    opacity: 0.8;
-    line-height: 1;
+    box-shadow: var(--mu-shadow-md, 0 4px 14px rgba(0,0,0,0.15));
+    transition: var(--mu-transition-fast, all 0.2s ease);
+    text-decoration: none;
+}
+
+.mu-whatsapp-btn:hover {
+    transform: scale(1.08);
+    box-shadow: var(--mu-shadow-lg, 0 6px 20px rgba(0,0,0,0.2));
+}
+
+.mu-whatsapp-btn svg {
+    width: 28px;
+    height: 28px;
+    fill: #fff;
     flex-shrink: 0;
 }
 
-.mu-navchips-current .mu-share-btn:hover {
+/* =====================
+   SEARCH ICON TWEAK
+   ===================== */
+/* override GP: alinear el icono de búsqueda con el resto de iconos del header */
+.header-search .search-form .search-submit svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* =====================
+   WPLINGA LANGUAGE TOGGLE
+   ===================== */
+.wplingua-switcher {
+    display: flex;
+    align-items: center;
+    gap: var(--mu-space-xs, 5px);
+}
+
+.wplingua-switcher a {
+    opacity: 0.6;
+    transition: var(--mu-transition-fast, all 0.2s ease);
+    text-decoration: none;
+}
+
+.wplingua-switcher a:hover,
+.wplingua-switcher a.current {
     opacity: 1;
 }
 
-.mu-navchips-current .mu-share-btn svg {
-    display: block;
-    width: 14px;
-    height: 14px;
+/* =====================
+   CARRUSEL
+   ===================== */
+.mu-carousel-wrapper {
+    position: relative;
+    overflow: hidden;
 }
 
-.mu-navchips-current--tag span {
-    background: #e3fff2;
-    color: #107556;
-    border: 1px solid #99e7cf;
+.mu-carousel-track {
+    display: flex;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
 }
 
-.mu-navchips-current--tag .mu-share-btn {
-    color: #107556 !important;
+.mu-carousel-slide {
+    flex-shrink: 0;
+    width: 100%;
 }
 
-/* Responsive tweaks del breadcrumb */
-@media (max-width: 600px) {
-    .mu-navchips-breadcrumb ul {
-        gap: 4px;
-    }
+.mu-carousel-dots {
+    display: flex;
+    justify-content: center;
+    gap: var(--mu-space-xs, 5px);
+    margin-top: var(--mu-space-sm, 10px);
+}
 
-    .mu-navchips-crumb a,
-    .mu-navchips-current span {
-        padding: 5px 10px;
-        font-size: 13px;
-    }
+.mu-carousel-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: var(--mu-radius-full, 9999px);
+    background: #ccc;
+    border: 0;
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
 
-    .mu-navchips-icon-link a {
-        width: 28px;
-        height: 28px;
-    }
+.mu-carousel-dot.is-active {
+    background: var(--primario, #2b9fcf);
+    transform: scale(1.3);
+}
 
-    .mu-navchips-icon-link a .mu-icon-svg,
-    .mu-navchips-icon-link a svg {
-        width: 14px;
-        height: 14px;
+/* =====================
+   BREADCRUMB
+   (Fix v2.9.2: movido desde navigation-chips.css
+   para visibilidad en entradas, cuenta, descargas)
+   ===================== */
+.mu-navchips-breadcrumb {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--mu-space-xs, 5px);
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-bottom: var(--mu-space-md, 20px);
+}
+
+.mu-navchips-breadcrumb a {
+    color: var(--primario, #2b9fcf);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.mu-navchips-breadcrumb a:hover {
+    color: var(--resaltado, #2387b0);
+    text-decoration: underline;
+}
+
+.mu-navchips-breadcrumb .mu-navchips-separator {
+    color: #d1d5db;
+}
+
+.mu-navchips-icon-link {
+    display: inline-flex;
+    align-items: center;
+    color: var(--primario, #2b9fcf);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.mu-navchips-icon-link svg,
+.mu-navchips-icon-link--context svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+/* ============================================================
+   MODAL BASE
+   Patrones reutilizables por todos los modales del sitio.
+   Consumidores:
+     - .mu-auth-modal        (modal-auth.css + auth-modal.php)
+     - .mu-country-modal-overlay (country-modal.css + geo.php)
+   ============================================================ */
+
+/* Overlay full-screen con backdrop blur */
+.mu-modal-overlay--full {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--mu-space-md, 20px);
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.mu-modal-overlay--full.is-visible,
+.mu-modal-overlay--full[style*="display: flex"] {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Capa de fondo semitransparente cuando el overlay es independiente */
+.mu-modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+/* Caja flotante del modal */
+.mu-modal-box {
+    position: relative;
+    background: var(--blanco, #fff);
+    border-radius: var(--mu-radius, 12px);
+    box-shadow: var(--mu-shadow-lg, 0 10px 25px -5px rgba(0, 0, 0, 0.1));
+    overflow-y: auto;
+    max-height: 90vh;
+    animation: muModalSlideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 2;
+}
+
+/* Botón cerrar — estándar para todos los modales */
+.mu-modal-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    color: #6b7280;
+    padding: 5px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--mu-transition-fast, all 0.2s ease);
+}
+
+.mu-modal-close:hover {
+    background: #f3f4f6;
+    color: #111;
+}
+
+.mu-modal-close:focus-visible {
+    outline: 3px solid var(--primario, #2b9fcf);
+    outline-offset: 2px;
+}
+
+/* Animación de entrada unificada */
+@keyframes muModalSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.97);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Accesibilidad: reducir movimiento */
+@media (prefers-reduced-motion: reduce) {
+    .mu-modal-overlay--full,
+    .mu-modal-box {
+        animation: none;
+        transition-duration: 0.01ms !important;
     }
 }

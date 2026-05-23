@@ -1,53 +1,31 @@
 /* ========================================
-   MODAL DE AUTENTICACIÓN - Login/Registro/Recupero
+   MODAL AUTH — Login / Registro / Recupero
    Migrado desde snippet "Modal Auth v3.0"
    Optimizado para WC-AJAX y LiteSpeed
+
+   DEPENDE DE: global-ui.css (clases base:
+     .mu-modal-overlay--full, .mu-modal-backdrop,
+     .mu-modal-box, .mu-modal-close, @keyframes muModalSlideUp)
    ======================================== */
 
 /* =====================
    CONTENEDOR MODAL
+   Extiende .mu-modal-overlay--full de global-ui.css
    ===================== */
 .mu-auth-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 99999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    visibility: hidden;
-    opacity: 0;
-    transition: opacity 0.2s ease, visibility 0.2s ease;
+    /* Hereda posicionamiento, z-index, flex, transición y animación
+       de .mu-modal-overlay--full — aquí solo estilos propios */
+    padding: var(--mu-space-md, 20px);
 }
 
-.mu-auth-modal[style*="display: flex"] {
-    visibility: visible;
-    opacity: 1;
-}
-
-/* Overlay con blur */
-.mu-modal-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
-}
-
-/* Contenedor del modal */
+/* Contenedor interno del modal */
 .mu-modal-container {
     position: relative;
     width: 100%;
     max-width: 440px;
-    max-height: 90vh;
-    overflow-y: auto;
-    animation: muSlideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 2;
+    /* La animación muModalSlideUp viene de global-ui.css */
+    animation: muModalSlideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Contenido */
@@ -60,34 +38,8 @@
 }
 
 /* =====================
-   HEADER Y CLOSE
+   HEADER
    ===================== */
-.mu-modal-close {
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    background: transparent;
-    border: 0;
-    cursor: pointer;
-    color: #6b7280;
-    padding: 5px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: var(--mu-transition-fast, all 0.2s ease);
-}
-
-.mu-modal-close:hover {
-    background: #f3f4f6;
-    color: #111;
-}
-
-.mu-modal-close:focus-visible {
-    outline: 3px solid var(--primario, #2b9fcf);
-    outline-offset: 2px;
-}
-
 .mu-modal-header {
     text-align: center;
     margin-bottom: 1.5rem;
@@ -353,7 +305,6 @@
     outline-offset: 2px;
 }
 
-/* Variantes de botones sociales */
 .mu-btn-google {
     background: var(--blanco, #fff);
     border: 1px solid #ddd;
@@ -372,20 +323,6 @@
 
 .mu-btn-facebook:hover {
     background: #156ad8 !important;
-}
-
-/* =====================
-   ANIMACIONES
-   ===================== */
-@keyframes muSlideUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
 }
 
 /* =====================
@@ -409,9 +346,8 @@
     }
 }
 
-/* Reducción de movimiento para accesibilidad */
+/* Reducción de movimiento — complementa global-ui.css */
 @media (prefers-reduced-motion: reduce) {
-    .mu-auth-modal,
     .mu-modal-container,
     .mu-btn,
     .mu-link-back {

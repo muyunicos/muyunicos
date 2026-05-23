@@ -1,6 +1,6 @@
 MUY ÜNCOS — ARCHITECTURE & MIGRATION GUIDE
 
-Estado: Modular Pragmático · v2.11.1 · May 22, 2026
+Estado: Modular Pragmático · v2.12.0 · May 23, 2026
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
@@ -11,7 +11,7 @@ Compliance estricto con "Pragmatic Modularity" y "Pull Request Workflow" es obli
 1. REGLAS CORE
 ════════════════════════════════════════════════════════════════
 
-MODULARIDAD PRAGMÁTICA ("Goldilocks")
+MODALIDAD PRAGMÁTICA ("Goldilocks")
 - Ajustes pequeños de UI < 50 líneas → agrupar en global-ui.css / global-ui.js
 - Funcionalidades complejas o aisladas → archivo propio, carga condicional
 
@@ -42,182 +42,98 @@ muyunicos/ (generatepress-child)
 ├── inc/                    # Módulos PHP — lógica de negocio y hooks
 │   ├── icons.php           # [PRIMERO] mu_get_icon() — repositorio SVG
 │   ├── compat-litespeed.php # [SEGUNDO] Compatibilidad LiteSpeed Cache v1.0.0
-│   │                        # Problema: gla-gtag-events.js (Google Listings & Ads) depende
-│   │                        # de window.wp.hooks. El JS Delay de LiteSpeed ejecuta scripts
-│   │                        # de forma asíncrona sin respetar dependencias WP, causando
-│   │                        # TypeError en visitantes (sin admin bar). Solución: filtro
-│   │                        # 'litespeed_optimize_js_excludes' para excluir programáticamente
-│   │                        # gtag-events.js y su chunk 101.js del delay. No depende de la
-│   │                        # config del plugin (no se resetea con actualizaciones).
-│   ├── coming-soon.php     # Coming Soon override v1.0.0. Intercepta template_redirect
-│   │                       # (prioridad 0) cuando Hostinger Coming Soon está activo.
-│   │                       # Sirve templates/coming-soon.php con status 503 y exit().
-│   │                       # IMPORTANTE: la plantilla es standalone (no wp_head/wp_footer).
-│   │                       # Bypass: admin, AJAX, REST, wc-ajax, manage_options.
-│   │                       # css/coming-soon.css YA NO SE ENCOLA (CSS inline en template).
+│   ├── coming-soon.php     # Coming Soon override v1.0.0.
 │   ├── geo.php             # Multi-país: detección por subdominio, decimales, modal
 │   │                       # sugerencia de país, selector de header, prefijo idioma.
 │   │                       # muyu_get_cached_geolocation() — una sola llamada/request.
-│   ├── digital-restriction.php  # Restricción productos físicos por subdominio v4.6.0.
-│   │                            # Rebuild de índice vía wp_schedule_single_event().
-│   │                            # ÍNDICES DISPONIBLES:
-│   │                            #   OPTION_PRODUCT_IDS           → IDs productos digitales
-│   │                            #   OPTION_CATEGORY_IDS          → IDs categorías con cobertura digital
-│   │                            #   OPTION_DIRECT_CATEGORY_IDS   → IDs categorías con digital DIRECTO
-│   │                            #   OPTION_TAG_IDS               → IDs tags digitales
-│   │                            #   OPTION_REDIRECT_MAP          → product_id físico → product_id digital
-│   │                            #   OPTION_CATEGORY_REDIRECT_MAP → mapa cat redirect (v4.4.0)
-│   │                            #     'by_id'   => [ source_term_id => dest_term_id ]
-│   │                            #     'by_slug' => [ source_slug    => dest_slug    ]
-│   │                            # HELPER (v4.6.0):
-│   │                            #   category_has_visible_digital_products(int $term_id): bool
-│   │                            #     WP_Query post__in=OPTION_PRODUCT_IDS limit 1 + tax_query
-│   │                            #     product_visibility NOT IN exclude-from-catalog.
-│   │                            #     Transient mu_digital_cat_has_visible_{id} (TTL 12h),
-│   │                            #     invalidado en save_indexes() para ids previos+actuales.
-│   │                            # FLUJO DE REDIRECCIÓN (template_redirect prio 20):
-│   │                            #   is_product_category() → handle_category_redirect()
-│   │                            #     1. Consulta OPTION_CATEGORY_REDIRECT_MAP by_id (O(1))
-│   │                            #     2. Fallback: sube por padres en runtime
-│   │                            #     3. [v4.6.0] Si la cat está en índice digital pero
-│   │                            #        category_has_visible_digital_products() = false,
-│   │                            #        redirige al shop (evita página vacía cuando el
-│   │                            #        producto digital está oculto del catálogo).
-│   │                            #   filter_menu_items(): mismo criterio — excluye del menú
-│   │                            #     categorías sin productos digitales visibles. [v4.6.0]
-│   │                            #   is_404() → handle_404_category_redirect() [v4.5.0]
-│   │                            #     Resuelve slug desde $_SERVER['REQUEST_URI']
-│   │                            #     iterando TODOS los segmentos del path (no solo el último)
-│   │                            #     → get_term_by('slug', ..., 'product_cat')
-│   │                            #     → lookup by_slug (O(1), PRIMERO) [FIX v4.5.0]
-│   │                            #     → lookup by_id (fallback del mapa)
-│   │                            #     → fallback: sube padres + schedule_rebuild()
-│   │                            #     Anti-loop: si categoría digital genera 404, solo
-│   │                            #     redirigir si URL actual ≠ canonical de get_term_link()
-│   │                            #   filter_category_terms(): guard is_404() [FIX v4.5.0]
-│   │                            #     Si WP resolvió como 404, no filtrar terms.
-│   │                            #     Evita que WC_Query excluya del include la categoría
-│   │                            #     cuya URL intenta resolverse como ruta válida.
+│   │                       # HTML del modal usa clases BEM .mu-country-modal-* (v3.0.0).
+│   │                       # Depende de global-ui.css para .mu-modal-overlay--full,
+│   │                       # .mu-modal-box, .mu-modal-close, @keyframes muModalSlideUp.
+│   ├── digital-restriction.php
 │   ├── auth-modal.php      # Modal Login/Registro + endpoints wc_ajax_mu_*
 │   ├── login.php           # Personalización wp-login.php v2.1.0
-│   ├── checkout.php        # Checkout Híbrido + Login Gate (mu_checkout_login_notice p5)
+│   ├── checkout.php        # Checkout Híbrido + Login Gate
 │   ├── cart.php            # Multi-item add, buffers BACS
-│   ├── flexible-price.php  # Precio Flexible v4.0: mapa O(1), validación, AJAX handler.
-│   │                       # Encola flexible-price.js vía mu_flexible_price_enqueue().
-│   │                       # NO agregar a mu_enqueue_assets() — causaría duplicado.
-│   ├── hero-banners.php    # Hero Banners Manager v1.0.1 — admin submenu bajo WC Marketing
-│   │                       # (parent slug 'woocommerce-marketing' → screen
-│   │                       # 'marketing_page_mu-hero-banners'). Storage en wp_option
-│   │                       # 'mu_hero_banners' (array de promos). Cache transient
-│   │                       # 'mu_hero_banners_active' (TTL 12h, invalidado en
-│   │                       # update_option/add_option). Helpers públicos:
-│   │                       # mu_get_hero_banners() — devuelve activos por fecha (filtrado
-│   │                       # con DateTime::createFromFormat 'dmY'); mu_get_hero_banners_raw()
-│   │                       # — devuelve la lista cruda (admin). Si la opción no existe,
-│   │                       # mu_hero_banners_default_seed() provee la semilla legacy.
-│   │                       # Admin UI: WP Media picker para imagen, add/remove rows,
-│   │                       # PRG redirect tras guardar. Capability: 'manage_woocommerce'.
-│   │                       # Inputs de CTA/badge aceptan URL absoluta o ruta relativa
-│   │                       # (ej. /tienda/escolares/) para soportar multi-dominio.
-│   │                       # Assets admin (css/admin-hero-banners.css + js/admin-hero-banners.js)
-│   │                       # SOLO en hook 'marketing_page_mu-hero-banners'.
+│   ├── flexible-price.php  # Precio Flexible v4.0
+│   ├── hero-banners.php    # Hero Banners Manager v1.0.1
 │   ├── ui.php              # Header icons, Cart badge, WhatsApp, Search, Footer custom,
 │   │                       # Share shortcode, canonical GSK, WPLingua body class,
 │   │                       # Category desc mover, precio $0, disable GP featured img.
 │   │                       # Shortcodes: [mu_testimonios_section] [mu_bestsellers_section]
 │   │                       #             [mu_popcat_section] [mu_hero_section]
-│   │                       # [mu_hero_section] consume mu_get_hero_banners() de hero-banners.php.
-│   │                       # mu_home_sections_enqueue() → home.css + hero.js en front_page.
-│   ├── orders-files.php    # Gestor de archivos de pedido: Admin + Email + Mi Cuenta
-│   ├── orders-workflow.php # Estado 'wc-production', emails inteligentes, Admin UI
-│   ├── downloads-bonus.php # Bonus & Guías v1.2.0: inyección tabla descargas + emails.
-│   │                       # mu_user_has_cat_18_custom_files() — transient mu_cat18_files_{uid}
-│   │                       # (TTL 12h), invalidado en woocommerce_order_status_changed.
-│   ├── navigation-chips.php # Navigation Chips v8: breadcrumb, índice compacto, chips,
-│   │                        # transient por categoría.
-│   ├── products-core.php   # Core v2.1: constantes, MU_UI_Helper, hooks carrito/orden
-│   ├── addon-nombre.php    # Addon Nombre v3.0: campo, validación, editor inline AJAX
-│   └── addon-etiquetas.php # Addon Etiquetas v3.0: builder, config, render UI, enqueue
+│   ├── orders-files.php
+│   ├── orders-workflow.php
+│   ├── downloads-bonus.php
+│   ├── navigation-chips.php
+│   ├── products-core.php
+│   ├── addon-nombre.php
+│   └── addon-etiquetas.php
 │
-├── templates/              # Plantillas PHP standalone (fuera del loop de GP)
-│   └── coming-soon.php     # STANDALONE v2.0.0 — NO usa wp_head() ni wp_footer().
-│                           # CSS inlineado en <style> + JS mínimo inline.
-│                           # Descarga total < 30 KB. Cero recursos WP/WC/plugins.
-│                           # Contenido: logo, título multi-idioma rotativo (ES/EN/PT/IT/FR),
-│                           # subtítulo fijo, botón WhatsApp con SVG inline.
-│                           # Número WA y logo hardcodeados (estables, evita llamadas DB).
+├── templates/
+│   └── coming-soon.php
 │
-├── css/                    # CSS modular — siempre carga condicional
+├── css/
 │   ├── components/
 │   │   ├── global-ui.css        # Global: Share, WhatsApp, Search, WPLingua, Carrusel,
-│   │   │                        # BREADCRUMB (.mu-navchips-breadcrumb y selectores relacionados)
-│   │   │                        # Fix v2.9.2: breadcrumbs movidos aquí desde navigation-chips.css
-│   │   │                        # para que sean visibles en entradas, cuenta, descargas, etc.
-│   │   ├── header.css           # Global
-│   │   ├── footer.css           # Global
+│   │   │                        # Breadcrumb, MODAL BASE (v2.12.0):
+│   │   │                        #   .mu-modal-overlay--full  — overlay full-screen + backdrop blur
+│   │   │                        #   .mu-modal-backdrop       — capa semitransparente independiente
+│   │   │                        #   .mu-modal-box            — caja flotante del modal
+│   │   │                        #   .mu-modal-close          — botón cerrar estándar (SVG icon)
+│   │   │                        #   @keyframes muModalSlideUp — animación de entrada unificada
+│   │   ├── header.css
+│   │   ├── footer.css
 │   │   ├── modal-auth.css       # !is_user_logged_in()
+│   │   │                        # Depende de global-ui.css (modal base).
+│   │   │                        # Estilos propios: tamaño (max-width:440px), formularios,
+│   │   │                        # botones de acción (.mu-btn-*), social login, mensajes.
 │   │   ├── country-modal.css    # Condicional (inc/geo.php → mu_country_modal_enqueue)
-│   │   └── navigation-chips.css # is_shop() || is_product_category() || is_product_tag() || is_product()
-│   │                            # SOLO chips/filtros del catálogo (.mu-navchips-wrapper,
-│   │                            # .mu-navchips-chip-*, .mu-navchips-label, .mu-navchips-list).
-│   │                            # Fix v2.8.3: chip actual (.mu-navchips-current span) normalizado
-│   │                            # con font-size/padding/line-height iguales a los crumbs anteriores.
-│   │                            # .mu-share-btn dentro del chip: display:inline-flex, padding:0,
-│   │                            # svg 14×14px — no altera la altura del chip.
-│   │                            # SVGs dentro de .mu-navchips-icon-link forzados a 16×16px.
-│   ├── admin.css                # is_admin()
-│   ├── admin-hero-banners.css   # SOLO hook 'marketing_page_mu-hero-banners' (hero-banners.php)
-│   ├── admin-order-files.css    # is_admin() + order edit
-│   ├── admin-orders.css         # is_admin() + order edit
-│   ├── login.css                # login_enqueue_scripts
-│   ├── home.css                 # is_front_page() — tarjetas, Hero Promos (.mu-hero-promo-*)
-│   ├── shop.css                 # is_shop() || ...
-│   ├── product.css              # is_product()
-│   ├── product-builder.css      # is_product() || is_cart()
-│   ├── cart.css                 # is_cart()
-│   ├── checkout.css             # is_checkout() && !is_order_received_page()
-│   ├── testimonials.css         # has_shortcode('mu_testimonios_section')
-│   │                            # .mu-refresh-satellite: transiciones separadas botón/SVG.
-│   │                            # Botón: transition background+box-shadow.
-│   │                            # SVG: transition transform + will-change:transform (GPU).
-│   │                            # Click: clase .is-spinning dispara @keyframes mu-spin-once.
+│   │   │                        # Depende de global-ui.css (modal base) + mu-base.
+│   │   │                        # Nomenclatura BEM .mu-country-modal-* (v3.0.0).
+│   │   │                        # Estilos propios: tamaño compacto (max-width:370px),
+│   │   │                        # botones .mu-country-modal__btn-go / __btn-stay.
+│   │   │                        # CLASES ELIMINADAS: #muyu-country-modal-overlay (ID),
+│   │   │                        # #muyu-country-modal (ID), #muyu-country-close (ID),
+│   │   │                        # .muyu-country-btn, .muyu-country-stay-btn.
+│   │   └── navigation-chips.css
+│   ├── admin.css
+│   ├── admin-hero-banners.css
+│   ├── admin-order-files.css
+│   ├── admin-orders.css
+│   ├── login.css
+│   ├── home.css
+│   ├── shop.css
+│   ├── product.css
+│   ├── product-builder.css
+│   ├── cart.css
+│   ├── checkout.css
+│   ├── testimonials.css
 │   ├── coming-soon.css          # DEPRECATED — CSS ya no se encola (inline en template v2).
-│   │                            # Mantener archivo como referencia pero no encolarlo.
-│   └── account-downloads.css   # is_account_page() && is_wc_endpoint_url('downloads')
-│                                # .mu-custom-downloads · .mu-guide-link
+│   └── account-downloads.css
 │
-└── js/                     # JS modular — IIFE + 'use strict' + DOMContentLoaded
-    ├── global-ui.js             # Global — initCarousels() para todo .mu-carousel-wrapper
-    ├── header.js                # Global
-    ├── footer.js                # Global
-    ├── hero.js                  # is_front_page() — slider, autoplay 7s, swipe, dots
-    ├── modal-auth.js            # !is_user_logged_in()
+└── js/
+    ├── global-ui.js
+    ├── header.js
+    ├── footer.js
+    ├── hero.js
+    ├── modal-auth.js
     ├── country-modal.js         # Condicional (inc/geo.php)
-    ├── shop.js                  # is_shop() || ...
-    ├── navigation-chips.js      # is_shop() || ...
-    ├── product.js               # is_product()
-    ├── addon-nombre.js          # is_product() || is_cart()
-    ├── addon-etiquetas.js       # is_product() (cat 18/19)
-    │                            # Format toggle (variación #pa_formato): "impresas" activa
-    │                            # el builder; cualquier otro valor (ej. archivo-digital-pdf)
-    │                            # lo desactiva. State stash/restore: MU.snapshotState() guarda
-    │                            # la selección en MU.stashedState al cambiar a digital y
-    │                            # MU.restoreState() + MU.rebuildUIFromState() la reponen al
-    │                            # volver a "impresas". En digital: mu_data_input queda vacío
-    │                            # y disabled, #mu-selection-summary se limpia, #mu-final-price
-    │                            # = $0, #mu-total-wrapper oculto y precio WooCommerce nativo
-    │                            # visible (no se aplica .mu-replaced cuando isBuilderActive=false).
-    ├── product-builder.js       # (reservado — lógica builder si se separa de addons)
-    ├── cart.js                  # is_cart()
-    ├── flexible-price.js        # is_cart() || is_checkout() — mu_flexible_price_enqueue()
-    ├── checkout.js              # is_checkout() && !is_order_received_page()
-    ├── testimonials.js          # has_shortcode('mu_testimonios_section')
-    │                            # Click en .mu-refresh-satellite: clase .is-spinning
-    │                            # (sin style.transform inline). Sync con animación CSS 400ms.
-    ├── admin.js                 # is_admin()
-    ├── admin-hero-banners.js    # SOLO hook 'marketing_page_mu-hero-banners' (jQuery + wp.media picker)
-    ├── admin-order-files.js     # is_admin() + order edit
-    └── admin-orders.js          # is_admin() + order edit
+    │                            # Selectores actualizados a .mu-country-modal-* (v3.0.0).
+    │                            # Maneja: show (is-visible), close btn, stay btn, Escape, click-outside.
+    ├── shop.js
+    ├── navigation-chips.js
+    ├── product.js
+    ├── addon-nombre.js
+    ├── addon-etiquetas.js
+    ├── product-builder.js
+    ├── cart.js
+    ├── flexible-price.js
+    ├── checkout.js
+    ├── testimonials.js
+    ├── admin.js
+    ├── admin-hero-banners.js
+    ├── admin-order-files.js
+    └── admin-orders.js
 
 ════════════════════════════════════════════════════════════════
 3. ROUTING — ¿DÓNDE VA EL CÓDIGO NUEVO?
@@ -251,6 +167,7 @@ Nuevo icóno SVG                     | icons.php                | —           
 Breadcrumb (estilos)                | navigation-chips.php     | components/global-ui.css     | —
 Pantalla Coming Soon custom         | coming-soon.php          | inline en template           | inline en template
 Compatibilidad plugins/caché        | compat-litespeed.php     | —                            | —
+Nuevo modal (overlay+caja+close)    | inc/ según contexto      | Extender clases de global-ui | —
 
 ════════════════════════════════════════════════════════════════
 4. SISTEMA DE DISEÑO (API EXCLUSIVA)
@@ -307,7 +224,6 @@ PHP
 - Category Redirect Map: OPTION_CATEGORY_REDIRECT_MAP se construye en rebuild_digital_indexes().
   Tras agregar productos a una categoría nueva, forzar rebuild desde Admin → Productos → Reindexar Digitales.
 - 404 routing: filter_category_terms() NO filtra cuando is_404() = true. Esto es intencional.
-  Si WP resolvió como 404, filtrar terms rompe el contexto de handle_404_category_redirect().
 
 JavaScript
 - IIFE + 'use strict' + DOMContentLoaded. Cero jQuery salvo obligación WC legacy.
@@ -318,6 +234,8 @@ JavaScript
 - Hero slider: dots por data-hero-dot (sin onclick inline). Swipe con {passive:true}.
 - Animaciones de botón: NUNCA style.transform inline. Usar clases CSS (.is-spinning, etc.)
   que deleguen al motor de animación del browser (GPU-composited).
+- Modales: activar/desactivar con clase .is-visible en el overlay.
+  NUNCA manipular display:flex directamente desde JS en modales nuevos.
 
 CSS
 - Prefijo + BEM: .mu-[componente]__elem--[mod]
@@ -327,6 +245,8 @@ CSS
       las CSS variables del :root no están disponibles en modo standalone.
 - Animaciones: separar transiciones del contenedor y del hijo SVG/icon.
   El hijo SVG debe tener su propio transition:transform + will-change:transform.
+- Modales nuevos: extender clases base de global-ui.css (.mu-modal-overlay--full,
+  .mu-modal-box, .mu-modal-close) en lugar de redefinir el patrón.
 
 ════════════════════════════════════════════════════════════════
 6. DEUDA TÉCNICA
@@ -339,3 +259,5 @@ CSS
       ya no lo encola tras esta migración.
 - [ ] digital-restriction.php: OPTION_CATEGORY_REDIRECT_MAP se invalida solo al actualizar productos.
       Evaluar también invalidar en save_term / delete_term si se crean/eliminan categorías.
+- [ ] modal-auth.css: .mu-auth-modal usa [style*="display: flex"] como trigger de visibilidad (legacy).
+      Evaluar migrar a clase .is-visible (igual que country-modal) para consistencia total.
