@@ -124,6 +124,7 @@ function mu_auth_modal_html() {
                     </div>
                 </div>
             </div>
+        </div>
     </div>
     <?php
     if ( class_exists( 'NextendSocialLogin', false ) ) do_action( 'nsl_render_login_form' );
