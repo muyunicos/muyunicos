@@ -56,17 +56,6 @@
     font-family: var(--mu-font-base, Inter, sans-serif);
 }
 
-.mu-input:focus {
-    outline: 0;
-    border-color: var(--primario, #2b9fcf);
-}
-
-.mu-input:focus-visible {
-    outline: 3px solid var(--primario, #2b9fcf);
-    outline-offset: 2px;
-    border-color: var(--primario, #2b9fcf);
-}
-
 /* =====================
    BOTONES
    ===================== */

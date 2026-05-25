@@ -577,9 +577,11 @@ body.mu-wplng-hide .wplng-switcher {
 .mu-modal-content {
     background: var(--blanco, #fff);
     border-radius: var(--mu-radius-md, 12px);
-    box-shadow: var(--mu-shadow-lg);
     padding: 2rem;
+    border-color: var(--secundario);
+    border-width: 3px;
     position: relative;
+    border-style: solid;
 }
 
 /* 4. Botón cerrar */
