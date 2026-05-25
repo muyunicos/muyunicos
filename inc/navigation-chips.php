@@ -118,8 +118,6 @@ if ( ! function_exists( 'mu_navchips_build_product_index' ) ) {
 
         $compact_index = implode( '|', $index_parts );
 
-        set_transient( 'mu_navchips_index_metadata', $metadata,      WEEK_IN_SECONDS );
-
         $metadata = [
             'total_products'     => $total_products,
             'index_size_bytes'   => strlen( $compact_index ),
@@ -127,7 +125,8 @@ if ( ! function_exists( 'mu_navchips_build_product_index' ) ) {
             'generation_time_ms' => round( ( microtime( true ) - $start_time ) * 1000, 2 ),
         ];
 
-        set_transient( 'mu_navchips_index_metadata', $metadata, WEEK_IN_SECONDS );
+        set_transient( 'mu_navchips_product_index',  $compact_index, 30 * DAY_IN_SECONDS );
+        set_transient( 'mu_navchips_index_metadata', $metadata,      30 * DAY_IN_SECONDS );
 
         if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
             error_log( // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
@@ -498,7 +497,7 @@ if ( ! function_exists( 'mu_navchips_render_navigation_chips' ) ) {
             }
         }
 
-        // --- A. CATEGORÍAS ---
+                // --- A. CATEGORÍAS ---
         $cats_to_show              = [];
         $categorias_a_omitir_slugs = [ 'sin-categorizar' ];
 
@@ -528,6 +527,17 @@ if ( ! function_exists( 'mu_navchips_render_navigation_chips' ) ) {
 
             if ( in_array( $cat->slug, $categorias_a_omitir_slugs, true ) ) {
                 continue;
+            }
+
+            // Verificar que la categoría tenga al menos un producto visible en catálogo.
+            // Necesario porque hide_empty=true cuenta productos ocultos (exclude-from-catalog).
+            if ( function_exists( 'muyu_digital_restriction_init' ) ) {
+                $restriction = muyu_digital_restriction_init();
+                if ( method_exists( $restriction, 'category_has_visible_digital_products' ) ) {
+                    if ( ! $restriction->category_has_visible_digital_products( $cat->term_id ) ) {
+                        continue;
+                    }
+                }
             }
 
             foreach ( $extra_terms as $ex ) {
