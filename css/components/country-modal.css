@@ -96,10 +96,6 @@
 
 /* Accesibilidad: Reducir movimiento */
 @media (prefers-reduced-motion: reduce) {
-    #muyu-country-modal {
-        animation: none;
-    }
-    
     #muyu-country-close:hover {
         transform: none;
     }
