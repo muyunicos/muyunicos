@@ -4,74 +4,13 @@
    Detecta país del usuario y sugiere sitio correcto
    ============================================ */
 
-/* Overlay */
-#muyu-country-modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0, 0, 0, 0.32);
-    z-index: 99999;
-    align-items: center;
-    justify-content: center;
-    display: none; /* Controlado por JS */
-}
-
-#muyu-country-modal-overlay.is-visible {
-    display: flex;
-}
-
-/* Container Principal */
+/* Override: country modal es más compacto que el base */
 #muyu-country-modal {
-    position: relative;
-    background: var(--blanco);
-    border-radius: var(--mu-radius-md);
-    box-shadow: var(--mu-shadow-lg);
-    width: 92vw;
     max-width: 370px;
-    padding: 50px 16px 17px 16px;
+    padding: 50px 16px 17px;
     text-align: center;
-    margin: auto;
-    animation: modalSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-@keyframes modalSlideIn {
-    from {
-        opacity: 0;
-        transform: translateY(-20px) scale(0.95);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
-}
-
-/* Botón Cerrar */
-#muyu-country-close {
-    position: absolute;
-    top: 0px;
-    right: 0px;
-    padding: 19px;
-    font-size: 1.6em;
-    line-height: 1em;
-    color: #bbb;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    transition: var(--mu-transition-fast);
-}
-
-#muyu-country-close:hover {
-    color: var(--texto);
-    transform: rotate(90deg);
-}
-
-#muyu-country-close:focus {
-    outline: 2px solid var(--primario);
-    outline-offset: 2px;
-    border-radius: var(--mu-radius-sm);
-}
 
 /* Contenido del Modal */
 #muyu-country-modal > div {
