@@ -124,9 +124,9 @@
     const modalManager = {
         open: () => {
             modal.removeAttribute('style');
-            elements.overlay.style.display = 'flex';
-            void elements.overlay.offsetWidth; // fuerza reflow para animación
-            elements.overlay.classList.add('is-visible');
+            modal.style.display = 'flex'; 
+            void modal.offsetWidth;
+            modal.classList.add('is-visible');
             document.body.style.overflow = 'hidden';
             
             // Auto-rellenar desde billing_email si existe (checkout)
@@ -140,11 +140,8 @@
         },
         
         close: () => {
-            elements.overlay.classList.remove('is-visible');
-            setTimeout(() => {
-                elements.overlay.style.display = 'none';
-                modal.style.display = 'none';        // ← agregar esta línea
-            }, 300);
+            modal.classList.remove('is-visible');
+            setTimeout(() => { modal.style.display = 'none'; }, 300);
             document.body.style.overflow = '';
             modalManager.reset();
         },
@@ -353,11 +350,13 @@
     
     // Cerrar modal
     elements.close.addEventListener('click', modalManager.close);
-    elements.overlay.addEventListener('click', modalManager.close);
+    modal.addEventListener('click', (e) => {
+    if (e.target === modal) modalManager.close();  // ya apunta directo
+});
     
     // Cerrar con tecla ESC
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && elements.overlay.classList.contains('is-visible')) {
+        if (e.key === 'Escape' && modal.classList.contains('is-visible')) {
             modalManager.close();
         }
     });
