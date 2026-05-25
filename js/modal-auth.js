@@ -123,6 +123,7 @@
        ===================== */
     const modalManager = {
         open: () => {
+            modal.removeAttribute('style');
             elements.overlay.style.display = 'flex';
             void elements.overlay.offsetWidth; // fuerza reflow para animación
             elements.overlay.classList.add('is-visible');
@@ -140,7 +141,11 @@
         
         close: () => {
             elements.overlay.classList.remove('is-visible');
-            setTimeout(() => { elements.overlay.style.display = 'none'; }, 300);            document.body.style.overflow = '';
+            setTimeout(() => {
+                elements.overlay.style.display = 'none';
+                modal.style.display = 'none';        // ← agregar esta línea
+            }, 300);
+            document.body.style.overflow = '';
             modalManager.reset();
         },
         
