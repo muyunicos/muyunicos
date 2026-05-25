@@ -535,21 +535,42 @@ body.mu-wplng-hide .wplng-switcher {
 }
 /* ===================== MU-MODAL BASE SYSTEM ===================== */
 
-/* 1. Overlay — fondo difuminado y sutil (estilo auth) */
-.mu-modal-overlay, .gp-search-modal .gp-modal__overlay {
+/* 1. Overlay — siempre flex, visibilidad controlada por opacity/visibility */
+.mu-modal-overlay,
+.gp-search-modal .gp-modal__overlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgb(135 135 135 / 20%) !important;
+    background: rgb(135 135 135 / 20%);
     backdrop-filter: blur(1px);
     z-index: 99999;
-    display: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
 }
-.mu-modal-overlay.is-visible { display: flex; align-items: center; justify-content: center; }
+
+.mu-modal-overlay.is-visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
 
 /* 2. Container */
 .mu-modal-container {
-    position: relative; width: 100%; max-width: 440px;
-    max-height: 90vh; overflow-y: auto; z-index: 2;
+    position: relative;
+    width: 100%;
+    max-width: 440px;
+    max-height: 90vh;
+    overflow-y: auto;
+    z-index: 2;
     animation: muModalIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Animación de salida — solo cuando el overlay pierde .is-visible */
+.mu-modal-overlay:not(.is-visible) .mu-modal-container {
+    animation: muModalOut 0.22s cubic-bezier(0.4, 0, 1, 1) forwards;
 }
 
 /* 3. Caja de contenido */
@@ -561,26 +582,35 @@ body.mu-wplng-hide .wplng-switcher {
     position: relative;
 }
 
-/* 4. Botón cerrar (estilo auth: resaltado hover, sin rotación) */
+/* 4. Botón cerrar */
 .mu-modal-close {
     position: absolute; top: 15px; right: 15px;
     background: transparent; border: 0; cursor: pointer;
-    color: #6b7280; padding: 5px; border-radius: 50%;
+    color: #6b7280; padding: 0;
+    width: 32px; height: 32px;
+    border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     transition: var(--mu-transition-fast, all 0.2s ease);
 }
 .mu-modal-close:hover { background: #f3f4f6; color: #111; }
 .mu-modal-close:focus-visible { outline: 3px solid var(--primario); outline-offset: 2px; }
 
-/* 5. Animación */
+/* 5. Animaciones */
 @keyframes muModalIn {
     from { opacity: 0; transform: translateY(20px) scale(0.97); }
     to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+@keyframes muModalOut {
+    from { opacity: 1; transform: translateY(0) scale(1); }
+    to   { opacity: 0; transform: translateY(8px) scale(0.98); }
+}
+
 /* 6. Reduced motion */
 @media (prefers-reduced-motion: reduce) {
-    .mu-modal-container { animation: none; }
+    .mu-modal-overlay { transition: none; }
+    .mu-modal-container,
+    .mu-modal-overlay:not(.is-visible) .mu-modal-container { animation: none; }
 }
 
 /* 7. Responsive */

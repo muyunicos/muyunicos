@@ -381,21 +381,23 @@ if ( ! function_exists( 'mu_country_modal_html' ) ) {
         $flag_url       = 'https://flagcdn.com/w40/' . esc_attr( $target['flag'] ) . '.png';
         ?>
         <div id="muyu-country-modal-overlay" class="mu-modal-overlay" data-current-domain="<?php echo esc_attr( $current_domain ); ?>">
-            <div id="muyu-country-modal" class="mu-modal-content">
-                <button id="muyu-country-close" class="mu-modal-close" title="Cerrar" aria-label="Cerrar">&times;</button>
-                <div>
+            <div id="muyu-country-modal" class="mu-modal-container">
+                <div class="mu-modal-content">  
+                    <button id="muyu-country-close" class="mu-modal-close" title="Cerrar" aria-label="Cerrar">&times;</button>
                     <div>
-                        <?php echo esc_html( $modal_question ); ?>
-                        <img src="<?php echo esc_attr( $flag_url ); ?>" alt="<?php echo esc_attr( $target['name'] ); ?>" />
+                        <div>
+                            <?php echo esc_html( $modal_question ); ?>
+                            <img src="<?php echo esc_attr( $flag_url ); ?>" alt="<?php echo esc_attr( $target['name'] ); ?>" />
+                        </div>
+                        <a href="<?php echo esc_url( $target_url ); ?>" rel="nofollow" class="muyu-country-btn">
+                            Ir a Muy Únicos <?php echo esc_html( $target['name'] ); ?>
+                        </a>
                     </div>
-                    <a href="<?php echo esc_url( $target_url ); ?>" rel="nofollow" class="muyu-country-btn">
-                        Ir a Muy Únicos <?php echo esc_html( $target['name'] ); ?>
-                    </a>
+                    <button id="muyu-country-stay" class="muyu-country-stay-btn">
+                        <?php echo esc_html( $modal_stay ); ?>
+                    </button>
                 </div>
-                <button id="muyu-country-stay" class="muyu-country-stay-btn">
-                    <?php echo esc_html( $modal_stay ); ?>
-                </button>
-            </div>
+            </div> 
         </div>
         <?php
     }

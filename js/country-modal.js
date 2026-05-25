@@ -56,7 +56,7 @@
         
         // Event listener: Tecla ESC para cerrar
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && overlay && overlay.style.display !== 'none') {
+            if (e.key === 'Escape' && overlay && overlay.classList.contains('is-visible')) {
                 hideModal();
             }
         });
@@ -70,8 +70,6 @@
      */
     function showModal() {
         if (overlay) {
-            overlay.style.display = 'flex';
-            // Trigger reflow para animación CSS
             void overlay.offsetWidth;
             overlay.classList.add('is-visible');
         }
@@ -83,9 +81,6 @@
     function hideModal() {
         if (overlay) {
             overlay.classList.remove('is-visible');
-            setTimeout(function() {
-                overlay.style.display = 'none';
-            }, 300); // Esperar animación CSS
         }
     }
     

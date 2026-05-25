@@ -5,11 +5,8 @@
    ============================================ */
 
 /* Override: country modal es más compacto que el base */
-#muyu-country-modal {
-    max-width: 370px;
-    padding: 50px 16px 17px;
-    text-align: center;
-}
+#muyu-country-modal { max-width: 370px; }
+#muyu-country-modal .mu-modal-content { padding: 2rem 1rem 1.1rem; text-align: center; }
 
 
 /* Contenido del Modal */
