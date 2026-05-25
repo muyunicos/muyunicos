@@ -47,3 +47,16 @@ if ( ! function_exists( 'mu_litespeed_js_delay_excludes' ) ) {
     }
     add_filter( 'litespeed_optimize_js_excludes', 'mu_litespeed_js_delay_excludes' );
 }
+/**
+ * Fuerza variación de caché por host (subdominio).
+ * Evita que LiteSpeed sirva a muyunicos.com una página cacheada
+ * desde us.muyunicos.com o cualquier otro subdominio restringido.
+ */
+if ( ! function_exists( 'mu_litespeed_vary_by_host' ) ) {
+    function mu_litespeed_vary_by_host( $vary ) {
+        $host = str_replace( 'www.', '', preg_replace( '/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? '' ) );
+        $vary['mu_host'] = md5( $host );
+        return $vary;
+    }
+    add_filter( 'litespeed_vary', 'mu_litespeed_vary_by_host' );
+}
