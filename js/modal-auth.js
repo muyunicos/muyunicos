@@ -16,7 +16,6 @@
        ===================== */
     const elements = {
         close: modal.querySelector('.mu-modal-close'),
-        overlay: modal.querySelector('.mu-modal-overlay'),
         
         steps: {
             initial: document.getElementById('mu-step-1'),
@@ -123,10 +122,10 @@
        ===================== */
     const modalManager = {
         open: () => {
-            modal.removeAttribute('style');
-            modal.style.display = 'flex'; 
-            void modal.offsetWidth;
+            modal.setAttribute('aria-hidden', 'false');
+            void modal.offsetHeight;            // forzar reflow sin inline style
             modal.classList.add('is-visible');
+            document.body.style.overflow = 'hidden';
             document.body.style.overflow = 'hidden';
             
             // Auto-rellenar desde billing_email si existe (checkout)
@@ -140,6 +139,7 @@
         },
         
         close: () => {
+            modal.setAttribute('aria-hidden', 'true');
             modal.classList.remove('is-visible');
             setTimeout(() => { modal.style.display = 'none'; }, 300);
             document.body.style.overflow = '';

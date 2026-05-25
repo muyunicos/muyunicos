@@ -37,7 +37,7 @@ function mu_auth_modal_html() {
     
     $current_url = ( is_ssl() ? 'https://' : 'http://' ) . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
     ?>
-    <div id="mu-auth-modal" class="mu-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="mu-modal-title">
+    <div id="mu-auth-modal" class="mu-modal-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="mu-modal-title">
     <div class="mu-modal-container">
         <div class="mu-modal-content">
                 <button class="mu-modal-close" aria-label="Cerrar" type="button">
