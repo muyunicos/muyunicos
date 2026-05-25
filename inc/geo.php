@@ -380,9 +380,9 @@ if ( ! function_exists( 'mu_country_modal_html' ) ) {
         $modal_stay     = muyu_country_modal_text( $user_country, 'stay' );
         $flag_url       = 'https://flagcdn.com/w40/' . esc_attr( $target['flag'] ) . '.png';
         ?>
-        <div id="muyu-country-modal-overlay" data-current-domain="<?php echo esc_attr( $current_domain ); ?>">
-            <div id="muyu-country-modal">
-                <button id="muyu-country-close" title="Cerrar" aria-label="Cerrar">&times;</button>
+        <div id="muyu-country-modal-overlay" class="mu-modal-overlay" data-current-domain="<?php echo esc_attr( $current_domain ); ?>">
+            <div id="muyu-country-modal" class="mu-modal-content">
+                <button id="muyu-country-close" class="mu-modal-close" title="Cerrar" aria-label="Cerrar">&times;</button>
                 <div>
                     <div>
                         <?php echo esc_html( $modal_question ); ?>
