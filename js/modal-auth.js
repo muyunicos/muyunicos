@@ -123,7 +123,7 @@
        ===================== */
     const modalManager = {
         open: () => {
-            modal.style.display = 'flex';
+            modal.classList.add('is-visible');
             document.body.style.overflow = 'hidden';
             
             // Auto-rellenar desde billing_email si existe (checkout)
@@ -137,7 +137,7 @@
         },
         
         close: () => {
-            modal.style.display = 'none';
+            modal.classList.remove('is-visible');
             document.body.style.overflow = '';
             modalManager.reset();
         },
@@ -350,7 +350,7 @@
     
     // Cerrar con tecla ESC
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && modal.style.display === 'flex') {
+        if (e.key === 'Escape' && modal.classList.contains('is-visible')) {
             modalManager.close();
         }
     });

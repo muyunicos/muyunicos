@@ -533,3 +533,58 @@ body.mu-wplng-hide .wplng-switcher {
         height: 14px;
     }
 }
+/* ===================== MU-MODAL BASE SYSTEM ===================== */
+
+/* 1. Overlay — fondo difuminado y sutil (estilo auth) */
+.mu-modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgb(135 135 135 / 20%);
+    backdrop-filter: blur(1px);
+    z-index: 99999;
+    display: none;
+}
+.mu-modal-overlay.is-visible { display: flex; align-items: center; justify-content: center; }
+
+/* 2. Container */
+.mu-modal-container {
+    position: relative; width: 100%; max-width: 440px;
+    max-height: 90vh; overflow-y: auto; z-index: 2;
+    animation: muModalIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 3. Caja de contenido */
+.mu-modal-content {
+    background: var(--blanco, #fff);
+    border-radius: var(--mu-radius-md, 12px);
+    box-shadow: var(--mu-shadow-lg);
+    padding: 2rem;
+    position: relative;
+}
+
+/* 4. Botón cerrar (estilo auth: resaltado hover, sin rotación) */
+.mu-modal-close {
+    position: absolute; top: 15px; right: 15px;
+    background: transparent; border: 0; cursor: pointer;
+    color: #6b7280; padding: 5px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    transition: var(--mu-transition-fast, all 0.2s ease);
+}
+.mu-modal-close:hover { background: #f3f4f6; color: #111; }
+.mu-modal-close:focus-visible { outline: 3px solid var(--primario); outline-offset: 2px; }
+
+/* 5. Animación */
+@keyframes muModalIn {
+    from { opacity: 0; transform: translateY(20px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* 6. Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .mu-modal-container { animation: none; }
+}
+
+/* 7. Responsive */
+@media (max-width: 480px) {
+    .mu-modal-content { padding: 1.5rem; }
+    .mu-modal-container { max-width: 95vw; }
+}
