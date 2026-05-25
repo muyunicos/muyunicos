@@ -29,14 +29,14 @@
 }
 
 /* Overlay con blur */
-.mu-modal-overlay {
+.mu-modal-overlay, .gp-search-modal .gp-modal__overlay {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
+    background: rgb(135 135 135 / 20%) !important;
+    backdrop-filter: blur(1px);
 }
 
 /* Contenedor del modal */
