@@ -68,6 +68,10 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             // ---- Gestión de índices (Admin) ----
             add_action( 'wc_ajax_mu_rebuild_digital_list', [ $this, 'ajax_rebuild_indexes' ] );
             add_action( 'woocommerce_update_product', [ $this, 'schedule_rebuild' ] );
+            add_action( 'woocommerce_new_product',  [ $this, 'schedule_rebuild' ] );
+            add_action( 'created_product_cat',      [ $this, 'schedule_rebuild' ] );
+            add_action( 'edited_product_cat',       [ $this, 'schedule_rebuild' ] );
+            add_action( 'delete_product_cat',       [ $this, 'schedule_rebuild' ] );
             add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_admin_assets' ] );
 
             // ---- Cron: ejecuta rebuild en background real (NO en shutdown) ----
@@ -165,7 +169,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
 
             $digital_ids = $this->get_cached_digital_product_ids();
             if ( empty( $digital_ids ) ) {
-                set_transient( $cache_key, '0', 12 * HOUR_IN_SECONDS );
+                set_transient( $cache_key, '0', 30 * DAY_IN_SECONDS );
                 return false;
             }
 
@@ -196,7 +200,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             ] );
 
             $has = ! empty( $query->posts );
-            set_transient( $cache_key, $has ? '1' : '0', 12 * HOUR_IN_SECONDS );
+            set_transient( $cache_key, $has ? '1' : '0', 30 * DAY_IN_SECONDS );
             return $has;
         }
 
@@ -434,10 +438,14 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         // =====================================================================
         
         public function ajax_rebuild_indexes(): void {
-            check_ajax_referer( 'muyu-rebuild-nonce', 'nonce' );
-            if ( ! current_user_can( 'manage_woocommerce' ) ) wp_send_json_error( 'Permisos insuficientes' );
-            wp_send_json_success( sprintf( 'Índice reconstruido correctamente. Total productos digitales: %d', $this->rebuild_digital_indexes() ) );
-        }
+    check_ajax_referer( 'muyu-rebuild-nonce', 'nonce' );
+    if ( ! current_user_can( 'manage_woocommerce' ) ) wp_send_json_error( 'Permisos insuficientes' );
+    $result = mu_rebuild_all_indexes();
+    wp_send_json_success( sprintf(
+        'Índices reconstruidos. Productos digitales: %d | NavChips: ✅',
+        $result['digital']
+    ) );
+}
         
         public function schedule_rebuild(): void {
             if ( ! wp_next_scheduled( self::CRON_HOOK ) ) {
@@ -463,7 +471,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             wp_enqueue_script( 'mu-admin-js', $theme_uri . '/js/admin.js', [], $ver, true );
             wp_localize_script( 'mu-admin-js', 'muyuAdminData', [
                 'nonce'       => wp_create_nonce( 'muyu-rebuild-nonce' ),
-                'label'       => '⚡ Reindexar Digitales',
+                'label'       => '⚡ Reindexar',
                 'wc_ajax_url' => \WC_AJAX::get_endpoint( 'mu_rebuild_digital_list' )
             ] );
         }
@@ -887,4 +895,14 @@ if ( ! function_exists( 'muyu_get_digital_product_ids' ) ) {
 
 if ( ! function_exists( 'muyu_rebuild_digital_indexes_optimized' ) ) {
     function muyu_rebuild_digital_indexes_optimized(): int { return muyu_digital_restriction_init()->rebuild_digital_indexes(); }
+}
+
+if ( ! function_exists( 'mu_rebuild_all_indexes' ) ) {
+    function mu_rebuild_all_indexes(): array {
+        $digital_count = muyu_digital_restriction_init()->rebuild_digital_indexes();
+        if ( function_exists( 'mu_navchips_build_product_index' ) ) {
+            mu_navchips_build_product_index();
+        }
+        return [ 'digital' => $digital_count, 'navchips' => true ];
+    }
 }

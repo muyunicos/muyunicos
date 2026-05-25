@@ -51,10 +51,13 @@ if ( ! function_exists( 'mu_navchips_schedule_index_rebuild' ) ) {
         }
     }
 
-    add_action( 'save_post_product', 'mu_navchips_schedule_index_rebuild', 10, 3 );
-    add_action( 'edited_product_cat', 'mu_navchips_schedule_index_rebuild' );
-    add_action( 'edited_product_tag', 'mu_navchips_schedule_index_rebuild' );
-    add_action( 'delete_post', 'mu_navchips_schedule_index_rebuild' );
+    add_action( 'save_post_product',       'mu_navchips_schedule_index_rebuild', 10, 3 );
+    add_action( 'edited_product_cat',      'mu_navchips_schedule_index_rebuild' );
+    add_action( 'edited_product_tag',      'mu_navchips_schedule_index_rebuild' );
+    add_action( 'delete_post',             'mu_navchips_schedule_index_rebuild' );
+    add_action( 'created_product_cat',     'mu_navchips_schedule_index_rebuild' );
+    add_action( 'delete_product_cat',      'mu_navchips_schedule_index_rebuild' );
+    add_action( 'woocommerce_new_product', 'mu_navchips_schedule_index_rebuild' );
 }
 
 add_action( 'mu_navchips_rebuild_index_hook', 'mu_navchips_build_product_index' );
@@ -115,7 +118,7 @@ if ( ! function_exists( 'mu_navchips_build_product_index' ) ) {
 
         $compact_index = implode( '|', $index_parts );
 
-        set_transient( 'mu_navchips_product_index', $compact_index, WEEK_IN_SECONDS );
+        set_transient( 'mu_navchips_index_metadata', $metadata,      WEEK_IN_SECONDS );
 
         $metadata = [
             'total_products'     => $total_products,
@@ -552,6 +555,13 @@ if ( ! function_exists( 'mu_navchips_render_navigation_chips' ) ) {
         } else {
             $index               = mu_navchips_parse_product_index();
             $context_product_ids = array_keys( $index['products'] );
+        }
+
+        // Para usuarios restringidos, limitar los product_ids al set de digitales
+        // para que los conteos de tags reflejen lo que el usuario puede ver.
+        if ( $is_restricted ) {
+            $digital_ids         = array_map( 'intval', (array) get_option( 'muyu_digital_product_ids', [] ) );
+            $context_product_ids = array_intersect( $context_product_ids, $digital_ids );
         }
 
         $tag_stats = mu_navchips_calculate_tag_stats( $context_product_ids, $active_tag_ids );
