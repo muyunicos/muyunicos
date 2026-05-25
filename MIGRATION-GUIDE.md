@@ -1,19 +1,20 @@
-MUY ÜNCOS — ARCHITECTURE & MIGRATION GUIDE
-
-Estado: Modular Pragmático · v2.11.1 · May 22, 2026
+MUY ÚNICOS — ARCHITECTURE GUIDE
 
 Monolithic functions.php DEPRECATED. Toda la lógica vive en inc/, css/ y js/.
 
 ⚠️ IA / LLM DIRECTIVE: Leer este documento antes de sugerir cambios de arquitectura.
 Compliance estricto con "Pragmatic Modularity" y "Pull Request Workflow" es obligatorio.
 
+
 ════════════════════════════════════════════════════════════════
 1. REGLAS CORE
 ════════════════════════════════════════════════════════════════
 
+
 MODULARIDAD PRAGMÁTICA ("Goldilocks")
 - Ajustes pequeños de UI < 50 líneas → agrupar en global-ui.css / global-ui.js
 - Funcionalidades complejas o aisladas → archivo propio, carga condicional
+
 
 CARGA CONDICIONAL ESTRICTA
 - Nunca cargar assets globalmente si no aplican a header/footer/UI transversal.
@@ -25,14 +26,17 @@ CARGA CONDICIONAL ESTRICTA
   · EXCEPCIÓN emails: style="" inline es obligatorio en fragmentos HTML de email.
     Los clientes de correo no soportan hojas externas.
 
+
 FLUJO GITHUB (PROHIBIDO COMMIT DIRECTO A MAIN)
 - Rama semántica obligatoria: perf/, refactor/, fix/, feat/
 - Todo cambio requiere Pull Request contra main.
 - Actualizar SIEMPRE este archivo en el PR (estado actual, no changelog).
 
+
 ════════════════════════════════════════════════════════════════
 2. SYSTEM MAP — ÁRBOL DE DIRECTORIOS
 ════════════════════════════════════════════════════════════════
+
 
 muyunicos/ (generatepress-child)
 │
@@ -41,71 +45,85 @@ muyunicos/ (generatepress-child)
 │
 ├── inc/                    # Módulos PHP — lógica de negocio y hooks
 │   ├── icons.php           # [PRIMERO] mu_get_icon() — repositorio SVG
-│   ├── compat-litespeed.php # [SEGUNDO] Compatibilidad LiteSpeed Cache v1.0.0
-│   │                        # Problema: gla-gtag-events.js (Google Listings & Ads) depende
-│   │                        # de window.wp.hooks. El JS Delay de LiteSpeed ejecuta scripts
-│   │                        # de forma asíncrona sin respetar dependencias WP, causando
-│   │                        # TypeError en visitantes (sin admin bar). Solución: filtro
-│   │                        # 'litespeed_optimize_js_excludes' para excluir programáticamente
-│   │                        # gtag-events.js y su chunk 101.js del delay. No depende de la
-│   │                        # config del plugin (no se resetea con actualizaciones).
-│   ├── coming-soon.php     # Coming Soon override v1.0.0. Intercepta template_redirect
-│   │                       # (prioridad 0) cuando Hostinger Coming Soon está activo.
-│   │                       # Sirve templates/coming-soon.php con status 503 y exit().
+│   ├── compat-litespeed.php # [SEGUNDO] Compatibilidad LiteSpeed Cache.
+│   │                        # Excluye gla-gtag-events.js y su chunk 101.js del JS Delay
+│   │                        # via filtro 'litespeed_optimize_js_excludes'. Evita TypeError
+│   │                        # por dependencia window.wp.hooks en visitantes sin admin bar.
+│   ├── coming-soon.php     # Coming Soon override. Intercepta template_redirect (prio 0)
+│   │                       # cuando Hostinger Coming Soon está activo. Sirve
+│   │                       # templates/coming-soon.php con status 503 y exit().
 │   │                       # IMPORTANTE: la plantilla es standalone (no wp_head/wp_footer).
 │   │                       # Bypass: admin, AJAX, REST, wc-ajax, manage_options.
-│   │                       # css/coming-soon.css YA NO SE ENCOLA (CSS inline en template).
+│   │                       # CSS inline en template — coming-soon.css NO se encola.
 │   ├── geo.php             # Multi-país: detección por subdominio, decimales, modal
 │   │                       # sugerencia de país, selector de header, prefijo idioma.
 │   │                       # muyu_get_cached_geolocation() — una sola llamada/request.
-│   ├── digital-restriction.php  # Restricción productos físicos por subdominio v4.6.0.
+│   ├── digital-restriction.php  # Restricción productos físicos por subdominio.
 │   │                            # Rebuild de índice vía wp_schedule_single_event().
-│   │                            # ÍNDICES DISPONIBLES:
+│   │                            #
+│   │                            # ÍNDICES DISPONIBLES (wp_options):
 │   │                            #   OPTION_PRODUCT_IDS           → IDs productos digitales
 │   │                            #   OPTION_CATEGORY_IDS          → IDs categorías con cobertura digital
 │   │                            #   OPTION_DIRECT_CATEGORY_IDS   → IDs categorías con digital DIRECTO
 │   │                            #   OPTION_TAG_IDS               → IDs tags digitales
 │   │                            #   OPTION_REDIRECT_MAP          → product_id físico → product_id digital
-│   │                            #   OPTION_CATEGORY_REDIRECT_MAP → mapa cat redirect (v4.4.0)
+│   │                            #   OPTION_CATEGORY_REDIRECT_MAP → mapa cat redirect
 │   │                            #     'by_id'   => [ source_term_id => dest_term_id ]
 │   │                            #     'by_slug' => [ source_slug    => dest_slug    ]
-│   │                            # HELPER (v4.6.0):
+│   │                            #
+│   │                            # HELPER:
 │   │                            #   category_has_visible_digital_products(int $term_id): bool
 │   │                            #     WP_Query post__in=OPTION_PRODUCT_IDS limit 1 + tax_query
 │   │                            #     product_visibility NOT IN exclude-from-catalog.
-│   │                            #     Transient mu_digital_cat_has_visible_{id} (TTL 12h),
-│   │                            #     invalidado en save_indexes() para ids previos+actuales.
+│   │                            #     Transient mu_digital_cat_has_visible_{id}
+│   │                            #     TTL 30 días (seguro de último recurso — invalidado
+│   │                            #     por evento en save_indexes() para ids previos+actuales).
+│   │                            #
+│   │                            # HOOKS DE INVALIDACIÓN:
+│   │                            #   woocommerce_update_product → schedule_rebuild()
+│   │                            #   woocommerce_new_product    → schedule_rebuild()
+│   │                            #   created_product_cat        → schedule_rebuild()
+│   │                            #   edited_product_cat         → schedule_rebuild()
+│   │                            #   delete_product_cat         → schedule_rebuild()
+│   │                            #
+│   │                            # FUNCIÓN PÚBLICA GLOBAL:
+│   │                            #   mu_rebuild_all_indexes(): array
+│   │                            #     Rebuilda digital → navchips en orden seguro.
+│   │                            #     Llamada por ajax_rebuild_indexes() (botón admin
+│   │                            #     "⚡ Reindexar Todo") y disponible para WP-CLI
+│   │                            #     u otros módulos.
+│   │                            #
 │   │                            # FLUJO DE REDIRECCIÓN (template_redirect prio 20):
 │   │                            #   is_product_category() → handle_category_redirect()
 │   │                            #     1. Consulta OPTION_CATEGORY_REDIRECT_MAP by_id (O(1))
 │   │                            #     2. Fallback: sube por padres en runtime
-│   │                            #     3. [v4.6.0] Si la cat está en índice digital pero
+│   │                            #     3. Si la cat está en índice digital pero
 │   │                            #        category_has_visible_digital_products() = false,
 │   │                            #        redirige al shop (evita página vacía cuando el
 │   │                            #        producto digital está oculto del catálogo).
-│   │                            #   filter_menu_items(): mismo criterio — excluye del menú
-│   │                            #     categorías sin productos digitales visibles. [v4.6.0]
-│   │                            #   is_404() → handle_404_category_redirect() [v4.5.0]
+│   │                            #   filter_menu_items(): excluye del menú categorías sin
+│   │                            #     productos digitales visibles.
+│   │                            #   is_404() → handle_404_category_redirect()
 │   │                            #     Resuelve slug desde $_SERVER['REQUEST_URI']
 │   │                            #     iterando TODOS los segmentos del path (no solo el último)
 │   │                            #     → get_term_by('slug', ..., 'product_cat')
-│   │                            #     → lookup by_slug (O(1), PRIMERO) [FIX v4.5.0]
+│   │                            #     → lookup by_slug (O(1), PRIMERO)
 │   │                            #     → lookup by_id (fallback del mapa)
 │   │                            #     → fallback: sube padres + schedule_rebuild()
 │   │                            #     Anti-loop: si categoría digital genera 404, solo
 │   │                            #     redirigir si URL actual ≠ canonical de get_term_link()
-│   │                            #   filter_category_terms(): guard is_404() [FIX v4.5.0]
+│   │                            #   filter_category_terms(): guard is_404()
 │   │                            #     Si WP resolvió como 404, no filtrar terms.
 │   │                            #     Evita que WC_Query excluya del include la categoría
 │   │                            #     cuya URL intenta resolverse como ruta válida.
 │   ├── auth-modal.php      # Modal Login/Registro + endpoints wc_ajax_mu_*
-│   ├── login.php           # Personalización wp-login.php v2.1.0
+│   ├── login.php           # Personalización wp-login.php
 │   ├── checkout.php        # Checkout Híbrido + Login Gate (mu_checkout_login_notice p5)
 │   ├── cart.php            # Multi-item add, buffers BACS
-│   ├── flexible-price.php  # Precio Flexible v4.0: mapa O(1), validación, AJAX handler.
+│   ├── flexible-price.php  # Precio Flexible: mapa O(1), validación, AJAX handler.
 │   │                       # Encola flexible-price.js vía mu_flexible_price_enqueue().
 │   │                       # NO agregar a mu_enqueue_assets() — causaría duplicado.
-│   ├── hero-banners.php    # Hero Banners Manager v1.0.1 — admin submenu bajo WC Marketing
+│   ├── hero-banners.php    # Hero Banners Manager — admin submenu bajo WC Marketing
 │   │                       # (parent slug 'woocommerce-marketing' → screen
 │   │                       # 'marketing_page_mu-hero-banners'). Storage en wp_option
 │   │                       # 'mu_hero_banners' (array de promos). Cache transient
@@ -130,17 +148,38 @@ muyunicos/ (generatepress-child)
 │   │                       # mu_home_sections_enqueue() → home.css + hero.js en front_page.
 │   ├── orders-files.php    # Gestor de archivos de pedido: Admin + Email + Mi Cuenta
 │   ├── orders-workflow.php # Estado 'wc-production', emails inteligentes, Admin UI
-│   ├── downloads-bonus.php # Bonus & Guías v1.2.0: inyección tabla descargas + emails.
+│   ├── downloads-bonus.php # Bonus & Guías: inyección tabla descargas + emails.
 │   │                       # mu_user_has_cat_18_custom_files() — transient mu_cat18_files_{uid}
 │   │                       # (TTL 12h), invalidado en woocommerce_order_status_changed.
-│   ├── navigation-chips.php # Navigation Chips v8: breadcrumb, índice compacto, chips,
+│   ├── navigation-chips.php # Navigation Chips: breadcrumb, índice compacto, chips,
 │   │                        # transient por categoría.
-│   ├── products-core.php   # Core v2.1: constantes, MU_UI_Helper, hooks carrito/orden
-│   ├── addon-nombre.php    # Addon Nombre v3.0: campo, validación, editor inline AJAX
-│   └── addon-etiquetas.php # Addon Etiquetas v3.0: builder, config, render UI, enqueue
+│   │                        #
+│   │                        # ÍNDICE COMPACTO (transients):
+│   │                        #   mu_navchips_product_index  → índice compacto de productos
+│   │                        #   mu_navchips_index_metadata → metadata del índice
+│   │                        #   TTL: 30 días (seguro de último recurso — invalidado
+│   │                        #   por evento antes de expirar).
+│   │                        #
+│   │                        # HOOKS DE INVALIDACIÓN:
+│   │                        #   save_post_product          → mu_navchips_schedule_index_rebuild()
+│   │                        #   woocommerce_new_product    → mu_navchips_schedule_index_rebuild()
+│   │                        #   edited_product_cat         → mu_navchips_schedule_index_rebuild()
+│   │                        #   created_product_cat        → mu_navchips_schedule_index_rebuild()
+│   │                        #   delete_product_cat         → mu_navchips_schedule_index_rebuild()
+│   │                        #   edited_product_tag         → mu_navchips_schedule_index_rebuild()
+│   │                        #   delete_post                → mu_navchips_schedule_index_rebuild()
+│   │                        #
+│   │                        # CONTEOS EN RENDER (usuarios restringidos):
+│   │                        #   Si is_restricted=true, $context_product_ids se intersecta
+│   │                        #   con muyu_digital_product_ids antes de calcular conteos.
+│   │                        #   Evita que chips muestren productos físicos no visibles
+│   │                        #   para usuarios de subdominios internacionales.
+│   ├── products-core.php   # Core: constantes, MU_UI_Helper, hooks carrito/orden
+│   ├── addon-nombre.php    # Addon Nombre: campo, validación, editor inline AJAX
+│   └── addon-etiquetas.php # Addon Etiquetas: builder, config, render UI, enqueue
 │
 ├── templates/              # Plantillas PHP standalone (fuera del loop de GP)
-│   └── coming-soon.php     # STANDALONE v2.0.0 — NO usa wp_head() ni wp_footer().
+│   └── coming-soon.php     # STANDALONE — NO usa wp_head() ni wp_footer().
 │                           # CSS inlineado en <style> + JS mínimo inline.
 │                           # Descarga total < 30 KB. Cero recursos WP/WC/plugins.
 │                           # Contenido: logo, título multi-idioma rotativo (ES/EN/PT/IT/FR),
@@ -150,9 +189,9 @@ muyunicos/ (generatepress-child)
 ├── css/                    # CSS modular — siempre carga condicional
 │   ├── components/
 │   │   ├── global-ui.css        # Global: Share, WhatsApp, Search, WPLingua, Carrusel,
-│   │   │                        # BREADCRUMB (.mu-navchips-breadcrumb y selectores relacionados)
-│   │   │                        # Fix v2.9.2: breadcrumbs movidos aquí desde navigation-chips.css
-│   │   │                        # para que sean visibles en entradas, cuenta, descargas, etc.
+│   │   │                        # BREADCRUMB (.mu-navchips-breadcrumb y selectores relacionados).
+│   │   │                        # Breadcrumbs aquí (no en navigation-chips.css) para que sean
+│   │   │                        # visibles en entradas, cuenta, descargas, etc.
 │   │   ├── header.css           # Global
 │   │   ├── footer.css           # Global
 │   │   ├── modal-auth.css       # !is_user_logged_in()
@@ -160,8 +199,8 @@ muyunicos/ (generatepress-child)
 │   │   └── navigation-chips.css # is_shop() || is_product_category() || is_product_tag() || is_product()
 │   │                            # SOLO chips/filtros del catálogo (.mu-navchips-wrapper,
 │   │                            # .mu-navchips-chip-*, .mu-navchips-label, .mu-navchips-list).
-│   │                            # Fix v2.8.3: chip actual (.mu-navchips-current span) normalizado
-│   │                            # con font-size/padding/line-height iguales a los crumbs anteriores.
+│   │                            # Chip actual (.mu-navchips-current span): font-size/padding/
+│   │                            # line-height iguales a los crumbs anteriores.
 │   │                            # .mu-share-btn dentro del chip: display:inline-flex, padding:0,
 │   │                            # svg 14×14px — no altera la altura del chip.
 │   │                            # SVGs dentro de .mu-navchips-icon-link forzados a 16×16px.
@@ -181,8 +220,9 @@ muyunicos/ (generatepress-child)
 │   │                            # Botón: transition background+box-shadow.
 │   │                            # SVG: transition transform + will-change:transform (GPU).
 │   │                            # Click: clase .is-spinning dispara @keyframes mu-spin-once.
-│   ├── coming-soon.css          # DEPRECATED — CSS ya no se encola (inline en template v2).
-│   │                            # Mantener archivo como referencia pero no encolarlo.
+│   ├── coming-soon.css          # DEPRECATED — no se encola. CSS inline en template.
+│   │                            # Mantener archivo como referencia. No eliminar hasta
+│   │                            # confirmar que nada lo referencia externamente.
 │   └── account-downloads.css   # is_account_page() && is_wc_endpoint_url('downloads')
 │                                # .mu-custom-downloads · .mu-guide-link
 │
@@ -219,15 +259,17 @@ muyunicos/ (generatepress-child)
     ├── admin-order-files.js     # is_admin() + order edit
     └── admin-orders.js          # is_admin() + order edit
 
+
 ════════════════════════════════════════════════════════════════
 3. ROUTING — ¿DÓNDE VA EL CÓDIGO NUEVO?
 ════════════════════════════════════════════════════════════════
+
 
 ¿Qué necesitás agregar?             | PHP (inc/)               | CSS                          | JS
 ------------------------------------|--------------------------|------------------------------|----------------------------
 Ajuste UI pequeño (< 50 líneas)     | ui.php                   | components/global-ui.css     | global-ui.js
 Header / Footer (elemento pesado)   | ui.php                   | header.css / footer.css      | header.js / footer.js
-Multi-país / Geolocalización       | geo.php                  | components/country-modal.css | country-modal.js
+Multi-país / Geolocalización        | geo.php                  | components/country-modal.css | country-modal.js
 Restricción subdominios             | digital-restriction.php  | shop.css / admin.css         | shop.js / admin.js
 Redirección categoría en 404        | digital-restriction.php  | —                            | —
 Carrito                             | cart.php                 | cart.css                     | cart.js
@@ -247,18 +289,22 @@ Shortcode Testimonios               | ui.php                   | testimonials.cs
 Shortcodes Home (carrusel/sección)  | ui.php                   | home.css                     | — (reutiliza initCarousels)
 Hero promos dinámicas (storage)     | hero-banners.php         | admin-hero-banners.css       | admin-hero-banners.js
 Hero promos dinámicas (render)      | ui.php (mu_hero_section) | home.css                     | hero.js
-Nuevo icóno SVG                     | icons.php                | —                            | —
+Nuevo ícono SVG                     | icons.php                | —                            | —
 Breadcrumb (estilos)                | navigation-chips.php     | components/global-ui.css     | —
 Pantalla Coming Soon custom         | coming-soon.php          | inline en template           | inline en template
 Compatibilidad plugins/caché        | compat-litespeed.php     | —                            | —
+
 
 ════════════════════════════════════════════════════════════════
 4. SISTEMA DE DISEÑO (API EXCLUSIVA)
 ════════════════════════════════════════════════════════════════
 
+
 ⚠️ NO inventar variables nuevas. Solo las definidas en :root de style.css.
 
+
 VARIABLES CSS
+
 
 Categoría    | Variables
 -------------|--------------------------------------------------------------------------
@@ -273,6 +319,7 @@ Builder      | --mu-builder-accent (#6c5ce7)  --mu-builder-accent-hover  --mu-bu
              | --mu-builder-border-dark  --mu-builder-bg-light  --mu-builder-bg-subtle
              | --mu-builder-bg-muted  --mu-builder-bg-option
 
+
 ICONOS SVG
   echo mu_get_icon('name');  // NUNCA inline SVG directo
   ⚠️  EXCEPCIÓN: templates/coming-soon.php usa SVG inline directo porque
@@ -286,9 +333,11 @@ ICONOS SVG
   · home  → usado en breadcrumb (.mu-navchips-icon-link, primer chip)
   · book  → usado en breadcrumb contexto blog (.mu-navchips-icon-link--context)
 
+
 ════════════════════════════════════════════════════════════════
 5. CONVENCIONES DE CÓDIGO
 ════════════════════════════════════════════════════════════════
+
 
 PHP
 - Siempre: if ( ! function_exists( 'mu_fn' ) ) { ... add_action/filter dentro del bloque }
@@ -305,9 +354,13 @@ PHP
   Para editar contenido: WP Admin → WooCommerce → Marketing → Hero Banners.
 - Coming Soon standalone: logo y número WA hardcodeados. Cambios → editar templates/coming-soon.php directamente.
 - Category Redirect Map: OPTION_CATEGORY_REDIRECT_MAP se construye en rebuild_digital_indexes().
-  Tras agregar productos a una categoría nueva, forzar rebuild desde Admin → Productos → Reindexar Digitales.
+  Tras agregar productos a una categoría nueva, forzar rebuild con el botón "⚡ Reindexar Todo".
 - 404 routing: filter_category_terms() NO filtra cuando is_404() = true. Esto es intencional.
   Si WP resolvió como 404, filtrar terms rompe el contexto de handle_404_category_redirect().
+- Reindexado unificado: usar mu_rebuild_all_indexes() para reconstruir digital + navchips en orden.
+  NUNCA llamar rebuild_digital_indexes() o mu_navchips_build_product_index() por separado desde
+  código nuevo — usar siempre la función unificada para garantizar consistencia entre índices.
+
 
 JavaScript
 - IIFE + 'use strict' + DOMContentLoaded. Cero jQuery salvo obligación WC legacy.
@@ -319,6 +372,7 @@ JavaScript
 - Animaciones de botón: NUNCA style.transform inline. Usar clases CSS (.is-spinning, etc.)
   que deleguen al motor de animación del browser (GPU-composited).
 
+
 CSS
 - Prefijo + BEM: .mu-[componente]__elem--[mod]
 - Sobrescrituras GP: /* override GP: [motivo] */
@@ -328,14 +382,13 @@ CSS
 - Animaciones: separar transiciones del contenedor y del hijo SVG/icon.
   El hijo SVG debe tener su propio transition:transform + will-change:transform.
 
+
 ════════════════════════════════════════════════════════════════
 6. DEUDA TÉCNICA
 ════════════════════════════════════════════════════════════════
 
+
 - [ ] checkout.js: libphonenumber-js desde CDN unpkg.com — evaluar auto-host local.
 - [ ] orders-workflow.php: bulk actions Legacy → migrar a HPOS (woocommerce_order_list_table_bulk_actions).
 - [ ] digital-restriction.php: N+1 en display_digital_price_in_catalog — evaluar get_post_meta() directo.
-- [ ] coming-soon.css: archivo deprecado pero presente. Evaluar eliminarlo si inc/coming-soon.php
-      ya no lo encola tras esta migración.
-- [ ] digital-restriction.php: OPTION_CATEGORY_REDIRECT_MAP se invalida solo al actualizar productos.
-      Evaluar también invalidar en save_term / delete_term si se crean/eliminan categorías.
+- [ ] coming-soon.css: archivo deprecado pero presente. Eliminar una vez confirmado que nada lo referencia.
