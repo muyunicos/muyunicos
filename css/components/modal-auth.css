@@ -127,8 +127,9 @@
 }
 
 .mu-link-back:hover {
-    color: var(--resaltado, #2387b0);
-    gap: 7px;
+    gap: 0px;
+    background-color: unset;
+    color: unset;
 }
 
 .mu-link-back:focus-visible {
