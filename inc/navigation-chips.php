@@ -531,7 +531,8 @@ if ( ! function_exists( 'mu_navchips_render_navigation_chips' ) ) {
 
             // Verificar que la categoría tenga al menos un producto visible en catálogo.
             // Necesario porque hide_empty=true cuenta productos ocultos (exclude-from-catalog).
-            if ( function_exists( 'muyu_digital_restriction_init' ) ) {
+            // Solo aplicar el filtro digital si el usuario está restringido
+            if ( $is_restricted && function_exists( 'muyu_digital_restriction_init' ) ) {
                 $restriction = muyu_digital_restriction_init();
                 if ( method_exists( $restriction, 'category_has_visible_digital_products' ) ) {
                     if ( ! $restriction->category_has_visible_digital_products( $cat->term_id ) ) {
