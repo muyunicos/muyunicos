@@ -159,14 +159,17 @@ if ( ! function_exists( 'muyu_country_modal_text' ) ) {
     function muyu_country_modal_text( $code, $type = 'question' ) {
         $text = [
             'pt' => [
+                'title' => '¡Olá!',
                 'question' => 'Você deseja comprar do %s?',
                 'stay' => 'Permanecer neste site e não perguntar novamente'
             ],
             'en' => [
+                'title' => 'Hi!',
                 'question' => 'Do you want to shop from %s?',
                 'stay' => 'Stay on this site and do not ask again'
             ],
             'es' => [
+                'title' => '¡Hola!',
                 'question' => '¿Quieres comprar desde %s?',
                 'stay' => 'Quedarme en este sitio'
             ]
@@ -375,12 +378,17 @@ if ( ! function_exists( 'mu_country_modal_html' ) ) {
         $prefix        = muyu_country_language_prefix( $user_country );
         $final_request = muyu_clean_uri( $prefix, $request_uri );
         $target_url    = 'https://' . rtrim( $target['host'], '/' ) . $final_request;
-        
+        $modal_title = muyu_country_modal_text( $user_country, 'title' );
         $modal_question = sprintf( muyu_country_modal_text( $user_country, 'question' ), $target['name'] );
         $modal_stay     = muyu_country_modal_text( $user_country, 'stay' );
         $flag_url       = 'https://flagcdn.com/w40/' . esc_attr( $target['flag'] ) . '.png';
         ?>
-        <div id="muyu-country-modal-overlay" class="mu-modal-overlay" data-current-domain="<?php echo esc_attr( $current_domain ); ?>">
+        <div id="muyu-country-modal-overlay" class="mu-modal-overlay" 
+     data-current-domain="<?php echo esc_attr( $current_domain ); ?>"
+     role="dialog" 
+     aria-modal="true" 
+     aria-labelledby="mu-modal-title" 
+     aria-describedby="mu-modal-subtitle">
             <div id="muyu-country-modal" class="mu-modal-container">
                 <div class="mu-modal-content">  
                    <button id="muyu-country-close" class="mu-modal-close" type="button" aria-label="Cerrar">
@@ -389,11 +397,14 @@ if ( ! function_exists( 'mu_country_modal_html' ) ) {
         <line x1="6" y1="6" x2="18" y2="18"></line>
     </svg>
 </button>
-                    <div>
-                        <div>
-                            <?php echo esc_html( $modal_question ); ?>
+<div class="mu-modal-header">
+                    <h2 id="mu-modal-title"><?php echo esc_html( $modal_title ); ?></h2>
+                    <p class="mu-modal-subtitle" id="mu-modal-subtitle">
+                          <?php echo esc_html( $modal_question ); ?>
                             <img src="<?php echo esc_attr( $flag_url ); ?>" alt="<?php echo esc_attr( $target['name'] ); ?>" />
-                        </div>
+                        </p>
+                </div>
+                    <div>
                         <a href="<?php echo esc_url( $target_url ); ?>" rel="nofollow" class="muyu-country-btn">
                             Ir a Muy Únicos <?php echo esc_html( $target['name'] ); ?>
                         </a>
