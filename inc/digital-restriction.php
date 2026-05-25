@@ -158,7 +158,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
          * Transient mu_digital_cat_has_visible_{term_id} (TTL 12h),
          * invalidado en save_indexes() tras rebuild.
          */
-        private function category_has_visible_digital_products( int $term_id ): bool {
+        public function category_has_visible_digital_products( int $term_id ): bool {
             if ( $term_id <= 0 ) return false;
 
             $cache_key = 'mu_digital_cat_has_visible_' . $term_id;
