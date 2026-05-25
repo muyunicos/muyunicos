@@ -3,18 +3,19 @@
    Versión: 2.0.0 (Migrado desde snippet)
    Detecta país del usuario y sugiere sitio correcto
    ============================================ */
-
 /* Override: country modal es más compacto que el base */
 #muyu-country-modal { max-width: 370px; }
-#muyu-country-modal .mu-modal-content { padding: 2rem 1rem 1.1rem; text-align: center; }
+#muyu-country-modal .mu-modal-content { 
+    padding: 2rem 1rem 1.1rem; 
+    text-align: center; 
+}
 
-
-/* Contenido del Modal */
-#muyu-country-modal > div {
+/* Contenido del Modal — selectores actualizados */
+#muyu-country-modal .mu-modal-header {
     margin-bottom: 18px;
 }
 
-#muyu-country-modal > div > div:first-child {
+#muyu-country-modal .mu-modal-subtitle {
     font-size: 1.18em;
     margin-bottom: 22px;
     color: var(--texto);
@@ -55,7 +56,7 @@
 .muyu-country-stay-btn {
     cursor: pointer;
     display: inline-block;
-    margin: 0 auto;
+    margin: 18px auto 0;
     padding: 11px 1.3em;
     background: #92f0ff;
     color: var(--texto);
@@ -74,12 +75,10 @@
 
 /* Mobile Responsive */
 @media (max-width: 600px) {
-    #muyu-country-modal {
-        max-width: 95vw;
-        padding: 17px 4vw;
-    }
+    #muyu-country-modal { max-width: 95vw; }
+    #muyu-country-modal .mu-modal-content { padding: 17px 4vw; }
 
-    #muyu-country-modal > div > div:first-child {
+    #muyu-country-modal .mu-modal-subtitle {
         font-size: 1.05em;
         margin-bottom: 18px;
     }
@@ -93,10 +92,6 @@
 
 /* Accesibilidad: Reducir movimiento */
 @media (prefers-reduced-motion: reduce) {
-    #muyu-country-close:hover {
-        transform: none;
-    }
-
     .muyu-country-btn:hover,
     .muyu-country-stay-btn:hover {
         transform: none;
