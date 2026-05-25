@@ -123,7 +123,9 @@
        ===================== */
     const modalManager = {
         open: () => {
-            modal.classList.add('is-visible');
+            elements.overlay.style.display = 'flex';
+            void elements.overlay.offsetWidth; // fuerza reflow para animación
+            elements.overlay.classList.add('is-visible');
             document.body.style.overflow = 'hidden';
             
             // Auto-rellenar desde billing_email si existe (checkout)
@@ -137,8 +139,8 @@
         },
         
         close: () => {
-            modal.classList.remove('is-visible');
-            document.body.style.overflow = '';
+            elements.overlay.classList.remove('is-visible');
+            setTimeout(() => { elements.overlay.style.display = 'none'; }, 300);            document.body.style.overflow = '';
             modalManager.reset();
         },
         
@@ -350,7 +352,7 @@
     
     // Cerrar con tecla ESC
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && modal.classList.contains('is-visible')) {
+        if (e.key === 'Escape' && elements.overlay.classList.contains('is-visible')) {
             modalManager.close();
         }
     });
