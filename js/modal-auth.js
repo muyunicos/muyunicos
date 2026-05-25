@@ -141,7 +141,6 @@
         close: () => {
             modal.setAttribute('aria-hidden', 'true');
             modal.classList.remove('is-visible');
-            setTimeout(() => { modal.style.display = 'none'; }, 300);
             document.body.style.overflow = '';
             modalManager.reset();
         },
