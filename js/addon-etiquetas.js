@@ -506,24 +506,27 @@
             }
 
             var sumDiv = document.getElementById('mu-selection-summary');
+            if ( ! sumDiv ) return;
             sumDiv.innerHTML = hasSel ? 'Tu pedido incluye:<br>' + summary.join('<br>') : '';
             if (hasSel) jQuery('#mu-selection-summary').slideDown();
             else jQuery('#mu-selection-summary').slideUp();
 
             this.toggleSubmit(hasSel);
 
-            // Guardar datos para el Core (formato estándar)
-            document.getElementById('mu_data_input').value = JSON.stringify({
-                total_calculated: total,
-                display_lines: displayLines,
-                raw_data: {
-                    mode:     this.state.mode,
-                    items:    this.state.items,
-                    packQty:  this.state.packQty,
-                    packRopa: this.state.packRopa
-                }
-            });
-        },
+            var dataInput = document.getElementById('mu_data_input');
+    if ( ! dataInput ) return;
+
+    dataInput.value = JSON.stringify({
+        total_calculated: total,
+        display_lines: displayLines,
+        raw_data: {
+            mode:     this.state.mode,
+            items:    this.state.items,
+            packQty:  this.state.packQty,
+            packRopa: this.state.packRopa
+        }
+    });
+},
 
         formatMoney: function (n) {
             return new Intl.NumberFormat('es-AR', {
