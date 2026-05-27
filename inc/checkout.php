@@ -326,3 +326,32 @@ if ( ! function_exists( 'mu_checkout_login_notice' ) ) {
     }
 }
 add_action( 'woocommerce_before_checkout_form', 'mu_checkout_login_notice', 5 );
+// ============================================
+// MEDIOS DE PAGO — RESTRICCIÓN POR PAÍS
+// Oculta Transferencia Bancaria (bacs) si el
+// país del comprador NO es Argentina (AR).
+// ============================================
+
+if ( ! function_exists( 'mu_filter_payment_gateways_by_country' ) ) {
+    function mu_filter_payment_gateways_by_country( $gateways ) {
+        // WC()->customer puede ser null fuera del contexto de cart/checkout
+        if ( ! WC()->customer ) {
+            return $gateways;
+        }
+
+        $country = WC()->customer->get_billing_country();
+
+        // Si el país aún no está definido, fallback al país de envío
+        if ( empty( $country ) ) {
+            $country = WC()->customer->get_shipping_country();
+        }
+
+        // Ocultar BACS (Transferencia bancaria) para cualquier país que no sea AR
+        if ( ! empty( $country ) && $country !== 'AR' ) {
+            unset( $gateways['bacs'] );
+        }
+
+        return $gateways;
+    }
+}
+add_filter( 'woocommerce_available_payment_gateways', 'mu_filter_payment_gateways_by_country' );
