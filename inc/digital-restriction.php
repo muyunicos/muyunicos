@@ -815,64 +815,62 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         public function autoselect_format_variation() {
     global $product;
     if ( ! $product || ! $product->is_type( 'variable' ) ) return;
-    
-    if ( ! $this->is_restricted_user() ) {
-        return;
-    }
+    if ( ! $this->is_restricted_user() ) return;
 
-    $target_slug = 'digitales'; 
+    $target_slug = 'digitales';
     ?>
     <script type="text/javascript">
     (function($) {
         'use strict';
         if ( 'undefined' === typeof $ || ! $.fn ) return;
-        
+
         $(document).ready(function() {
             var $form = $('form.variations_form');
             if ( ! $form.length ) return;
-            
-            // Esperar a que WC inicialice su objeto variation_form
-            $form.on('wc_variation_form', function() {
-                setTimeout(autoSelectFormatVariation, 100);
-            });
 
-            // Fallback: si wc_variation_form ya se disparó antes de nuestro bind
-            $form.on('woocommerce_update_variation_values', function() {
-                setTimeout(autoSelectFormatVariation, 100);
-            });
-            
-            // Intento inicial con delay mayor para cubrir JS Delay de LiteSpeed
-            setTimeout(autoSelectFormatVariation, 400);
-            
+            var didAutoSelect = false; // ← flag de ejecución única
+
             function autoSelectFormatVariation() {
+                if ( didAutoSelect ) return; // ← corta el loop
+
                 var $select = $form.find('select[name^="attribute_pa_formato"], select[name^="attribute_formato"]');
                 if ( ! $select.length ) return;
-                
-                var targetSlug = '<?php echo esc_js($target_slug); ?>';
-                
-                // ✅ FIX CRÍTICO: disparar 'change' siempre, incluso si el valor ya
-                // es el correcto. Sin este trigger, WooCommerce nunca valida la
-                // variación y el botón queda disabled cuando PHP pre-seleccionó el valor.
+
+                var targetSlug = '<?php echo esc_js( $target_slug ); ?>';
+
+                // Fijar el valor si aún no es el correcto
                 if ( $select.val() !== targetSlug ) {
                     $select.val(targetSlug);
                 }
 
-                // Siempre notificar a WooCommerce, sin importar si el valor cambió
+                // Marcar ANTES de disparar el evento para que cualquier
+                // re-entrada causada por WC quede bloqueada inmediatamente
+                didAutoSelect = true;
+
                 $select.trigger('change');
                 $form.trigger('check_variations');
-                
+
                 hideRowAndTable($select, $form);
             }
-            
+
             function hideRowAndTable($select, $form) {
-                var $row = $select.closest('tr');
-                $row.hide();
-                
+                $select.closest('tr').hide();
                 if ( $form.find('table.variations tr:visible').length === 0 ) {
                     $form.find('.variations').fadeOut(200);
                 }
                 $form.find('.reset_variations').hide();
             }
+
+            // Un solo intento con delay suficiente para que WC esté listo.
+            // NO bindeamos woocommerce_update_variation_values — ese evento
+            // lo dispara WC en respuesta a nuestro propio trigger('change'),
+            // lo que crearía el loop. El flag didAutoSelect es el seguro final.
+            $form.on('wc_variation_form', function() {
+                setTimeout(autoSelectFormatVariation, 100);
+            });
+
+            // Safety net: si wc_variation_form ya se disparó antes de nuestro bind
+            setTimeout(autoSelectFormatVariation, 400);
         });
     })(jQuery);
     </script>
