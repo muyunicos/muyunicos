@@ -815,36 +815,38 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         public function autoselect_format_variation() {
     global $product;
     if ( ! $product || ! $product->is_type( 'variable' ) ) return;
-    if ( ! $this->is_restricted_user() ) return;
+    
+    if ( ! $this->is_restricted_user() ) {
+        return;
+    }
 
-    $target_slug = 'digitales';
+    $target_slug = 'digitales'; 
     ?>
     <script type="text/javascript">
     (function($) {
         'use strict';
         if ( 'undefined' === typeof $ || ! $.fn ) return;
-
+        
         $(document).ready(function() {
             var $form = $('form.variations_form');
             if ( ! $form.length ) return;
 
-            var didAutoSelect = false; // ← flag de ejecución única
+            var didAutoSelect = false;
 
             function autoSelectFormatVariation() {
-                if ( didAutoSelect ) return; // ← corta el loop
+                if ( didAutoSelect ) return;
 
                 var $select = $form.find('select[name^="attribute_pa_formato"], select[name^="attribute_formato"]');
                 if ( ! $select.length ) return;
 
                 var targetSlug = '<?php echo esc_js( $target_slug ); ?>';
 
-                // Fijar el valor si aún no es el correcto
                 if ( $select.val() !== targetSlug ) {
                     $select.val(targetSlug);
                 }
 
-                // Marcar ANTES de disparar el evento para que cualquier
-                // re-entrada causada por WC quede bloqueada inmediatamente
+                // Setear ANTES del trigger para bloquear cualquier re-entrada
+                // que WooCommerce pueda causar como respuesta al 'change'
                 didAutoSelect = true;
 
                 $select.trigger('change');
@@ -854,22 +856,24 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             }
 
             function hideRowAndTable($select, $form) {
-                $select.closest('tr').hide();
+                var $row = $select.closest('tr');
+                $row.hide();
+                
                 if ( $form.find('table.variations tr:visible').length === 0 ) {
                     $form.find('.variations').fadeOut(200);
                 }
                 $form.find('.reset_variations').hide();
             }
 
-            // Un solo intento con delay suficiente para que WC esté listo.
-            // NO bindeamos woocommerce_update_variation_values — ese evento
-            // lo dispara WC en respuesta a nuestro propio trigger('change'),
-            // lo que crearía el loop. El flag didAutoSelect es el seguro final.
+            // SOLO wc_variation_form — NO bindear woocommerce_update_variation_values
+            // porque ese evento lo dispara WC en respuesta a nuestro trigger('change'),
+            // lo que genera el loop. El flag didAutoSelect es el seguro final.
             $form.on('wc_variation_form', function() {
                 setTimeout(autoSelectFormatVariation, 100);
             });
 
-            // Safety net: si wc_variation_form ya se disparó antes de nuestro bind
+            // Safety net: cubre el caso en que wc_variation_form ya se disparó
+            // antes de nuestro bind (ej: LiteSpeed JS Delay carga tarde el script)
             setTimeout(autoSelectFormatVariation, 400);
         });
     })(jQuery);
