@@ -813,70 +813,80 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         }
         
         public function autoselect_format_variation() {
-            global $product;
-            if ( ! $product || ! $product->is_type( 'variable' ) ) return;
-            
-            if ( ! $this->is_restricted_user() ) {
-                return;
-            }
+    global $product;
+    if ( ! $product || ! $product->is_type( 'variable' ) ) return;
+    
+    if ( ! $this->is_restricted_user() ) {
+        return;
+    }
 
-            $target_slug = 'digitales'; 
-            ?>
-            <script type="text/javascript">
-            (function($) {
-                'use strict';
-                if ( 'undefined' === typeof $ || ! $.fn ) return;
+    $target_slug = 'digitales'; 
+    ?>
+    <script type="text/javascript">
+    (function($) {
+        'use strict';
+        if ( 'undefined' === typeof $ || ! $.fn ) return;
+        
+        $(document).ready(function() {
+            var $form = $('form.variations_form');
+            if ( ! $form.length ) return;
+            
+            // Esperar a que WC inicialice su objeto variation_form
+            $form.on('wc_variation_form', function() {
+                setTimeout(autoSelectFormatVariation, 100);
+            });
+
+            // Fallback: si wc_variation_form ya se disparó antes de nuestro bind
+            $form.on('woocommerce_update_variation_values', function() {
+                setTimeout(autoSelectFormatVariation, 100);
+            });
+            
+            // Intento inicial con delay mayor para cubrir JS Delay de LiteSpeed
+            setTimeout(autoSelectFormatVariation, 400);
+            
+            function autoSelectFormatVariation() {
+                var $select = $form.find('select[name^="attribute_pa_formato"], select[name^="attribute_formato"]');
+                if ( ! $select.length ) return;
                 
-                $(document).ready(function() {
-                    var $form = $('form.variations_form');
-                    if ( ! $form.length ) return;
-                    
-                    $form.on('wc_variation_form woocommerce_update_variation_values', function() {
-                        setTimeout(autoSelectFormatVariation, 100);
-                    });
-                    
-                    setTimeout(autoSelectFormatVariation, 150);
-                    
-                    function autoSelectFormatVariation() {
-                        var $select = $form.find('select[name^="attribute_pa_formato"], select[name^="attribute_formato"]');
-                        if ( ! $select.length ) return;
-                        
-                        var targetSlug = '<?php echo esc_js($target_slug); ?>';
-                        
-                        if ( $select.val() === targetSlug ) {
-                            hideRowAndTable($select, $form);
-                            return;
-                        }
-                        
-                        $select.val(targetSlug).trigger('change');
-                        $form.trigger('check_variations');
-                        
-                        hideRowAndTable($select, $form);
-                    }
-                    
-                    function hideRowAndTable($select, $form) {
-                        var $row = $select.closest('tr');
-                        $row.hide();
-                        
-                        if ( $form.find('table.variations tr:visible').length === 0 ) {
-                            $form.find('.variations').fadeOut(200);
-                        }
-                        $form.find('.reset_variations').hide();
-                    }
-                });
-            })(jQuery);
-            </script>
-            <style>
-                form.variations_form .variations, form.variations_form tr {
-                    transition: opacity 0.2s ease-out;
+                var targetSlug = '<?php echo esc_js($target_slug); ?>';
+                
+                // ✅ FIX CRÍTICO: disparar 'change' siempre, incluso si el valor ya
+                // es el correcto. Sin este trigger, WooCommerce nunca valida la
+                // variación y el botón queda disabled cuando PHP pre-seleccionó el valor.
+                if ( $select.val() !== targetSlug ) {
+                    $select.val(targetSlug);
                 }
-                .variations_form .reset_variations {
-                    display: none !important;
-                    visibility: hidden !important;
+
+                // Siempre notificar a WooCommerce, sin importar si el valor cambió
+                $select.trigger('change');
+                $form.trigger('check_variations');
+                
+                hideRowAndTable($select, $form);
+            }
+            
+            function hideRowAndTable($select, $form) {
+                var $row = $select.closest('tr');
+                $row.hide();
+                
+                if ( $form.find('table.variations tr:visible').length === 0 ) {
+                    $form.find('.variations').fadeOut(200);
                 }
-            </style>
-            <?php
+                $form.find('.reset_variations').hide();
+            }
+        });
+    })(jQuery);
+    </script>
+    <style>
+        form.variations_form .variations, form.variations_form tr {
+            transition: opacity 0.2s ease-out;
         }
+        .variations_form .reset_variations {
+            display: none !important;
+            visibility: hidden !important;
+        }
+    </style>
+    <?php
+}
     }
 }
 
