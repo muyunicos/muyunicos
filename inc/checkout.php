@@ -327,28 +327,108 @@ if ( ! function_exists( 'mu_checkout_login_notice' ) ) {
 }
 add_action( 'woocommerce_before_checkout_form', 'mu_checkout_login_notice', 5 );
 // ============================================
-// MEDIOS DE PAGO — RESTRICCIÓN POR PAÍS
-// Oculta Transferencia Bancaria (bacs) si el
-// país del comprador NO es Argentina (AR).
+// MEDIOS DE PAGO — VISIBILIDAD POR PAÍS
+// Define qué gateways se muestran/ocultan según el
+// país del comprador. Totalmente configurable por
+// código vía el filtro 'mu_payment_gateways_country_rules'.
+// Por defecto: oculta Transferencia Bancaria (bacs)
+// salvo en Argentina (AR), preservando el comportamiento previo.
 // ============================================
 
-if ( ! function_exists( 'mu_filter_payment_gateways_by_country' ) ) {
-    function mu_filter_payment_gateways_by_country( $gateways ) {
-        // WC()->customer puede ser null fuera del contexto de cart/checkout
-        if ( ! WC()->customer ) {
-            return $gateways;
+if ( ! function_exists( 'mu_get_payment_gateways_country_rules' ) ) {
+    /**
+     * Reglas de visibilidad de medios de pago por país.
+     *
+     * Estructura por clave de país (código ISO en mayúsculas):
+     *   'allow' => string[] IDs de gateway. Si se define y NO está vacío,
+     *              SÓLO se muestran esos gateways (lista blanca).
+     *   'deny'  => string[] IDs de gateway a ocultar (lista negra).
+     *
+     * La clave 'default' aplica a cualquier país sin regla propia.
+     *
+     * Para configurar a futuro desde otro archivo/snippet:
+     *
+     *   add_filter( 'mu_payment_gateways_country_rules', function ( $rules ) {
+     *       // México: sólo MercadoPago
+     *       $rules['MX'] = [ 'allow' => [ 'woo-mercado-pago-custom' ] ];
+     *       // España: ocultar transferencia y contra reembolso
+     *       $rules['ES'] = [ 'deny' => [ 'bacs', 'cod' ] ];
+     *       return $rules;
+     *   } );
+     *
+     * @return array<string, array{allow?: string[], deny?: string[]}>
+     */
+    function mu_get_payment_gateways_country_rules() {
+        $rules = [
+            // Por defecto (cualquier país no listado): ocultar transferencia bancaria.
+            'default' => [
+                'deny' => [ 'bacs' ],
+            ],
+            // Argentina: se muestran todos los medios disponibles.
+            'AR' => [
+                'deny' => [],
+            ],
+        ];
+
+        return (array) apply_filters( 'mu_payment_gateways_country_rules', $rules );
+    }
+}
+
+if ( ! function_exists( 'mu_get_customer_country' ) ) {
+    /**
+     * País del comprador: billing con fallback a shipping.
+     *
+     * @return string Código ISO en mayúsculas, o '' si no se puede determinar.
+     */
+    function mu_get_customer_country() {
+        if ( ! function_exists( 'WC' ) || ! WC()->customer ) {
+            return '';
         }
 
         $country = WC()->customer->get_billing_country();
-
-        // Si el país aún no está definido, fallback al país de envío
         if ( empty( $country ) ) {
             $country = WC()->customer->get_shipping_country();
         }
 
-        // Ocultar BACS (Transferencia bancaria) para cualquier país que no sea AR
-        if ( ! empty( $country ) && $country !== 'AR' ) {
-            unset( $gateways['bacs'] );
+        return is_string( $country ) ? strtoupper( $country ) : '';
+    }
+}
+
+if ( ! function_exists( 'mu_filter_payment_gateways_by_country' ) ) {
+    /**
+     * Aplica las reglas de visibilidad de medios de pago según el país.
+     *
+     * @param array $gateways Gateways disponibles (id => WC_Payment_Gateway).
+     * @return array
+     */
+    function mu_filter_payment_gateways_by_country( $gateways ) {
+        // En el admin (sin AJAX) no filtramos: la lista debe verse completa.
+        if ( is_admin() && ! wp_doing_ajax() ) {
+            return $gateways;
+        }
+
+        $country = mu_get_customer_country();
+
+        // Sin país determinado: fallback seguro, no filtramos.
+        if ( '' === $country ) {
+            return $gateways;
+        }
+
+        $rules   = mu_get_payment_gateways_country_rules();
+        $default = ( isset( $rules['default'] ) && is_array( $rules['default'] ) ) ? $rules['default'] : [];
+        $rule    = ( isset( $rules[ $country ] ) && is_array( $rules[ $country ] ) ) ? $rules[ $country ] : $default;
+
+        // Lista blanca: si se define y no está vacía, sólo esos gateways sobreviven.
+        if ( ! empty( $rule['allow'] ) && is_array( $rule['allow'] ) ) {
+            $allow    = array_map( 'strval', $rule['allow'] );
+            $gateways = array_intersect_key( $gateways, array_flip( $allow ) );
+        }
+
+        // Lista negra: ocultar los gateways indicados.
+        if ( ! empty( $rule['deny'] ) && is_array( $rule['deny'] ) ) {
+            foreach ( $rule['deny'] as $gateway_id ) {
+                unset( $gateways[ (string) $gateway_id ] );
+            }
         }
 
         return $gateways;

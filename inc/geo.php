@@ -253,8 +253,10 @@ if ( ! function_exists( 'mu_auto_detect_country_by_domain' ) ) {
     function mu_auto_detect_country_by_domain() {
         if ( is_admin() || ! function_exists( 'WC' ) || ! WC()->customer ) return;
         
-        // Obtener el host actual limpiando el puerto
+        // Obtener el host actual limpiando el puerto y el prefijo www.
+        // (consistente con muyu_get_current_country_from_subdomain()).
         $current_host = preg_replace( '/:\d+$/', '', trim( $_SERVER['HTTP_HOST'] ?? '' ) );
+        $current_host = preg_replace( '/^www\./i', '', $current_host );
         
         $host_to_country_map = [];
         foreach ( muyu_get_countries_data() as $code => $data ) {
