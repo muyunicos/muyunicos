@@ -106,7 +106,7 @@ function mu_enqueue_assets() {
     wp_enqueue_script( 'mu-header-js', "$uri/js/header.js", [], $ver, true );
     wp_enqueue_script( 'mu-footer-js', "$uri/js/footer.js", [], $ver, true );
 }
-add_action( 'wp_enqueue_scripts', 'mu_enqueue_assets', 20 );
+add_action( 'wp_enqueue_scripts', 'mu_enqueue_assets', 999 );
 
 // ============================================
 // CARGA DE MÓDULOS
