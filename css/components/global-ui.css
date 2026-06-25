@@ -533,6 +533,11 @@ body.mu-wplng-hide .wplng-switcher {
         height: 14px;
     }
 }
+/* Override GP: a:hover color */
+a:hover, a:focus, a:active {
+    color: inherit;
+}
+
 /* ===================== MU-MODAL BASE SYSTEM ===================== */
 
 /* 1. Overlay — siempre flex, visibilidad controlada por opacity/visibility */
