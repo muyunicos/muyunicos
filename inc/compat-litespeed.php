@@ -48,15 +48,41 @@ if ( ! function_exists( 'mu_litespeed_js_delay_excludes' ) ) {
     add_filter( 'litespeed_optimize_js_excludes', 'mu_litespeed_js_delay_excludes' );
 }
 /**
- * Fuerza variación de caché por host (subdominio).
+ * Fuerza variación de caché por host (subdominio) usando cookies de vary.
  * Evita que LiteSpeed sirva a muyunicos.com una página cacheada
  * desde us.muyunicos.com o cualquier otro subdominio restringido.
+ *
+ * Usa el filtro litespeed_vary_cookies para registrar una cookie de vary
+ * basada en el host. Esto es el método correcto según la documentación de LiteSpeed.
+ * Documentación: https://docs.litespeedtech.com/lscache/lscwp/api/
  */
 if ( ! function_exists( 'mu_litespeed_vary_by_host' ) ) {
-    function mu_litespeed_vary_by_host( $vary ) {
-        $host = str_replace( 'www.', '', preg_replace( '/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? '' ) );
-        $vary['mu_host'] = md5( $host );
-        return $vary;
+    function mu_litespeed_vary_by_host( $cookies ) {
+        $host = str_replace( 'www.', '', preg_replace( '/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? '' ));
+        
+        // Registrar cookie de vary basada en el host
+        // LiteSpeed reconocerá cualquier cookie que empiece con _lscache_vary
+        $cookies[] = '_lscache_vary_mu_host';
+        
+        return $cookies;
     }
-    add_filter( 'litespeed_vary', 'mu_litespeed_vary_by_host' );
+    add_filter( 'litespeed_vary_cookies', 'mu_litespeed_vary_by_host' );
+}
+
+/**
+ * Establece el valor de la cookie de vary basada en el host.
+ * Esta cookie se usa para diferenciar la caché entre subdominios.
+ */
+if ( ! function_exists( 'mu_litespeed_set_vary_cookie' ) ) {
+    function mu_litespeed_set_vary_cookie() {
+        if ( is_admin() ) return;
+        
+        $host = str_replace( 'www.', '', preg_replace( '/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? '' ));
+        
+        // Solo establecer la cookie si no existe o si el valor cambió
+        if ( ! isset( $_COOKIE['_lscache_vary_mu_host'] ) || $_COOKIE['_lscache_vary_mu_host'] !== $host ) {
+            setcookie( '_lscache_vary_mu_host', $host, time() + ( 30 * DAY_IN_SECONDS ), '/', $host, is_ssl(), true );
+        }
+    }
+    add_action( 'init', 'mu_litespeed_set_vary_cookie', 1 );
 }
