@@ -21,9 +21,9 @@ function mu_enqueue_assets() {
     $ver = wp_get_theme()->get( 'Version' );
     $uri = get_stylesheet_directory_uri();
 
-    // Remove duplicate style.css if loaded by other plugins/theme
-    wp_dequeue_style( 'generatepress-child' );
-    wp_deregister_style( 'generatepress-child' );
+    // Remove duplicate style.css loaded by GeneratePress parent theme
+    wp_dequeue_style( 'generate-child-css' );
+    wp_deregister_style( 'generate-child-css' );
 
     // Base styles
     wp_enqueue_style( 'mu-base', get_stylesheet_uri(), [], $ver );
