@@ -21,17 +21,13 @@ function mu_enqueue_assets() {
     $ver = wp_get_theme()->get( 'Version' );
     $uri = get_stylesheet_directory_uri();
 
-    // Remove duplicate style.css loaded by GeneratePress parent theme
-    wp_dequeue_style( 'generate-child-css' );
-    wp_deregister_style( 'generate-child-css' );
+    // GeneratePress parent theme already loads style.css as 'generate-child-css'
+    // We don't need to load it again to avoid duplication
 
-    // Base styles
-    wp_enqueue_style( 'mu-base', get_stylesheet_uri(), [], $ver );
-
-    // Componentes globales
-    wp_enqueue_style( 'mu-global-ui', "$uri/css/components/global-ui.css", [ 'mu-base' ], $ver );
-    wp_enqueue_style( 'mu-header', "$uri/css/components/header.css", [ 'mu-base' ], $ver );
-    wp_enqueue_style( 'mu-footer', "$uri/css/components/footer.css", [ 'mu-base' ], $ver );
+    // Componentes globales (dependen del style.css cargado por GeneratePress)
+    wp_enqueue_style( 'mu-global-ui', "$uri/css/components/global-ui.css", [ 'generate-child-css' ], $ver );
+    wp_enqueue_style( 'mu-header', "$uri/css/components/header.css", [ 'generate-child-css' ], $ver );
+    wp_enqueue_style( 'mu-footer', "$uri/css/components/footer.css", [ 'generate-child-css' ], $ver );
 
     // JavaScript global
     wp_enqueue_script( 'mu-global-ui-js', "$uri/js/global-ui.js", [], $ver, true );
@@ -41,31 +37,31 @@ function mu_enqueue_assets() {
 
     // Modal de autenticación (solo usuarios no logueados)
     if ( ! is_user_logged_in() ) {
-        wp_enqueue_style( 'mu-modal-auth', "$uri/css/components/modal-auth.css", [ 'mu-base' ], $ver );
+        wp_enqueue_style( 'mu-modal-auth', "$uri/css/components/modal-auth.css", [ 'generate-child-css' ], $ver );
         wp_enqueue_script( 'mu-modal-auth-js', "$uri/js/modal-auth.js", [], $ver, true );
     }
 
     // Estilos condicionales por página
     if ( is_front_page() ) {
-        wp_enqueue_style( 'mu-home', "$uri/css/home.css", [ 'mu-base' ], $ver );
+        wp_enqueue_style( 'mu-home', "$uri/css/home.css", [ 'generate-child-css' ], $ver );
     }
 
     if ( is_shop() || is_product_category() || is_product_tag() || is_product() ) {
-        wp_enqueue_style( 'mu-shop', "$uri/css/shop.css", [ 'mu-base' ], $ver );
-        wp_enqueue_style( 'mu-navigation-chips', "$uri/css/components/navigation-chips.css", [ 'mu-base' ], $ver );
+        wp_enqueue_style( 'mu-shop', "$uri/css/shop.css", [ 'generate-child-css' ], $ver );
+        wp_enqueue_style( 'mu-navigation-chips', "$uri/css/components/navigation-chips.css", [ 'generate-child-css' ], $ver );
         wp_enqueue_script( 'mu-shop-js', "$uri/js/shop.js", [ 'jquery' ], $ver, true );
         wp_enqueue_script( 'mu-navigation-chips-js', "$uri/js/navigation-chips.js", [], $ver, true );
     }
 
     // Ficha de producto individual
     if ( is_product() ) {
-        wp_enqueue_style( 'mu-product', "$uri/css/product.css", [ 'mu-base' ], $ver );
+        wp_enqueue_style( 'mu-product', "$uri/css/product.css", [ 'generate-child-css' ], $ver );
         wp_enqueue_script( 'mu-product-js', "$uri/js/product.js", [ 'wc-single-product' ], $ver, true );
     }
 
     // Product Builder (Core + Addons Etiquetas/Nombre)
     if ( is_product() || is_cart() ) {
-        wp_enqueue_style( 'mu-product-builder', "$uri/css/product-builder.css", [ 'mu-base' ], $ver );
+        wp_enqueue_style( 'mu-product-builder', "$uri/css/product-builder.css", [ 'generate-child-css' ], $ver );
         wp_enqueue_script( 'mu-addon-nombre', "$uri/js/addon-nombre.js", [ 'jquery' ], $ver, true );
     }
 
@@ -78,7 +74,7 @@ function mu_enqueue_assets() {
     }
 
     if ( is_cart() ) {
-        wp_enqueue_style( 'mu-cart', "$uri/css/cart.css", [ 'mu-base' ], $ver );
+        wp_enqueue_style( 'mu-cart', "$uri/css/cart.css", [ 'generate-child-css' ], $ver );
         wp_enqueue_script( 'mu-cart-js', "$uri/js/cart.js", [ 'jquery' ], $ver, true );
         wp_localize_script( 'mu-cart-js', 'muCartVars', [
             'closeIcon' => function_exists( 'mu_get_icon' ) ? mu_get_icon( 'close' ) : ''
@@ -86,7 +82,7 @@ function mu_enqueue_assets() {
     }
 
     if ( is_checkout() && ! is_order_received_page() ) {
-        wp_enqueue_style( 'mu-checkout', "$uri/css/checkout.css", [ 'mu-base' ], $ver );
+        wp_enqueue_style( 'mu-checkout', "$uri/css/checkout.css", [ 'generate-child-css' ], $ver );
         wp_register_script( 'libphonenumber-js', 'https://unpkg.com/libphonenumber-js@1.10.49/bundle/libphonenumber-js.min.js', [], '1.10.49', true );
         wp_enqueue_script( 'mu-checkout-js', "$uri/js/checkout.js", [ 'jquery', 'libphonenumber-js' ], $ver, true );
         wp_localize_script( 'mu-checkout-js', 'muCheckout', [
@@ -99,7 +95,7 @@ function mu_enqueue_assets() {
 
     // Mi Cuenta > Descargas (Custom Styles)
     if ( is_account_page() && is_wc_endpoint_url( 'downloads' ) ) {
-        wp_enqueue_style( 'mu-account-downloads', "$uri/css/account-downloads.css", [ 'mu-base' ], $ver );
+        wp_enqueue_style( 'mu-account-downloads', "$uri/css/account-downloads.css", [ 'generate-child-css' ], $ver );
     }
 
     // Scripts globales

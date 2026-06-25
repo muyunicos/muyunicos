@@ -351,7 +351,7 @@ if ( ! function_exists( 'mu_country_modal_enqueue' ) ) {
         $theme_version = wp_get_theme()->get( 'Version' );
         $theme_uri = get_stylesheet_directory_uri();
         
-        wp_enqueue_style( 'mu-country-modal', $theme_uri . '/css/components/country-modal.css', [ 'mu-base' ], $theme_version );
+        wp_enqueue_style( 'mu-country-modal', $theme_uri . '/css/components/country-modal.css', [ 'generate-child-css' ], $theme_version );
         wp_enqueue_script( 'mu-country-modal-js', $theme_uri . '/js/country-modal.js', [], $theme_version, true );
     }
     add_action( 'wp_enqueue_scripts', 'mu_country_modal_enqueue', 30 );
