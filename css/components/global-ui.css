@@ -536,8 +536,7 @@ body.mu-wplng-hide .wplng-switcher {
 /* ===================== MU-MODAL BASE SYSTEM ===================== */
 
 /* 1. Overlay — siempre flex, visibilidad controlada por opacity/visibility */
-.mu-modal-overlay,
-.gp-search-modal .gp-modal__overlay {
+.mu-modal-overlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background: rgb(135 135 135 / 20%);
     backdrop-filter: blur(1px);
