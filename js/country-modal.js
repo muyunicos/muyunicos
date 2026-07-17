@@ -14,6 +14,25 @@
     var currentDomain = '';
     
     /**
+     * Verifica si el usuario ya guardó su preferencia
+     */
+    function hasSavedPreference() {
+        if (!currentDomain) {
+            return false;
+        }
+        
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+            var cookie = cookies[i].trim();
+            if (cookie.indexOf('muyu_stay_here=') === 0) {
+                var savedDomain = decodeURIComponent(cookie.substring('muyu_stay_here='.length));
+                return savedDomain === currentDomain;
+            }
+        }
+        return false;
+    }
+    
+    /**
      * Inicializa el modal y sus event listeners
      */
     function init() {
@@ -29,6 +48,11 @@
         
         // Obtener dominio actual del atributo data
         currentDomain = overlay.getAttribute('data-current-domain') || '';
+        
+        // Verificar si el usuario ya guardó su preferencia
+        if (hasSavedPreference()) {
+            return; // No mostrar modal si ya eligió quedarse
+        }
         
         // Event listener: Botón Cerrar
         if (closeBtn) {

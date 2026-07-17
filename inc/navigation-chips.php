@@ -128,6 +128,11 @@ if ( ! function_exists( 'mu_navchips_build_product_index' ) ) {
         set_transient( 'mu_navchips_product_index',  $compact_index, 30 * DAY_IN_SECONDS );
         set_transient( 'mu_navchips_index_metadata', $metadata,      30 * DAY_IN_SECONDS );
 
+        // Construir índice de grupos de etiquetas
+        if ( function_exists( 'mu_build_tag_groups_index' ) ) {
+            mu_build_tag_groups_index();
+        }
+
         if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
             error_log( // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                 sprintf(
@@ -135,6 +140,164 @@ if ( ! function_exists( 'mu_navchips_build_product_index' ) ) {
                     $total_products,
                     number_format( strlen( $compact_index ) / 1024, 2 ),
                     $metadata['generation_time_ms']
+                )
+            );
+        }
+    }
+}
+
+// =========================================================================
+// 2.5 ÍNDICE DE GRUPOS DE ETIQUETAS (INTEGRACIÓN CON TAG-GROUPS)
+// =========================================================================
+
+if ( ! function_exists( 'mu_build_tag_groups_index' ) ) {
+    /**
+     * Construye el índice de grupos de etiquetas para el sistema de tag-groups.
+     * Formato: "cat_slug:tag_slug:representative_pid:reserved1,reserved2,..."
+     * 
+     * El índice guarda:
+     * - representative_pid: el producto más reciente (se muestra como card)
+     * - reserved_ids: productos que NO deben usarse como imágenes en OTROS grupos
+     *   (son los productos exclusivos de tags con pocos items)
+     * 
+     * La selección de 4 imágenes se hace ALEATORIAMENTE en cada carga de página,
+     * excluyendo los reserved_ids de otros grupos para evitar repetición.
+     * Esto da sensación de dinamismo y variedad.
+     * 
+     * Algoritmo:
+     * 1. Obtiene todos los productos activos de cada tag
+     * 2. Ordena tags por exclusividad (menos productos = mayor prioridad)
+     * 3. Para cada tag (del más exclusivo al más abundante):
+     *    - Marca TODOS sus productos como "reservados" para ese tag
+     *    - Los tags menos exclusivos NO podrán usar esos productos
+     * 
+     * Solo crea un grupo si tiene al menos 4 productos activos:
+     * - Publicados (post_status = publish)
+     * - Con stock (meta _stock_status = instock)
+     * - Visibles en catálogo (no tienen term exclude-from-catalog)
+     */
+    function mu_build_tag_groups_index() {
+        if ( ! defined( 'MU_TAG_GROUPS_CONFIG' ) ) {
+            return;
+        }
+
+        $config = MU_TAG_GROUPS_CONFIG;
+        $groups_index = [];
+        $min_products = 4;
+
+        foreach ( $config as $cat_slug => $tag_slugs ) {
+            $cat = get_term_by( 'slug', $cat_slug, 'product_cat' );
+            if ( ! $cat || is_wp_error( $cat ) ) {
+                continue;
+            }
+            $cat_id = $cat->term_id;
+
+            // --- FASE 1: Obtener TODOS los productos activos de cada tag ---
+            $tag_data = [];
+
+            foreach ( $tag_slugs as $tag_slug ) {
+                $tag = get_term_by( 'slug', $tag_slug, 'product_tag' );
+                if ( ! $tag || is_wp_error( $tag ) ) {
+                    continue;
+                }
+
+                $args = [
+                    'post_type'      => 'product',
+                    'post_status'    => 'publish',
+                    'posts_per_page' => -1,
+                    'orderby'        => 'date',
+                    'order'          => 'DESC',
+                    'fields'         => 'ids',
+                    'meta_query'     => [
+                        [
+                            'key'   => '_stock_status',
+                            'value' => 'instock',
+                        ],
+                    ],
+                    'tax_query'      => [
+                        [
+                            'taxonomy' => 'product_cat',
+                            'field'    => 'term_id',
+                            'terms'    => $cat_id,
+                        ],
+                        [
+                            'taxonomy' => 'product_tag',
+                            'field'    => 'term_id',
+                            'terms'    => $tag->term_id,
+                        ],
+                        [
+                            'taxonomy' => 'product_visibility',
+                            'field'    => 'slug',
+                            'terms'    => 'exclude-from-catalog',
+                            'operator' => 'NOT IN',
+                        ],
+                    ],
+                ];
+
+                $query = new WP_Query( $args );
+                $product_ids = $query->posts;
+
+                if ( count( $product_ids ) >= $min_products ) {
+                    $tag_data[ $tag_slug ] = [
+                        'tag'          => $tag,
+                        'all_products' => $product_ids,
+                        'count'        => count( $product_ids ),
+                    ];
+                }
+            }
+
+            if ( empty( $tag_data ) ) {
+                continue;
+            }
+
+            // --- FASE 2: Ordenar tags por exclusividad (menos productos = mayor prioridad) ---
+            uasort( $tag_data, function( $a, $b ) {
+                return $a['count'] - $b['count'];
+            } );
+
+            // --- FASE 3: Calcular productos reservados para cada tag ---
+            // Los tags con menos productos "reservan" los suyos para que no los use nadie más.
+            // Los tags con muchos productos pueden usar cualquier cosa no reservada.
+            $globally_reserved = []; // Productos que NO puede usar ningún tag (son de tags exclusivos)
+            $tag_slugs_ordered = array_keys( $tag_data );
+
+            foreach ( $tag_slugs_ordered as $tag_slug ) {
+                $all_products = $tag_data[ $tag_slug ]['all_products'];
+                $representative_pid = $all_products[0];
+
+                // Productos de este tag que NO están reservados globalmente
+                $exclusive = array_diff( $all_products, $globally_reserved );
+
+                // Si este tag tiene <= 20 productos, reservarlos TODOS (es exclusivo)
+                // Si tiene > 20, solo reservar 12 (deja margen para otros tags)
+                if ( count( $all_products ) <= 20 ) {
+                    $reserved = $all_products;
+                } else {
+                    // Reservar solo los primeros 12 (aleatorios) para no acaparar
+                    $shuffled = $all_products;
+                    shuffle( $shuffled );
+                    $reserved = array_slice( $shuffled, 0, 12 );
+                }
+
+                // Agregar a la lista global de reservados
+                foreach ( $reserved as $pid ) {
+                    $globally_reserved[] = $pid;
+                }
+
+                $key = $cat_slug . ':' . $tag_slug;
+                // Formato: "representative_pid:reserved1,reserved2,..."
+                // Los reserved son productos que otros tags NO deben usar
+                $groups_index[ $key ] = $representative_pid . ':' . implode( ',', $reserved );
+            }
+        }
+
+        set_transient( 'mu_tag_groups_index', $groups_index, 30 * DAY_IN_SECONDS );
+
+        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+            error_log( // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+                sprintf(
+                    'MU Tag Groups Index rebuilt: %d groups (dynamic random images, reserved allocation)',
+                    count( $groups_index )
                 )
             );
         }

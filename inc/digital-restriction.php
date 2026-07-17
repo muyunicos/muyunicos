@@ -487,15 +487,70 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 is_search() ||
                 'product' === $query->get( 'post_type' )
             );
-            if ( ! $is_shop_query || ! $this->is_restricted_user() ) return;
+            if ( ! $is_shop_query ) return;
             
-            $digital_ids = get_option( self::OPTION_PRODUCT_IDS, false );
-            if ( false === $digital_ids || empty( $digital_ids ) ) {
-                $this->schedule_rebuild();
+            // Para usuarios restringidos (no Argentina): filtrar solo productos digitales
+            if ( $this->is_restricted_user() ) {
+                $digital_ids = get_option( self::OPTION_PRODUCT_IDS, false );
+                if ( false === $digital_ids || empty( $digital_ids ) ) {
+                    $this->schedule_rebuild();
+                    return;
+                }
+                $query->set( 'post__in', array_map( 'intval', (array) $digital_ids ) );
                 return;
             }
-
-            $query->set( 'post__in', array_map( 'intval', (array) $digital_ids ) );
+            
+            // Para Argentina: excluir categorías específicas en tienda general y categorías padre
+            // Las categorías excluidas siguen siendo accesibles por URL directa y búsquedas
+            $excluded_categories = [ 'outlet', 'tienda-juegosparawii', 'stickers' ];
+            $excluded_cat_ids = [];
+            foreach ( $excluded_categories as $slug ) {
+                $term = get_term_by( 'slug', $slug, 'product_cat' );
+                if ( $term ) {
+                    $excluded_cat_ids[] = $term->term_id;
+                }
+            }
+            
+            if ( empty( $excluded_cat_ids ) ) return;
+            
+            // Determinar si debemos excluir productos
+            $should_exclude = false;
+            
+            // Caso 1: Shop general (sin categoría específica)
+            if ( function_exists( 'is_shop' ) && is_shop() && ! is_product_category() && ! is_product_tag() ) {
+                $should_exclude = true;
+            }
+            // Caso 2: Navegando en una categoría padre que tiene subcategorías excluidas
+            elseif ( function_exists( 'is_product_category' ) && is_product_category() ) {
+                $queried_object = get_queried_object();
+                if ( $queried_object && isset( $queried_object->term_id ) ) {
+                    $current_cat_id = (int) $queried_object->term_id;
+                    // Verificar si alguna de las categorías excluidas es hija de la categoría actual
+                    foreach ( $excluded_cat_ids as $excluded_id ) {
+                        $ancestors = get_ancestors( $excluded_id, 'product_cat', 'taxonomy' );
+                        if ( in_array( $current_cat_id, $ancestors, true ) ) {
+                            $should_exclude = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            if ( $should_exclude ) {
+                $tax_query = $query->get( 'tax_query' );
+                if ( ! is_array( $tax_query ) ) {
+                    $tax_query = [];
+                }
+                
+                $tax_query[] = [
+                    'taxonomy' => 'product_cat',
+                    'field'    => 'term_id',
+                    'terms'    => $excluded_cat_ids,
+                    'operator' => 'NOT IN',
+                ];
+                
+                $query->set( 'tax_query', $tax_query );
+            }
         }
 
         /**
@@ -903,6 +958,10 @@ if ( ! function_exists( 'muyu_is_restricted_user' ) ) {
 
 if ( ! function_exists( 'muyu_get_digital_product_ids' ) ) {
     function muyu_get_digital_product_ids(): array { return (array) get_option( MUYU_Digital_Restriction_System::OPTION_PRODUCT_IDS, [] ); }
+}
+
+if ( ! function_exists( 'muyu_get_digital_category_ids' ) ) {
+    function muyu_get_digital_category_ids(): array { return (array) get_option( MUYU_Digital_Restriction_System::OPTION_CATEGORY_IDS, [] ); }
 }
 
 if ( ! function_exists( 'muyu_rebuild_digital_indexes_optimized' ) ) {

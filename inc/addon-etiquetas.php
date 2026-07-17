@@ -197,6 +197,16 @@ if ( ! function_exists( 'mu_etiquetas_render_v3' ) ) {
 if ( ! function_exists( 'mu_etiquetas_render_total_box' ) ) {
     add_action( 'woocommerce_before_add_to_cart_button', 'mu_etiquetas_render_total_box', 20 );
     function mu_etiquetas_render_total_box() {
+        global $product;
+        if ( ! is_a( $product, 'WC_Product' ) ) {
+            $product = wc_get_product( get_the_ID() );
+        }
+        if ( ! $product || ! has_term( [ 19, 18 ], 'product_cat', $product->get_id() ) ) {
+            return;
+        }
+        if ( function_exists( 'muyu_is_restricted_user' ) && muyu_is_restricted_user() ) {
+            return;
+        }
         ?>
         <div id="mu-total-wrapper">
             <div id="mu-selection-summary"></div>

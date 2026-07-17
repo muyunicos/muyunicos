@@ -303,6 +303,73 @@ if ( ! function_exists( 'mu_opt_mostrar_gratis_si_precio_cero' ) ) {
 }
 
 // ============================================
+// SISTEMA REUTILIZABLE DE PERSONALIZACIÓN DE PRODUCTOS
+// ============================================
+
+if ( ! defined( 'MU_PRODUCT_CUSTOMIZATIONS' ) ) {
+    define( 'MU_PRODUCT_CUSTOMIZATIONS', [
+        27859 => [
+            'price_text' => 'Armá tu presupuesto',
+            'button_text' => 'Cotizar',
+            'button_action' => 'product_page',
+        ],
+    ] );
+}
+
+if ( ! function_exists( 'mu_custom_product_pricing' ) ) {
+    function mu_custom_product_pricing( $price, $product ) {
+        if ( is_admin() && ! wp_doing_ajax() ) return $price;
+
+        // Sistema existente: precios $0 en oferta → ¡Gratis!
+        if ( $product->is_on_sale() && (float) $product->get_sale_price() === 0.0 ) {
+            $regular_price_html = wc_price( $product->get_regular_price() );
+            $free_text = __( '¡Gratis!', 'woocommerce' );
+            return sprintf( '<del aria-hidden="true">%s</del> <ins>%s</ins>', $regular_price_html, $free_text );
+        }
+
+        // Nuevas personalizaciones por ID
+        $customizations = MU_PRODUCT_CUSTOMIZATIONS;
+        $product_id = $product->get_id();
+
+        if ( isset( $customizations[ $product_id ]['price_text'] ) ) {
+            return '<span class="price">' . $customizations[ $product_id ]['price_text'] . '</span>';
+        }
+
+        return $price;
+    }
+    add_filter( 'woocommerce_get_price_html', 'mu_custom_product_pricing', 15, 2 );
+}
+
+if ( ! function_exists( 'mu_custom_product_button' ) ) {
+    function mu_custom_product_button( $link, $product ) {
+        $customizations = MU_PRODUCT_CUSTOMIZATIONS;
+        $product_id = $product->get_id();
+
+        if ( ! isset( $customizations[ $product_id ] ) ) {
+            return $link;
+        }
+
+        $config = $customizations[ $product_id ];
+
+        // Reemplazar texto del botón
+        if ( isset( $config['button_text'] ) ) {
+            $link = str_replace( 'Comprar', $config['button_text'], $link );
+        }
+
+        // Cambiar acción del botón
+        if ( isset( $config['button_action'] ) && $config['button_action'] === 'product_page' ) {
+            $product_url = get_permalink( $product_id );
+            $link = preg_replace( '/href="[^"]*"/', 'href="' . $product_url . '"', $link );
+            $link = str_replace( 'ajax_add_to_cart', '', $link );
+            $link = str_replace( 'add_to_cart_button', '', $link );
+        }
+
+        return $link;
+    }
+    add_filter( 'woocommerce_loop_add_to_cart_link', 'mu_custom_product_button', 10, 2 );
+}
+
+// ============================================
 // DESACTIVAR IMAGEN DESTACADA (PERFORMANCE)
 // ============================================
 
@@ -326,8 +393,9 @@ if ( ! function_exists( 'mu_testimonios_enqueue' ) ) {
         global $post;
         if ( ! is_a( $post, 'WP_Post' ) || ! has_shortcode( $post->post_content, 'mu_testimonios_section' ) ) return;
 
-        wp_enqueue_style( 'mu-testimonials', get_stylesheet_directory_uri() . '/css/testimonials.css', [], '1.0.0' );
-        wp_enqueue_script( 'mu-testimonials', get_stylesheet_directory_uri() . '/js/testimonials.js', [], '1.0.0', true );
+        $ver = wp_get_theme()->get( 'Version' );
+        wp_enqueue_style( 'mu-testimonials', get_stylesheet_directory_uri() . '/css/testimonials.css', [], $ver );
+        wp_enqueue_script( 'mu-testimonials', get_stylesheet_directory_uri() . '/js/testimonials.js', [], $ver, true );
     }
     add_action( 'wp_enqueue_scripts', 'mu_testimonios_enqueue' );
 }
@@ -374,7 +442,12 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
             }
         }
 
-        wp_localize_script( 'mu-testimonials', 'muTestimonials', [ 'reviews' => get_option( $db_option_name, [] ) ] );
+        wp_localize_script( 'mu-testimonials', 'muTestimonials', [ 
+            'reviews' => get_option( $db_option_name, [] ),
+            'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+            'nonce' => wp_create_nonce( 'mu_review_nonce' ),
+            'isAdmin' => current_user_can( 'administrator' )
+        ] );
 
         ob_start();
         echo wp_kses_post( $msg_update );
@@ -392,14 +465,292 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
                 <?php if ( current_user_can( 'administrator' ) ) : ?>
                     <div style="text-align:center;margin-top:20px;font-size:12px;opacity:0.6;">
                         <a href="?force_reviews=1" style="color:inherit;">↻ Admin: Actualizar desde Google</a>
+                        <span style="margin:0 8px;">|</span>
+                        <a href="#" onclick="openReviewModal();return false;" style="color:inherit;">✎ Manual</a>
                     </div>
                 <?php endif; ?>
             </div>
         </section>
+        
+        <!-- Modal para agregar/editar reseñas manualmente -->
+        <?php if ( current_user_can( 'administrator' ) ) : ?>
+        <div id="mu-review-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+            <div style="background:white;padding:30px;border-radius:12px;max-width:500px;width:90%;max-height:90vh;overflow-y:auto;">
+                <h3 style="margin-top:0;">Agregar/Editar Reseña</h3>
+                <form id="mu-review-form">
+                    <input type="hidden" id="mu-review-index" name="review_index" value="">
+                    
+                    <div style="margin-bottom:15px;">
+                        <label style="display:block;margin-bottom:5px;font-weight:bold;">Nombre del cliente:</label>
+                        <input type="text" id="mu-review-name" name="author_name" required style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+                    </div>
+                    
+                    <div style="margin-bottom:15px;">
+                        <label style="display:block;margin-bottom:5px;font-weight:bold;">Rating (1-5):</label>
+                        <select id="mu-review-rating" name="rating" required style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+                            <option value="5">⭐⭐⭐⭐⭐ (5)</option>
+                            <option value="4">⭐⭐⭐⭐ (4)</option>
+                            <option value="3">⭐⭐⭐ (3)</option>
+                            <option value="2">⭐⭐ (2)</option>
+                            <option value="1">⭐ (1)</option>
+                        </select>
+                    </div>
+                    
+                    <div style="margin-bottom:15px;">
+                        <label style="display:block;margin-bottom:5px;font-weight:bold;">Comentario:</label>
+                        <textarea id="mu-review-text" name="text" required style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;min-height:100px;"></textarea>
+                    </div>
+                    
+                    <div style="margin-bottom:15px;">
+                        <label style="display:block;margin-bottom:5px;font-weight:bold;">Fecha (opcional):</label>
+                        <input type="date" id="mu-review-date" name="time" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+                    </div>
+                    
+                    <div style="margin-bottom:15px;">
+                        <label style="display:block;margin-bottom:5px;font-weight:bold;">URL del perfil de Google (opcional):</label>
+                        <input type="url" id="mu-review-profile-url" name="profile_url" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+                    </div>
+                    
+                    <div style="margin-bottom:15px;">
+                        <label style="display:block;margin-bottom:5px;font-weight:bold;">URL de la foto de perfil (opcional):</label>
+                        <input type="url" id="mu-review-profile-photo" name="profile_photo_url" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+                    </div>
+                    
+                    <div style="margin-bottom:15px;">
+                        <label style="display:block;margin-bottom:5px;font-weight:bold;">Foto de la compra (upload):</label>
+                        <input type="file" id="mu-review-purchase-photo" name="purchase_photo" accept="image/*" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">
+                        <input type="hidden" id="mu-review-purchase-photo-url" name="purchase_photo_url" value="">
+                        <div id="mu-purchase-photo-preview" style="margin-top:10px;"></div>
+                    </div>
+                    
+                    <div style="margin-bottom:15px;">
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                            <input type="checkbox" id="mu-review-hidden" name="hidden" value="1" style="width:auto;">
+                            <span style="font-weight:bold;">Ocultar reseña (no se mostrará)</span>
+                        </label>
+                    </div>
+                    
+                    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
+                        <button type="button" id="mu-delete-review-btn" onclick="window.muReviewModal.deleteReview()" style="padding:10px 20px;background:#dc3232;color:white;border:none;border-radius:4px;cursor:pointer;display:none;">Eliminar</button>
+                        <button type="button" onclick="window.muReviewModal.close()" style="padding:10px 20px;border:1px solid #ddd;background:white;border-radius:4px;cursor:pointer;">Cancelar</button>
+                        <button type="submit" style="padding:10px 20px;background:#0073aa;color:white;border:none;border-radius:4px;cursor:pointer;">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <script>
+        window.muReviewModal = {
+            open: function(index) {
+                document.getElementById('mu-review-modal').style.display = 'flex';
+                document.getElementById('mu-review-index').value = index || '';
+                
+                if (index !== '' && typeof muTestimonials !== 'undefined' && muTestimonials.reviews[index]) {
+                    var review = muTestimonials.reviews[index];
+                    document.getElementById('mu-review-name').value = review.author_name || '';
+                    document.getElementById('mu-review-rating').value = review.rating || 5;
+                    document.getElementById('mu-review-text').value = review.text || '';
+                    document.getElementById('mu-review-date').value = review.time ? new Date(review.time * 1000).toISOString().split('T')[0] : '';
+                    document.getElementById('mu-review-profile-url').value = review.author_url || review.profile_url || '';
+                    document.getElementById('mu-review-profile-photo').value = review.profile_photo_url || '';
+                    document.getElementById('mu-review-purchase-photo-url').value = review.purchase_photo_url || '';
+                    document.getElementById('mu-review-hidden').checked = review.hidden || false;
+                    
+                    // Mostrar botón de eliminar solo si es una reseña existente
+                    document.getElementById('mu-delete-review-btn').style.display = 'inline-block';
+                    
+                    if (review.purchase_photo_url) {
+                        document.getElementById('mu-purchase-photo-preview').innerHTML = 
+                            '<img src="' + review.purchase_photo_url + '" style="max-width:100px;border-radius:4px;">';
+                    }
+                } else {
+                    document.getElementById('mu-review-form').reset();
+                    document.getElementById('mu-purchase-photo-preview').innerHTML = '';
+                    document.getElementById('mu-delete-review-btn').style.display = 'none';
+                }
+            },
+            
+            close: function() {
+                document.getElementById('mu-review-modal').style.display = 'none';
+            },
+            
+            deleteReview: function() {
+                if (!confirm('¿Estás seguro de que quieres eliminar esta reseña? Esta acción no se puede deshacer.')) {
+                    return;
+                }
+                
+                var index = document.getElementById('mu-review-index').value;
+                if (index === '') return;
+                
+                var formData = new FormData();
+                formData.append('action', 'mu_delete_review');
+                formData.append('nonce', muTestimonials.nonce);
+                formData.append('review_index', index);
+                
+                fetch(muTestimonials.ajaxUrl, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        window.muReviewModal.close();
+                        location.reload();
+                    } else {
+                        alert('Error: ' + data.data);
+                    }
+                })
+                .catch(function(error) {
+                    alert('Error al eliminar la reseña');
+                });
+            }
+        };
+        
+        // Función global para compatibilidad
+        function openReviewModal(index) {
+            window.muReviewModal.open(index);
+        }
+        
+        function closeReviewModal() {
+            window.muReviewModal.close();
+        }
+        
+        // Preview de foto de compra
+        document.getElementById('mu-review-purchase-photo').addEventListener('change', function(e) {
+            var file = e.target.files[0];
+            if (file) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('mu-purchase-photo-preview').innerHTML = 
+                        '<img src="' + e.target.result + '" style="max-width:100px;border-radius:4px;">';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        // Submit del formulario
+        document.getElementById('mu-review-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            var formData = new FormData(this);
+            formData.append('action', 'mu_save_review');
+            formData.append('nonce', muTestimonials.nonce);
+            
+            var fileInput = document.getElementById('mu-review-purchase-photo');
+            if (fileInput.files[0]) {
+                formData.append('purchase_photo', fileInput.files[0]);
+            }
+            
+            fetch(muTestimonials.ajaxUrl, {
+                method: 'POST',
+                body: formData
+            })
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.data);
+                }
+            })
+            .catch(function(error) {
+                alert('Error al guardar la reseña');
+            });
+        });
+        </script>
+        <?php endif; ?>
+        
         <?php
         return ob_get_clean();
     }
     add_shortcode( 'mu_testimonios_section', 'mu_testimonios_section' );
+}
+
+// ============================================
+// AJAX HANDLER PARA GUARDAR RESEÑAS
+// ============================================
+
+if ( ! function_exists( 'mu_ajax_save_review' ) ) {
+    function mu_ajax_save_review() {
+        check_ajax_referer( 'mu_review_nonce', 'nonce' );
+        
+        if ( ! current_user_can( 'administrator' ) ) {
+            wp_send_json_error( 'No tienes permisos' );
+        }
+        
+        $db_option_name = 'mu_reviews_master_db';
+        $max_reviews = 200;
+        $current_db = get_option( $db_option_name, [] );
+        
+        $review_index = isset( $_POST['review_index'] ) ? sanitize_text_field( $_POST['review_index'] ) : '';
+        
+        $review = [
+            'author_name' => sanitize_text_field( $_POST['author_name'] ),
+            'rating' => intval( $_POST['rating'] ),
+            'text' => sanitize_textarea_field( $_POST['text'] ),
+            'time' => ! empty( $_POST['time'] ) ? strtotime( sanitize_text_field( $_POST['time'] ) ) : time(),
+            'author_url' => esc_url_raw( $_POST['profile_url'] ?? '' ),
+            'profile_url' => esc_url_raw( $_POST['profile_url'] ?? '' ),
+            'profile_photo_url' => esc_url_raw( $_POST['profile_photo_url'] ?? '' ),
+            'purchase_photo_url' => '',
+            'hidden' => isset( $_POST['hidden'] ) ? 1 : 0,
+        ];
+        
+        // Manejar upload de foto de compra
+        if ( isset( $_FILES['purchase_photo'] ) && $_FILES['purchase_photo']['error'] === UPLOAD_ERR_OK ) {
+            $upload = wp_handle_upload( $_FILES['purchase_photo'], [ 'test_form' => false ] );
+            if ( ! isset( $upload['error'] ) ) {
+                $review['purchase_photo_url'] = $upload['url'];
+            }
+        } elseif ( ! empty( $_POST['purchase_photo_url'] ) ) {
+            $review['purchase_photo_url'] = esc_url_raw( $_POST['purchase_photo_url'] );
+        }
+        
+        if ( $review_index !== '' && isset( $current_db[ $review_index ] ) ) {
+            // Editar reseña existente
+            $current_db[ $review_index ] = $review;
+        } else {
+            // Nueva reseña
+            $current_db[] = $review;
+            // Mantener límite de reseñas
+            $current_db = array_slice( $current_db, -$max_reviews );
+        }
+        
+        update_option( $db_option_name, $current_db );
+        
+        wp_send_json_success( 'Reseña guardada correctamente' );
+    }
+    add_action( 'wp_ajax_mu_save_review', 'mu_ajax_save_review' );
+}
+
+// ============================================
+// AJAX HANDLER PARA ELIMINAR RESEÑAS
+// ============================================
+
+if ( ! function_exists( 'mu_ajax_delete_review' ) ) {
+    function mu_ajax_delete_review() {
+        check_ajax_referer( 'mu_review_nonce', 'nonce' );
+        
+        if ( ! current_user_can( 'administrator' ) ) {
+            wp_send_json_error( 'No tienes permisos' );
+        }
+        
+        $db_option_name = 'mu_reviews_master_db';
+        $current_db = get_option( $db_option_name, [] );
+        
+        $review_index = isset( $_POST['review_index'] ) ? intval( $_POST['review_index'] ) : 0;
+        
+        if ( isset( $current_db[ $review_index ] ) ) {
+            unset( $current_db[ $review_index ] );
+            // Reindexar array para mantener continuidad
+            $current_db = array_values( $current_db );
+            update_option( $db_option_name, $current_db );
+            wp_send_json_success( 'Reseña eliminada correctamente' );
+        } else {
+            wp_send_json_error( 'Reseña no encontrada' );
+        }
+    }
+    add_action( 'wp_ajax_mu_delete_review', 'mu_ajax_delete_review' );
 }
 
 // ============================================
@@ -425,11 +776,20 @@ if ( ! function_exists( 'mu_home_sections_enqueue' ) ) {
 
 if ( ! function_exists( 'mu_bestsellers_section' ) ) {
     function mu_bestsellers_section() {
-        $cache_key = 'mu_bestsellers_html';
+        // Obtener país actual para evitar cross-linking
+        $current_country = function_exists( 'muyu_get_current_country_from_subdomain' ) 
+            ? muyu_get_current_country_from_subdomain() 
+            : 'AR';
+        
+        // Verificar si es usuario restringido (no Argentina) para filtrar productos digitales
+        $is_restricted = function_exists( 'muyu_is_restricted_user' ) && muyu_is_restricted_user();
+        
+        // Cache key específico por país y restricción
+        $cache_key = 'mu_bestsellers_html_' . $current_country . '_' . ( $is_restricted ? 'restricted' : 'all' );
         $cached    = get_transient( $cache_key );
         if ( $cached ) return $cached;
 
-        $query = new WP_Query( [
+        $query_args = [
             'post_type'      => 'product',
             'posts_per_page' => 8,
             'meta_key'       => 'total_sales',
@@ -442,7 +802,20 @@ if ( ! function_exists( 'mu_bestsellers_section' ) ) {
                 'terms'    => 'exclude-from-catalog',
                 'operator' => 'NOT IN',
             ] ],
-        ] );
+        ];
+        
+        // Si es usuario restringido, filtrar solo productos digitales
+        if ( $is_restricted ) {
+            $digital_ids = function_exists( 'muyu_get_digital_product_ids' ) 
+                ? muyu_get_digital_product_ids() 
+                : [];
+            
+            if ( ! empty( $digital_ids ) ) {
+                $query_args['post__in'] = array_map( 'intval', $digital_ids );
+            }
+        }
+        
+        $query = new WP_Query( $query_args );
 
         ob_start();
         ?>
@@ -493,6 +866,18 @@ if ( ! function_exists( 'mu_bestsellers_section' ) ) {
         <?php
         $html = ob_get_clean();
         set_transient( $cache_key, $html, 12 * HOUR_IN_SECONDS );
+        
+        // Invalidar caches antiguos para forzar refresh con nuevo sistema
+        delete_transient( 'mu_bestsellers_html' );
+        delete_transient( 'mu_bestsellers_html_AR_all' );
+        delete_transient( 'mu_bestsellers_html_AR_restricted' );
+        delete_transient( 'mu_bestsellers_html_MX_all' );
+        delete_transient( 'mu_bestsellers_html_MX_restricted' );
+        delete_transient( 'mu_bestsellers_html_CO_all' );
+        delete_transient( 'mu_bestsellers_html_CO_restricted' );
+        delete_transient( 'mu_bestsellers_html_ES_all' );
+        delete_transient( 'mu_bestsellers_html_ES_restricted' );
+        
         return $html;
     }
     add_shortcode( 'mu_bestsellers_section', 'mu_bestsellers_section' );
@@ -506,12 +891,54 @@ if ( ! function_exists( 'mu_bestsellers_section' ) ) {
 
 if ( ! function_exists( 'mu_popcat_section' ) ) {
     function mu_popcat_section() {
-        $categories = [
+        // Verificar si es usuario restringido (no Argentina) para filtrar categorías
+        $is_restricted = function_exists( 'muyu_is_restricted_user' ) && muyu_is_restricted_user();
+        
+        $all_categories = [
             [ 'href' => '/tienda/escolares/',     'img' => '/wp-content/uploads/2026/02/catescolares.webp', 'alt' => 'Etiquetas Escolares',  'title' => 'Etiquetas Escolares',  'desc' => 'Más de 150 diseños' ],
             [ 'href' => '/tienda/decoracion/',    'img' => '/wp-content/uploads/2026/02/catstickers.webp',  'alt' => 'Stickers Decorativos', 'title' => 'Stickers Decorativos', 'desc' => 'Planchas y packs' ],
             [ 'href' => '/tienda/emprendimientos/', 'img' => '/wp-content/uploads/2026/02/catetiquetas.webp', 'alt' => 'Emprendedores',       'title' => 'Emprendedores',        'desc' => 'Todo para tu marca' ],
             [ 'href' => '/tienda/outlet/',        'img' => '/wp-content/uploads/2026/02/catoutlet.webp',    'alt' => 'Outlet',               'title' => 'Outlet',               'desc' => 'Productos en oferta' ],
+      ];
+        
+        // Categoría especial solo para países restringidos (no Argentina)
+        $restricted_only_categories = [
+            [
+                'href' => 'https://br.muyunicos.com/eventos/', 
+                'img' => '/wp-content/uploads/2026/02/catetiquetas.webp', 
+                'alt' => 'Eventos', 
+                'title' => 'Eventos', 
+                'desc' => 'Personaliza tu evento'
+            ]
         ];
+        
+        // Si es usuario restringido, filtrar solo categorías con productos digitales
+        $categories = $all_categories;
+        if ( $is_restricted ) {
+            // Agregar categorías especiales para países restringidos
+            $categories = array_merge( $categories, $restricted_only_categories );
+            
+            $digital_cat_ids = get_option( 'muyu_digital_category_ids', [] );
+            
+            if ( ! empty( $digital_cat_ids ) ) {
+                $categories = array_filter( $categories, function( $cat ) use ( $digital_cat_ids ) {
+                    // La categoría especial de eventos siempre se muestra
+                    if ( isset( $cat['href'] ) && strpos( $cat['href'], 'eventos' ) !== false ) {
+                        return true;
+                    }
+                    
+                    // Obtener ID de categoría desde la URL
+                    $cat_slug = basename( rtrim( $cat['href'], '/' ) );
+                    $term = get_term_by( 'slug', $cat_slug, 'product_cat' );
+                    return $term && in_array( $term->term_id, $digital_cat_ids );
+                } );
+            }
+        }
+        
+        // Si no hay categorías después del filtrado, no mostrar la sección
+        if ( empty( $categories ) ) {
+            return '';
+        }
 
         ob_start();
         ?>

@@ -1,0 +1,179 @@
+/**
+ * Muy Únicos - Estilos para Sistema de Agrupamiento por Etiquetas
+ *
+ * @package GeneratePress_Child
+ */
+
+/* ============================================
+   CARD DE GRUPO DE ETIQUETAS
+   ============================================ */
+
+/* Wrapper del grupo en el grid de productos */
+.mu-tag-group-wrapper {
+    /* Heredar estilos de productos de WooCommerce */
+    width: 100%;
+}
+
+.mu-tag-group-card {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    height: 100%;
+}
+
+.mu-tag-group-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.mu-tag-group-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    height: 100%;
+}
+
+.mu-tag-group-image {
+    position: relative;
+    overflow: hidden;
+    background: #f5f5f5;
+}
+
+.mu-tag-group-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.mu-tag-group-card:hover .mu-tag-group-image img {
+    transform: scale(1.05);
+}
+
+/* Overlay con título y contador */
+.mu-tag-group-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+    padding: 20px 15px 15px;
+    color: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    pointer-events: none;
+}
+
+.mu-tag-group-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    text-transform: capitalize;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.mu-tag-group-count {
+    background: rgba(255, 255, 255, 0.9);
+    color: #333;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 768px) {
+    .mu-tag-group-grid {
+        gap: 1px;
+    }
+
+    .mu-tag-group-title {
+        font-size: 1.1rem;
+    }
+
+    .mu-tag-group-count {
+        font-size: 0.8rem;
+        padding: 3px 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .mu-tag-group-overlay {
+        padding: 15px 12px 12px;
+    }
+
+    .mu-tag-group-title {
+        font-size: 1rem;
+    }
+}
+
+/* ============================================
+   INTEGRACIÓN CON GRID DE WOOCOMMERCE
+   ============================================ */
+
+/* Asegurar que el wrapper se integre correctamente en el grid */
+ul.products .mu-tag-group-wrapper {
+    list-style: none;
+    margin: 0;
+}
+
+/* Ocultar productos individuales cuando se usa el sistema de grupos */
+.mu-hidden-product {
+    display: none !important;
+}
+
+/* ============================================
+   PRODUCTOS REPRESENTATIVOS EN LOOP
+   Ocultar título/imagen original, mostrar reemplazo
+   ============================================ */
+
+/* Ocultar el título ORIGINAL de WooCommerce (sin clase mu-tag-group-replacement) */
+.product.mu-tag-group-representative .woocommerce-loop-product__title:not(.mu-tag-group-replacement) {
+    display: none !important;
+}
+
+/* Ocultar la imagen thumbnail original */
+.product.mu-tag-group-representative img.attachment-woocommerce_thumbnail {
+    display: none !important;
+}
+
+/* Asegurar position relative en el link del producto */
+.product.mu-tag-group-representative .woocommerce-LoopProduct-link {
+    position: relative !important;
+    width: 100%;
+}
+
+/* Wrapper del grid de imágenes en productos representativos */
+.mu-tag-group-image-wrapper {
+    position: relative;
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 1;
+    transition: transform 0.4s ease;
+}
+
+/* Grid inline para productos representativos en el loop */
+.mu-tag-group-grid-inline {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.mu-tag-group-grid-inline img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    margin: 0 !important;
+}

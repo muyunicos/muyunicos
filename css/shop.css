@@ -409,11 +409,20 @@ form.variations_form tr {
     background: var(--resaltado) !important;
 }
 
-/* Reemplazar texto del botón por "Comprar" */
-.woocommerce ul.products li.product .button::after {
+/* Reemplazar texto del botón por "Comprar" SOLO para botones normales */
+.woocommerce ul.products li.product .button:not(.mu-tag-group-btn)::after {
     content: 'Comprar' !important;
     font-size: 0.95rem !important;
     display: inline !important;
+}
+
+/* Para botones de tag groups, mostrar el texto original */
+.woocommerce ul.products li.product .button.mu-tag-group-btn {
+    font-size: 0.95rem !important;
+    width: auto;
+}
+.woocommerce ul.products li.product .button.mu-tag-group-btn::after {
+    content: none !important;
 }
 
 /* override GP: eliminar pseudo-elementos heredados del botón */
@@ -540,4 +549,31 @@ form.variations_form tr {
     .woocommerce ul.products li.product img {
         transition: none !important;
     }
+}
+
+/* ============================================
+   BOTÓN "CARGAR RESULTADOS PREVIOS" (page/2+)
+   ============================================ */
+.mu-prev-results-wrapper {
+    width: 100%;
+    text-align: center;
+    padding: 20px 0;
+    clear: both;
+}
+
+.mu-load-prev-btn {
+    padding: 12px 24px;
+    background: var(--primario);
+    border: none;
+    border-radius: var(--mu-radius-sm, 6px);
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: background 0.3s ease, transform 0.2s ease;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    margin: 0 auto;
+}
+
+.mu-load-prev-btn:active {
+    transform: translateY(0);
 }

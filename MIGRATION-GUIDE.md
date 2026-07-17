@@ -58,7 +58,18 @@ muyunicos/ (generatepress-child)
 │   ├── geo.php             # Multi-país: detección por subdominio, decimales, modal
 │   │                       # sugerencia de país, selector de header, prefijo idioma.
 │   │                       # muyu_get_cached_geolocation() — una sola llamada/request.
+│   │                       # Modal de país ahora recuerda elección del usuario vía cookie.
+│   ├── seo-hreflang.php    # SEO Multi-país: hreflang tags, títulos localizados,
+│   │                       # meta descriptions, URLs canónicas por país.
+│   │                       # mu_add_hreflang_tags() — genera hreflang para todos
+│   │                       # los subdominios configurados.
+│   │                       # mu_localize_document_title() — agrega nombre del país.
+│   │                       # mu_localize_meta_description() — localiza meta descriptions.
+│   │                       # mu_fix_canonical_url() — asegura URLs canónicas correctas.
 │   ├── digital-restriction.php  # Restricción productos físicos por subdominio.
+│   │                            # Rebuild de índice vía wp_schedule_single_event().
+│   │                            # Ahora excluye categorías outlet/juegosparawii de tienda general AR.
+│   │                            # Ahora excluye categorías outlet/juegosparawii de tienda general AR.
 │   │                            # Rebuild de índice vía wp_schedule_single_event().
 │   │                            #
 │   │                            # ÍNDICES DISPONIBLES (wp_options):
@@ -142,6 +153,11 @@ muyunicos/ (generatepress-child)
 │   ├── ui.php              # Header icons, Cart badge, WhatsApp, Search, Footer custom,
 │   │                       # Share shortcode, canonical GSK, WPLingua body class,
 │   │                       # Category desc mover, precio $0, disable GP featured img.
+│   │                       # Shortcodes: bestsellers, categorías populares, testimonios.
+│   │                       # Bestsellers usa cache por país para evitar cross-linking.
+│   │                       # Sistema de reseñas manuales con foto de compra para admin.
+│   │                       # Categorías populares filtra por restricción digital + "Eventos".
+│   │                       # Testimonios: auto-refresh 30s, memoria sin duplicados, botón "Cargar más".
 │   │                       # Shortcodes: [mu_testimonios_section] [mu_bestsellers_section]
 │   │                       #             [mu_popcat_section] [mu_hero_section]
 │   │                       # [mu_hero_section] consume mu_get_hero_banners() de hero-banners.php.

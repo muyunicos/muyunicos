@@ -27,7 +27,8 @@
             container: 'ul.products',        // Contenedor de la grilla
             item: 'li.product',              // Items individuales
             pagination: '.woocommerce-pagination', // Paginación nativa
-            nextLink: '.woocommerce-pagination a.next' // Botón siguiente
+            nextLink: '.woocommerce-pagination a.next', // Botón siguiente
+            prevLink: '.woocommerce-pagination a.prev'  // Botón anterior
         };
 
         const container = document.querySelector(selectors.container);
@@ -41,6 +42,21 @@
 
         // 1. Ocultar paginación original (pero mantenerla en DOM por si acaso)
         pagination.style.display = 'none';
+
+        // 1b. Si hay un enlace "anterior" (estamos en page/2/ o superior),
+        // agregar botón "Cargar resultados previos" arriba del grid
+        const prevLink = pagination.querySelector('a.prev');
+        if (prevLink) {
+            const prevBtn = document.createElement('div');
+            prevBtn.className = 'mu-prev-results-wrapper';
+            prevBtn.innerHTML = '<button class="mu-load-prev-btn">Cargar resultados previos</button>';
+            container.parentElement.insertBefore(prevBtn, container);
+            
+            prevBtn.querySelector('.mu-load-prev-btn').addEventListener('click', function(e) {
+                e.preventDefault();
+                window.location.href = prevLink.href;
+            });
+        }
 
         // 2. Crear el "Centinela" (Elemento invisible que detecta cuando llegamos al fondo)
         const sentinelWrapper = document.createElement('div');

@@ -22,8 +22,8 @@ function mu_enqueue_assets() {
     $uri = get_stylesheet_directory_uri();
 
     // Remove duplicate style.css loaded by GeneratePress parent theme
-    wp_dequeue_style( 'generate-child-css' );
-    wp_deregister_style( 'generate-child-css' );
+    wp_dequeue_style( 'generate-child' );
+    wp_deregister_style( 'generate-child' );
 
     // Base styles
     wp_enqueue_style( 'mu-base', get_stylesheet_uri(), [], $ver );
@@ -130,6 +130,7 @@ mu_load_module( 'icons' );               // SVG icons repository
 mu_load_module( 'compat-litespeed' );    // Compatibilidad LiteSpeed Cache — exclusiones JS Delay
 mu_load_module( 'coming-soon' );         // Coming Soon override (intercepta template_redirect antes que Hostinger)
 mu_load_module( 'geo' );                 // Multi-country system
+mu_load_module( 'seo-hreflang' );        // SEO Multi-país (hreflang, títulos localizados)
 mu_load_module( 'digital-restriction' ); // Digital Restriction System
 mu_load_module( 'auth-modal' );          // Authentication modal
 mu_load_module( 'login' );               // wp-login.php customization (hooks only fire on login screen)
@@ -142,6 +143,7 @@ mu_load_module( 'orders-files' );        // Order File Manager (Admin/Frontend)
 mu_load_module( 'orders-workflow' );     // Order Workflow (Status, Email, WhatsApp)
 mu_load_module( 'downloads-bonus' );     // Dynamic Downloads Injections
 mu_load_module( 'navigation-chips' );    // Navigation Chips v8 (breadcrumb + filtros catálogo)
+mu_load_module( 'tag-groups' );          // Tag Groups System (agrupamiento por etiquetas en catálogo)
 mu_load_module( 'products-core' );       // Productos Personalizados Core v2.1
 mu_load_module( 'addon-nombre' );        // Addon Nombre v3.0 (campo nombre personalizado)
 mu_load_module( 'addon-etiquetas' );     // Addon Etiquetas v3.0 (builder de etiquetas)
