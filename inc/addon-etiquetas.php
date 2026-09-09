@@ -338,11 +338,18 @@ if ( ! function_exists( 'mu_etiquetas_enqueue_builder_js' ) ) {
 
         wp_enqueue_script( 'mu-addon-etiquetas', "$uri/js/addon-etiquetas.js", [ 'jquery' ], $ver, true );
 
-        $config = mu_etiquetas_get_configuracion( $product );
-        wp_localize_script( 'mu-addon-etiquetas', 'MU_Config', $config );
-        wp_localize_script( 'mu-addon-etiquetas', 'muEtiquetasData', [
-            'currencySymbol' => get_woocommerce_currency_symbol(),
-        ] );
+        if ( wp_script_is( 'mu-addon-etiquetas', 'enqueued' ) ) {
+            $config = mu_etiquetas_get_configuracion( $product );
+            
+            // Solo localizar si $config es un array válido (evita PHP Notice cuando no hay producto)
+            if ( is_array( $config ) ) {
+                wp_localize_script( 'mu-addon-etiquetas', 'MU_Config', $config );
+            }
+            
+            wp_localize_script( 'mu-addon-etiquetas', 'muEtiquetasData', [
+                'currencySymbol' => get_woocommerce_currency_symbol(),
+            ] );
+        }
     }
 }
 

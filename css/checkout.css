@@ -8,6 +8,78 @@
    ======================================== */
 
 /* ============================================
+   0. AVISO DE PRODUCTOS NO DISPONIBLES
+   Restricción de carrito por país (cart-restriction.php)
+   ============================================ */
+.mu-cart-restriction-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    background: #fff8e6;
+    border: 2px solid #f0ad4e;
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin: 0 0 20px;
+    max-width: 1200px;
+}
+.mu-cart-restriction-icon {
+    flex-shrink: 0;
+    color: #f0ad4e;
+    margin-top: 2px;
+}
+.mu-cart-restriction-content { flex: 1; }
+.mu-cart-restriction-title {
+    display: block;
+    font-size: 1rem;
+    color: #8a6d3b;
+    margin-bottom: 4px;
+}
+.mu-cart-restriction-message {
+    margin: 0 0 12px;
+    color: #6d5a2e;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+.mu-cart-restriction-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+.mu-cart-restriction-actions .mu-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 18px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: opacity 0.2s;
+}
+.mu-cart-restriction-actions .mu-btn:hover { opacity: 0.85; }
+.mu-cart-restriction-actions .mu-btn-primary {
+    background: #f0ad4e;
+    color: #fff;
+}
+.mu-cart-restriction-actions .mu-btn-outline {
+    background: transparent;
+    color: #8a6d3b;
+    border-color: #f0ad4e;
+}
+.mu-cart-restriction-remove.is-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+@media (max-width: 480px) {
+    .mu-cart-restriction-notice { flex-direction: column; }
+    .mu-cart-restriction-actions { flex-direction: column; align-items: stretch; }
+    .mu-cart-restriction-actions .mu-btn { width: 100%; }
+}
+
+/* ============================================
    1. ANTI-FOUC: Campos nativos ocultos
    ============================================ */
 #billing_first_name_field,
@@ -55,13 +127,6 @@
 }
 .mu-field-valid input { border-color: var(--exito, #a3ffbc) !important; }
 .mu-field-error input { border-color: #e74c3c !important; background-color: #fff5f5 !important; }
-
-.mu-verified-badge {
-    display: none;
-    color: var(--exito, #a3ffbc);
-    margin-left: 5px;
-    font-weight: bold;
-}
 
 #wa-status-msg         { font-size: 0.85em; transition: all 0.3s; margin-left: 5px; }
 .wa-ok                 { color: var(--exito, #a3ffbc); font-weight: 700; }

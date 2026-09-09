@@ -4,29 +4,17 @@
  * 
  * Incluye:
  * - HTML del modal de login/registro
- * - Localize script para AJAX
  * - Handlers WC-AJAX (login, register, reset password, check user)
+ * 
+ * Nota: el localize de muAuthData vive en functions.php (mu_enqueue_assets),
+ * inmediatamente después del enqueue de mu-modal-auth-js, para garantizar
+ * que la variable JS exista siempre.
  * 
  * @package GeneratePress_Child
  * @since 1.0.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
-
-// ============================================
-// LOCALIZE SCRIPT
-// ============================================
-
-function mu_auth_localize_script() {
-    if ( ! is_user_logged_in() ) {
-        wp_localize_script( 'mu-modal-auth-js', 'muAuthData', [
-            'ajax_url' => WC_AJAX::get_endpoint( '%%endpoint%%' ),
-            'nonce'    => wp_create_nonce( 'mu_auth_nonce' ),
-            'home_url' => home_url( '/' )
-        ] );
-    }
-}
-add_action( 'wp_enqueue_scripts', 'mu_auth_localize_script', 25 );
 
 // ============================================
 // HTML DEL MODAL

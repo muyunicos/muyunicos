@@ -1,7 +1,32 @@
 <?php
 /**
  * Muy Únicos - Digital Restriction System
- * Sistema de restricción de contenido digital v4.6.0
+ * Sistema de restricción de contenido digital v4.8.0
+ *
+ * CHANGELOG v4.8.0 (Limpieza + Anti-bots + Hash Gate):
+ * - REMOVED: handle_404_category_canonical_ar() — auto-recuperación de 404s en AR.
+ *   Era la causa principal de los avisos "Purgar la URL" en wp-admin (4 purgas por
+ *   petición 404). Ya no es necesaria: mu_litespeed_nocache_404() (compat-litespeed)
+ *   evita que LiteSpeed cachee 404s en primer lugar.
+ * - REMOVED: Cron diario muyu_cron_verify_category_urls +
+ *   verify_physical_category_urls() — no cumplió su propósito.
+ * - REMOVED: Sistema de logging mu_log_event() y filtro mu_enable_debug_log()
+ *   (también eliminado de functions.php).
+ * - NEW: [Anti-bots] handle_redirects() retorna temprano si mu_is_bot(): los bots
+ *   reciben 404 instantáneo sin consultas SQL ni lógica de redirección.
+ * - NEW: [Hash Gate] mu_rebuild_all_indexes() expone 'purged' => bool; el PURGE del
+ *   HTML cacheado solo ocurre si algún índice cambió realmente (ver navigation-chips).
+ *
+ * CHANGELOG v4.7.0 (Fix #404-intermitente):
+ * - FIX: Guard anti-vacío en rebuild_digital_indexes() — si el rebuild devolvió
+ *   vacío (timeout SQL, "Commands out of sync", fatal de WCPBC), NO sobrescribir
+ *   los índices buenos con vacío. Eso destruía el mapa de categorías y causaba
+ *   404 en categorías físicas como /outlet/.
+ * - FIX: Guard anti-vacío en filter_category_terms() — si el índice de categorías
+ *   está vacío, NO filtrar los términos (include=[0] excluiría TODAS las categorías).
+ * - NEW: Verificación de integridad en ensure_indexes_exist() — detecta si las
+ *   categorías físicas excluidas (outlet, tienda-juegosparawii, stickers) no están
+ *   en el índice y programa rebuild.
  *
  * CHANGELOG v4.6.0:
  * - FIX: categoría con cobertura digital pero único producto oculto del catálogo
@@ -51,7 +76,9 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         const OPTION_REDIRECT_MAP           = 'muyu_phys_to_dig_map';
         const OPTION_CATEGORY_REDIRECT_MAP  = 'muyu_cat_redirect_map';
         const OPTION_LAST_UPDATE            = 'muyu_digital_list_updated';
+        const OPTION_LAST_REBUILD_SCHEDULE  = 'muyu_digital_last_rebuild_schedule';
         const CRON_HOOK                     = 'muyu_cron_rebuild_digital_indexes';
+        const REBUILD_COOLDOWN              = HOUR_IN_SECONDS; // 1 hora mínimo entre rebuilds
         
         public static function get_instance(): self {
             if ( null === self::$instance ) {
@@ -103,13 +130,82 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         // =====================================================================
 
         public function is_restricted_user(): bool {
+            // [Optimización] Static cache: el host no cambia dentro de un request,
+            // pero este método se llama 3-5 veces (init_hooks, filter_product_queries,
+            // handle_redirects, variaciones). Evita re-procesar sanitize+preg_replace.
+            static $restricted = null;
+            if ( null !== $restricted ) {
+                return $restricted;
+            }
+
             $host = sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ?? '' ) );
             $host = preg_replace( '/:\d+$/', '', $host );
-            return 'muyunicos.com' !== str_replace( 'www.', '', $host );
+            $restricted = 'muyunicos.com' !== str_replace( 'www.', '', $host );
+            return $restricted;
         }
 
         private function get_cached_digital_product_ids(): array {
-            return array_map( 'intval', (array) get_option( self::OPTION_PRODUCT_IDS, [] ) );
+            // [Optimización] Static cache: get_option deserializa un array de
+            // ~1000 enteros desde Memcached y array_map lo re-procesa en cada
+            // llamada (filter_product_queries, category_has_visible, etc.).
+            // Una sola deserialización por request.
+            // NOTA: seguro para lectura — save_indexes() escribe vía
+            // update_option() directo, nunca vía este getter.
+            static $ids = null;
+            if ( null === $ids ) {
+                $ids = array_map( 'intval', (array) get_option( self::OPTION_PRODUCT_IDS, [] ) );
+            }
+            return $ids;
+        }
+
+        /**
+         * IDs de categorías digitales (expandidas con ancestros), con static cache.
+         *
+         * [Optimización] El patrón get_option(OPTION_CATEGORY_IDS) + array_map
+         * se repetía en 6 handlers (filter_category_terms, filter_menu_items,
+         * handle_category_redirect, handle_404_category_redirect,
+         * handle_tag_redirect, find_digital_category_for_product) — cada uno
+         * deserializaba el array por separado. Una sola por request.
+         *
+         * @return int[] IDs de categorías digitales.
+         */
+        private function get_cached_digital_category_ids(): array {
+            static $ids = null;
+            if ( null === $ids ) {
+                $ids = array_map( 'intval', (array) get_option( self::OPTION_CATEGORY_IDS, [] ) );
+            }
+            return $ids;
+        }
+
+        /**
+         * Term IDs de las categorías excluidas del catálogo general (AR).
+         *
+         * [Optimización] filter_product_queries() hacía 3 get_term_by() por
+         * request no-cacheado, y navigation-chips.php repetía los mismos 3
+         * lookups al renderizar los chips. Los slugs son constantes del
+         * código; los term IDs solo cambian si se borra/recrea el término.
+         * Static cache por request → elimina 6+ lookups por página de catálogo.
+         *
+         * @return int[] Term IDs de categorías excluidas.
+         */
+        public function get_excluded_category_term_ids(): array {
+            static $term_ids = null;
+            if ( null !== $term_ids ) {
+                return $term_ids;
+            }
+
+            $slugs = function_exists( 'muyu_get_excluded_catalog_category_slugs' )
+                ? muyu_get_excluded_catalog_category_slugs()
+                : [ 'outlet', 'tienda-juegosparawii', 'stickers' ];
+
+            $term_ids = [];
+            foreach ( $slugs as $slug ) {
+                $term = get_term_by( 'slug', $slug, 'product_cat' );
+                if ( $term && ! is_wp_error( $term ) ) {
+                    $term_ids[] = (int) $term->term_id;
+                }
+            }
+            return $term_ids;
         }
 
         /**
@@ -155,8 +251,8 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
          * (productos digitales publicados), verifica que al menos 1 esté en la
          * categoría y NO esté excluido del catálogo via product_visibility.
          *
-         * Transient mu_digital_cat_has_visible_{term_id} (TTL 12h),
-         * invalidado en save_indexes() tras rebuild.
+         * Transient mu_digital_cat_has_visible_{term_id} (TTL 30 días),
+         * invalidado en save_indexes() SOLO si cambió el set digital (Hash Gate).
          */
         public function category_has_visible_digital_products( int $term_id ): bool {
             if ( $term_id <= 0 ) return false;
@@ -212,6 +308,14 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             $digital_product_ids = $this->get_digital_product_ids();
             
             if ( empty( $digital_product_ids ) ) {
+                // [Fix #404-intermitente] Guard anti-vacío: si el rebuild devolvió
+                // vacío (timeout SQL, "Commands out of sync", fatal de WCPBC), NO
+                // sobrescribir los índices buenos con vacío. Eso destruía el mapa
+                // de categorías y causaba 404 en categorías físicas como /outlet/.
+                $existing = get_option( self::OPTION_PRODUCT_IDS, false );
+                if ( false !== $existing && ! empty( $existing ) ) {
+                    return 0;
+                }
                 $this->save_indexes( [], [], [], [], [], [] );
                 return 0;
             }
@@ -229,6 +333,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             );
             
             $this->save_indexes( $digital_product_ids, $category_ids, $tag_ids, $redirect_map, $cat_redirect_map, $direct_category_ids );
+
             return count( $digital_product_ids );
         }
         
@@ -416,6 +521,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             array $direct_category_ids = []
         ): void {
             $previous_category_ids = array_map( 'intval', (array) get_option( self::OPTION_CATEGORY_IDS, [] ) );
+            $previous_product_ids  = array_map( 'intval', (array) get_option( self::OPTION_PRODUCT_IDS, [] ) );
 
             update_option( self::OPTION_PRODUCT_IDS,            $product_ids,         false );
             update_option( self::OPTION_CATEGORY_IDS,           $category_ids,        false );
@@ -425,11 +531,19 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             update_option( self::OPTION_CATEGORY_REDIRECT_MAP,  $cat_redirect_map,    false );
             update_option( self::OPTION_LAST_UPDATE,            current_time( 'mysql' ), false );
 
-            // Invalidar transients de visibilidad de categorías (helper
-            // category_has_visible_digital_products). Cubre tanto las categorías
-            // previas como las actuales por si una saliera del índice.
-            foreach ( array_unique( array_merge( $previous_category_ids, $category_ids ) ) as $cid ) {
-                delete_transient( 'mu_digital_cat_has_visible_' . (int) $cid );
+            // [Hash Gate] Invalidar transients de visibilidad SOLO si el set
+            // digital cambió realmente. Antes se borraban TODOS en cada rebuild
+            // (ej: editar el precio de un producto) y el WP_Query caro de
+            // category_has_visible_digital_products() re-corria varias veces al
+            // día en vez de respetar el TTL de 30 días. Con el gate, el TTL
+            // solo se rompe cuando cambia la composición del catálogo digital.
+            $products_changed   = ( array_values( $previous_product_ids ) !== array_values( array_map( 'intval', $product_ids ) ) );
+            $categories_changed = ( array_values( $previous_category_ids ) !== array_values( array_map( 'intval', $category_ids ) ) );
+
+            if ( $products_changed || $categories_changed ) {
+                foreach ( array_unique( array_merge( $previous_category_ids, $category_ids ) ) as $cid ) {
+                    delete_transient( 'mu_digital_cat_has_visible_' . (int) $cid );
+                }
             }
         }
 
@@ -438,18 +552,38 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         // =====================================================================
         
         public function ajax_rebuild_indexes(): void {
-    check_ajax_referer( 'muyu-rebuild-nonce', 'nonce' );
-    if ( ! current_user_can( 'manage_woocommerce' ) ) wp_send_json_error( 'Permisos insuficientes' );
-    $result = mu_rebuild_all_indexes();
-    wp_send_json_success( sprintf(
-        'Índices reconstruidos. Productos digitales: %d | NavChips: ✅',
-        $result['digital']
-    ) );
-}
+            check_ajax_referer( 'muyu-rebuild-nonce', 'nonce' );
+            if ( ! current_user_can( 'manage_woocommerce' ) ) wp_send_json_error( 'Permisos insuficientes' );
+            $result = mu_rebuild_all_indexes();
+
+            // [Fix #cron-race] El rebuild síncrono ya regeneró los índices correctamente.
+            // Cancelar los crons asíncronos pendientes (+5s/+30s) para evitar que un
+            // rebuild posterior (que puede fallar y devolver vacío) sobrescriba el buen
+            // resultado con vacío — causa raíz de la desaparición de los grupos a los
+            // pocos segundos de tocar "Reindexar".
+            wp_clear_scheduled_hook( 'mu_tag_groups_rebuild_hook' );
+            wp_clear_scheduled_hook( 'mu_navchips_rebuild_index_hook' );
+
+            wp_send_json_success( sprintf(
+                'Índices reconstruidos. Productos digitales: %d | NavChips: ✅',
+                $result['digital']
+            ) );
+        }
         
         public function schedule_rebuild(): void {
+            // Cooldown: Verificar si pasó el tiempo mínimo desde la última programación
+            $last_schedule = get_option( self::OPTION_LAST_REBUILD_SCHEDULE, 0 );
+            $time_since_last = time() - $last_schedule;
+            
+            if ( $time_since_last < self::REBUILD_COOLDOWN ) {
+                // Aún dentro del cooldown, no programar otro rebuild
+                return;
+            }
+            
+            // Verificar si ya hay un rebuild programado
             if ( ! wp_next_scheduled( self::CRON_HOOK ) ) {
                 wp_schedule_single_event( time() + 30, self::CRON_HOOK );
+                update_option( self::OPTION_LAST_REBUILD_SCHEDULE, time() );
             }
         }
         
@@ -457,6 +591,27 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             $ids = get_option( self::OPTION_PRODUCT_IDS, false );
             if ( false === $ids || empty( $ids ) ) {
                 $this->schedule_rebuild();
+                return;
+            }
+
+            // [Fix #404-intermitente] Verificación de integridad: si las categorías
+            // excluidas del catálogo (outlet, tienda-juegosparawii, stickers) no
+            // están en el índice de categorías, el mapa de redirección puede estar
+            // corrupto. Programar rebuild para restaurar.
+            $category_ids = array_map( 'intval', (array) get_option( self::OPTION_CATEGORY_IDS, [] ) );
+            if ( empty( $category_ids ) ) {
+                $this->schedule_rebuild();
+                return;
+            }
+
+            // Verificar que las categorías físicas excluidas existan en el índice
+            // de categorías digitales (deben estar como ancestros expandidos).
+            // [Optimización] Reusar el helper con static cache (mismos term IDs).
+            foreach ( $this->get_excluded_category_term_ids() as $excluded_id ) {
+                if ( ! in_array( $excluded_id, $category_ids, true ) ) {
+                    $this->schedule_rebuild();
+                    return;
+                }
             }
         }
         
@@ -469,11 +624,14 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             $ver       = wp_get_theme()->get( 'Version' );
             wp_enqueue_style( 'mu-admin', $theme_uri . '/css/admin.css', [], $ver );
             wp_enqueue_script( 'mu-admin-js', $theme_uri . '/js/admin.js', [], $ver, true );
-            wp_localize_script( 'mu-admin-js', 'muyuAdminData', [
-                'nonce'       => wp_create_nonce( 'muyu-rebuild-nonce' ),
-                'label'       => '⚡ Reindexar',
-                'wc_ajax_url' => \WC_AJAX::get_endpoint( 'mu_rebuild_digital_list' )
-            ] );
+            
+            if ( wp_script_is( 'mu-admin-js', 'enqueued' ) ) {
+                wp_localize_script( 'mu-admin-js', 'muyuAdminData', [
+                    'nonce'       => wp_create_nonce( 'muyu-rebuild-nonce' ),
+                    'label'       => '⚡ Reindexar',
+                    'wc_ajax_url' => \WC_AJAX::get_endpoint( 'mu_rebuild_digital_list' )
+                ] );
+            }
         }
 
         public function filter_product_queries( $query ): void {
@@ -490,26 +648,23 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             if ( ! $is_shop_query ) return;
             
             // Para usuarios restringidos (no Argentina): filtrar solo productos digitales
+            // [Optimización] get_cached_digital_product_ids() evita deserializar
+            // ~1000 enteros en cada request no-cacheado de subdominio.
             if ( $this->is_restricted_user() ) {
-                $digital_ids = get_option( self::OPTION_PRODUCT_IDS, false );
-                if ( false === $digital_ids || empty( $digital_ids ) ) {
+                $digital_ids = $this->get_cached_digital_product_ids();
+                if ( empty( $digital_ids ) ) {
                     $this->schedule_rebuild();
                     return;
                 }
-                $query->set( 'post__in', array_map( 'intval', (array) $digital_ids ) );
+                $query->set( 'post__in', $digital_ids );
                 return;
             }
             
             // Para Argentina: excluir categorías específicas en tienda general y categorías padre
             // Las categorías excluidas siguen siendo accesibles por URL directa y búsquedas
-            $excluded_categories = [ 'outlet', 'tienda-juegosparawii', 'stickers' ];
-            $excluded_cat_ids = [];
-            foreach ( $excluded_categories as $slug ) {
-                $term = get_term_by( 'slug', $slug, 'product_cat' );
-                if ( $term ) {
-                    $excluded_cat_ids[] = $term->term_id;
-                }
-            }
+            // [Optimización] get_excluded_category_term_ids() cachea los lookups
+            // por request (antes: 3 get_term_by() en cada request no-cacheado).
+            $excluded_cat_ids = $this->get_excluded_category_term_ids();
             
             if ( empty( $excluded_cat_ids ) ) return;
             
@@ -577,7 +732,17 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
 
             if ( ! in_array( 'product_cat', $taxonomies, true ) || ! $this->is_restricted_user() ) return $args;
             
-            $digital_cat_ids = array_map( 'intval', (array) get_option( self::OPTION_CATEGORY_IDS, [] ) );
+            $digital_cat_ids = $this->get_cached_digital_category_ids();
+
+            // [Fix #404-intermitente] Guard anti-vacío: si el índice de categorías
+            // está vacío (rebuild fallido que sobrescribió con vacío), NO filtrar
+            // los términos. Filtrar con include=[0] excluiría TODAS las categorías
+            // y rompería el routing de WooCommerce.
+            if ( empty( $digital_cat_ids ) ) {
+                $this->schedule_rebuild();
+                return $args;
+            }
+
             if ( ! empty( $args['include'] ) ) {
                 $current = array_map( 'intval', is_array( $args['include'] ) ? $args['include'] : explode( ',', $args['include'] ) );
                 $args['include'] = array_intersect( $current, $digital_cat_ids ) ?: [ 0 ];
@@ -589,7 +754,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         
         public function filter_menu_items( array $items, $menu, array $args ): array {
             if ( is_admin() || wp_is_json_request() || ! $this->is_restricted_user() ) return $items;
-            $digital_cat_ids = array_map( 'intval', (array) get_option( self::OPTION_CATEGORY_IDS, [] ) );
+            $digital_cat_ids = $this->get_cached_digital_category_ids();
             return array_filter( $items, function( $item ) use ( $digital_cat_ids ) {
                 if ( ! isset( $item->object ) || 'product_cat' !== $item->object ) {
                     return true;
@@ -603,21 +768,34 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         }
 
         public function handle_redirects(): void {
-            if ( is_admin() || ! $this->is_restricted_user() ) return;
+            if ( is_admin() ) return;
+
+            // [Optimización anti-bots] Los bots/indexadores (Googlebot, GPTBot,
+            // CCBot, etc.) reciben 404 instantáneo sin ejecutar consultas SQL ni
+            // lógica de redirección. Solo los usuarios reales son redirigidos a
+            // las URLs correctas. Reduce drásticamente la carga del servidor ante
+            // rastreos masivos de IA y otros servicios.
+            // mu_is_bot() (inc/compat-litespeed.php) es O(1) y siempre disponible.
+            if ( function_exists( 'mu_is_bot' ) && mu_is_bot() ) {
+                return;
+            }
 
             $target_url      = '';
             $should_redirect = false;
 
             if ( is_product_category() ) {
+                if ( ! $this->is_restricted_user() ) return;
                 list( $should_redirect, $target_url ) = $this->handle_category_redirect();
 
             } elseif ( is_product_tag() ) {
+                if ( ! $this->is_restricted_user() ) return;
                 list( $should_redirect, $target_url ) = $this->handle_tag_redirect();
 
             } elseif ( is_product() ) {
+                if ( ! $this->is_restricted_user() ) return;
                 list( $should_redirect, $target_url ) = $this->handle_product_redirect();
 
-            } elseif ( is_404() ) {
+            } elseif ( is_404() && $this->is_restricted_user() ) {
                 list( $should_redirect, $target_url ) = $this->handle_404_category_redirect();
             }
 
@@ -633,7 +811,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             }
 
             $term_id      = (int) $queried_object->term_id;
-            $digital_cats = array_map( 'intval', (array) get_option( self::OPTION_CATEGORY_IDS, [] ) );
+            $digital_cats = $this->get_cached_digital_category_ids();
 
             if ( ! in_array( $term_id, $digital_cats, true ) ) {
                 $cat_redirect_map = get_option( self::OPTION_CATEGORY_REDIRECT_MAP, [] );
@@ -690,7 +868,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
 
             $source_id    = (int) $term->term_id;
             $source_slug  = $term->slug;
-            $digital_cats = array_map( 'intval', (array) get_option( self::OPTION_CATEGORY_IDS, [] ) );
+            $digital_cats = $this->get_cached_digital_category_ids();
 
             // FIX #3: categoría digital que genera 404 — redirigir solo si la URL
             // actual difiere del canonical, para evitar redirect infinito.
@@ -756,13 +934,15 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         private function handle_product_redirect(): array {
             global $post;
             
-            $digital_ids = (array) get_option( self::OPTION_PRODUCT_IDS, [] );
+            // [Optimización] Static cache del set digital (antes: get_option +
+            // array_map en cada redirect de producto físico en subdominios).
+            $digital_ids = $this->get_cached_digital_product_ids();
             if ( empty( $digital_ids ) ) {
                 $this->schedule_rebuild();
                 return [ false, '' ];
             }
             
-            if ( ! $post || in_array( (int) $post->ID, array_map( 'intval', $digital_ids ), true ) ) {
+            if ( ! $post || in_array( (int) $post->ID, $digital_ids, true ) ) {
                 return [ false, '' ];
             }
             
@@ -778,7 +958,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         }
         
         private function find_digital_category_for_product( int $product_id ): string {
-            $digital_cats = array_map( 'intval', (array) get_option( self::OPTION_CATEGORY_IDS, [] ) );
+            $digital_cats = $this->get_cached_digital_category_ids();
             $product_cats = wp_get_post_terms( $product_id, 'product_cat', [ 'fields' => 'ids' ] );
             if ( empty( $product_cats ) || is_wp_error( $product_cats ) ) return '';
             
@@ -801,18 +981,17 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                     : wc_get_page_permalink( 'shop' );
             }
             
+            // [Deduplicación] Reusar muyu_get_current_country_from_subdomain()
+            // (inc/geo.php) como fuente única de subdominio→país. El match inline
+            // anterior tenía 3 fragilidades: 'muyunicos.com' y 'www.' producían
+            // códigos inválidos (MU/WW) que solo no rompían porque el prefijo
+            // resultaba '', y us./cr. funcionaban por coincidencia casual de
+            // strtoupper(substr(...)). La función de geo.php maneja puertos,
+            // www. y el dominio principal correctamente.
             if ( function_exists( 'insertar_prefijo_idioma' ) && function_exists( 'muyu_country_language_prefix' ) ) {
-                $sub     = strtolower( explode( '.', $_SERVER['HTTP_HOST'] ?? '' )[0] );
-                $country = match ( $sub ) {
-                    'mexico' => 'MX',
-                    'br'     => 'BR',
-                    'co'     => 'CO',
-                    'ec'     => 'EC',
-                    'cl'     => 'CL',
-                    'pe'     => 'PE',
-                    'ar'     => 'AR',
-                    default  => strtoupper( substr( $sub, 0, 2 ) ),
-                };
+                $country = function_exists( 'muyu_get_current_country_from_subdomain' )
+                    ? muyu_get_current_country_from_subdomain()
+                    : 'AR';
                 $prefix = muyu_country_language_prefix( $country );
                 if ( $prefix ) {
                     $target_url = insertar_prefijo_idioma( $target_url, $prefix );
@@ -956,24 +1135,44 @@ if ( ! function_exists( 'muyu_is_restricted_user' ) ) {
     function muyu_is_restricted_user(): bool { return muyu_digital_restriction_init()->is_restricted_user(); }
 }
 
+if ( ! function_exists( 'muyu_get_excluded_catalog_category_slugs' ) ) {
+    /**
+     * Categorías de producto excluidas del catálogo general para Argentina.
+     *
+     * Estas categorías siguen siendo accesibles por URL directa y búsquedas,
+     * pero sus productos NO se muestran en la tienda general ni en categorías
+     * ancestro. Este helper centraliza la lista para que la lógica de
+     * filter_product_queries() y los conteos de navigation-chips coincidan.
+     *
+     * @return string[] Slugs de categorías excluidas.
+     */
+    function muyu_get_excluded_catalog_category_slugs(): array {
+        return [ 'outlet', 'tienda-juegosparawii', 'stickers' ];
+    }
+}
+
 if ( ! function_exists( 'muyu_get_digital_product_ids' ) ) {
     function muyu_get_digital_product_ids(): array { return (array) get_option( MUYU_Digital_Restriction_System::OPTION_PRODUCT_IDS, [] ); }
-}
-
-if ( ! function_exists( 'muyu_get_digital_category_ids' ) ) {
-    function muyu_get_digital_category_ids(): array { return (array) get_option( MUYU_Digital_Restriction_System::OPTION_CATEGORY_IDS, [] ); }
-}
-
-if ( ! function_exists( 'muyu_rebuild_digital_indexes_optimized' ) ) {
-    function muyu_rebuild_digital_indexes_optimized(): int { return muyu_digital_restriction_init()->rebuild_digital_indexes(); }
 }
 
 if ( ! function_exists( 'mu_rebuild_all_indexes' ) ) {
     function mu_rebuild_all_indexes(): array {
         $digital_count = muyu_digital_restriction_init()->rebuild_digital_indexes();
+
+        $navchips_changed = false;
         if ( function_exists( 'mu_navchips_build_product_index' ) ) {
-            mu_navchips_build_product_index();
+            // [Hash Gate] El PURGE del HTML cacheado lo ejecuta internamente
+            // mu_navchips_build_product_index() SOLO si algún índice cambió
+            // realmente (comparación contra el índice almacenado). Si nada
+            // cambió, no hay purga — evita limpiar toda la caché del sitio
+            // en reindexados sin cambios efectivos.
+            $navchips_changed = (bool) mu_navchips_build_product_index();
         }
-        return [ 'digital' => $digital_count, 'navchips' => true ];
+
+        return [
+            'digital' => $digital_count,
+            'navchips' => true,
+            'purged'   => $navchips_changed,
+        ];
     }
 }

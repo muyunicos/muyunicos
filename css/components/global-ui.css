@@ -552,7 +552,7 @@ a:hover, a:focus, a:active {
     pointer-events: none;
 }
 .mu-modal-overlay, .gp-modal__overlay {
-    background: rgb(135 135 135 / 20%);
+    background: rgb(135 135 135 / 20%) !important;
     backdrop-filter: blur(1px);
     transition: opacity 0.25s ease, visibility 0.25s ease;
 }
@@ -628,4 +628,31 @@ a:hover, a:focus, a:active {
 @media (max-width: 480px) {
     .mu-modal-content { padding: 1.5rem; }
     .mu-modal-container { max-width: 95vw; }
+}
+
+/* ============================================
+   JETPACK SEARCH PRICE HIDING (FUERA DE ARGENTINA)
+   ============================================ */
+
+/* El índice de Jetpack Search guarda price_html en ARS (precio base global).
+   WCPBC no puede convertirlos en el overlay porque los resultados de Jetpack
+   no usan .wcpbc-price ni data-product-id — la opción "Cargar los precios en
+   segundo plano" solo aplica a los elementos WCPBC del DOM, no al overlay.
+
+   inc/geo.php agrega la clase mu-country-* al <body>. Ocultamos los precios
+   SOLO fuera de Argentina (muyunicos.com / dominio principal):
+   - body.mu-country-ar  → precios visibles (el índice YA está en ARS)
+   - cualquier otro país → precios ocultos; el usuario ve el precio correcto
+     (convertido por WCPBC) recién al entrar al producto. */
+
+body:not(.mu-country-ar) .jetpack-instant-search__overlay .jetpack-instant-search__product-price,
+body:not(.mu-country-ar) .jetpack-instant-search__results .jetpack-instant-search__product-price,
+body:not(.mu-country-ar) .jetpack-instant-search__search-result-product .jetpack-instant-search__product-price {
+    display: none !important;
+}
+
+/* Optional: Show "View product" text instead of price */
+.jetpack-instant-search__overlay .jetpack-instant-search__search-result-product,
+.jetpack-instant-search__results .jetpack-instant-search__search-result-product {
+    min-height: auto;
 }

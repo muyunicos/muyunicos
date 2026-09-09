@@ -183,34 +183,198 @@ if ( ! function_exists( 'muyu_country_modal_text' ) ) {
 }
 
 // ============================================
-// GEOLOCALIZACIÓN CACHEADA (fix: doble llamada)
+// GEOLOCALIZACIÓN CACHEADA AGRESIVA (24+ hour TTL)
 // ============================================
+
+if ( ! function_exists( 'muyu_get_geolocation_cache_key' ) ) {
+    /**
+     * Genera una clave de caché única para geolocalización basada en IP
+     *
+     * @return string Clave de caché
+     */
+    function muyu_get_geolocation_cache_key() {
+        $ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( $_SERVER['REMOTE_ADDR'] ) : 'unknown';
+        return 'mu_geo_' . md5( $ip );
+    }
+}
 
 if ( ! function_exists( 'muyu_get_cached_geolocation' ) ) {
     /**
-     * Devuelve el resultado de wc_get_customer_geolocation() cacheado
-     * para el ciclo de vida de la request. Garantiza que la función
-     * externa —que puede implicar una consulta a la base de datos o a
-     * un servicio remoto— se invoque una sola vez por página, incluso
-     * cuando múltiples consumidores (mu_should_show_country_modal y
-     * mu_country_modal_html) la necesiten.
+     * Devuelve el resultado de wc_get_customer_geolocation() con caché agresiva.
+     * ORDEN DE PRIORIDAD EMERGENCIA (para reducir DB load):
+     * 1. Caché de request (static variable)
+     * 2. Detección por dominio (más rápido, sin DB)
+     * 3. Cookie del cliente (24+ horas)
+     * 4. Transient WordPress (24+ horas)
+     * 5. Llamada a wc_get_customer_geolocation() (último recurso)
      *
      * @return array|null Array con clave 'country', o null si WC no está disponible.
      */
     function muyu_get_cached_geolocation() {
         static $geo = null;
 
-        if ( $geo === null ) {
-            if ( ! function_exists( 'wc_get_customer_geolocation' ) ||
-                 ! function_exists( 'WC' ) ||
-                 ! WC()->customer ) {
-                return null;
-            }
-            $geo = wc_get_customer_geolocation();
+        // 1. Caché de request (ya existente)
+        if ( $geo !== null ) {
+            return $geo;
         }
 
-        return $geo;
+        // 2. PRIORIDAD: Detección por dominio (sin DB)
+        $country_from_domain = muyu_get_current_country_from_subdomain();
+        if ( ! empty( $country_from_domain ) ) {
+            $geo = [ 'country' => $country_from_domain ];
+            // Hook para performance monitoring (stats en memoria, sin log)
+            do_action( 'muyu_geolocation_cache_hit', 'domain' );
+            return $geo;
+        }
+
+        // 3. Verificar cookie de geolocalización caché (24+ horas)
+        if ( isset( $_COOKIE['muyu_geo_country'] ) && ! empty( $_COOKIE['muyu_geo_country'] ) ) {
+            $geo = [ 'country' => sanitize_text_field( $_COOKIE['muyu_geo_country'] ) ];
+            // Hook para performance monitoring (stats en memoria, sin log)
+            do_action( 'muyu_geolocation_cache_hit', 'cookie' );
+            return $geo;
+        }
+
+        // 4. Verificar transient WordPress (24+ horas)
+        $cache_key = muyu_get_geolocation_cache_key();
+        $cached_geo = get_transient( $cache_key );
+        
+        if ( $cached_geo !== false ) {
+            $geo = $cached_geo;
+            // Establecer cookie para futuras request
+            muyu_set_geolocation_cookie( $geo['country'] );
+            // Hook para performance monitoring (stats en memoria, sin log)
+            do_action( 'muyu_geolocation_cache_hit', 'transient' );
+            return $geo;
+        }
+
+        // 5. Llamada real a WooCommerce (último recurso)
+        if ( ! function_exists( 'wc_get_customer_geolocation' ) ||
+             ! function_exists( 'WC' ) ||
+             ! WC()->customer ) {
+            // Hook para cache miss cuando WC no está disponible
+            do_action( 'muyu_geolocation_cache_miss' );
+            return null;
+        }
+
+        // Hook para cache miss - estamos llamando a la DB
+        do_action( 'muyu_geolocation_cache_miss' );
+
+        if ( function_exists( 'mu_perf_log' ) ) {
+            mu_perf_log( 'Geolocation cache miss - calling DB', [
+                'cache_key' => $cache_key,
+                'cookies' => array_keys( $_COOKIE ),
+                'has_geo_cookie' => isset( $_COOKIE['muyu_geo_country'] )
+            ] );
+        }
+
+        try {
+            $geo = wc_get_customer_geolocation();
+
+            // Guardar en transient (24+ horas) y cookie
+            if ( ! empty( $geo['country'] ) ) {
+                set_transient( $cache_key, $geo, DAY_IN_SECONDS );
+                muyu_set_geolocation_cookie( $geo['country'] );
+                
+                if ( function_exists( 'mu_perf_log' ) ) {
+                    mu_perf_log( 'Geolocation cached from DB', [
+                        'country' => $geo['country'],
+                        'cache_key' => $cache_key
+                    ] );
+                }
+            }
+
+            return $geo;
+        } catch ( Exception $e ) {
+            // Fallback en caso de error de DB (como los "Commands out of sync" en los logs)
+            if ( function_exists( 'mu_perf_log' ) ) {
+                mu_perf_log( 'Geolocation DB error, using domain fallback', [ 'error' => $e->getMessage() ] );
+            }
+            
+            // Fallback: usar detección por dominio actual
+            if ( ! empty( $country_from_domain ) ) {
+                $geo = [ 'country' => $country_from_domain ];
+                // Guardar en transient para evitar futuros errores
+                set_transient( $cache_key, $geo, DAY_IN_SECONDS );
+                muyu_set_geolocation_cookie( $country_from_domain );
+                
+                if ( function_exists( 'mu_perf_log' ) ) {
+                    mu_perf_log( 'Geolocation fallback to domain', [ 'country' => $country_from_domain ] );
+                }
+                
+                return $geo;
+            }
+            
+            return null;
+        }
     }
+}
+
+if ( ! function_exists( 'muyu_set_geolocation_cookie' ) ) {
+    /**
+     * Establece cookie de geolocalización con 24+ horas de duración
+     * Configurada para funcionar en todos los subdominios
+     *
+     * @param string $country_code Código de país (ej: 'AR', 'MX')
+     */
+    function muyu_set_geolocation_cookie( $country_code ) {
+        if ( headers_sent() ) {
+            return;
+        }
+
+        $host = str_replace( 'www.', '', preg_replace( '/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? '' ));
+        $country_code = strtoupper( sanitize_text_field( $country_code ) );
+
+        // Obtener dominio principal para cookie multi-subdominio
+        $main_domain = muyu_get_main_domain();
+        
+        // Intentar múltiples métodos de cookie para máxima compatibilidad
+        // Método 1: Cookie multi-subdominio (falla en algunos navegadores)
+        $success1 = setcookie( 'muyu_geo_country', $country_code, time() + DAY_IN_SECONDS, '/', '.' . $main_domain, is_ssl(), true );
+        
+        // Método 2: Cookie solo para este dominio (fallback)
+        if ( ! $success1 ) {
+            setcookie( 'muyu_geo_country', $country_code, time() + DAY_IN_SECONDS, '/', $host, is_ssl(), true );
+        }
+        
+        // Método 3: Cookie sin dominio específico (último fallback)
+        if ( ! $success1 ) {
+            setcookie( 'muyu_geo_country', $country_code, time() + DAY_IN_SECONDS, '/', '', is_ssl(), true );
+        }
+    }
+}
+
+if ( ! function_exists( 'muyu_refresh_geolocation' ) ) {
+    /**
+     * Endpoint AJAX para refrescar geolocalización manualmente
+     * Útil cuando el usuario viaja o cambia de ubicación
+     */
+    function muyu_refresh_geolocation() {
+        check_ajax_referer( 'mu-geo-refresh', 'nonce' );
+
+        // Eliminar caches
+        $cache_key = muyu_get_geolocation_cache_key();
+        delete_transient( $cache_key );
+        
+        // Eliminar cookie
+        $host = str_replace( 'www.', '', preg_replace( '/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? '' ));
+        setcookie( 'muyu_geo_country', '', time() - YEAR_IN_SECONDS, '/', $host, is_ssl(), true );
+
+        // Forzar nueva detección
+        if ( function_exists( 'wc_get_customer_geolocation' ) ) {
+            $geo = wc_get_customer_geolocation();
+            
+            if ( ! empty( $geo['country'] ) ) {
+                set_transient( $cache_key, $geo, DAY_IN_SECONDS );
+                muyu_set_geolocation_cookie( $geo['country'] );
+                wp_send_json_success( [ 'country' => $geo['country'] ] );
+            }
+        }
+
+        wp_send_json_error( [ 'message' => 'No se pudo determinar la ubicación' ] );
+    }
+    add_action( 'wp_ajax_mu_refresh_geolocation', 'muyu_refresh_geolocation' );
+    add_action( 'wp_ajax_nopriv_mu_refresh_geolocation', 'muyu_refresh_geolocation' );
 }
 
 // ============================================
@@ -227,6 +391,11 @@ if ( ! function_exists( 'mu_custom_price_decimals' ) ) {
      * @return int Cantidad de decimales adaptada al país actual.
      */
     function mu_custom_price_decimals( $decimals ) {
+        // Verificar que WCPBC esté disponible para evitar conflictos
+        if ( ! class_exists( 'WC_Product_Price_Based_Country' ) ) {
+            return $decimals; // Fallback si WCPBC no está cargado
+        }
+        
         $country = muyu_get_current_country_from_subdomain();
         
         // Países que no utilizan decimales en su e-commerce
@@ -239,22 +408,37 @@ if ( ! function_exists( 'mu_custom_price_decimals' ) ) {
         return 2;
     }
 }
-add_filter( 'wc_get_price_decimals', 'mu_custom_price_decimals' );
+add_filter( 'wc_get_price_decimals', 'mu_custom_price_decimals', 99 );
 
 // ============================================
 // AUTO-DETECCIÓN DE PAÍS POR DOMINIO
 // ============================================
 
-if ( ! function_exists( 'mu_auto_detect_country_by_domain' ) ) {
+if ( ! function_exists( 'mu_apply_country_by_domain' ) ) {
     /**
-     * Detecta automáticamente el país según el dominio y actualiza WC Customer.
-     * Esencial para el funcionamiento de "WooCommerce Price Based on Country".
+     * Detecta automáticamente el país según el subdominio y lo aplica
+     * de forma consistente a WC Customer y a la sesión WC.
+     *
+     * El subdominio SIEMPRE manda: es la señal correcta de país en esta
+     * arquitectura multi-país. No se hace skip para usuarios logueados,
+     * porque un cliente con billing de Argentina que entra por
+     * mexico.muyunicos.com debe ver precios en MXN.
+     *
+     * Se ejecuta en múltiples hooks para cubrir todo el flujo:
+     * - template_redirect (carga inicial de página)
+     * - woocommerce_checkout_update_order_review (AJAX del checkout)
+     * - woocommerce_cart_loaded_from_session (carga del carrito desde sesión)
+     *
+     * @return bool True si se aplicó un país, false si no.
      */
-    function mu_auto_detect_country_by_domain() {
-        if ( is_admin() || ! function_exists( 'WC' ) || ! WC()->customer ) return;
+    function mu_apply_country_by_domain() {
+        if ( is_admin() || ! function_exists( 'WC' ) || ! WC()->customer ) return false;
         
-        // Obtener el host actual limpiando el puerto y el prefijo www.
-        // (consistente con muyu_get_current_country_from_subdomain()).
+        // Verificar que WCPBC esté disponible para evitar conflictos
+        if ( ! class_exists( 'WC_Product_Price_Based_Country' ) ) {
+            return false; // Si WCPBC no está cargado, no interferir
+        }
+        
         $current_host = preg_replace( '/:\d+$/', '', trim( $_SERVER['HTTP_HOST'] ?? '' ) );
         $current_host = preg_replace( '/^www\./i', '', $current_host );
         
@@ -263,23 +447,77 @@ if ( ! function_exists( 'mu_auto_detect_country_by_domain' ) ) {
             $host_to_country_map[ $data['host'] ] = $code;
         }
         
-        if ( ! array_key_exists( $current_host, $host_to_country_map ) ) return;
+        if ( ! array_key_exists( $current_host, $host_to_country_map ) ) return false;
         
         $detected_country_code = $host_to_country_map[ $current_host ];
-        if ( $detected_country_code === WC()->customer->get_billing_country() ) return;
+        $current_billing       = WC()->customer->get_billing_country();
+        
+        // Si ya está correcto, no hacer nada (evita escrituras innecesarias)
+        if ( $detected_country_code === $current_billing ) return false;
         
         // Inicializar sesión si no existe (requerido para invitados)
         if ( WC()->session && ! WC()->session->has_session() ) {
             WC()->session->set_customer_session_cookie( true );
         }
         
-        // Actualizar país del cliente
+        // Actualizar país del cliente (billing + shipping)
         WC()->customer->set_billing_country( $detected_country_code );
         WC()->customer->set_shipping_country( $detected_country_code );
         WC()->customer->save();
+        
+        // Persistir en sesión WC para que WCPBC lea el país correcto
+        // durante el recálculo del checkout (woocommerce_checkout_update_order_review)
+        if ( WC()->session ) {
+            $customer_data = WC()->session->get( 'customer' );
+            if ( ! is_array( $customer_data ) ) {
+                $customer_data = [];
+            }
+            $customer_data['country']  = $detected_country_code;
+            $customer_data['billing_country']  = $detected_country_code;
+            $customer_data['shipping_country'] = $detected_country_code;
+            WC()->session->set( 'customer', $customer_data );
+        }
+        
+        return true;
     }
 }
-add_action( 'template_redirect', 'mu_auto_detect_country_by_domain', 1 );
+
+/**
+ * Hook en template_redirect: carga inicial de página.
+ * Prioridad 10 (antes de que WCPBC calcule precios).
+ */
+if ( ! function_exists( 'mu_auto_detect_country_by_domain' ) ) {
+    function mu_auto_detect_country_by_domain() {
+        mu_apply_country_by_domain();
+    }
+}
+add_action( 'template_redirect', 'mu_auto_detect_country_by_domain', 10 );
+
+/**
+ * Hook en woocommerce_checkout_update_order_review: AJAX del checkout.
+ * Es aquí donde WCPBC recalcula la moneda; si el país no está sincronizado,
+ * el carrito queda en ARS en subdominios extranjeros.
+ * Prioridad 5 (antes de que WCPBC procese el recálculo).
+ */
+if ( ! function_exists( 'mu_apply_country_on_checkout_update' ) ) {
+    function mu_apply_country_on_checkout_update() {
+        mu_apply_country_by_domain();
+    }
+}
+add_action( 'woocommerce_checkout_update_order_review', 'mu_apply_country_on_checkout_update', 5 );
+
+/**
+ * Hook en woocommerce_cart_loaded_from_session: carga del carrito desde sesión.
+ * Garantiza que el carrito nunca quede en ARS en un subdominio extranjero,
+ * incluso si la sesión fue creada en otro subdominio.
+ * Prioridad 5 (antes de que WCPBC calcule precios del carrito).
+ */
+if ( ! function_exists( 'mu_apply_country_on_cart_loaded' ) ) {
+    function mu_apply_country_on_cart_loaded() {
+        mu_apply_country_by_domain();
+    }
+}
+add_action( 'woocommerce_cart_loaded_from_session', 'mu_apply_country_on_cart_loaded', 5 );
 
 // ============================================
 // SHORTCODE PAÍS DE FACTURACIÓN
@@ -353,6 +591,16 @@ if ( ! function_exists( 'mu_country_modal_enqueue' ) ) {
         
         wp_enqueue_style( 'mu-country-modal', $theme_uri . '/css/components/country-modal.css', [ 'mu-base' ], $theme_version );
         wp_enqueue_script( 'mu-country-modal-js', $theme_uri . '/js/country-modal.js', [], $theme_version, true );
+        
+        // Pasar datos AJAX para refresh de geolocalización
+        // Solo localizar si el script fue enqueued correctamente
+        if ( wp_script_is( 'mu-country-modal-js', 'enqueued' ) ) {
+            wp_localize_script( 'mu-country-modal-js', 'muGeoData', [
+                'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+                'nonce'   => wp_create_nonce( 'mu-geo-refresh' ),
+                'refreshEndpoint' => 'mu_refresh_geolocation',
+            ]);
+        }
     }
     add_action( 'wp_enqueue_scripts', 'mu_country_modal_enqueue', 30 );
 }
@@ -487,4 +735,30 @@ if ( ! function_exists( 'mu_inject_country_selector_header' ) ) {
         <?php
     }
     add_action( 'generate_header', 'mu_inject_country_selector_header', 1 );
+}
+
+// ============================================
+// BODY DATA ATTRIBUTE PARA CSS-ONLY CURRENCY SYMBOLS
+// ============================================
+
+if ( ! function_exists( 'mu_add_country_body_attribute' ) ) {
+    /**
+     * Agrega data-country al body para CSS-only currency symbol replacement
+     * Permite que CSS seleccione símbolos de moneda específicos por país
+     * 
+     * @param array $classes Clases existentes del body
+     * @return array Clases modificadas
+     */
+    function mu_add_country_body_attribute( $classes ) {
+        // Obtener país actual del subdominio
+        $current_country = function_exists( 'muyu_get_current_country_from_subdomain' ) 
+            ? muyu_get_current_country_from_subdomain() 
+            : 'AR';
+        
+        // Agregar el país como clase para que CSS pueda seleccionarlo
+        $classes[] = 'mu-country-' . strtolower( $current_country );
+        
+        return $classes;
+    }
+    add_filter( 'body_class', 'mu_add_country_body_attribute' );
 }

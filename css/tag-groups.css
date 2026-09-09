@@ -177,3 +177,117 @@ ul.products .mu-tag-group-wrapper {
     object-fit: cover;
     margin: 0 !important;
 }
+
+/* ============================================
+   ADMIN SWITCH "AGRUPAR" EN PÁGINAS DE TAG
+   ============================================ */
+
+.mu-tag-group-admin-switch {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 14px;
+    margin-bottom: 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    opacity: 0.85;
+    transition: opacity 0.2s ease;
+    flex-direction: row-reverse;
+}
+
+.mu-tag-group-admin-switch:hover {
+    opacity: 1;
+}
+
+/* Toggle switch */
+.mu-tag-group-toggle {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.mu-tag-group-toggle input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.mu-tag-group-slider {
+    position: relative;
+    display: inline-block;
+    width: 36px;
+    height: 20px;
+    background: #c3c4c7;
+    border-radius: 20px;
+    transition: background 0.3s ease;
+    flex-shrink: 0;
+}
+
+.mu-tag-group-slider::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.3s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.mu-tag-group-checkbox:checked + .mu-tag-group-slider {
+    background: #2271b1;
+}
+
+.mu-tag-group-checkbox:checked + .mu-tag-group-slider::before {
+    transform: translateX(16px);
+}
+
+.mu-tag-group-label {
+    font-weight: 600;
+    color: #1d2327;
+    font-size: 13px;
+}
+
+/* Status text */
+.mu-tag-group-status {
+    color: #787c82;
+    font-size: 12px;
+    transition: color 0.3s ease;
+}
+
+.mu-tag-group-status.is-grouped {
+    color: #00a32a;
+}
+
+/* Loading state */
+.mu-tag-group-admin-switch.is-loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.mu-tag-group-admin-switch.is-loading .mu-tag-group-slider::before {
+    animation: mu-tag-group-pulse 0.8s ease-in-out infinite;
+}
+
+@keyframes mu-tag-group-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+/* Error state */
+.mu-tag-group-admin-switch.has-error {
+    border-color: #d63638;
+    background: #fcf0f1;
+}
+
+.mu-tag-group-error-msg {
+    color: #d63638;
+    font-size: 11px;
+    margin-left: auto;
+}

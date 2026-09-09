@@ -1,7 +1,7 @@
 /* ============================================
    COUNTRY MODAL - JavaScript Controller
-   Versión: 2.0.0 (Migrado desde snippet)
-   Maneja la lógica de interacción del modal
+   Versión: 3.0.0 (Performance optimizations)
+   Maneja la lógica de interacción del modal con caching
    ============================================ */
 
 (function() {
@@ -12,6 +12,10 @@
     var stayBtn = null;
     var overlay = null;
     var currentDomain = '';
+    
+    // Constants
+    var GEO_CACHE_KEY = 'muyu_geo_cache';
+    var GEO_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
     
     /**
      * Verifica si el usuario ya guardó su preferencia
@@ -30,6 +34,76 @@
             }
         }
         return false;
+    }
+    
+    /**
+     * Obtiene geolocalización desde localStorage con caché de 24+ horas
+     */
+    function getCachedGeolocation() {
+        try {
+            var cached = localStorage.getItem(GEO_CACHE_KEY);
+            if (cached) {
+                var data = JSON.parse(cached);
+                var now = Date.now();
+                
+                // Verificar si el caché aún es válido (24+ horas)
+                if (now - data.timestamp < GEO_CACHE_DURATION) {
+                    return data.country;
+                } else {
+                    // Caché expirado, limpiar
+                    localStorage.removeItem(GEO_CACHE_KEY);
+                }
+            }
+        } catch (e) {
+            // localStorage no disponible o error
+            console.warn('Error accessing localStorage:', e);
+        }
+        return null;
+    }
+    
+    /**
+     * Guarda geolocalización en localStorage
+     */
+    function cacheGeolocation(countryCode) {
+        try {
+            var data = {
+                country: countryCode,
+                timestamp: Date.now()
+            };
+            localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(data));
+        } catch (e) {
+            console.warn('Error saving to localStorage:', e);
+        }
+    }
+    
+    /**
+     * Refresca geolocalización vía AJAX (para usuarios que viajan)
+     */
+    function refreshGeolocation() {
+        if (typeof muGeoData === 'undefined' || !muGeoData.ajaxUrl) {
+            return;
+        }
+        
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', muGeoData.ajaxUrl, true);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                try {
+                    var response = JSON.parse(xhr.responseText);
+                    if (response.success && response.data.country) {
+                        cacheGeolocation(response.data.country);
+                        // Recargar página para aplicar nueva geolocalización
+                        window.location.reload();
+                    }
+                } catch (e) {
+                    console.warn('Error parsing geolocation response:', e);
+                }
+            }
+        };
+        
+        xhr.send('action=' + muGeoData.refreshEndpoint + '&nonce=' + muGeoData.nonce);
     }
     
     /**
@@ -128,6 +202,9 @@
         
         document.cookie = cookieString;
     }
+    
+    // Exponer función de refresh globalmente para uso manual
+    window.muyuRefreshGeo = refreshGeolocation;
     
     // Inicialización con DOMContentLoaded guard
     if (document.readyState === 'loading') {

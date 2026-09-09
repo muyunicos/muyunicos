@@ -91,7 +91,9 @@
             // Verificar que muAuthData esté disponible (localizado en PHP)
             if (typeof muAuthData === 'undefined') {
                 console.error('muAuthData no está disponible');
-                return Promise.reject(new Error('Configuración no disponible'));
+                const err = new Error('Configuración no disponible');
+                err.userMessage = 'No se pudo inicializar el formulario. Recargá la página e intentá de nuevo.';
+                return Promise.reject(err);
             }
             
             // Construir URL reemplazando placeholder
@@ -223,7 +225,7 @@
             .catch(error => {
                 elements.buttons.continue.disabled = false;
                 elements.buttons.continue.textContent = 'Continuar';
-                utils.showMessage('Error de conexión', 'error');
+                utils.showMessage(error.userMessage || 'Error de conexión', 'error');
                 console.error('Error:', error);
             });
     };
@@ -259,7 +261,7 @@
         .catch(error => {
             elements.buttons.login.disabled = false;
             elements.buttons.login.textContent = 'Entrar';
-            utils.showMessage('Error de conexión', 'error');
+            utils.showMessage(error.userMessage || 'Error de conexión', 'error');
             console.error('Error:', error);
         });
     };
@@ -305,7 +307,7 @@
         .catch(error => {
             elements.buttons.register.disabled = false;
             elements.buttons.register.textContent = 'Crear cuenta';
-            utils.showMessage('Error de conexión', 'error');
+            utils.showMessage(error.userMessage || 'Error de conexión', 'error');
             console.error('Error:', error);
         });
     };
@@ -338,7 +340,7 @@
             .catch(error => {
                 elements.buttons.reset.disabled = false;
                 elements.buttons.reset.textContent = 'Enviar enlace';
-                utils.showMessage('Error de conexión', 'error');
+                utils.showMessage(error.userMessage || 'Error de conexión', 'error');
                 console.error('Error:', error);
             });
     };

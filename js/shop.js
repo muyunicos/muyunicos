@@ -5,46 +5,50 @@
  * - Carrusel Híbrido Global (Grilla Desktop / Drag Mobile)
  */
 
-(function($) {
+(function() {
     'use strict';
-    
-    if ( 'undefined' === typeof $ || ! $.fn ) {
+
+    if ( typeof document === 'undefined' ) {
         return;
     }
-    
+
     // Ejecución Principal
-    $(document).ready(function() {
+    if ( document.readyState === 'loading' ) {
+        document.addEventListener( 'DOMContentLoaded', init );
+    } else {
+        init();
+    }
+
+    function init() {
         initInfiniteScroll();
         initHybridCarousel();
-    });
+    }
 
     // ============================================
-    // 1. INFINITE SCROLL LIGERO
+    // 1. INFINITE SCROLL LIGERO — AUTO PROGRESS
     // ============================================
     function initInfiniteScroll() {
         // SELECTORES (Ajustados para GeneratePress + Woo)
         const selectors = {
-            container: 'ul.products',        // Contenedor de la grilla
-            item: 'li.product',              // Items individuales
-            pagination: '.woocommerce-pagination', // Paginación nativa
-            nextLink: '.woocommerce-pagination a.next', // Botón siguiente
-            prevLink: '.woocommerce-pagination a.prev'  // Botón anterior
+            container: 'ul.products',
+            item: 'li.product',
+            pagination: '.woocommerce-pagination',
+            nextLink: '.woocommerce-pagination a.next',
+            prevLink: '.woocommerce-pagination a.prev'
         };
 
         const container = document.querySelector(selectors.container);
         const pagination = document.querySelector(selectors.pagination);
         
-        // Si no hay contenedor o paginación, no hacemos nada
         if (!container || !pagination) return;
 
         let nextLink = pagination.querySelector('a.next');
         if (!nextLink) return;
 
-        // 1. Ocultar paginación original (pero mantenerla en DOM por si acaso)
+        // Ocultar paginación original
         pagination.style.display = 'none';
 
-        // 1b. Si hay un enlace "anterior" (estamos en page/2/ o superior),
-        // agregar botón "Cargar resultados previos" arriba del grid
+        // Botón "Cargar resultados previos" (page/2+)
         const prevLink = pagination.querySelector('a.prev');
         if (prevLink) {
             const prevBtn = document.createElement('div');
@@ -58,7 +62,7 @@
             });
         }
 
-        // 2. Crear el "Centinela" (Elemento invisible que detecta cuando llegamos al fondo)
+        // Crear centinela + botón de progreso
         const sentinelWrapper = document.createElement('div');
         sentinelWrapper.className = 'mu-scroll-sentinel-wrapper';
         
@@ -68,81 +72,91 @@
         
         const loadMoreBtn = document.createElement('button');
         loadMoreBtn.className = 'mu-load-more-btn';
-        loadMoreBtn.innerText = 'Cargar más resultados';
-        loadMoreBtn.style.display = 'none'; // Inicialmente oculto
+        loadMoreBtn.setAttribute('aria-label', 'Cargar más resultados');
+        // Barra de progreso interna
+        const progressFill = document.createElement('span');
+        progressFill.className = 'mu-progress-fill';
+        loadMoreBtn.appendChild(progressFill);
 
         sentinelWrapper.appendChild(sentinel);
         sentinelWrapper.appendChild(loadMoreBtn);
         container.parentNode.insertBefore(sentinelWrapper, container.nextSibling);
 
         let isLoading = false;
-        let autoLoadCount = 0; // Contador de cargas automáticas
+        let isArming = false;
+        let progressTimer = null;
 
-        // 3. Configurar IntersectionObserver (API nativa eficiente)
-        const observer = new IntersectionObserver((entries) => {
-            // Solo carga automáticamente la primera vez (autoLoadCount === 0)
-            if (entries[0].isIntersecting && !isLoading && nextLink && autoLoadCount === 0) {
-                loadNextPage();
-            } 
-            // Si entra en rango, ya cargó la primera vez y no está cargando: mostramos botón
-            else if (entries[0].isIntersecting && !isLoading && nextLink && autoLoadCount > 0) {
-                 loadMoreBtn.style.display = 'block';
-                 sentinel.style.display = 'none';
+        // --- FUNCIÓN: Iniciar armado (progreso de 2s) ---
+        function startArming() {
+            if (isLoading || !nextLink || isArming) return;
+
+            isArming = true;
+            loadMoreBtn.classList.remove('is-loading');
+            loadMoreBtn.classList.remove('is-ready');
+            loadMoreBtn.classList.add('is-arming');
+            // Resetear el fill antes de animar
+            progressFill.style.transition = 'none';
+            progressFill.style.width = '0%';
+            // Forzar reflow para que el reset sea visible
+            void loadMoreBtn.offsetWidth;
+            // Iniciar transición de 2s
+            progressFill.style.transition = 'width 2s linear';
+            progressFill.style.width = '100%';
+
+            // Timer: cuando se complete, cargar automáticamente
+            progressTimer = setTimeout(function() {
+                if (isArming) {
+                    cancelArming();
+                    loadNextPage();
+                }
+            }, 1000);
+        }
+
+        // --- FUNCIÓN: Cancelar armado ---
+        function cancelArming() {
+            if (progressTimer) {
+                clearTimeout(progressTimer);
+                progressTimer = null;
             }
-        }, {
-            rootMargin: '200px' // Cargar 200px antes de llegar al final
-        });
+            isArming = false;
+            loadMoreBtn.classList.remove('is-arming');
+            loadMoreBtn.classList.add('is-ready');
+            progressFill.style.transition = 'none';
+            progressFill.style.width = '0%';
+        }
 
-        observer.observe(sentinelWrapper);
-        
-        // Evento click para el botón "Cargar más"
-        loadMoreBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            loadMoreBtn.style.display = 'none';
-            sentinel.style.display = 'flex'; // Volver a mostrar el spinner
-            if (!isLoading && nextLink) {
-                loadNextPage();
-            }
-        });
-
-        // 4. Función de Carga
+        // --- FUNCIÓN: Cargar siguiente página ---
         async function loadNextPage() {
             isLoading = true;
-            sentinelWrapper.classList.add('loading');
-            loadMoreBtn.style.display = 'none';
-            sentinel.style.display = 'flex';
+            loadMoreBtn.classList.remove('is-arming');
+            loadMoreBtn.classList.remove('is-ready');
+            loadMoreBtn.classList.add('is-loading');
             
             const url = nextLink.href;
 
             try {
-                // Fetch de la siguiente página (Aprovecha LiteSpeed Cache)
                 const response = await fetch(url);
                 const text = await response.text();
                 
-                // Parsear HTML
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(text, 'text/html');
                 
-                // Extraer productos
                 const newProducts = doc.querySelectorAll(selectors.container + ' ' + selectors.item);
                 
                 if (newProducts.length > 0) {
-                    // Añadir productos al contenedor actual
-                    newProducts.forEach(product => {
+                    newProducts.forEach(function(product) {
                         const img = product.querySelector('img');
                         const wrapper = img ? img.parentElement : null;
 
                         if (img && wrapper) {
-                            // Lógica de Imagen optimizada (Evita flash si ya está en cache)
                             if (img.complete) {
                                 img.style.opacity = '1';
                             } else {
-                                // Solo si NO está completa, preparamos la animación
                                 img.style.opacity = '0';
                                 img.style.transition = 'opacity 0.6s ease-in-out';
                                 wrapper.classList.add('mu-img-wrapper-loading');
                                 
-                                const revealImg = () => {
+                                const revealImg = function() {
                                     img.style.opacity = '1';
                                     wrapper.classList.remove('mu-img-wrapper-loading');
                                 };
@@ -154,26 +168,20 @@
                         container.appendChild(product);
                     });
 
-                    // Actualizar enlace "Siguiente"
                     const newNextLink = doc.querySelector(selectors.nextLink);
                     if (newNextLink) {
                         nextLink = newNextLink;
-                        // Actualizar URL del navegador (SEO friendly)
                         window.history.replaceState(null, '', url);
                         
-                        // Incrementamos el contador de cargas automáticas exitosas
-                        autoLoadCount++;
-                        
-                        // Ocultar spinner. El Observer volverá a disparar el botón si está en pantalla
                         sentinelWrapper.classList.remove('loading');
+                        loadMoreBtn.classList.remove('is-loading');
+                        loadMoreBtn.classList.add('is-ready');
                         
-                        // Si ya está en pantalla, mostramos el botón directo (para evitar delay)
+                        // Si el centinela sigue en pantalla, reiniciar armado automático
                         const rect = sentinelWrapper.getBoundingClientRect();
                         if (rect.top <= (window.innerHeight || document.documentElement.clientHeight) + 200) {
-                            loadMoreBtn.style.display = 'block';
-                            sentinel.style.display = 'none';
+                            startArming();
                         }
-
                     } else {
                         // Fin de catálogo
                         nextLink = null;
@@ -181,20 +189,72 @@
                         observer.disconnect();
                     }
                     
-                    // Disparar evento para que otros plugins sepan que hay nuevos productos
-                    $(document.body).trigger('post-load');
+                    // Disparar evento post-load para WooCommerce y otros scripts
+                    document.body.dispatchEvent(new CustomEvent('post-load'));
                 }
 
             } catch (error) {
                 console.error('Error Infinite Scroll:', error);
-                // Si falla, mostramos la paginación normal como fallback
                 pagination.style.display = 'block';
                 sentinelWrapper.remove();
             }
 
             isLoading = false;
             sentinelWrapper.classList.remove('loading');
+            loadMoreBtn.classList.remove('is-loading');
+            // Si quedan más páginas, mantener botón listo; si no, eliminar wrapper
+            if (nextLink) {
+                loadMoreBtn.classList.add('is-ready');
+            } else if (sentinelWrapper.parentNode) {
+                sentinelWrapper.remove();
+                observer.disconnect();
+            }
         }
+
+        // --- INTERSECTION OBSERVER ---
+        const observer = new IntersectionObserver(function(entries) {
+            if (entries[0].isIntersecting && !isLoading && nextLink) {
+                startArming();
+            } else if (!entries[0].isIntersecting && isArming) {
+                // Si el usuario scrolleó hacia arriba y el centinela ya no está visible, cancelar
+                cancelArming();
+            }
+        }, {
+            rootMargin: '200px'
+        });
+
+        observer.observe(sentinelWrapper);
+
+        // --- CLICK EN BOTÓN: carga inmediata ---
+        loadMoreBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (isArming) {
+                cancelArming();
+                loadNextPage();
+            } else if (!isLoading && nextLink) {
+                loadNextPage();
+            }
+        });
+
+        // Prevenir que mousedown/touchstart en el botón se propague al documento y cancele el armado
+        loadMoreBtn.addEventListener('mousedown', function(e) {
+            e.stopPropagation();
+        });
+        loadMoreBtn.addEventListener('touchstart', function(e) {
+            e.stopPropagation();
+        }, { passive: true });
+
+        // --- CLICK/TOUCH FUERA DEL BOTÓN: cancelar armado ---
+        function handleOutsideInteraction(e) {
+            if (!isArming) return;
+            // Verificar si el click fue dentro del botón
+            if (loadMoreBtn.contains(e.target)) return;
+            cancelArming();
+        }
+
+        document.addEventListener('mousedown', handleOutsideInteraction);
+        document.addEventListener('touchstart', handleOutsideInteraction, { passive: true });
     }
 
     // ============================================
@@ -299,4 +359,4 @@
         });
     }
 
-})(jQuery);
+})();

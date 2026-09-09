@@ -51,10 +51,12 @@ if ( is_admin() ) {
             wp_enqueue_style( 'mu-admin-order-files', $uri . '/css/admin-order-files.css', [], $ver );
             wp_enqueue_script( 'mu-admin-order-files-js', $uri . '/js/admin-order-files.js', [ 'jquery' ], $ver, true );
 
-            wp_localize_script( 'mu-admin-order-files-js', 'muOrderFilesData', [
-                'nonce'   => wp_create_nonce( 'muyunicos_pdf_actions' ),
-                'ajaxurl' => admin_url( 'admin-ajax.php' )
-            ]);
+            if ( wp_script_is( 'mu-admin-order-files-js', 'enqueued' ) ) {
+                wp_localize_script( 'mu-admin-order-files-js', 'muOrderFilesData', [
+                    'nonce'   => wp_create_nonce( 'muyunicos_pdf_actions' ),
+                    'ajaxurl' => admin_url( 'admin-ajax.php' )
+                ]);
+            }
         }
     });
 

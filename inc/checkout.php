@@ -69,6 +69,78 @@ if ( ! function_exists( 'mu_has_physical_products' ) ) {
 }
 
 // ============================================
+// FILTRO DE PAÍSES EN CHECKOUT
+// Solo muestra los países con subdominio configurado
+// (MX, CO, ES, CL, PE, BR, EC, AR, US, CR).
+// Evita que el checkout se rompa al seleccionar un país
+// sin configuración de moneda/precios.
+// ============================================
+
+if ( ! function_exists( 'mu_filter_countries_list' ) ) {
+    /**
+     * Helper reutilizable: filtra cualquier lista de países de WooCommerce
+     * a solo los países con subdominio configurado.
+     *
+     * @param array $countries Lista completa de países de WooCommerce.
+     * @return array Países filtrados.
+     */
+    function mu_filter_countries_list( $countries ) {
+        if ( ! function_exists( 'muyu_get_countries_data' ) ) {
+            return $countries;
+        }
+
+        $allowed = muyu_get_countries_data();
+        $allowed_codes = array_keys( $allowed );
+
+        return array_intersect_key( $countries, array_flip( $allowed_codes ) );
+    }
+}
+
+if ( ! function_exists( 'mu_filter_checkout_countries' ) ) {
+    /**
+     * Aplica el filtro de países permitidos (listas permitidas).
+     *
+     * @param array $countries Lista completa de países de WooCommerce.
+     * @return array Países filtrados.
+     */
+    function mu_filter_checkout_countries( $countries ) {
+        return mu_filter_countries_list( $countries );
+    }
+}
+add_filter( 'woocommerce_countries_allowed', 'mu_filter_checkout_countries', 10 );
+
+// El select billing_country del checkout se renderiza con
+// WC()->countries->get_billing_countries(), que devuelve la lista COMPLETA
+// cuando "Vender a todos los países" está activo en WooCommerce.
+// Por eso aplicamos el filtro también a los hooks de países de
+// facturación y envío del checkout.
+if ( ! function_exists( 'mu_filter_billing_countries' ) ) {
+    /**
+     * Limita los países de facturación visibles en el checkout.
+     *
+     * @param array $countries Lista de países de facturación.
+     * @return array Países filtrados.
+     */
+    function mu_filter_billing_countries( $countries ) {
+        return mu_filter_countries_list( $countries );
+    }
+}
+add_filter( 'woocommerce_checkout_billing_countries', 'mu_filter_billing_countries', 10 );
+
+if ( ! function_exists( 'mu_filter_shipping_countries' ) ) {
+    /**
+     * Limita los países de envío visibles en el checkout.
+     *
+     * @param array $countries Lista de países de envío.
+     * @return array Países filtrados.
+     */
+    function mu_filter_shipping_countries( $countries ) {
+        return mu_filter_countries_list( $countries );
+    }
+}
+add_filter( 'woocommerce_checkout_shipping_countries', 'mu_filter_shipping_countries', 10 );
+
+// ============================================
 // OPTIMIZACIÓN DE CAMPOS
 // ============================================
 
@@ -98,7 +170,7 @@ if ( ! function_exists( 'mu_optimize_checkout_fields' ) ) {
 
         $fields['billing']['billing_email']['priority'] = 30;
         $fields['billing']['billing_email']['class'] = [ 'form-row-wide', 'mu-contact-field' ];
-        $fields['billing']['billing_email']['label'] = '<span class="mu-verified-badge" style="display:none;">✓</span> E-Mail';
+        $fields['billing']['billing_email']['label'] = 'E-Mail';
 
         if ( isset( $fields['billing']['billing_phone'] ) ) {
             $fields['billing']['billing_phone']['priority'] = 40;
@@ -362,7 +434,7 @@ if ( ! function_exists( 'mu_get_payment_gateways_country_rules' ) ) {
         $rules = [
             // Por defecto (cualquier país no listado): ocultar transferencia bancaria.
             'default' => [
-                'deny' => [ 'bacs' ],
+                'deny' => [ 'bacs','woo-mercado-pago-basic' ],
             ],
             // Argentina: se muestran todos los medios disponibles.
             'AR' => [

@@ -192,10 +192,12 @@ if ( is_admin() ) {
         wp_enqueue_style( 'mu-admin-hero-banners', $uri . '/css/admin-hero-banners.css', [], $ver );
         wp_enqueue_script( 'mu-admin-hero-banners-js', $uri . '/js/admin-hero-banners.js', [ 'jquery' ], $ver, true );
 
-        wp_localize_script( 'mu-admin-hero-banners-js', 'muHeroBannersData', [
-            'mediaTitle'  => __( 'Seleccionar imagen del banner', 'mu' ),
-            'mediaButton' => __( 'Usar esta imagen', 'mu' ),
-        ] );
+        if ( wp_script_is( 'mu-admin-hero-banners-js', 'enqueued' ) ) {
+            wp_localize_script( 'mu-admin-hero-banners-js', 'muHeroBannersData', [
+                'mediaTitle'  => __( 'Seleccionar imagen del banner', 'mu' ),
+                'mediaButton' => __( 'Usar esta imagen', 'mu' ),
+            ] );
+        }
     } );
 
     /**

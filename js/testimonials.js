@@ -13,6 +13,9 @@
         var data = (typeof muTestimonials !== 'undefined') ? muTestimonials : {};
         var allReviews = data.reviews || [];
         var container  = document.getElementById('mu-reviews-container');
+        
+        // Variables globales para todo el scope del módulo
+        var isAdmin = typeof muTestimonials !== 'undefined' && muTestimonials.isAdmin;
 
         if (!container) return;
 
@@ -22,7 +25,7 @@
         /* --- Sistema de memoria para evitar duplicados --- */
         var shownReviews = []; // IDs de reseñas ya mostradas
         var autoRefreshInterval = null;
-        var AUTO_REFRESH_TIME = 30000; // 30 segundos
+        var AUTO_REFRESH_TIME = 120000; // 2 minutos (optimizado para reducir carga)
 
         function fisherYatesShuffle(arr) {
             var a = arr.slice();
@@ -92,6 +95,26 @@
             return '★'.repeat(Math.floor(rating));
         }
 
+        function getRelativeTime(timestamp) {
+            if (!timestamp) return '';
+            
+            var now = new Date();
+            var reviewDate = new Date(timestamp * 1000);
+            var diffMs = now - reviewDate;
+            var diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            var diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+            var diffMinutes = Math.floor(diffMs / (1000 * 60));
+
+            if (diffMinutes < 1) return 'hace un momento';
+            if (diffMinutes < 60) return 'hace ' + diffMinutes + ' minuto' + (diffMinutes !== 1 ? 's' : '');
+            if (diffHours < 24) return 'hace ' + diffHours + ' hora' + (diffHours !== 1 ? 's' : '');
+            if (diffDays === 1) return 'ayer';
+            if (diffDays < 7) return 'hace ' + diffDays + ' día' + (diffDays !== 1 ? 's' : '');
+            if (diffDays < 30) return 'hace ' + Math.floor(diffDays / 7) + ' semana' + (Math.floor(diffDays / 7) !== 1 ? 's' : '');
+            if (diffDays < 365) return 'hace ' + Math.floor(diffDays / 30) + ' mes' + (Math.floor(diffDays / 30) !== 1 ? 'es' : '');
+            return 'hace ' + Math.floor(diffDays / 365) + ' año' + (Math.floor(diffDays / 365) !== 1 ? 's' : '');
+        }
+
         function startAutoRefresh() {
             if (autoRefreshInterval) {
                 clearInterval(autoRefreshInterval);
@@ -124,7 +147,6 @@
             var selection = getRandomReviews(3);
             var html = '';
             var defaultAvatar = 'https://lh3.googleusercontent.com/a/default-user';
-            var isAdmin = typeof muTestimonials !== 'undefined' && muTestimonials.isAdmin;
 
             for (var i = 0; i < selection.length; i++) {
                 var review   = selection[i];
@@ -146,6 +168,9 @@
                     ? '<button onclick="event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();openReviewModal(' + reviewIndex + ')" style="font-size:11px;padding:6px 12px;margin-left:10px;background:#0073aa;color:white;border:none;border-radius:4px;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,0.1);transition:background 0.2s;z-index:10;position:relative;">Editar</button>'
                     : '';
 
+                // Generar tiempo relativo desde timestamp como fallback
+                var timeDisplay = getRelativeTime(review.time);
+
                 html +=
                     '<div class="mu-review-wrapper mu-review-fade" style="animation-delay:' + delay + 'ms">' +
                         '<a href="' + (review.author_url || review.profile_url || '#') + '" target="_blank" rel="noopener noreferrer" class="mu-review-card" title="Ver en Google">' +
@@ -158,7 +183,7 @@
                             '</div>' +
                             '<p class="mu-review-text">“' + truncate(review.text, 20) + '”</p>' +
                             purchasePhotoHtml +
-                            '<small style="margin-top:auto;color:#999;font-size:0.75rem;padding-top:10px;display:block;">' + review.relative_time_description + '</small>' +
+                            '<small style="margin-top:auto;color:#999;font-size:0.75rem;padding-top:10px;display:block;">' + timeDisplay + '</small>' +
                         '</a>' +
                         satelliteBtn +
                     '</div>';

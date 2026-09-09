@@ -48,27 +48,94 @@ form.variations_form tr {
     100% { transform: rotate(360deg); }
 }
 
+/* ============================================
+   LOAD MORE BUTTON — PROGRESS BAR STYLE
+   ============================================ */
 .mu-load-more-btn {
-    background-color: var(--primario, #2b9fcf);
-    color: var(--blanco, #ffffff);
+    position: relative;
+    width: 100%;
+    max-width: 400px;
+    min-height: 52px;
     border: none;
-    border-radius: var(--mu-radius-sm, 6px);
-    padding: 12px 24px;
-    font-size: 16px;
+    border-radius: var(--mu-radius-md, 12px);
+    background: var(--primario, #2b9fcf);
+    color: var(--blanco, #fff);
+    font-family: var(--mu-font-base, inherit);
+    font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
-    transition: background-color 0.2s ease, transform 0.2s ease;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    margin-top: 10px;
+    padding: 14px 20px;
+    margin: 10px auto 0;
+    display: none;
+    overflow: hidden;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+    -webkit-appearance: none;
+    appearance: none;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mu-load-more-btn::after {
+    content: 'Cargar más';
+    position: relative;
+    z-index: 2;
+}
+
+.mu-load-more-btn.is-loading::after {
+    content: 'Cargando...';
 }
 
 .mu-load-more-btn:hover {
-    background-color: color-mix(in srgb, var(--primario, #2b9fcf) 80%, black);
     transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(0,0,0,0.16);
 }
 
 .mu-load-more-btn:active {
     transform: translateY(0);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+}
+
+.mu-load-more-btn .mu-progress-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0%;
+    height: 100%;
+    background: rgba(255,255,255,0.25);
+    border-radius: var(--mu-radius-md, 12px);
+    transition: width 2s linear;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.mu-load-more-btn.is-ready {
+    display: flex;
+}
+
+.mu-load-more-btn.is-arming {
+    display: flex;
+}
+
+.mu-load-more-btn.is-arming .mu-progress-fill {
+    width: 100%;
+}
+
+.mu-load-more-btn.is-loading {
+    display: flex;
+    pointer-events: none;
+}
+
+.mu-load-more-btn.is-loading .mu-progress-fill {
+    width: 100%;
+    background: rgba(255,255,255,0.35);
+    animation: mu-load-more-pulse 0.8s ease-in-out infinite;
+}
+
+@keyframes mu-load-more-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
 }
 
 .mu-img-wrapper-loading {

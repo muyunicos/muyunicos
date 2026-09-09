@@ -63,16 +63,130 @@ if ( ! function_exists( 'mu_navchips_schedule_index_rebuild' ) ) {
 add_action( 'mu_navchips_rebuild_index_hook', 'mu_navchips_build_product_index' );
 
 // =========================================================================
+// 1.5 SHORT-CIRCUIT DE COMBINACIONES DE TAGS IMPOSIBLES (pre_get_posts)
+// =========================================================================
+
+if ( ! function_exists( 'mu_navchips_shortcircuit_empty_tag_combos' ) ) {
+    /**
+     * Corta el WP_Query de multi-tag cuando la intersección es vacía.
+     *
+     * [Optimización anti-rastreo] Los bots permutan slugs de chips generando
+     * URLs ?product_tag=a+b+c con combinaciones sin ningún producto en común.
+     * WooCommerce resuelve esto con un WP_Query de joins N-vías sobre
+     * wp_term_relationships — caro bajo decenas de requests concurrentes
+     * (causa de timeouts de 20s+ y saturación del pool MySQL).
+     *
+     * Este handler (pre_get_posts, prioridad 60 — después de
+     * filter_product_queries p50) intersecta en MEMORIA los sets
+     * tag→productos del índice navchips. Si la intersección es vacía o
+     * algún tag no existe → post__in=[0] → SQL trivial (WHERE ID IN (0))
+     * en vez del join N-vías. Ayuda a humanos y a bots indetectables.
+     *
+     * Solo aplica al main query de archivo de producto con el filtro
+     * multi-tag de los chips (?product_tag=slug1+slug2).
+     */
+    function mu_navchips_shortcircuit_empty_tag_combos( $query ) {
+        if ( is_admin() || ! $query->is_main_query() ) {
+            return;
+        }
+
+        // Solo si hay filtro multi-tag de chips activo.
+        if ( empty( $_GET['product_tag'] ) ) {
+            return;
+        }
+
+        // Solo en contexto de catálogo WooCommerce (shop/categoría/tag).
+        if ( ! ( function_exists( 'is_woocommerce' ) && is_woocommerce() ) ) {
+            return;
+        }
+
+        $raw = sanitize_text_field( wp_unslash( $_GET['product_tag'] ) );
+        $slugs = array_filter( explode( ' ', str_replace( '+', ' ', $raw ) ) );
+        if ( count( $slugs ) < 2 ) {
+            return; // Tag único: el WP_Query normal es barato.
+        }
+
+        $index = mu_navchips_parse_product_index();
+        if ( empty( $index['products'] ) ) {
+            return; // Índice no disponible: no interferir.
+        }
+
+        $tag_to_products = $index['tag_to_products'];
+
+        // Resolver cada slug a su set de productos. Si algún tag no existe
+        // en el índice, la intersección es vacía por definición.
+        $sets = [];
+        foreach ( $slugs as $slug ) {
+            $term = get_term_by( 'slug', $slug, 'product_tag' );
+            if ( ! $term || empty( $tag_to_products[ $term->term_id ] ) ) {
+                $query->set( 'post__in', [ 0 ] );
+                return;
+            }
+            $sets[] = $tag_to_products[ $term->term_id ];
+        }
+
+        // Intersección en memoria (de menor a mayor set para minimizar trabajo).
+        usort( $sets, fn( $a, $b ) => count( $a ) - count( $b ) );
+        $result = $sets[0];
+        for ( $i = 1, $n = count( $sets ); $i < $n; $i++ ) {
+            $result = array_intersect( $result, $sets[ $i ] );
+            if ( empty( $result ) ) {
+                $query->set( 'post__in', [ 0 ] );
+                return;
+            }
+        }
+
+        // Combinación con resultados: dejar que WooCommerce resuelva
+        // normalmente (necesita el orden/paginación propios del loop).
+    }
+    add_action( 'pre_get_posts', 'mu_navchips_shortcircuit_empty_tag_combos', 60 );
+}
+
+// =========================================================================
 // 2. GENERACIÓN DEL ÍNDICE COMPACTO (BACKEND)
 // =========================================================================
+
+if ( ! function_exists( 'mu_navchips_log_purge_skipped' ) ) {
+    /**
+     * Registra en debug.log que se omitió una purga de caché porque los
+     * índices no cambiaron (Hash Gate).
+     *
+     * [Verificación] Rate-limitado GLOBALMENTE vía object cache: máximo
+     * 1 línea cada 10 minutos aunque haya decenas de workers PHP.
+     * Cero escrituras a DB.
+     */
+    function mu_navchips_log_purge_skipped() {
+        if ( ! function_exists( 'wp_cache_get' ) || ! wp_using_ext_object_cache() ) {
+            return;
+        }
+
+        $last_log = (int) wp_cache_get( 'mu_navchips_lastskip', 'mu_bot404' );
+        if ( ( time() - $last_log ) < 10 * MINUTE_IN_SECONDS ) {
+            return;
+        }
+        wp_cache_set( 'mu_navchips_lastskip', time(), 'mu_bot404', 20 * MINUTE_IN_SECONDS );
+
+        error_log( sprintf(
+            '[MU-NAVCHIPS] %s Rebuild sin cambios — litespeed_purge_all OMITIDO (índices idénticos)',
+            current_time( 'mysql' )
+        ) );
+    }
+}
 
 if ( ! function_exists( 'mu_navchips_build_product_index' ) ) {
     /**
      * Genera el índice compacto de productos.
      * Formato: "pid:cats:tags|pid:cats:tags|..."
      * Ejemplo: "12:8,3:12,1,4|13:8:5,6".
+     *
+     * [Hash Gate] Compara el índice nuevo contra el almacenado y SOLO
+     * dispara litespeed_purge_all si algo cambió realmente. Editar precio/
+     * descripción/stock de un producto ya NO provoca purgas innecesarias
+     * de toda la caché del sitio.
+     *
+     * @return bool True si algún índice (navchips o tag-groups) cambió.
      */
-    function mu_navchips_build_product_index() {
+    function mu_navchips_build_product_index(): bool {
         global $wpdb;
 
         $start_time = microtime( true );
@@ -125,24 +239,50 @@ if ( ! function_exists( 'mu_navchips_build_product_index' ) ) {
             'generation_time_ms' => round( ( microtime( true ) - $start_time ) * 1000, 2 ),
         ];
 
-        set_transient( 'mu_navchips_product_index',  $compact_index, 30 * DAY_IN_SECONDS );
-        set_transient( 'mu_navchips_index_metadata', $metadata,      30 * DAY_IN_SECONDS );
+        // [Fix #navchips-empty] Guard contra resultados vacíos: si la query
+        // SQL falló (timeout, "Commands out of sync", etc.) $compact_index
+        // queda '' y sobrescribir el índice bueno con vacío hacía
+        // desaparecer los chips. Solo escribir si el rebuild produjo datos.
+        $index_changed = false;
 
-        // Construir índice de grupos de etiquetas
+        if ( ! empty( $compact_index ) ) {
+            // Refrescar transients SIEMPRE (escritura barata en object cache;
+            // evita expiry → rebuild fantasma por transient vencido).
+            set_transient( 'mu_navchips_product_index',  $compact_index, 30 * DAY_IN_SECONDS );
+            set_transient( 'mu_navchips_index_metadata', $metadata,      30 * DAY_IN_SECONDS );
+
+            // [Hash Gate] Respaldo persistente en wp_options SOLO si cambió.
+            // Memcached falla silenciosamente si el ítem excede max_value_size
+            // (~1MB) o hay evicción; la option es el fallback resiliente.
+            // Comparar antes de escribir ahorra escrituras DB en cada save_post.
+            $previous_index = get_option( '_mu_navchips_permanent_mu_navchips_product_index', '' );
+            $index_changed  = ( $compact_index !== $previous_index );
+
+            if ( $index_changed ) {
+                update_option( '_mu_navchips_permanent_mu_navchips_product_index', $compact_index, false );
+                update_option( '_mu_navchips_permanent_mu_navchips_index_metadata', $metadata, false );
+            }
+        }
+
+        // Construir índice de grupos de etiquetas (su guard interna protege
+        // contra la sobrescritura con vacío). Retorna true si cambió.
+        $groups_changed = false;
         if ( function_exists( 'mu_build_tag_groups_index' ) ) {
-            mu_build_tag_groups_index();
+            $groups_changed = (bool) mu_build_tag_groups_index();
         }
 
-        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-            error_log( // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-                sprintf(
-                    'MU NavChips Index rebuilt: %d products, %s KB, %s ms',
-                    $total_products,
-                    number_format( strlen( $compact_index ) / 1024, 2 ),
-                    $metadata['generation_time_ms']
-                )
-            );
+        // [Hash Gate] PURGE solo si algún índice cambió realmente.
+        // El rebuild regenera el HTML cacheado para que los chips/grupos
+        // actualizados aparezcan sin depender de un F5 manual. Si nada
+        // cambió (ej: edición de precio/descripción), se omite la purga
+        // total del sitio — era la mayor fuente de purgas innecesarias.
+        if ( $index_changed || $groups_changed ) {
+            do_action( 'litespeed_purge_all' );
+        } else {
+            mu_navchips_log_purge_skipped();
         }
+
+        return ( $index_changed || $groups_changed );
     }
 }
 
@@ -153,35 +293,37 @@ if ( ! function_exists( 'mu_navchips_build_product_index' ) ) {
 if ( ! function_exists( 'mu_build_tag_groups_index' ) ) {
     /**
      * Construye el índice de grupos de etiquetas para el sistema de tag-groups.
-     * Formato: "cat_slug:tag_slug:representative_pid:reserved1,reserved2,..."
      * 
-     * El índice guarda:
+     * Formato: "representative_pid:±N:id1,id2,...,idN"
+     * 
      * - representative_pid: el producto más reciente (se muestra como card)
-     * - reserved_ids: productos que NO deben usarse como imágenes en OTROS grupos
-     *   (son los productos exclusivos de tags con pocos items)
-     * 
-     * La selección de 4 imágenes se hace ALEATORIAMENTE en cada carga de página,
-     * excluyendo los reserved_ids de otros grupos para evitar repetición.
-     * Esto da sensación de dinamismo y variedad.
+     * - ±N: signo + indica que el representativo está incluido en los N a mostrar
+     *       signo - indica que el representativo NO está incluido, se muestran otros N
+     * - id1,id2,...,idN: TODOS los IDs de productos del grupo (pre-ordenados por fecha DESC)
      * 
      * Algoritmo:
-     * 1. Obtiene todos los productos activos de cada tag
+     * 1. Obtiene los productos activos de cada tag (batching de 100, con
+     *    tope de 1.000 por tag para evitar timeouts SQL)
      * 2. Ordena tags por exclusividad (menos productos = mayor prioridad)
      * 3. Para cada tag (del más exclusivo al más abundante):
-     *    - Marca TODOS sus productos como "reservados" para ese tag
-     *    - Los tags menos exclusivos NO podrán usar esos productos
+     *    - Reserva los productos: TODOS si el tag tiene <= 20 productos,
+     *      solo 12 (aleatorios) si tiene más, para no acaparar
+     *    - Los tags menos exclusivos NO podrán usar productos ya reservados
      * 
      * Solo crea un grupo si tiene al menos 4 productos activos:
      * - Publicados (post_status = publish)
      * - Con stock (meta _stock_status = instock)
      * - Visibles en catálogo (no tienen term exclude-from-catalog)
      */
-    function mu_build_tag_groups_index() {
-        if ( ! defined( 'MU_TAG_GROUPS_CONFIG' ) ) {
-            return;
+    function mu_build_tag_groups_index(): bool {
+        if ( ! function_exists( 'mu_get_tag_groups_config' ) ) {
+            return false;
         }
 
-        $config = MU_TAG_GROUPS_CONFIG;
+        $config = mu_get_tag_groups_config();
+        if ( empty( $config ) ) {
+            return false;
+        }
         $groups_index = [];
         $min_products = 4;
 
@@ -192,7 +334,7 @@ if ( ! function_exists( 'mu_build_tag_groups_index' ) ) {
             }
             $cat_id = $cat->term_id;
 
-            // --- FASE 1: Obtener TODOS los productos activos de cada tag ---
+            // --- FASE 1: Obtener los productos activos de cada tag (batching) ---
             $tag_data = [];
 
             foreach ( $tag_slugs as $tag_slug ) {
@@ -201,41 +343,69 @@ if ( ! function_exists( 'mu_build_tag_groups_index' ) ) {
                     continue;
                 }
 
-                $args = [
-                    'post_type'      => 'product',
-                    'post_status'    => 'publish',
-                    'posts_per_page' => -1,
-                    'orderby'        => 'date',
-                    'order'          => 'DESC',
-                    'fields'         => 'ids',
-                    'meta_query'     => [
-                        [
-                            'key'   => '_stock_status',
-                            'value' => 'instock',
-                        ],
-                    ],
-                    'tax_query'      => [
-                        [
-                            'taxonomy' => 'product_cat',
-                            'field'    => 'term_id',
-                            'terms'    => $cat_id,
-                        ],
-                        [
-                            'taxonomy' => 'product_tag',
-                            'field'    => 'term_id',
-                            'terms'    => $tag->term_id,
-                        ],
-                        [
-                            'taxonomy' => 'product_visibility',
-                            'field'    => 'slug',
-                            'terms'    => 'exclude-from-catalog',
-                            'operator' => 'NOT IN',
-                        ],
-                    ],
-                ];
+                // Batching: nunca usar posts_per_page => -1 (regla del
+                // MIGRATION-GUIDE sección 6). Las consultas masivas sin
+                // límite provocaban timeouts SQL / "Commands out of sync",
+                // devolvían un conjunto vacío y sobrescribían el índice
+                // bueno con vacío (bug de desaparición de grupos).
+                $product_ids = [];
+                $paged       = 1;
+                $max_pages   = 10; // Tope de seguridad: 10 × 100 = 1.000 productos por tag.
 
-                $query = new WP_Query( $args );
-                $product_ids = $query->posts;
+                while ( $paged <= $max_pages ) {
+                    $args = [
+                        'post_type'              => 'product',
+                        'post_status'            => 'publish',
+                        'posts_per_page'         => 100,
+                        'paged'                  => $paged,
+                        'orderby'                => 'date',
+                        'order'                  => 'DESC',
+                        'fields'                 => 'ids',
+                        'no_found_rows'          => true,
+                        'update_post_meta_cache' => false,
+                        'update_post_term_cache' => false,
+                        'meta_query'             => [
+                            [
+                                'key'   => '_stock_status',
+                                'value' => 'instock',
+                            ],
+                        ],
+                        'tax_query'              => [
+                            [
+                                'taxonomy' => 'product_cat',
+                                'field'    => 'term_id',
+                                'terms'    => $cat_id,
+                            ],
+                            [
+                                'taxonomy' => 'product_tag',
+                                'field'    => 'term_id',
+                                'terms'    => $tag->term_id,
+                            ],
+                            [
+                                'taxonomy' => 'product_visibility',
+                                'field'    => 'slug',
+                                'terms'    => 'exclude-from-catalog',
+                                'operator' => 'NOT IN',
+                            ],
+                        ],
+                    ];
+
+                    $query    = new WP_Query( $args );
+                    $page_ids = $query->posts;
+
+                    if ( empty( $page_ids ) ) {
+                        break;
+                    }
+
+                    $product_ids = array_merge( $product_ids, $page_ids );
+
+                    // Si la página devolvió menos del límite, no hay más páginas.
+                    if ( count( $page_ids ) < 100 ) {
+                        break;
+                    }
+
+                    $paged++;
+                }
 
                 if ( count( $product_ids ) >= $min_products ) {
                     $tag_data[ $tag_slug ] = [
@@ -255,7 +425,7 @@ if ( ! function_exists( 'mu_build_tag_groups_index' ) ) {
                 return $a['count'] - $b['count'];
             } );
 
-            // --- FASE 3: Calcular productos reservados para cada tag ---
+            // --- FASE 3: Construir índice con formato ±N ---
             // Los tags con menos productos "reservan" los suyos para que no los use nadie más.
             // Los tags con muchos productos pueden usar cualquier cosa no reservada.
             $globally_reserved = []; // Productos que NO puede usar ningún tag (son de tags exclusivos)
@@ -264,13 +434,11 @@ if ( ! function_exists( 'mu_build_tag_groups_index' ) ) {
             foreach ( $tag_slugs_ordered as $tag_slug ) {
                 $all_products = $tag_data[ $tag_slug ]['all_products'];
                 $representative_pid = $all_products[0];
-
-                // Productos de este tag que NO están reservados globalmente
-                $exclusive = array_diff( $all_products, $globally_reserved );
+                $total_count = count( $all_products );
 
                 // Si este tag tiene <= 20 productos, reservarlos TODOS (es exclusivo)
                 // Si tiene > 20, solo reservar 12 (deja margen para otros tags)
-                if ( count( $all_products ) <= 20 ) {
+                if ( $total_count <= 20 ) {
                     $reserved = $all_products;
                 } else {
                     // Reservar solo los primeros 12 (aleatorios) para no acaparar
@@ -285,22 +453,46 @@ if ( ! function_exists( 'mu_build_tag_groups_index' ) ) {
                 }
 
                 $key = $cat_slug . ':' . $tag_slug;
-                // Formato: "representative_pid:reserved1,reserved2,..."
-                // Los reserved son productos que otros tags NO deben usar
-                $groups_index[ $key ] = $representative_pid . ':' . implode( ',', $reserved );
+
+                // Determinar signo: si el representativo está en los primeros N items a mostrar
+                // Por defecto mostramos 4 items. Si el total es <= 4, el rep está incluido.
+                // Si el total es > 4, el rep NO está incluido (se muestran otros 4).
+                $display_count = min( $total_count, 4 );
+                $sign = ( $total_count <= 4 ) ? '+' : '-';
+
+                // Guardar TODOS los IDs (no solo los reservados) para poder excluir en pre_get_posts
+                $all_ids_str = implode( ',', $all_products );
+
+                // Formato: "representative_pid:±N:id1,id2,...,idN"
+                $groups_index[ $key ] = $representative_pid . ':' . $sign . $display_count . ':' . $all_ids_str;
             }
+        }
+
+        // [Fix #groups-empty] No sobrescribir el índice bueno con un
+        // resultado vacío. Un rebuild fallido (timeout SQL, "Commands out
+        // of sync", stock que no matchea en el contexto del cron) devuelve []
+        // y DEBE conservar el índice anterior en lugar de destruirlo.
+        if ( empty( $groups_index ) ) {
+            return false;
         }
 
         set_transient( 'mu_tag_groups_index', $groups_index, 30 * DAY_IN_SECONDS );
 
-        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-            error_log( // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-                sprintf(
-                    'MU Tag Groups Index rebuilt: %d groups (dynamic random images, reserved allocation)',
-                    count( $groups_index )
-                )
-            );
+        // [Hash Gate] Respaldo persistente en wp_options (autoload=false)
+        // SOLO si el índice cambió. NOTA: el índice es determinista — el
+        // shuffle() interno solo afecta a $reserved/$globally_reserved,
+        // que NO forman parte del output final (representative_pid:±N:all_ids
+        // ordenados por fecha DESC). Por eso la comparación es estable entre
+        // rebuilds y no genera falsos "cambios".
+        $new_serialized = maybe_serialize( $groups_index );
+        $old_serialized = get_option( '_mu_navchips_permanent_mu_tag_groups_index', '' );
+        $changed        = ( $new_serialized !== $old_serialized );
+
+        if ( $changed ) {
+            update_option( '_mu_navchips_permanent_mu_tag_groups_index', $groups_index, false );
         }
+
+        return $changed;
     }
 }
 
@@ -329,6 +521,12 @@ if ( ! function_exists( 'mu_navchips_parse_product_index' ) ) {
         }
 
         $index = get_transient( 'mu_navchips_product_index' );
+
+        if ( false === $index ) {
+            // Fallback resiliente: si Memcached falló/evictó el transient,
+            // leer la option permanente escrita en mu_navchips_build_product_index().
+            $index = get_option( '_mu_navchips_permanent_mu_navchips_product_index', false );
+        }
 
         if ( false === $index ) {
             // [Fix #1] No reconstruir inline: programar cron y devolver vacío.
@@ -462,18 +660,12 @@ if ( ! function_exists( 'mu_navchips_calculate_tag_stats' ) ) {
                 }
             }
 
-            foreach ( $product_ids as $pid ) {
-                if ( ! isset( $products[ $pid ] ) ) {
-                    continue;
-                }
-
-                foreach ( $products[ $pid ]['tags'] as $tid ) {
-                    if ( ! isset( $tag_stats[ $tid ] ) ) {
-                        $tag_stats[ $tid ] = [ 'count' => 0, 'shared_count' => 0 ];
-                    }
-                    $tag_stats[ $tid ]['count']++;
-                }
-            }
+            // [Optimización] La pasada de 'count' (todos los productos del
+            // contexto) NO se usa en el render filtrado: los chips muestran
+            // shared_count cuando hay tags activos, y los tags sin shared
+            // quedan disabled. Saltarla reduce a la mitad la iteración del
+            // índice en páginas filtradas — crítico bajo rastreo masivo de
+            // bots con permutaciones de tags.
         } else {
             foreach ( $product_ids as $pid ) {
                 if ( ! isset( $products[ $pid ] ) ) {
@@ -543,7 +735,7 @@ if ( ! function_exists( 'mu_navchips_render_global_breadcrumb' ) ) {
             return;
         }
 
-        if ( is_front_page() || is_cart() || is_checkout() ) {
+        if ( is_front_page() || ( function_exists( 'is_cart' ) && is_cart() ) || ( function_exists( 'is_checkout' ) && is_checkout() ) ) {
             return;
         }
 
@@ -566,7 +758,7 @@ if ( ! function_exists( 'mu_navchips_render_global_breadcrumb' ) ) {
         $current_item_html = '';
 
         if ( $is_woo ) {
-            if ( is_product() ) {
+            if ( function_exists( 'is_product' ) && is_product() ) {
                 global $post;
                 $terms = get_the_terms( $post->ID, 'product_cat' );
                 if ( $terms && ! is_wp_error( $terms ) ) {
@@ -581,7 +773,7 @@ if ( ! function_exists( 'mu_navchips_render_global_breadcrumb' ) ) {
                     $ancestors_html .= '<li class="mu-navchips-crumb"><a href="' . esc_url( get_term_link( $main_term ) ) . '">' . esc_html( $main_term->name ) . '</a></li>';
                 }
                 $current_item_html = '<li class="mu-navchips-current"><span>' . get_the_title() . $share_btn . '</span></li>';
-            } elseif ( is_product_category() ) {
+            } elseif ( function_exists( 'is_product_category' ) && is_product_category() ) {
                 $obj       = get_queried_object();
                 $ancestors = array_reverse( get_ancestors( $obj->term_id, 'product_cat' ) );
                 foreach ( $ancestors as $aid ) {
@@ -605,14 +797,14 @@ if ( ! function_exists( 'mu_navchips_render_global_breadcrumb' ) ) {
                 } else {
                     $current_item_html = '<li class="mu-navchips-current"><span>' . esc_html( $obj->name ) . $share_btn . '</span></li>';
                 }
-            } elseif ( is_product_tag() ) {
+            } elseif ( function_exists( 'is_product_tag' ) && is_product_tag() ) {
                 $obj = get_queried_object();
                 if ( count( $current_tags_slugs ) > 1 ) {
                     $current_item_html = '<li class="mu-navchips-current mu-navchips-current--tag"><span>' . esc_html( $obj->name . ' +' ) . $share_btn . '</span></li>';
                 } else {
                     $current_item_html = '<li class="mu-navchips-current mu-navchips-current--tag"><span>' . esc_html( $obj->name ) . $share_btn . '</span></li>';
                 }
-            } elseif ( is_shop() ) {
+            } elseif ( function_exists( 'is_shop' ) && is_shop() ) {
                 $current_item_html = '<li class="mu-navchips-current"><span>Tienda' . $share_btn . '</span></li>';
             }
         } else {
@@ -641,7 +833,7 @@ if ( ! function_exists( 'mu_navchips_render_global_breadcrumb' ) ) {
 
 if ( ! function_exists( 'mu_navchips_render_navigation_chips' ) ) {
     function mu_navchips_render_navigation_chips() {
-        if ( is_product() || is_cart() || is_checkout() ) {
+        if ( ( function_exists( 'is_product' ) && is_product() ) || ( function_exists( 'is_cart' ) && is_cart() ) || ( function_exists( 'is_checkout' ) && is_checkout() ) ) {
             return;
         }
 
@@ -649,7 +841,7 @@ if ( ! function_exists( 'mu_navchips_render_navigation_chips' ) ) {
         $allowed_cats  = $is_restricted ? get_option( 'muyu_digital_category_ids', [] ) : [];
         $allowed_tags  = $is_restricted ? get_option( 'muyu_digital_tag_ids', [] ) : [];
 
-        $current_cat_id     = is_product_category() ? get_queried_object_id() : 0;
+        $current_cat_id     = ( function_exists( 'is_product_category' ) && is_product_category() ) ? get_queried_object_id() : 0;
         $current_tags_slugs = isset( $_GET['product_tag'] ) ? array_filter( explode( ' ', str_replace( '+', ' ', wp_unslash( $_GET['product_tag'] ) ) ) ) : [];
 
         $active_tag_ids = [];
@@ -735,6 +927,60 @@ if ( ! function_exists( 'mu_navchips_render_navigation_chips' ) ) {
         if ( $is_restricted ) {
             $digital_ids         = array_map( 'intval', (array) get_option( 'muyu_digital_product_ids', [] ) );
             $context_product_ids = array_intersect( $context_product_ids, $digital_ids );
+        } else {
+            // Para Argentina: replicar la exclusión de categorías que aplica
+            // filter_product_queries() (inc/digital-restriction.php). El índice
+            // de navegación incluye TODOS los productos publicados, por lo que
+            // los conteos de tags podían mostrar etiquetas cuyos items no son
+            // visibles en la categoría actual (ej: "Humor" en /decoracion/ con
+            // items solo en /stickers/). Aquí filtramos el contexto para que los
+            // chips coincidan con lo que realmente muestra la página.
+            // [Optimización] Reusar el helper con static cache de digital-restriction
+            // (antes: 3 get_term_by() duplicados en cada render de chips).
+            $excluded_cat_ids = ( function_exists( 'muyu_digital_restriction_init' )
+                && method_exists( muyu_digital_restriction_init(), 'get_excluded_category_term_ids' ) )
+                ? muyu_digital_restriction_init()->get_excluded_category_term_ids()
+                : [];
+
+            if ( ! empty( $excluded_cat_ids ) ) {
+                $should_exclude = false;
+
+                // Caso 1: Shop general (sin categoría específica)
+                if ( 0 === $current_cat_id ) {
+                    $should_exclude = true;
+                }
+                // Caso 2: Categoría actual es ancestro de alguna categoría excluida
+                elseif ( $current_cat_id > 0 ) {
+                    foreach ( $excluded_cat_ids as $excluded_id ) {
+                        $ancestors = get_ancestors( $excluded_id, 'product_cat', 'taxonomy' );
+                        if ( in_array( $current_cat_id, $ancestors, true ) ) {
+                            $should_exclude = true;
+                            break;
+                        }
+                    }
+                }
+
+                if ( $should_exclude ) {
+                    $index          = mu_navchips_parse_product_index();
+                    $products       = $index['products'];
+                    $excluded_flip  = array_flip( $excluded_cat_ids );
+
+                    $context_product_ids = array_values( array_filter(
+                        $context_product_ids,
+                        function( $pid ) use ( $products, $excluded_flip ) {
+                            if ( ! isset( $products[ $pid ] ) ) {
+                                return true;
+                            }
+                            foreach ( $products[ $pid ]['cats'] as $cid ) {
+                                if ( isset( $excluded_flip[ $cid ] ) ) {
+                                    return false;
+                                }
+                            }
+                            return true;
+                        }
+                    ) );
+                }
+            }
         }
 
         $tag_stats = mu_navchips_calculate_tag_stats( $context_product_ids, $active_tag_ids );
@@ -756,8 +1002,16 @@ if ( ! function_exists( 'mu_navchips_render_navigation_chips' ) ) {
         $processed     = 0;
         $max_tags      = 30;
 
-        // [Fix #3] Pre-cargar hasta $max_tags términos en una sola query al object cache.
-        _prime_term_caches( array_keys( array_slice( $tag_stats, 0, $max_tags, true ) ) );
+        // Pre-cargar hasta $max_tags términos en una sola query al object cache.
+        $prime_ids = array_keys( array_slice( $tag_stats, 0, $max_tags, true ) );
+        if ( ! empty( $prime_ids ) ) {
+            get_terms( [
+                'taxonomy' => 'product_tag',
+                'include'  => $prime_ids,
+                'fields'   => 'all',
+                'hide_empty' => false,
+            ] );
+        }
 
         foreach ( $tag_stats as $tag_id => $stats ) {
             if ( $processed >= $max_tags && ! in_array( $tag_id, $active_tag_ids, true ) ) {

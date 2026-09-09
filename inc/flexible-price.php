@@ -252,12 +252,30 @@ if ( ! function_exists( 'mu_flexible_price_cart_ui' ) ) {
 
 if ( ! function_exists( 'mu_ajax_update_flexible_price' ) ) {
     function mu_ajax_update_flexible_price() {
+        $start_time = microtime( true );
+        
         check_ajax_referer( 'mu-price-nonce', 'security' );
+
+        // Rate limiting: máximo 10 solicitudes por minuto por IP
+        if ( ! function_exists( 'mu_ajax_rate_limit_check' ) || ! mu_ajax_rate_limit_check( 'mu_update_custom_price', 10, 60 ) ) {
+            // Hook para rate limit monitoring
+            if ( function_exists( 'do_action' ) ) {
+                $ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( $_SERVER['REMOTE_ADDR'] ) : 'unknown';
+                do_action( 'mu_rate_limit_triggered', 'mu_update_custom_price', $ip );
+            }
+            
+            wp_send_json_error( array( 'message' => __( 'Demasiadas solicitudes. Por favor, esperá un momento.', 'generatepress-child' ) ) );
+        }
 
         $cart_item_key = sanitize_text_field( wp_unslash( $_POST['cart_item_key'] ?? '' ) );
         $custom_price  = wc_format_decimal( wp_unslash( $_POST['custom_price'] ?? 0 ) );
 
         if ( (float) $custom_price <= 0 ) {
+            // Performance monitoring
+            if ( function_exists( 'mu_monitor_ajax_performance' ) ) {
+                mu_monitor_ajax_performance( 'mu_update_custom_price', $start_time, false );
+            }
+            
             wp_send_json_error( array( 'message' => __( 'Valor inválido. Ingresá un monto mayor a cero.', 'generatepress-child' ) ) );
         }
 
@@ -267,8 +285,19 @@ if ( ! function_exists( 'mu_ajax_update_flexible_price' ) ) {
             $cart->cart_contents[ $cart_item_key ]['custom_price'] = $custom_price;
             $cart->set_session();
             $cart->calculate_totals();
+            
+            // Performance monitoring
+            if ( function_exists( 'mu_monitor_ajax_performance' ) ) {
+                mu_monitor_ajax_performance( 'mu_update_custom_price', $start_time, true );
+            }
+            
             wp_send_json_success();
         } else {
+            // Performance monitoring
+            if ( function_exists( 'mu_monitor_ajax_performance' ) ) {
+                mu_monitor_ajax_performance( 'mu_update_custom_price', $start_time, false );
+            }
+            
             wp_send_json_error( array( 'message' => __( 'Producto no encontrado en el carrito.', 'generatepress-child' ) ) );
         }
     }
@@ -292,18 +321,20 @@ if ( ! function_exists( 'mu_flexible_price_enqueue' ) ) {
             true
         );
 
-        wp_localize_script(
-            'mu-flexible-price',
-            'muFlexiblePrice',
-            array(
-                'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-                'nonce'   => wp_create_nonce( 'mu-price-nonce' ),
-                'i18n'    => array(
-                    'saving'      => __( 'Guardando...', 'generatepress-child' ),
-                    'invalidAmt'  => __( 'Ingresá un monto válido mayor a cero.', 'generatepress-child' ),
-                ),
-            )
-        );
+        if ( wp_script_is( 'mu-flexible-price', 'enqueued' ) ) {
+            wp_localize_script(
+                'mu-flexible-price',
+                'muFlexiblePrice',
+                array(
+                    'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+                    'nonce'   => wp_create_nonce( 'mu-price-nonce' ),
+                    'i18n'    => array(
+                        'saving'      => __( 'Guardando...', 'generatepress-child' ),
+                        'invalidAmt'  => __( 'Ingresá un monto válido mayor a cero.', 'generatepress-child' ),
+                    ),
+                )
+            );
+        }
     }
     add_action( 'wp_enqueue_scripts', 'mu_flexible_price_enqueue' );
 }

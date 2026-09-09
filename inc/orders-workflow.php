@@ -225,9 +225,11 @@ add_action( 'admin_enqueue_scripts', function() {
         wp_enqueue_script( 'mu-admin-orders-js', $uri . '/js/admin-orders.js', [ 'jquery' ], $ver, true );
 
         // Pasar URL base de API a JS por si cambia en el futuro
-        wp_localize_script( 'mu-admin-orders-js', 'muOrderWA', [
-            'apiUrl' => 'https://api.whatsapp.com/send',
-            'label'  => 'WhatsApp: '
-        ]);
+        if ( wp_script_is( 'mu-admin-orders-js', 'enqueued' ) ) {
+            wp_localize_script( 'mu-admin-orders-js', 'muOrderWA', [
+                'apiUrl' => 'https://api.whatsapp.com/send',
+                'label'  => 'WhatsApp: '
+            ]);
+        }
     }
 });

@@ -200,6 +200,7 @@ if ( ! function_exists( 'muyunicos_custom_footer_structure' ) ) {
                             <img decoding="async" src="https://muyunicos.com/wp-content/uploads/2026/01/medios.png" alt="Medios de Pago" width="200">
                         </div>
                         <div class="mu-secure-badge">
+                            <a href="http://qr.afip.gob.ar/?qr=6MzPqG4S-KxbKdfR2TTWIQ,," target="_F960AFIPInfo" style=""><img src="http://www.afip.gob.ar/images/f960/DATAWEB.jpg" border="0" style="width: 50px;"></a>
                             <?php echo function_exists( 'mu_get_icon' ) ? mu_get_icon( 'lock' ) : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>'; ?> Compra 100% Protegida
                         </div>
                     </div>
@@ -277,7 +278,7 @@ if ( ! function_exists( 'mu_googlesitekit_canonical_home_url' ) ) {
 
 if ( ! function_exists( 'mu_move_category_description' ) ) {
     function mu_move_category_description() {
-        if ( is_product_category() ) {
+        if ( function_exists( 'mu_wc_is_product_category' ) && mu_wc_is_product_category() ) {
             remove_action( 'woocommerce_archive_description', 'woocommerce_taxonomy_archive_description', 10 );
             add_action( 'woocommerce_after_shop_loop', 'woocommerce_taxonomy_archive_description', 5 );
         }
@@ -396,6 +397,17 @@ if ( ! function_exists( 'mu_testimonios_enqueue' ) ) {
         $ver = wp_get_theme()->get( 'Version' );
         wp_enqueue_style( 'mu-testimonials', get_stylesheet_directory_uri() . '/css/testimonials.css', [], $ver );
         wp_enqueue_script( 'mu-testimonials', get_stylesheet_directory_uri() . '/js/testimonials.js', [], $ver, true );
+        
+        // Localize script en el enqueue, no en el shortcode
+        if ( wp_script_is( 'mu-testimonials', 'enqueued' ) ) {
+            $db_option_name = 'mu_reviews_master_db';
+            wp_localize_script( 'mu-testimonials', 'muTestimonials', [ 
+                'reviews' => get_option( $db_option_name, [] ),
+                'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+                'nonce' => wp_create_nonce( 'mu_review_nonce' ),
+                'isAdmin' => current_user_can( 'administrator' )
+            ] );
+        }
     }
     add_action( 'wp_enqueue_scripts', 'mu_testimonios_enqueue' );
 }
@@ -441,13 +453,6 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
                 }
             }
         }
-
-        wp_localize_script( 'mu-testimonials', 'muTestimonials', [ 
-            'reviews' => get_option( $db_option_name, [] ),
-            'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-            'nonce' => wp_create_nonce( 'mu_review_nonce' ),
-            'isAdmin' => current_user_can( 'administrator' )
-        ] );
 
         ob_start();
         echo wp_kses_post( $msg_update );

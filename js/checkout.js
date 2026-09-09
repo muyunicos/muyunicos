@@ -102,6 +102,30 @@ jQuery(document).ready(function ($) {
     $countryInput.on('change', function () {
         autoPrefix();
         setTimeout(validarWhatsApp, 100);
+
+        // ================================================
+        // REDIRECCIÓN AL SUBDOMINIO AL CAMBIAR DE PAÍS
+        // Si el cliente selecciona un país distinto al actual,
+        // redirigir al subdominio correspondiente para que
+        // WCPBC actualice moneda/precios automáticamente.
+        // ================================================
+        var newCountry = $(this).val();
+        if (!newCountry || !muCheckout.countries || !muCheckout.currentCountry) return;
+        if (newCountry === muCheckout.currentCountry) return;
+
+        var country = muCheckout.countries[newCountry];
+        if (!country || !country.host) return;
+
+        // Construir path actual (pathname + search)
+        var path = window.location.pathname + window.location.search;
+
+        // Agregar prefijo de idioma si corresponde (BR→/pt, US→/en)
+        if (country.prefix && path.indexOf(country.prefix) !== 0) {
+            path = country.prefix + path;
+        }
+
+        // Redirigir al subdominio del país seleccionado
+        window.location.href = 'https://' + country.host + path;
     });
     $(window).on('load', function () {
         setTimeout(function () { autoPrefix(); validarWhatsApp(); }, 1000);
@@ -159,16 +183,13 @@ jQuery(document).ready(function ($) {
                             $('#mu-email-exists-notice')
                                 .html('\uD83D\uDC4B Ya ten\u00e9s cuenta. <a href="#" class="mu-open-modal">Inici\u00e1 sesi\u00f3n</a>.')
                                 .slideDown();
-                            $('.mu-verified-badge').show();
                         } else {
                             $('#mu-email-exists-notice').slideUp();
-                            $('.mu-verified-badge').show();
                         }
                     });
                 }, 1000);
             } else {
                 $wrap.removeClass('mu-field-valid');
-                $('.mu-verified-badge').hide();
                 $('#mu-email-exists-notice').slideUp();
             }
         });

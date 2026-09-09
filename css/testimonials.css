@@ -21,6 +21,7 @@
     grid-template-columns: 1fr;
     gap: var(--mu-space-lg, 40px);
     margin-bottom: var(--mu-space-lg, 40px);
+    position: relative;
 }
 
 @media (min-width: 900px) {
