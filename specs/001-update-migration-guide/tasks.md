@@ -172,7 +172,7 @@ fuente.
 - [X] T037 [P] [US1] Verificar el criterio SC-001: `grep -i "cloudflare" MIGRATION-GUIDE.md` no devuelve reglas vigentes (solo la mención de QUIC.cloud en §2)
 - [X] T038 [P] [US1] Verificar el criterio SC-002: el bloque de caché nombra las dos capas, el proveedor CDN activo, el control geográfico y la versión de TLS
 - [X] T039 [P] [US3] Verificar el criterio SC-003: `grep -rn "cloudflare-optimization" . --include=*.php --include=*.md` no devuelve resultados
-- [ ] T040 [P] [US1] Verificar el criterio SC-004: el total de un carrito de prueba con impuesto por dirección de envío coincide con el que calcula WooCommerce para el mismo `cart_item_key`
+- [X] T040 [P] [US1] Verificar el criterio SC-004: el total de un carrito de prueba con impuesto por dirección de envío coincide con el que calcula WooCommerce para el mismo `cart_item_key`
 - [X] T041 [P] [US1] Verificar el criterio SC-005: cada incidente de §7 tiene un comando de verificación vigente o está marcado como no aplicable con su razón
 - [X] T042 [P] [US4] Verificar el criterio SC-006: leer §2 responde "¿qué cambió respecto del documento?" sin consultar el panel
 - [X] T043 [P] [US1] Verificar el criterio SC-007: las mitigaciones no configuradas están todas en §8 y ninguna en secciones normativas
@@ -182,7 +182,7 @@ fuente.
 - [X] T047 [P] [US5] Verificar el criterio SC-011: un lector del guide puede determinar qué entidades externas comparten prefijo con el tema y qué ocurre si se cargan a la vez
 - [X] T048 Revisar que `MIGRATION-GUIDE.md` no contiene ninguna directiva que contradiga la constitución v2.1.0 (FR-012)
 - [X] T049 Eliminar el bloque `SYNC IMPACT REPORT` de `.specify/memory/constitution.md` antes de commitear: es material temporal de revisión
-- [ ] T050 Confirmar con el mantenedor la versión real de PHP en el panel y corregir el dato en `MIGRATION-GUIDE.md` §2
+- [X] T050 Confirmar con el mantenedor la versión real de PHP en el panel y corregir el dato en `MIGRATION-GUIDE.md` §2
 
 ### Trazabilidad de criterios
 

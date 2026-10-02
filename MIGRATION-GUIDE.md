@@ -34,9 +34,8 @@ FLUJO DE TRABAJO Y DESPLIEGUE
 ════════════════════════════════════════════════════════════════
 
 Hosting: Hostinger Plan Business (Espacio: 200GB | RAM: 3072 MB | Núcleos: 2 | PHP Workers: 60)
-Stack: PHP 8.3.28 | MySQL 11.8.3-MariaDB-log | LiteSpeed Cache 7.9
-  ⚠️ PENDIENTE: producción responde `X-Powered-By: PHP/8.5.4` (verificado 2026-10-02).
-  Confirmar en el panel y corregir este dato.
+Stack: PHP 8.5.4 | MySQL 11.8.3-MariaDB-log | LiteSpeed Cache 7.9
+  (PHP confirmado contra `X-Powered-By` en producción el 2026-10-02.)
 Tema: GeneratePress 3.6.1 + GeneratePress Child
 
 Dominio y Seguridad:
@@ -468,14 +467,23 @@ SATURACIÓN POR RASTREO MASIVO DE BOTS/IA EN URLs INEXISTENTES
     product_tag= multi-tag de bots no verificados, y excepción para
     meta-webindexer. No están activos: el edge no los implementa todavía.
 - VERIFICACIÓN (curl):
-  · Fast-exit activo (debe mostrar X-MU-Bot-404: fast-exit, X-Robots-Tag: noindex,
-    X-LiteSpeed-Cache-Control: public,max-age=86400 y body HTML mínimo):
+  · ⚠️ Para verificar CACHÉ usar GET, no HEAD (`curl -sI`). LiteSpeed no puebla
+    la caché con peticiones HEAD: `curl -sI` devuelve "miss" aunque la caché
+    esté sana y hace pensar en una regresión inexistente. Verificado
+    2026-10-02. Para leer solo cabeceras con GET: `curl -s -D - -o /dev/null`.
+  · Bot contra URL inexistente (el edge debe responder 429 antes que PHP):
       curl -sI -A "GPTBot/1.0" https://us.muyunicos.com/pt/outlet
-  · Humano NO pasa por fast-exit (debe mostrar no-cache o redirect 302 al shop):
+  · Humano en la MISMA URL (debe mostrar redirect 302 al shop):
       curl -sI -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" https://us.muyunicos.com/pt/outlet
-  · Caché separada por subdominio (2ª request a cada dominio = "x-litespeed-cache: hit"):
-      curl -sI https://muyunicos.com/tienda/ | grep -i x-litespeed-cache
-      curl -sI https://us.muyunicos.com/tienda/ | grep -i x-litespeed-cache
+  · Caché por subdominio (2ª request a cada host = "x-litespeed-cache: hit";
+    la 1ª da miss porque genera la variante del visitante):
+      curl -s -D - -o /dev/null -c /tmp/mu-root.txt https://muyunicos.com/tienda/ | grep -i x-litespeed-cache
+      curl -s -D - -o /dev/null -b /tmp/mu-root.txt -c /tmp/mu-root.txt https://muyunicos.com/tienda/ | grep -i x-litespeed-cache
+      curl -s -D - -o /dev/null -c /tmp/mu-us.txt https://us.muyunicos.com/tienda/ | grep -i x-litespeed-cache
+      curl -s -D - -o /dev/null -b /tmp/mu-us.txt -c /tmp/mu-us.txt https://us.muyunicos.com/tienda/ | grep -i x-litespeed-cache
+  · Aislamiento del catálogo (RAÍZ con físicos, subdominio sin ellos):
+      curl -s https://muyunicos.com/tienda/ | grep -oc "outlet\|wii\|consola\|sticker"
+      curl -s https://us.muyunicos.com/tienda/ | grep -oc "outlet\|wii\|consola\|sticker"
   · Log rate-limitado en debug.log: buscar "[MU-BOT404]" (máx 1 línea cada 5 min,
     con host, UA, contador diario y total).
   · Widget del dashboard: sección "Bot 404 Fast-Exit (Anti-Bots)" con contadores
@@ -536,5 +544,10 @@ BLOQUEO DE BOTS POR PAÍS EN EL EDGE (2026-10-02)
 - [ ] navigation-chips.php: mu_navchips_build_product_index() — evaluar si el índice puede crecer demasiado en wp_options con muchos productos.
 - [ ] WAF en el edge: configurar un challenge para requests con `product_tag=` multi-tag provenientes de bots no verificados. Criterio: "que no intenten ninguna combinación de etiquetas en el borde". Implementar en el WAF de la CDN de Hostinger; el edge hoy no lo soporta. OJO: verificar antes que no bloquee a Google (que rastrea combinaciones de etiquetas).
 - [ ] Excepción en el WAF para `meta-webindexer` (crawler de previews de Facebook/WhatsApp) si se desea preservar las preview cards compartidas. Criterio: las previews de enlaces en redes deben seguir renderizando la imagen.
-- [ ] Versión de PHP sin confirmar: el §2 declara 8.3.28 pero producción responde `X-Powered-By: PHP/8.5.4`. Verificar en el panel de Hostinger y corregir el dato. No se cambió el valor porque no se puede confirmar desde el repositorio.
 - [ ] Repositorio de la Calculadora de Stickers: 7 archivos modificados sin commitear, incluido el bundle `calculadora_stickers.js` que se sirve en producción. Mientras no se commiteen, el bundle servido no es reproducible desde su fuente.
+
+RESUELTOS el 2026-10-02:
+- [x] Versión de PHP: confirmada 8.5.4 contra `X-Powered-By`. El §2 ya declara el
+  valor correcto. El dato anterior (8.3.28) estaba desactualizado.
+- [x] SC-004: el total del carrito con impuesto por dirección de envío coincide
+  con el que calcula WooCommerce. Verificado por el mantenedor sobre producción.

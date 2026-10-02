@@ -20,21 +20,39 @@ comandos de caché usan un cookie jar.
 
 **Prueba**: el catálogo se cachea por subdominio.
 
-```bash
-# La primera request genera la variante (miss normal), la segunda debe dar hit
-curl -sI -c /tmp/cj-root.txt https://muyunicos.com/tienda/ | grep -i "x-litespeed-cache:"
-curl -sI -b /tmp/cj-root.txt -c /tmp/cj-root.txt https://muyunicos.com/tienda/ | grep -i "x-litespeed-cache:"
+> ⚠️ Usar **GET, no HEAD** (`curl -sI`). LiteSpeed no puebla la caché con
+> peticiones HEAD: un `curl -I` devuelve `miss` aunque la caché esté
+> perfectamente sana, y hace pensar que hay una regresión inexistente.
+> Verificado el 2026-10-02: la raíz dio `miss` en 3 HEAD seguidos y `hit`
+> estable en 5 GET seguidos. El mismo día, México dio `miss` con HEAD y `hit`
+> con GET.
 
-curl -sI -c /tmp/cj-us.txt https://us.muyunicos.com/tienda/ | grep -i "x-litespeed-cache:"
-curl -sI -b /tmp/cj-us.txt -c /tmp/cj-us.txt https://us.muyunicos.com/tienda/ | grep -i "x-litespeed-cache:"
+```bash
+# -D -  → vuelca las cabeceras de la respuesta
+# -o /dev/null → descarta el cuerpo (no interesa para leer cabeceras)
+# -c / -b → cookie jar: sin él, la primera request SIEMPRE da miss
+
+# La primera request genera la variante (miss normal), la segunda debe dar hit
+curl -s -D - -o /dev/null -c /tmp/cj-root.txt \
+  https://muyunicos.com/tienda/ | grep -i "x-litespeed-cache:"
+curl -s -D - -o /dev/null -b /tmp/cj-root.txt -c /tmp/cj-root.txt \
+  https://muyunicos.com/tienda/ | grep -i "x-litespeed-cache:"
+
+curl -s -D - -o /dev/null -c /tmp/cj-us.txt \
+  https://us.muyunicos.com/tienda/ | grep -i "x-litespeed-cache:"
+curl -s -D - -o /dev/null -b /tmp/cj-us.txt -c /tmp/cj-us.txt \
+  https://us.muyunicos.com/tienda/ | grep -i "x-litespeed-cache:"
 ```
 
 **Esperado**: `miss` en la primera request de cada host, `hit` en la segunda.
+Un subdominio con la variante ya generada puede dar `hit` desde la primera:
+eso también es correcto.
 
 | Resultado | Significado |
 |---|---|
 | `hit` en la segunda | Correcto |
-| `miss` en la segunda | La caché de páginas no está guardando. Revisar el preajuste de LiteSpeed |
+| `miss` en la segunda **con GET y cookie jar** | La caché de páginas no está guardando. Revisar el preajuste de LiteSpeed |
+| `miss` siempre **solo con HEAD** | Falso positivo del método. Repetir con GET |
 | Sin header `X-Litespeed-Cache` | LiteSpeed no está interviniendo en esa URL |
 
 ---
@@ -131,6 +149,11 @@ curl -sI -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" https://us.muyunicos.com
 ```
 
 **Esperado**: el bot recibe `429` y el humano `302` hacia el catálogo.
+
+> Nota: se puede usar HEAD o GET, ambos devuelven el mismo código. Si el bot
+> responde `302` en lugar de `429`, lo esperable es que el rate-limit del edge
+> lo esté sirviendo en ese momento: repetir antes de concluir que el bloqueo por
+> User-Agent dejó de funcionar.
 
 | Señal | Significado |
 |---|---|
