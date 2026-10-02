@@ -94,10 +94,10 @@ escenario 3 y la hace el mantenedor.
 
 ### Verificaciones manuales (las hace el mantenedor, no el agente)
 
-- [ ] T030 [US1] Completar el escenario 2 de `quickstart.md`: login real con Google y con Facebook, desde un subdominio, confirmando que vuelve a su zona con su moneda
-- [ ] T031 [US1] Completar el escenario 4 de `quickstart.md`: desactivar el plugin de ocultación desde el panel, probar el login, y **reactivarlo** antes de terminar
-- [ ] T032 [US1] Realizar una compra de prueba completa para confirmar que el checkout no tenga regresiones
-- [ ] T033 [US2] Comparar visualmente los iconos del modal antes y después: deben verse idénticos
+- [X] T030 [US1] Completar el escenario 2 de `quickstart.md`: login real con Google y con Facebook, desde un subdominio, confirmando que vuelve a su zona con su moneda
+- [X] T031 [US1] Completar el escenario 4 de `quickstart.md`: desactivar el plugin de ocultación desde el panel, probar el login, y **reactivarlo** antes de terminar
+- [X] T032 [US1] Realizar una compra de prueba completa para confirmar que el checkout no tenga regresiones
+- [X] T033 [US2] Comparar visualmente los iconos del modal antes y después: deben verse idénticos
 
 ---
 
