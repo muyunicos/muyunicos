@@ -1,0 +1,439 @@
+/* ============================================
+   MUY ÚNICOS - SECCIÓN DE CUENTA
+   ============================================
+   Alcance: todas las pantallas de la sección de cuenta
+   (/mi-cuenta/, /mi-cuenta/edit-account/, /mi-cuenta/downloads/,
+   /mi-cuenta/orders/, /mi-cuenta/edit-address/ y el resto).
+
+   Carga: condicional. La encola functions.php → mu_enqueue_assets() con el
+   handle 'mu-account' dentro de `if ( mu_wc_is_account_page() )`, y declara
+   dependencia 'mu-base'. En ninguna otra página del sitio aparece este
+   archivo (FR-031, contrato C-4.1).
+
+   Por qué existe: la sección de cuenta no tenía NINGUNA hoja de estilo
+   propia. El único archivo previo, account-downloads.css, está acotado al
+   endpoint 'downloads'. El resto de la sección se mostraba con los estilos
+   genéricos de WooCommerce y GeneratePress, que están diseñados para
+   escritorio (research.md D-15).
+
+   Qué NO hace: no reescribe plantillas ni hooks de WooCommerce. Solo
+   adapta visualmente el marcado que WooCommerce ya produce (contrato
+   C-4.2). No añade ni quita contenido.
+
+   Convenciones (constitución VIII):
+   - Solo variables declaradas en :root de style.css. Ningún color literal.
+   - Tipografía fluida con clamp().
+   - BEM con prefijo .mu-.
+   - Todo elemento interactivo con :focus-visible.
+   ============================================ */
+
+/* ============================================
+   1. ESTRUCTURA DE LA SECCIÓN
+   ============================================ */
+/* override WooCommerce: WooCommerce reparte la sección en navegación lateral
+   + contenido con anchos fijos en porcentajes. En móvil esos porcentajes
+   producen un contenido de ~200px, ilegible. Se apila en una columna. */
+.woocommerce-account .woocommerce-MyAccount {
+    display: block;
+    width: 100%;
+    margin: 0 0 var(--mu-space-lg) 0;
+}
+
+.woocommerce-account .woocommerce-MyAccount-navigation {
+    width: 100%;
+    float: none;
+    margin: 0 0 var(--mu-space-md) 0;
+}
+
+.woocommerce-account .woocommerce-MyAccount-content {
+    width: 100%;
+    float: none;
+    margin: 0;
+}
+
+/* ============================================
+   2. NAVEGACIÓN DE LA SECCIÓN
+   ============================================ */
+/* Lista vertical en todas las resoluciones (research.md D-17). Convertirla
+   en acordeón exigiría JavaScript nuevo y duplicaría el patrón que
+   GeneratePress ya implementa para el menú principal: más deuda de la que
+   resuelve. FR-028 solo exige que sea alcanzable y legible. */
+.woocommerce-MyAccount-navigation ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--fondo);
+    border-radius: var(--mu-radius-sm);
+    overflow: hidden;
+    background-color: var(--blanco);
+}
+
+.woocommerce-MyAccount-navigation li {
+    margin: 0;
+    border-bottom: 1px solid var(--fondo);
+}
+
+.woocommerce-MyAccount-navigation li:last-child {
+    border-bottom: 0;
+}
+
+.woocommerce-MyAccount-navigation a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;                /* touch target mínimo WCAG */
+    padding: var(--mu-space-sm) var(--mu-space-md);
+    color: var(--texto);
+    font-size: 15px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: var(--mu-transition-fast);
+    box-sizing: border-box;
+}
+
+.woocommerce-MyAccount-navigation a:hover,
+.woocommerce-MyAccount-navigation a:focus {
+    background-color: var(--fondo);
+    color: var(--primario);
+}
+
+/* Enlace de la pantalla activa: se distingue sin depender solo del color,
+   con una barra lateral y el peso de la tipografía. */
+.woocommerce-MyAccount-navigation .is-active a,
+.woocommerce-MyAccount-navigation .woocommerce-MyAccount-navigation-link--active a {
+    background-color: var(--fondo);
+    color: var(--primario);
+    font-weight: 700;
+    box-shadow: inset 3px 0 0 var(--primario);
+}
+
+.woocommerce-MyAccount-navigation a:focus-visible {
+    outline: 3px solid var(--secundario);
+    outline-offset: -3px;
+/* ============================================
+   3. FORMULARIOS
+   ============================================ */
+/* WooCommerce impone anchos fijos a los campos que en un teléfono de 320px
+   desbordan el contenedor. Se fuerza ancho completo. */
+.woocommerce-MyAccount-content form,
+.woocommerce-form-login,
+.woocommerce-form-register {
+    width: 100%;
+    margin: 0;
+}
+
+.woocommerce-MyAccount-content .form-row,
+.woocommerce-form-login .form-row,
+.woocommerce-form-login .form-row-wide,
+.woocommerce-form-login .woocommerce-form-row,
+.woocommerce-account-fields .form-row {
+    display: block;
+    width: 100%;
+    float: none;
+    margin: 0 0 var(--mu-space-md) 0;
+    padding: 0;
+}
+
+.woocommerce-MyAccount-content .form-row label,
+.woocommerce-form-login .form-row label,
+.woocommerce-account-fields label {
+    display: block;
+    margin: 0 0 var(--mu-space-xs) 0;
+    padding: 0;
+    color: var(--texto);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.woocommerce-MyAccount-content input[type="text"],
+.woocommerce-MyAccount-content input[type="email"],
+.woocommerce-MyAccount-content input[type="password"],
+.woocommerce-MyAccount-content input[type="tel"],
+.woocommerce-MyAccount-content input[type="url"],
+.woocommerce-MyAccount-content select,
+.woocommerce-form-login input[type="text"],
+.woocommerce-form-login input[type="email"],
+.woocommerce-form-login input[type="password"] {
+    display: block;
+    width: 100%;
+    /* 16px evita el zoom automático de iOS Safari al enfocar el campo */
+    font-size: 16px;
+    min-height: 44px;
+    padding: var(--mu-space-sm) var(--mu-space-sm);
+    color: var(--texto);
+    background-color: var(--blanco);
+    border: 1px solid var(--fondo);
+    border-radius: var(--mu-radius-sm);
+    box-shadow: none;
+    box-sizing: border-box;
+    transition: var(--mu-transition-fast);
+}
+
+.woocommerce-MyAccount-content input[type="text"]:focus,
+.woocommerce-MyAccount-content input[type="email"]:focus,
+.woocommerce-MyAccount-content input[type="password"]:focus,
+.woocommerce-MyAccount-content input[type="tel"]:focus,
+.woocommerce-MyAccount-content input[type="url"]:focus,
+.woocommerce-MyAccount-content select:focus,
+.woocommerce-form-login input[type="text"]:focus,
+.woocommerce-form-login input[type="email"]:focus,
+.woocommerce-form-login input[type="password"]:focus {
+    border-color: var(--primario);
+    outline: 2px solid var(--primario);
+    outline-offset: 1px;
+}
+
+.woocommerce-MyAccount-content input:focus-visible,
+.woocommerce-form-login input:focus-visible,
+.woocommerce-form-login a:focus-visible,
+.woocommerce-MyAccount-content a:focus-visible {
+    outline: 3px solid var(--secundario);
+    outline-offset: 2px;
+}
+
+/* ============================================
+   4. BOTONES
+   ============================================ */
+.woocommerce-MyAccount-content .button,
+.woocommerce-form-login .button,
+.woocommerce-Button,
+.woocommerce-Form button,
+.woocommerce-MyAccount-content button[type="submit"],
+.woocommerce-form-login button[type="submit"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 44px;
+    padding: var(--mu-space-sm) var(--mu-space-md);
+    color: var(--blanco);
+    background-color: var(--primario);
+    border: 1px solid var(--primario);
+    border-radius: var(--mu-radius-sm);
+    font-family: var(--mu-font-base);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.2;
+    text-decoration: none;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: var(--mu-transition-fast);
+}
+
+.woocommerce-MyAccount-content .button:hover,
+.woocommerce-form-login .button:hover,
+.woocommerce-Button:hover,
+.woocommerce-Form button:hover,
+.woocommerce-MyAccount-content button[type="submit"]:hover,
+.woocommerce-form-login button[type="submit"]:hover {
+    color: var(--blanco);
+    background-color: var(--resaltado);
+    border-color: var(--resaltado);
+}
+
+.woocommerce-MyAccount-content .button:focus-visible,
+.woocommerce-form-login .button:focus-visible,
+.woocommerce-Button:focus-visible {
+    outline: 3px solid var(--secundario);
+    outline-offset: 2px;
+}
+/* ============================================
+   5. TIPOGRAFÍA Y ESPACIADO
+   ============================================ */
+/* clamp() para que el tamaño fluya con el ancho en vez de saltar entre
+   breakpoints (constitución VIII: tipografía fluida con clamp()). */
+.woocommerce-MyAccount-content h2,
+.woocommerce-form-login h2,
+.woocommerce-form-register h2 {
+    margin: 0 0 var(--mu-space-md) 0;
+    color: var(--texto);
+    font-family: var(--mu-font-display);
+    font-size: clamp(1.35rem, 1.1rem + 1.2vw, 1.75rem);
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.woocommerce-MyAccount-content h3,
+.woocommerce-MyAccount-content h4 {
+    margin: var(--mu-space-md) 0 var(--mu-space-sm) 0;
+    color: var(--texto);
+    font-family: var(--mu-font-display);
+    font-size: clamp(1.1rem, 1rem + 0.6vw, 1.3rem);
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.woocommerce-MyAccount-content p,
+.woocommerce-form-login p {
+    margin: 0 0 var(--mu-space-sm) 0;
+    color: var(--texto);
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+.woocommerce-MyAccount-content a,
+.woocommerce-form-login a {
+    color: var(--primario);
+}
+
+.woocommerce-MyAccount-content a:hover,
+.woocommerce-form-login a:hover {
+    color: var(--resaltado);
+}
+
+/* ============================================
+   6. ESTADO VACÍO Y AVISOS
+   ============================================ */
+/* "No tienes pedidos todavía" / "Aún no tienes descargas" */
+.woocommerce-MyAccount-content .woocommerce-info,
+.woocommerce-MyAccount-content .woocommerce-message,
+.woocommerce-MyAccount-content .woocommerce-error {
+    margin: 0 0 var(--mu-space-md) 0;
+    padding: var(--mu-space-sm) var(--mu-space-md);
+    background-color: var(--fondo);
+    border: 1px solid var(--fondo);
+    border-left: 4px solid var(--primario);
+    border-radius: var(--mu-radius-sm);
+    color: var(--texto);
+    font-size: 15px;
+    list-style: none;
+}
+
+.woocommerce-MyAccount-content .woocommerce-error {
+    border-left-color: var(--secundario);
+}
+
+.woocommerce-MyAccount-content .woocommerce-info li,
+.woocommerce-MyAccount-content .woocommerce-message li,
+.woocommerce-MyAccount-content .woocommerce-error li {
+    margin: 0;
+}
+
+/* ============================================
+   7. TABLAS (pedidos, pagos, direcciones)
+   ============================================ */
+/* En un teléfono una tabla de pedidos con 4 columnas no entra: se
+   convierte en bloques apilados. La alternativa sería scroll horizontal,
+   que la spec prohíbe explícitamente (FR-026: sin desplazamiento
+   horizontal a 320px). */
+.woocommerce-MyAccount-content table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.woocommerce-MyAccount-content table th {
+    padding: var(--mu-space-sm);
+    background-color: var(--fondo);
+    color: var(--texto);
+    font-weight: 700;
+    text-align: left;
+    border-bottom: 2px solid var(--fondo);
+}
+
+.woocommerce-MyAccount-content table td {
+    padding: var(--mu-space-sm);
+    border-bottom: 1px solid var(--fondo);
+    vertical-align: top;
+    word-wrap: break-word;
+}
+
+.woocommerce-account .woocommerce-MyAccount-content {
+    overflow-x: hidden;
+}
+
+@media (max-width: 600px) {
+    .woocommerce-MyAccount-content table,
+    .woocommerce-MyAccount-content table thead,
+    .woocommerce-MyAccount-content table tbody,
+    .woocommerce-MyAccount-content table tr,
+    .woocommerce-MyAccount-content table th,
+    .woocommerce-MyAccount-content table td {
+        display: block;
+        width: 100%;
+    }
+
+    /* La cabecera de la tabla deja de ser una fila y pasa a ser una
+       etiqueta de cada bloque. */
+    .woocommerce-MyAccount-content table thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
+
+    .woocommerce-MyAccount-content table tr {
+        margin-bottom: var(--mu-space-md);
+        border: 1px solid var(--fondo);
+        border-radius: var(--mu-radius-sm);
+        overflow: hidden;
+    }
+
+    .woocommerce-MyAccount-content table td {
+        border-bottom: 1px solid var(--fondo);
+    }
+
+    .woocommerce-MyAccount-content table td:last-child {
+        border-bottom: 0;
+    }
+}
+
+/* ============================================
+   8. FORMULARIO DE ACCESO (sin sesión)
+   ============================================ */
+/* El comprador que aún no inició sesión también entra a /mi-cuenta/ y ve
+   el formulario de acceso. Se le da el mismo cuidado que a las pantallas
+   de usuario autenticado (FR-030): mismo contenedor, mismo ancho, misma
+   tipografía y mismos botones. */
+.woocommerce-MyAccount-content .woocommerce-form-login {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.woocommerce-form-login__submit {
+    width: 100%;
+}
+
+.woocommerce-form-login__rememberme,
+.woocommerce-form-login .woocommerce-form-login__rememberme {
+    display: flex;
+    align-items: center;
+    gap: var(--mu-space-sm);
+    margin: 0 0 var(--mu-space-md) 0;
+    font-size: 14px;
+}
+
+.woocommerce-form-login__rememberme input {
+    width: 18px;
+    height: 18px;
+    min-height: 0;
+    margin: 0;
+    flex-shrink: 0;
+}
+
+.woocommerce-LostPassword {
+    margin: 0 0 var(--mu-space-md) 0;
+    font-size: 14px;
+}
+
+/* ============================================
+   9. REDUCCIÓN DE MOVIMIENTO
+   ============================================ */
+/* La hoja no define animaciones propias, pero el sitio puede inyectarlas
+   vía las transiciones globales. Se respetan sin excepción. */
+@media (prefers-reduced-motion: reduce) {
+    .woocommerce-MyAccount-content *,
+    .woocommerce-MyAccount-navigation *,
+    .woocommerce-form-login * {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+    }
+}
+}

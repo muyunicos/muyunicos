@@ -281,10 +281,25 @@
 /* ============================================
    COUNTRY SELECTOR (Header Left)
    ============================================ */
+/* ============================================
+   COUNTRY SELECTOR (Header Left)
+   ============================================ */
+/* El contenedor ya NO se posiciona de forma absoluta contra el documento.
+
+   PROBLEMA QUE CORRIGE (research.md D-3): `.mu-header-country-item` estaba
+   en `position:absolute; left/top` sin contenedor relativo padre, por lo
+   que se anclaba al documento entero y quedaba FUERA de la barra: el orden
+   real en producción es skip-link → mu-header-country-item → header → nav.
+   La bandera y el .menu-toggle de GeneratePress terminaban compartiendo la
+   misma franja con z-index distintos, y el dropdown podía verse por encima
+   del menú (FR-008).
+
+   Ahora el contenedor es un elemento normal del flujo del encabezado, así
+   que responde a la geometría de la barra y no se superpone al botón de
+   menú. El z-index se conserva para que el dropdown, que sí es
+   desplegable, quede por encima del contenido de la página. */
 .mu-header-country-item {
-    position: absolute;
-    left: 30px;
-    top: 30px;
+    position: relative;
     z-index: 1000;
 }
 
@@ -311,6 +326,16 @@
 .country-selector-trigger[aria-expanded="true"] {
     background: rgba(0,0,0,0.03);
     border-color: rgba(0,0,0,0.1);
+}
+
+/* Foco visible — constitución VIII: todo elemento interactivo necesita
+   contorno de foco visible. El disparador es un div con role="button" y
+   tabindex="0", navegable por teclado, así que le corresponde foco propio.
+   El selector usa aria-expanded para que el anillo persista mientras la
+   lista está desplegada. */
+.country-selector-trigger:focus-visible {
+    outline: 3px solid var(--secundario);
+    outline-offset: 2px;
 }
 
 .country-selector-trigger img {
@@ -343,7 +368,19 @@
     pointer-events: none;
 }
 
-.country-selector-dropdown[style*="display: block"] {
+/* ESTADO ABIERTO — controlado por clase, no por atributo de estilo.
+
+   ANTES: `.country-selector-dropdown[style*="display: block"]` leía el
+   atributo style en línea que escribía el JavaScript. Ese acoplamiento se
+   rompe con cualquier refactor: cambiar `block` por `flex`, usar `hidden`
+   o dejar de escribir el estilo dejaba el menú abierto pero invisible
+   (research.md D-2, contrato C-1.4).
+
+   AHORA: la clase `is-open` la aplica `initCountrySelector()` sobre
+   `.country-redirect-container` y la mantiene sincronizada con
+   `aria-expanded` del disparador (contrato C-1.2, C-1.3). */
+.country-redirect-container.is-open .country-selector-dropdown {
+    display: block;
     opacity: 1;
     transform: translateY(0);
     pointer-events: auto;
@@ -511,7 +548,19 @@
         opacity: 1;
     }
 
-    /* Submenú Mi Cuenta en móvil (flotante) */
+    /* Submenú Mi Cuenta en móvil (flotante)
+
+       FONDO — este bloque era el defecto reportado (research.md D-6):
+       declaraba `background-color: var(--blanco)` mientras la regla global
+       de la línea ~236 impone `color: var(--blanco)` a los enlaces. Fondo
+       blanco con texto blanco: ratio 1:1, literalmente ilegible.
+
+       Se corrige con el MISMO velo translúcido que ya usan los submenús
+       nativos unas líneas más arriba (`rgba(255,255,255,0.12)`): sobre el
+       azul del encabezado mantiene el tono de la marca y deja el texto
+       blanco por encima, con contraste suficiente (SC-003). No se inventa
+       un color nuevo: es el mismo valor ya aplicado y verificado en este
+       breakpoint. */
     .mu-sub-menu {
         position: absolute;
         top: 100%;
@@ -520,7 +569,7 @@
         transform: none;
         width: 200px;
         margin-top: 10px;
-        background-color: var(--blanco);
+        background-color: rgba(255, 255, 255, 0.12);
         box-shadow: var(--mu-shadow-md);
         border-radius: var(--mu-radius-sm);
         padding: 10px 0;
@@ -542,11 +591,42 @@
         transform: none;
     }
 
-    .mu-header-country-item {
-        left: 20px;
-        top: 20px;
+    /* ÁREA TÁCTIL de los enlaces del submenú de cuenta (research.md D-7,
+       FR-012). `.mu-sub-menu li a` no tenía min-height ni el padding vertical
+       que los submenús nativos sí tienen (línea ~535). Con 10px de padding la
+       altura efectiva ronda los 39px, por debajo del mínimo de 44px.
+
+       Se replican exactamente las medidas del bloque nativo inmediatamente
+       anterior, y con el mismo motivo: en iOS Safari un ancestro con
+       overflow:hidden impide calcular bien el hit-area de los hijos, y un
+       target de menos de 44px hace fallar el toque. position:relative +
+       z-index:1 aseguran que el área sensible sea la del propio enlace y no
+       la del contenedor con overflow. */
+    .mu-sub-menu li a {
+        display: block;
+        min-height: 44px;                /* touch target mínimo WCAG */
+        padding: 12px 20px;
+        position: relative;
+        z-index: 1;
+        pointer-events: auto;
     }
-    
+
+    /* Foco visible en los enlaces del submenú (constitución VIII). Sin esto,
+       quien navega con teclado no distingue en qué opción está al recorrer
+       el panel. */
+    .mu-sub-menu li a:focus-visible {
+        outline: 3px solid var(--secundario);
+        outline-offset: -3px;
+    }
+
+    /* El override móvil de `.mu-header-country-item` (left:20px; top:20px)
+       se eliminó junto con el posicionamiento absoluto (research.md D-3,
+       T015). Con `position: relative` esas coordenadas fijas anclaban el
+       control a una esquina de la pantalla y lo superponían al botón de
+       menú hamburguesa, que ocupa esa misma esquina (FR-008).
+
+       El dropdown mantiene transición más rápida en táctil, donde la
+       respuesta debe ser inmediata. */
     .country-selector-dropdown {
         transition: opacity 0.15s ease, transform 0.15s ease;
     }

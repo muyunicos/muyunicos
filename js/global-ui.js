@@ -8,108 +8,204 @@
     'use strict';
 
     /**
-     * Country Selector - Dropdown functionality with hover support
+     * Country Selector - Dropdown functionality
+     *
+     * SEPARACIÓN DE CONTEXTOS (research.md D-1):
+     * El fallo reportado era que en el móvil un toque no abría la lista.
+     * La causa: el mismo disparador tenía 'mouseenter' (que abre) y 'click'
+     * (que alterna). En táctil un toque dispara el 'mouseenter' emulado
+     * —que abre— y acto seguido el 'click', que lee "ya está visible" y
+     * CIERRA. El mismo toque que abría lo cerraba.
+     *
+     * Se resuelve detectando el contexto de puntero con matchMedia y
+     * registrando SOLO las escuchas que aplican a cada contexto:
+     *   - Puntero fino (escritorio): hover abre y cierra. Un ratón real
+     *     genera mouseenter y click como eventos distintos en el tiempo.
+     *   - Sin puntero fino (móvil): solo click, que alterna. No se registra
+     *     mouseenter, así que no puede depender de un evento emulado
+     *     (cumple el caso de borde "sin eventos de puntero fino").
+     *
+     * ESTADO POR CLASE (D-2, contrato C-1.2 a C-1.4):
+     * La visibilidad la gobierna la clase 'is-open' en el CONTENEDOR. Antes
+     * el CSS la detectaba buscando texto dentro de un atributo style en
+     * línea ([style*="display: block"]), un acoplamiento frágil que se
+     * rompe con cualquier refactor. aria-expanded queda sincronizado.
      */
     function initCountrySelector() {
-        var containers = document.querySelectorAll('.country-redirect-container'); 
+        var containers = document.querySelectorAll('.country-redirect-container');
         if(!containers.length) return;
+
+        // Contexto de puntero del DISPOSITIVO (no de cada instancia).
+        var finePointer = window.matchMedia
+            ? window.matchMedia('(hover: hover) and (pointer: fine)')
+            : { matches: true, addEventListener: function() {} };
 
         containers.forEach(function(container) {
             var trigger = container.querySelector('.country-selector-trigger');
             var dropdown = container.querySelector('.country-selector-dropdown');
-            
+
             if (!trigger || !dropdown) return;
-            
+
             var closeTimeout = null;
-            
-            // Función para abrir el dropdown
+
+            function isOpen() {
+                return container.classList.contains('is-open');
+            }
+
+            /** Abre este dropdown y cierra los demás. Contrato C-1.3. */
             function openDropdown() {
                 if (closeTimeout) {
                     clearTimeout(closeTimeout);
                     closeTimeout = null;
                 }
-                
-                // Cerrar otros dropdowns primero
-                document.querySelectorAll('.country-selector-dropdown').forEach(function(dd) {
-                    if (dd !== dropdown) {
-                        dd.style.display = 'none';
+
+                document.querySelectorAll('.country-redirect-container').forEach(function(other) {
+                    if (other !== container) {
+                        other.classList.remove('is-open');
+                        var otherTrigger = other.querySelector('.country-selector-trigger');
+                        if (otherTrigger) otherTrigger.setAttribute('aria-expanded', 'false');
                     }
                 });
-                document.querySelectorAll('.country-selector-trigger').forEach(function(tr) {
-                    if (tr !== trigger) {
-                        tr.setAttribute('aria-expanded', 'false');
-                    }
-                });
-                
-                dropdown.style.display = 'block';
+
+                container.classList.add('is-open');
                 trigger.setAttribute('aria-expanded', 'true');
             }
-            
-            // Función para cerrar el dropdown con delay
-            function closeDropdown() {
-                closeTimeout = setTimeout(function() {
-                    dropdown.style.display = 'none';
-                    trigger.setAttribute('aria-expanded', 'false');
-                    closeTimeout = null;
-                }, 200); // Delay de 200ms antes de cerrar
-            }
-            
-            // Hover sobre el trigger (bandera)
-            trigger.addEventListener('mouseenter', function() {
-                openDropdown();
-            });
-            
-            trigger.addEventListener('mouseleave', function() {
-                closeDropdown();
-            });
-            
-            // Mantener abierto cuando el cursor está sobre el dropdown
-            dropdown.addEventListener('mouseenter', function() {
+
+            /**
+             * Cierre inmediato. Se separa de closeDropdown() porque el
+             * retraso de gracia solo tiene sentido cuando hay un puntero
+             * que viaja del disparador a la lista. En táctil, cerrar con
+             * retraso deja el panel abierto 200ms tras el toque.
+             */
+            function hideDropdown() {
                 if (closeTimeout) {
                     clearTimeout(closeTimeout);
                     closeTimeout = null;
                 }
-            });
-            
-            dropdown.addEventListener('mouseleave', function() {
-                closeDropdown();
-            });
-            
-            // Mantener funcionalidad de click para accesibilidad
-            trigger.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                var isVisible = dropdown.style.display === 'block';
-                
-                if (isVisible) {
-                    dropdown.style.display = 'none';
+                container.classList.remove('is-open');
+                trigger.setAttribute('aria-expanded', 'false');
+            }
+
+            /**
+             * Cierre con 200ms de gracia. Solo escritorio (D-4): el tiempo
+             * existe para que el cursor llegue del disparador a la lista
+             * sin que se cierre en el camino.
+             */
+            function closeDropdown() {
+                closeTimeout = setTimeout(function() {
+                    closeTimeout = null;
+                    container.classList.remove('is-open');
                     trigger.setAttribute('aria-expanded', 'false');
-                } else {
-                    openDropdown();
-                }
-            });
+                }, 200);
+            }
             
+            function bindListeners() {
+                if (finePointer.matches) {
+                    /* --- ESCRITORIO: puntero fino --- */
+                    trigger.addEventListener('mouseenter', function() {
+                        openDropdown();
+                    });
+
+                    trigger.addEventListener('mouseleave', function() {
+                        closeDropdown();
+                    });
+
+                    // Mantener abierto cuando el cursor está sobre el dropdown
+                    dropdown.addEventListener('mouseenter', function() {
+                        if (closeTimeout) {
+                            clearTimeout(closeTimeout);
+                            closeTimeout = null;
+                        }
+                    });
+
+                    dropdown.addEventListener('mouseleave', function() {
+                        closeDropdown();
+                    });
+
+                    // El clic también alterna en escritorio, para quien
+                    // navega con teclado y llega al disparador con Enter,
+                    // Espacio o clic.
+                    trigger.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (isOpen()) {
+                            hideDropdown();
+                        } else {
+                            openDropdown();
+                        }
+                    });
+                } else {
+                    /* --- MÓVIL: sin puntero fino ---
+                       SOLO se registra 'click'. No se registra 'mouseenter',
+                       que es justamente el evento que el navegador emula en
+                       el primer toque y que hacía que el mismo toque
+                       abriera y cerrara la lista a la vez. */
+                    trigger.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (isOpen()) {
+                            hideDropdown();
+                        } else {
+                            openDropdown();
+                        }
+                    });
+                }
+            }
+
+            bindListeners();
+
+            // Si el contexto de puntero cambia (p.ej. se conecta un ratón a
+            // una tableta), se cierra el panel para no dejar un dropdown de
+            // escritorio abierto sobre una pantalla táctil.
+            if (finePointer.addEventListener) {
+                finePointer.addEventListener('change', function() {
+                    hideDropdown();
+                });
+            }
+
             // Cerrar al hacer click fuera
             document.addEventListener('click', function(e) {
                 if (!trigger.contains(e.target) && !dropdown.contains(e.target)) {
-                    if (closeTimeout) {
-                        clearTimeout(closeTimeout);
-                    }
-                    dropdown.style.display = 'none';
-                    trigger.setAttribute('aria-expanded', 'false');
+                    hideDropdown();
                 }
             });
-            
+
+            // Teclado: Enter y Espacio alternan, Escape cierra y devuelve
+            // el foco al disparador. Contrato C-1.5. Se registra SIEMPRE,
+            // en ambos contextos: no depende de que exista puntero fino.
+            trigger.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+                    // En puntero fino el clic ya alterna; se evita el doble
+                    // disparo que producirían clic + keydown.
+                    if (finePointer.matches) {
+                        e.preventDefault();
+                        return;
+                    }
+                    e.preventDefault();
+                    if (isOpen()) {
+                        hideDropdown();
+                    } else {
+                        openDropdown();
+                    }
+                }
+            });
+
             // Cerrar con tecla Escape
             document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape' && dropdown.style.display === 'block') {
-                    if (closeTimeout) {
-                        clearTimeout(closeTimeout);
-                    }
-                    dropdown.style.display = 'none';
-                    trigger.setAttribute('aria-expanded', 'false');
+                if (e.key === 'Escape' && isOpen()) {
+                    hideDropdown();
                     trigger.focus();
                 }
+            });
+
+            // Cerrar ante cualquier cambio de ancho (rotación del
+            // dispositivo). Sin esto, un panel abierto a 375px queda a
+            // medio camino al pasar a horizontal o al cruzar el
+            // breakpoint de escritorio.
+            var resizeTimer = null;
+            window.addEventListener('resize', function() {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(hideDropdown, 100);
             });
         });
     }

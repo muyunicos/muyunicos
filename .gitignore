@@ -1,0 +1,50 @@
+# ============================================
+# MUY ÚNICOS — .gitignore raíz
+# ============================================
+# Este repositorio es un tema hijo de WordPress versionado como código: PHP,
+# CSS y JS se versionan. Solo se ignoran artefactos locales, secretos y
+# dependencias que NO deben llegar al repositorio.
+#
+# ⚠️ NO ignorar `css/`, `js/`, `inc/`, `templates/`, `assets/`, `style.css`
+# ni `functions.php`: son el producto. El despliegue es manual por FTP y el
+# repositorio es la única fuente versionada del tema.
+
+# --- Sistema operativo y editores ---
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.tmp
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# --- Logs (principio VII: la traza va a debug.log, nunca al repositorio) ---
+*.log
+debug.log
+
+# --- Secretos y configuración local (principio: nunca en el repositorio) ---
+.env
+.env.*
+*.local.php
+wp-config.php
+wp-config-*.php
+
+# --- Dependencias de terceros (no hay composer ni npm, pero quedan cubiertos) ---
+vendor/
+node_modules/
+
+# --- Caché y artefactos de build ---
+*.cache
+.cache/
+dist/
+build/
+*.min.js.map
+
+# --- Sistema de control de versiones ---
+# El .git ya lo gestiona Git; se listan únicamente los archivos de resolución
+# de conflictos, que no aportan nada al repositorio.
+*.orig
+*.rej
+MERGE_HEAD

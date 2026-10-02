@@ -129,6 +129,16 @@ function mu_enqueue_assets() {
         }
     }
 
+    // Sección de cuenta (Custom Styles)
+    // Se carga en TODA la sección, no solo en el endpoint de descargas:
+    // /mi-cuenta/, /mi-cuenta/edit-account/ y el resto de endpoints no tenían
+    // ninguna hoja propia y se mostraban con los estilos genéricos de la
+    // plataforma, que están diseñados para escritorio (FR-026 a FR-030).
+    // research.md D-15. Carga condicional estricta (constitución II).
+    if ( mu_wc_is_account_page() ) {
+        wp_enqueue_style( 'mu-account', "$uri/css/account.css", [ 'mu-base' ], $ver );
+    }
+
     // Mi Cuenta > Descargas (Custom Styles)
     if ( mu_wc_is_account_page() && mu_wc_is_wc_endpoint_url( 'downloads' ) ) {
         wp_enqueue_style( 'mu-account-downloads', "$uri/css/account-downloads.css", [ 'mu-base' ], $ver );

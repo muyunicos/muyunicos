@@ -274,7 +274,16 @@ muyunicos/ (generatepress-child)
 │   │                        # admin-orders.css
 │   └── [secciones].css     # home, shop, product, product-builder, cart, checkout,
 │                            # login, testimonials, tag-groups, account-downloads,
-│                            # coming-soon
+│                            # account, coming-soon
+│
+│   NOTA — css/account.css: hoja de la sección de cuenta completa
+│   (mi-cuenta, edit-account, downloads, orders). Handle 'mu-account',
+│   encolada en functions.php → mu_enqueue_assets() dentro de
+│   `if ( mu_wc_is_account_page() )` con dependencia 'mu-base'. Antes de
+│   2026-10-02 la sección no tenía hoja propia: account-downloads.css
+│   estaba acotada al endpoint 'downloads' y el resto de las pantallas se
+│   mostraba con los estilos genéricos de WooCommerce, pensados para
+│   escritorio. Solo se carga en la sección de cuenta (principio II).
 │
 └── js/                     # JS modular
     ├── global-ui.js        # initCarousels()
@@ -312,6 +321,16 @@ Colores      | --primario (#2B9FCF)  --secundario (#FFD77A)  --texto  --blanco  
 Spacing      | --mu-space-xs (5px)  --mu-space-sm (10px)  --mu-space-md (20px)  --mu-space-lg (40px)
 Radius       | --mu-radius-sm (6px)  --mu-radius (12px)  --mu-radius-md  --mu-radius-full
 Tipografía   | --mu-font-display (Fredoka One)  --mu-font-base (Inter)
+
+EXCEPCIÓN — botón de contacto (WhatsApp):
+--mu-wa-green (#25d366)  --mu-wa-green-hover (#1eb455)  --mu-wa-accent (#339db7)
+Estas tres NO son colores de marca de Muy Únicos: son los colores
+institucionales de WhatsApp, y no tienen equivalente en el bloque anterior.
+Se declararon en style.css el 2026-10-02 para eliminar los literales que
+estaban escritos a mano en css/components/global-ui.css. Sustituirlas por
+--primario haría que el botón dejara de reconocerse como WhatsApp. Si la
+marca adopta un verde propio, se cambia el valor en :root y en ningún otro
+archivo. Ver el registro de excepciones en §8.
 
 ICONOS SVG
 echo mu_get_icon('name'); // NUNCA inline SVG directo (excepto en templates standalone)
@@ -569,6 +588,7 @@ BLOQUEO DE BOTS POR PAÍS EN EL EDGE (2026-10-02)
 
 ════════════════════════════════════════════════════════════════
 8. DEUDA TÉCNICA
+
 ════════════════════════════════════════════════════════════════
 
 - [ ] digital-restriction.php / cart.php: Implementar validación `woocommerce_check_cart_items` para bloquear checkout de productos físicos si el país cambia. ("Este artículo no está disponible en tu ubicación actual").
@@ -581,6 +601,29 @@ BLOQUEO DE BOTS POR PAÍS EN EL EDGE (2026-10-02)
 - [ ] WAF en el edge: configurar un challenge para requests con `product_tag=` multi-tag provenientes de bots no verificados. Criterio: "que no intenten ninguna combinación de etiquetas en el borde". Implementar en el WAF de la CDN de Hostinger; el edge hoy no lo soporta. OJO: verificar antes que no bloquee a Google (que rastrea combinaciones de etiquetas).
 - [ ] Excepción en el WAF para `meta-webindexer` (crawler de previews de Facebook/WhatsApp) si se desea preservar las preview cards compartidas. Criterio: las previews de enlaces en redes deben seguir renderizando la imagen.
 - [ ] Repositorio de la Calculadora de Stickers: 7 archivos modificados sin commitear, incluido el bundle `calculadora_stickers.js` que se sirve en producción. Mientras no se commiteen, el bundle servido no es reproducible desde su fuente.
+
+REGISTRO DE EXCEPCIONES (2026-10-02, feature 003-mobile-ui-fixes):
+- Colores --mu-wa-green / --mu-wa-green-hover / --mu-wa-accent: excepción al
+  principio VIII (sistema de diseño). Motivo: son los colores institucionales de
+  WhatsApp y no tienen equivalente entre los tokens de marca. Sustituirlos por
+  --primario haría que el botón de contacto dejara de ser reconocible como
+  WhatsApp, que es lo que comunica al comprador que puede escribirnos. Ubicación:
+  declaradas en :root de style.css con su comentario justificativo y usadas solo en
+  css/components/global-ui.css. Sin fecha de expiración: siguen siendo válidas
+  mientras el canal de contacto sea WhatsApp. Verificado: 0 literales de color
+  restantes en el bloque del botón.
+
+DEUDA DE VERIFICACIÓN (2026-10-02, feature 003-mobile-ui-fixes):
+- La verificación del comportamiento en móvil NO es automatizable en este
+  proyecto. Un toque en pantalla angosta no se reproduce con `curl`, y el contraste
+  real y el área táctil se miden sobre el píxel renderizado. La verificación de la
+  feature 003 es manual: specs/003-mobile-ui-fixes/quickstart.md Fase B, 7 pasos en
+  un teléfono real sobre ec.muyunicos.com. Criterio: si esa fase no se ejecuta, la
+  feature se declara NO VERIFICADA en el pull request y nunca como verificada. Los
+  pasos automatizables de la Fase A sí se ejecutan por comando y su salida va al PR.
+- Hueco conocido y aceptado: `php -l` local corre PHP 8.5.9 y producción 8.5.4. La
+  verificación de sintaxis es local; el comportamiento se verifica contra
+  producción, que es la única red disponible.
 
 RESUELTOS el 2026-10-02:
 - [x] Versión de PHP: confirmada 8.5.4 contra `X-Powered-By`. El §2 ya declara el
