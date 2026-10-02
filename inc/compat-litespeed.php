@@ -44,12 +44,14 @@ if ( ! defined( 'ABSPATH' ) ) exit;
  *
  * Mecanismo real: LiteSpeed separa por variante usando la cookie _lscache_vary,
  * emitida con dominio .muyunicos.com y con un valor derivado del host. Se verificó
- * que produce HTML distinto por subdominio. Este filtro es una segunda línea: el
- * header Vary observado en producción solo trae Accept-Encoding, así que esta regla
+ * el 2026-10-02 que produce HTML distinto por subdominio: el catálogo de
+ * muyunicos.com (con productos físicos) y el de los subdominios (solo digitales)
+ * responden con md5 y tamaño diferentes. Este filtro es una segunda línea: el
+ * header Vary observado en producción trae solo Accept-Encoding, así que esta regla
  * puede no estar aplicándose con el preajuste de caché vigente.
  *
  * NO tocar sin medir antes: si se rompe el aislamiento, reaparece el problema de
- * productos físicas cruzados entre países.
+ * productos físicos cruzados entre países.
  *
  * @param array $vary Reglas de variación actuales.
  * @return array Reglas de variación ampliadas.

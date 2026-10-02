@@ -349,7 +349,7 @@ function mu_load_module( $module ) {
 // Orden de carga (respetando dependencias)
 mu_load_module( 'icons' );               // SVG icons repository
 mu_load_module( 'compat-litespeed' );    // Compatibilidad LiteSpeed Cache — exclusiones JS Delay
-mu_load_module( 'cloudflare-optimization' ); // Cloudflare CDN optimization
+mu_load_module( 'cdn-cache-bypass' ); // Bypass de caché CDN para contenido dinámico
 mu_load_module( 'performance-monitor' ); // Performance monitoring system
 mu_load_module( 'coming-soon' );         // Coming Soon override (intercepta template_redirect antes que Hostinger)
 mu_load_module( 'geo' );                 // Multi-country system

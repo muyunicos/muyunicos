@@ -35,6 +35,8 @@ FLUJO DE TRABAJO Y DESPLIEGUE
 
 Hosting: Hostinger Plan Business (Espacio: 200GB | RAM: 3072 MB | Núcleos: 2 | PHP Workers: 60)
 Stack: PHP 8.3.28 | MySQL 11.8.3-MariaDB-log | LiteSpeed Cache 7.9
+  ⚠️ PENDIENTE: producción responde `X-Powered-By: PHP/8.5.4` (verificado 2026-10-02).
+  Confirmar en el panel y corregir este dato.
 Tema: GeneratePress 3.6.1 + GeneratePress Child
 
 Dominio y Seguridad:
@@ -72,6 +74,13 @@ AISLAMIENTO DE CACHÉ ENTRE SUBDOMINIOS (mecanismo real):
   cruzados entre países.
 
 Object Cache (LiteSpeed):
+- ⚠️ NO confundir con la caché de páginas. Son dos capas distintas:
+  · Object cache (esta sección): guarda DATOS (transients, opciones, índices de
+    catálogo). La consume PHP en cada request.
+  · Caché de páginas (LiteSpeed Cache): guarda HTML por subdominio. La consume el
+    navegador y la CDN.
+  Un error de TTL o de purga en una capa NO se propaga a la otra, y diagnosticar
+  una mirando la otra lleva a conclusiones equivocadas.
 - Caché de objetos: ON (Memcached, prueba de conexión exitosa).
 - Extensión: Memcached (Redis también disponible y activado).
 - Configuración: Método Memcached | Host ::1 | Puerto 11211.
@@ -109,8 +118,71 @@ Modelo Híbrido:
 
 Pagos, Analítica y Correos:
 - Pasarelas: Mercado Pago (principal LATAM) y PayPal. (Tarifas dinámicas por pasarela).
+  ⚠️ Son pasarelas CONFIGURADAS, no plugins acoplados al tema: el tema no
+  referencia las clases de Mercado Pago ni de PayPal. El checkout delega la
+  autorización del cobro en WooCommerce y en cada plugin; el tema solo opera
+  sobre el array de pasarelas con mu_payment_gateways_country_rules.
 - Correos Transaccionales: WP Mail SMTP 4.9.0. (Sin plataformas de automatización externas).
 - Analítica: Google Analytics y Meta Pixel activos.
+
+PLUGINS ACOPLADOS AL TEMA (verificado 2026-10-02 por grep en inc/):
+- Solo se listan los que el tema consume por hook, filtro o API. Un plugin
+  instalado sin acoplamiento NO va aquí: listarlo sugeriría una integración que
+  no existe.
+- Rank Math SEO → rank_math_description, rank_math_canonical (inc/seo-hreflang.php).
+  También engancha The SEO Framework y Yoast por si se activan.
+- Jetpack Search → jetpack_search_instant_search_options p10 y p15
+  (inc/jetpack-search-integration.php): corrige homeUrl al subdominio actual y
+  oculta precios en países restringidos.
+- Hostinger Tools → get_option('hostinger_tools') (inc/coming-soon.php): lee
+  maintenance_mode y bypass_code para el override del Coming Soon.
+- wpLingua → clases .wplng-switcher y .wplng-close-btn (css/ y js/global-ui.js);
+  el tema inyecta la body class mu-wplng-hide para ocultarlo en subdominios sin
+  multiidioma (inc/ui.php).
+- WooCommerce Price Based on Country → class_exists() como guarda
+  (inc/geo.php): el tema ajusta decimales y formateo solo si el plugin está.
+- Nextend Social Login → shortcode_exists('nextend_social_login') y URLs
+  ?loginSocial= (inc/auth-modal.php, inc/checkout.php).
+- LiteSpeed Cache → litespeed_vary y litespeed_purge_all
+  (inc/compat-litespeed.php, inc/navigation-chips.php).
+
+CÓDIGO QUE SE EJECUTA FUERA DEL TEMA (Code Snippets, verificado 2026-10-02):
+- ⚠️ Estos fragmentos NO viven en el repositorio versionado. Se documentan aquí
+  para que sean auditables: un fragmento declarado se puede revisar; uno no
+  declarado no existe para el siguiente agente que abra el proyecto.
+  Documentarlos NO autoriza moverlos al tema.
+- Filtro de shortcodes → plugin Code Snippets. Propósito: quitar del contenido
+  los shortcodes no registrados para que el comprador no vea etiquetas sin
+  renderizar. Riesgo: closure sin nombre, no desactivable de forma selectiva.
+- Calculadora de Stickers → plugin Code Snippets + repositorio externo. Propósito:
+  shortcode que encola el bundle compilado y expone los datos al JS. Ver
+  "CALCULADORA DE STICKERS" más abajo.
+- Ajuste de wpLingua → plugin Code Snippets. Propósito: ajustar la configuración
+  del plugin de traducción. Riesgo: declara define() y funciones sin guardas.
+- ⚠️ RIESGO DE COLISIÓN DE NOMBRES: el fragmento de la Calculadora declara
+  `mu_sticker_calculator_shortcode()` con el prefijo `mu_` del tema y SIN guarda
+  `if ( ! function_exists() )`. El repositorio externo usa el mismo prefijo.
+  Si el tema llegara a declarar ese nombre, PHP aborta con error fatal por
+  función redeclarada. Verificar antes de tocar cualquier cosa que declare
+  entidades `mu_`.
+
+CALCULADORA DE STICKERS (flujo de compilación):
+- El código fuente NO está en este repositorio: vive en un repositorio aparte
+  (GitHub, carpeta `calculadora/`). Este repositorio solo guarda los ARTEFACTOS
+  compilados que se sirven.
+- Comandos de compilación (se ejecutan en el repositorio de la Calculadora):
+  · npm run build:js   → genera el bundle JS
+  · npm run build:css  → genera el CSS de Tailwind
+  · npm run build      → ambos
+- Destino de los artefactos dentro de este tema:
+  · assets/js/calculadora_stickers.js
+  · assets/css/calculadora_stickers.css
+- El endpoint assets/guardar_datos.php persiste la configuración de la
+  calculadora. Vive dentro de assets/ y por lo tanto es accesible por HTTP, así
+  que exige `manage_options` y hace bootstrap de WordPress antes de escribir.
+- ⚠️ La fuente es la autoridad. Editar el bundle compilado directamente se
+  pierde en el próximo build. Hay cambios sin commitear en el repositorio de la
+  Calculadora (ver §8).
 
 ════════════════════════════════════════════════════════════════
 4. SYSTEM MAP — ÁRBOL DE DIRECTORIOS
@@ -138,13 +210,11 @@ muyunicos/ (generatepress-child)
 │   │                        #    con query product_tag a la URL canónica.
 │   │                        # (Eliminado 2026-10-02: el filtro litespeed_optimize_js_excludes.
 │   │                        #  Ver incidente "wp.i18n is not defined" en §7.)
-│   ├── cloudflare-optimization.php # Bypass de caché Cloudflare para contenido
-│   │                        # dinámico (cart/checkout/account). LIMPIEZA v2.0
-│   │                        # (25-Aug-2026): eliminados cache_headers (cacheaba
-│   │                        # HTML 1 año por bug del hook send_headers),
-│   │                        # asset_version (filemtime por asset + bug subdominios
-│   │                        # + redundante con versionado del tema), lazy_loading
-│   │                        # (nativo WP 5.5+) y page_rule_hints (ruido).
+│   ├── cdn-cache-bypass.php # Bypass de caché CDN para contenido dinámico
+│   │                        # (cart/checkout/account). Emite cabeceras HTTP
+│   │                        # estándar, agnóstico al proveedor: el nombre se
+│   │                        # cambió el 2026-10-02 al migrar de Cloudflare a la
+│   │                        # CDN de Hostinger, sin cambiar el comportamiento.
 │   ├── performance-monitor.php # Monitoreo de rendimiento: logging, cache stats,
 │   │                        # AJAX performance, rate limiting, dashboard widget
 │   │                        # (incluye sección "Bot 404 Fast-Exit" con contadores
@@ -394,10 +464,9 @@ SATURACIÓN POR RASTREO MASIVO DE BOTS/IA EN URLs INEXISTENTES
     EL fix multiplicador: cada combinación se renderiza una sola vez y luego
     se sirve desde caché (también hace la navegación por chips instantánea).
     Verificar: 2º curl a la misma URL con ?product_tag= debe dar x-litespeed-cache: hit.
-  · Cloudflare (opcional): WAF challenge a requests con product_tag= multi-tag
-    (+) de bots no verificados — implementa "que no intenten ninguna" en el edge.
-  · Cloudflare: evaluar excepción para meta-webindexer (crawler de previews de
-    Facebook/WhatsApp) si se desea preservar las preview cards compartidas.
+  · PENDIENTE DE CONFIGURAR (ver §8): WAF challenge a requests con
+    product_tag= multi-tag de bots no verificados, y excepción para
+    meta-webindexer. No están activos: el edge no los implementa todavía.
 - VERIFICACIÓN (curl):
   · Fast-exit activo (debe mostrar X-MU-Bot-404: fast-exit, X-Robots-Tag: noindex,
     X-LiteSpeed-Cache-Control: public,max-age=86400 y body HTML mínimo):
@@ -465,3 +534,7 @@ BLOQUEO DE BOTS POR PAÍS EN EL EDGE (2026-10-02)
 - [ ] coming-soon.css: archivo deprecado pero presente. Eliminar tras confirmar inactividad.
 - [ ] ui.php: mu_testimonios_section() — el wp_remote_get a Google Places solo se ejecuta con ?force_reviews=1. Evaluar mover a cron para evitar timeouts en request de admin.
 - [ ] navigation-chips.php: mu_navchips_build_product_index() — evaluar si el índice puede crecer demasiado en wp_options con muchos productos.
+- [ ] WAF en el edge: configurar un challenge para requests con `product_tag=` multi-tag provenientes de bots no verificados. Criterio: "que no intenten ninguna combinación de etiquetas en el borde". Implementar en el WAF de la CDN de Hostinger; el edge hoy no lo soporta. OJO: verificar antes que no bloquee a Google (que rastrea combinaciones de etiquetas).
+- [ ] Excepción en el WAF para `meta-webindexer` (crawler de previews de Facebook/WhatsApp) si se desea preservar las preview cards compartidas. Criterio: las previews de enlaces en redes deben seguir renderizando la imagen.
+- [ ] Versión de PHP sin confirmar: el §2 declara 8.3.28 pero producción responde `X-Powered-By: PHP/8.5.4`. Verificar en el panel de Hostinger y corregir el dato. No se cambió el valor porque no se puede confirmar desde el repositorio.
+- [ ] Repositorio de la Calculadora de Stickers: 7 archivos modificados sin commitear, incluido el bundle `calculadora_stickers.js` que se sirve en producción. Mientras no se commiteen, el bundle servido no es reproducible desde su fuente.
