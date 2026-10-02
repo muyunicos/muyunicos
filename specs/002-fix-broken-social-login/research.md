@@ -247,8 +247,8 @@ plugin, pero hay que saber que el procedimiento existe.
 | 7 | Verificación sin el plugin = manual | Gate automático, imposible sin staging |
 | 8 | El WAF se documenta, no se arregla en código | Es una configuración del panel, ajena a esta feature |
 
-## NEEDS CLARIFICATION
+## Aclaraciones
 
-Ninguna. La premisa original se corrigió con evidencia verificada contra
-producción, el formato de la URL se comprobó siguiendo el flujo OAuth completo, y
-el comportamiento del WAF se aisló parámetro a parámetro.
+Ninguna pendiente. La premisa original se corrigió con evidencia verificada
+contra producción, el formato de la URL se comprobó siguiendo el flujo OAuth
+completo, y el comportamiento del WAF se aisló parámetro a parámetro.

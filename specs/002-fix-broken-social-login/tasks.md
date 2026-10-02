@@ -30,7 +30,7 @@ empezar sin él.
 
 ---
 
-## Phase 2: User Story 1 — El comprador puede autenticarse (P1)
+## Phase 2: User Story 1 — El login social no depende de otro plugin (P1)
 
 **Objetivo**: que los cuatro enlaces se construyan por API y no dependan de que el
 plugin que oculta la URL de login los reescriba. El login YA funciona hoy; el
@@ -90,7 +90,7 @@ escenario 3 y la hace el mantenedor.
 - [X] T026 Registrar en `MIGRATION-GUIDE.md` §7 el incidente del WAF: el filtrado del edge bloqueaba con 403 el retorno de OAuth de Google por la secuencia `.profile` en los parametros; solo se resolvió bajando el nivel de seguridad de la CDN de Alto a Medio. Contexto, regla aislada, resolución y el aprendizaje de que una regla anti-inyección puede bloquear un callback legítimo
 - [X] T027 Registrar en `MIGRATION-GUIDE.md` §3 que el tema obtiene la ruta de login mediante la API de WordPress, y que el plugin que la oculta hookea `site_url`: hoy la ruta correcta depende de ese hook, y por eso el tema debe resolverla por API en lugar de escribirla a mano
 - [X] T028 Revisar que `MIGRATION-GUIDE.md` no contradice la constitución v2.1.0
-- [X] T029 Revisar los 8 Success Criteria de `spec.md` y confirmar que cada uno tiene tarea o evidencia
+- [X] T029 Revisar los 9 Success Criteria de `spec.md` y confirmar que cada uno tiene tarea o evidencia
 
 ### Verificaciones manuales (las hace el mantenedor, no el agente)
 

@@ -1,4 +1,4 @@
-# Phase 1 Data Model: Restaurar el login social y eliminar los SVG inline
+# Phase 1 Data Model: Blindar la URL de login social y eliminar los SVG inline
 
 **Feature**: 002-fix-broken-social-login | **Date**: 2026-10-02
 
@@ -44,15 +44,14 @@ Enlace de autenticación con un proveedor externo. Es la entidad central del fix
   (plugin activo) (plugin off)    (error)
         │              │              │
         ▼              ▼              ▼
-   proveedor        proveedor     fallback
-   acepta          acepta         a la URL
-                                         del modal
+   proveedor        proveedor     enlace no
+   acepta          acepta         se renderiza
 ```
 
-**Por qué no hay estado de error real**: si la ruta no se puede resolver, el
-comportamiento correcto es no renderizar el enlace social, no renderizar uno
-roto. El modal tiene su propio formulario de usuario y contraseña como camino
-alternativo.
+**Por qué no hay estado de error visible**: si la ruta no se puede resolver, el
+helper devuelve una cadena vacia y el enlace no se renderiza. El modal tiene su
+propio formulario de usuario y contrasena como camino alternativo, asi que el
+comprador siempre tiene una via para entrar.
 
 ---
 
