@@ -40,15 +40,36 @@ Tema: GeneratePress 3.6.1 + GeneratePress Child
 Dominio y Seguridad:
 - Dominio principal (muyunicos.com) en DonWeb.
 - Redirección automática de muyunicos.com.ar a muyunicos.com.
-- DNS en Cloudflare con reglas de bloqueo por IP/País (SC, CN, IN, SG bloqueados) 
-  para mitigar el abuso de recursos.
+- El bloqueo por país se aplica en el EDGE (CDN de Hostinger), como lista de
+  permitidos. Ver §2 "Caché y CDN".
 
-Caché y CDN (LiteSpeed + Cloudflare):
-- LiteSpeed Cache utiliza el Preajuste Avanzado (Guest Mode ON, sin combinar CSS/JS para proteger modularidad).
-- El Retraso de JS (JS Delay) se activa manualmente en la configuración de página.
-- Cloudflare es la ÚNICA CDN activa. La CDN de QUIC.cloud está apagada (OFF) para evitar conflictos DNS/SSL.
-- La API de Cloudflare está integrada en LiteSpeed vía Token dedicado (Permisos mínimos: Zone Read, Cache Purge) para vaciar la caché global automáticamente.
-- Cloudflare NO almacena el HTML en caché (sin reglas "Cache Everything"). El HTML cacheado por subdominio lo maneja estrictamente LiteSpeed.
+Caché y CDN (LiteSpeed + CDN de Hostinger):
+- Preajuste de LiteSpeed Cache: CACHÉ POR DEFECTO (aplicado 2026-10-02).
+  NO combinar CSS/JS: rompe la carga condicional por página que sostiene el tema
+  (ver Principio I y II de la constitución) y multiplica la cardinalidad de caché
+  al cruzarse con los subdominios.
+- JS Delay (Retraso de JS): DESACTIVADO. Ver incidente §7 "wp.i18n is not defined":
+  rompía el orden de dependencias de los paquetes @wordpress/*. Si se reactiva,
+  excluir PRIMERO wp-hooks, wp-i18n y a18n del filtro litespeed_optimize_js_excludes;
+  excluir solo los consumidores no alcanza.
+- QUIC.cloud: integración ACTIVA (servicios ccss/ucss conectados al node123), pero
+  su CDN está DESACTIVADA. Ambas CDNs no pueden coexistir; la activa es Hostinger.
+- CDN de Hostinger (hcdn): ÚNICA CDN activa. El HTML cacheado por subdominio lo
+  maneja estrictamente LiteSpeed; la CDN de Hostinger no almacena HTML de catálogo.
+- TLS 1.3 activo.
+- Bloqueo de tráfico por PAÍS en el edge: lista de permitidos. Todo lo que no esté
+  en la lista se rechaza antes de llegar a PHP.
+
+AISLAMIENTO DE CACHÉ ENTRE SUBDOMINIOS (mecanismo real):
+- LiteSpeed separa por variante con la cookie _lscache_vary, de dominio
+  .muyunicos.com, con un valor derivado del host. Verificado 2026-10-02: el catálogo
+  de muyunicos.com (con productos físicos) y el de los subdominios (solo digitales)
+  sirven HTML distinto (md5 y tamaño diferentes). Los productos físicos
+  desaparecen en los subdominios POR DISEÑO (digital-restriction.php), no es un fallo.
+- El header Vary observado en producción trae solo Accept-Encoding. El filtro
+  litespeed_vary de inc/compat-litespeed.php queda como refuerzo, no como mecanismo
+  principal. NO tocarlo sin medir antes: romperlo reintroduce productos físicos
+  cruzados entre países.
 
 Object Cache (LiteSpeed):
 - Caché de objetos: ON (Memcached, prueba de conexión exitosa).
@@ -103,20 +124,20 @@ muyunicos/ (generatepress-child)
 ├── inc/                    # Módulos PHP — lógica de negocio y hooks
 │   ├── icons.php           # [PRIMERO] mu_get_icon() — repositorio SVG
 │   ├── compat-litespeed.php # [SEGUNDO] Compatibilidad LiteSpeed Cache.
-│   │                        # 1. Excluye scripts del JS Delay (ej. gla-gtag-events.js,
-│   │                        #    js/jetpack-search.js para que los links se corrijan
-│   │                        #    antes de que Jetpack renderice los resultados).
-│   │                        # 2. mu_litespeed_vary_by_subdomain() — separación de caché
-│   │                        #    HTML por $_SERVER['HTTP_HOST'] (evita Cache Collisions).
-│   │                        # 3. mu_litespeed_nocache_404() — evita cachear 404s
+│   │                        # 1. mu_litespeed_vary_by_subdomain() — refuerzo de la
+│   │                        #    separación por subdominio. El aislamiento real lo
+│   │                        #    hace la cookie _lscache_vary (ver §2).
+│   │                        # 2. mu_litespeed_nocache_404() — evita cachear 404s
 │   │                        #    causados por errores transitorios de infraestructura.
-│   │                        # 4. mu_is_bot() + mu_litespeed_bot_404_fast_exit() —
+│   │                        # 3. mu_is_bot() + mu_litespeed_bot_404_fast_exit() —
 │   │                        #    salida instantánea (exit) de 404s para bots/indexadores
-│   │                        #    de IA: HTML mínimo sin render de tema ni consultas SQL,
-│   │                        #    con X-LiteSpeed-Cache-Control public 24h para que
-│   │                        #    LiteSpeed sirva repeticiones desde caché (separadas por
-│   │                        #    subdominio vía vary mu_host). Los humanos conservan el
-│   │                        #    flujo completo (no-cache + auto-recuperación).
+│   │                        #    de IA: HTML mínimo sin render de tema ni consultas SQL.
+│   │                        #    Segunda línea de defensa: el CDN de Hostinger ya
+│   │                        #    responde 429 antes de que llegue a PHP.
+│   │                        # 4. mu_litespeed_bot_tag_filter_redirect() — 301 de bots
+│   │                        #    con query product_tag a la URL canónica.
+│   │                        # (Eliminado 2026-10-02: el filtro litespeed_optimize_js_excludes.
+│   │                        #  Ver incidente "wp.i18n is not defined" en §7.)
 │   ├── cloudflare-optimization.php # Bypass de caché Cloudflare para contenido
 │   │                        # dinámico (cart/checkout/account). LIMPIEZA v2.0
 │   │                        # (25-Aug-2026): eliminados cache_headers (cacheaba
@@ -398,6 +419,40 @@ SATURACIÓN POR RASTREO MASIVO DE BOTS/IA EN URLs INEXISTENTES
   que sobrevive al exit. Verificado en producción: [MU-BOT404] capturó Amzn-SearchBot,
   Claude-SearchBot y crawlers de Meta spoofeando Chrome (sufijo "compatible; ..."),
   sin falsos positivos de navegadores humanos reales.
+
+ERRORES "wp.i18n is not defined" / gtag-events "reading 'hooks'" (2026-10-02)
+- Síntoma: en la consola del navegador, tres "Uncaught ReferenceError: wp is not
+  defined" (wp.i18n.setLocaleData ×2 + el blob de Jetpack Search), un
+  "TypeError: Cannot read properties of undefined (reading 'hooks')" en
+  gtag-events.js y un "wp.jpI18nLoader.state is not set" de JQMIGRATE.
+- Causa raíz: el JS Delay de LiteSpeed ejecutaba los scripts de forma asíncrona
+  sin respetar el árbol de dependencias de wp_register_script. Los paquetes
+  @wordpress/* (wp-hooks, wp-i18n, a18n) se servían como blobs
+  data:text/javascript;base64 y llegaban DESPUÉS de sus consumidores, con lo que
+  el objeto global wp todavía no existía. El síntoma visible era gtag-events.js,
+  pero el problema estaba en el proveedor, no en el consumidor.
+- Error de diagnóstico previo: el filtro litespeed_optimize_js_excludes excluía
+  gtag-events.js, 101.js, jetpack-search.js y modal-auth.js, es decir los
+  CONSUMIDORES. Su comentario afirmaba que no hacía falta excluir wp-hooks porque
+  "LiteSpeed lo gestiona bien", supuesto que los logs refutaron.
+- Mitigación aplicada: preajuste de LiteSpeed "CACHÉ POR DEFECTO", que desactiva
+  el JS Delay. Verificado tras aplicar: 0 errores wp/hooks/i18n, y el catálogo
+  sigue cacheando (hit) en raíz y subdominios.
+- APRENDIZAJE: si se reactiva el JS Delay, excluir PRIMERO wp-hooks, wp-i18n y
+  a18n; excluir solo los consumidores no alcanza. Alternativa a evaluar: activar
+  Guest Mode y excluir por paquete, no por ruta.
+
+BLOQUEO DE BOTS POR PAÍS EN EL EDGE (2026-10-02)
+- Verificado: un User-Agent de bot (GPTBot) contra una URL inexistente en un
+  subdominio recibe 429 Too Many Requests desde el CDN de Hostinger
+  (Server: hcdn, sin X-Litespeed-Cache, sin X-MU-Bot-404, Content-Length 0),
+  mientras el mismo User-Agent humano recibe el 302 de redirección normal.
+- Consecuencia: mu_litespeed_bot_404_fast_exit() sigue en el tema pero deja de
+  ejecutarse en la mayoría de los casos, porque WordPress no llega a correr. Es
+  una segunda línea de defensa, no un mecanismo inútil: si el edge deja de
+  filtrar, el fast-exit vuelve a actuar.
+- APRENDIZAJE: al verificar el fast-exit, distinguir si el 429/404 viene del edge
+  o de PHP (presencia de Server: hcdn y ausencia de X-Litespeed-Cache indica edge).
 
 ════════════════════════════════════════════════════════════════
 8. DEUDA TÉCNICA

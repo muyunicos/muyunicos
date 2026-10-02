@@ -2,16 +2,31 @@
 /**
  * Muy Únicos — Compatibilidad LiteSpeed Cache
  *
- * Problema: gla-gtag-events.js (Google Listings & Ads) depende de window.wp.hooks
- * (wp-hooks handle). Cuando LiteSpeed aplica "Load JS Delayed", ejecuta los scripts
- * en orden asíncrono sin respetar el árbol de dependencias de wp_register_script.
- * En visitantes (sin admin bar), wp-hooks no se carga antes que gtag-events.js,
- * resultando en: "Uncaught TypeError: Cannot read properties of undefined (reading 'hooks')"
+ * Cubre los tres ajustes de caché de origen que el sitio necesita:
  *
- * Solución: excluir los handles problemáticos del JS Delay de LiteSpeed vía filtro PHP,
- * forzando su carga en el orden normal del navegador.
+ * 1. mu_litespeed_vary_by_subdomain() — reinforce del aislamiento por subdominio.
+ *    NOTA: el aislamiento real lo hace la cookie _lscache_vary que LiteSpeed
+ *    emite con dominio .muyunicos.com y cuyo valor es un hash del host. Verificado
+ *    que catálogos de muyunicos.com (con productos físicos) y de los subdominios
+ *    (solo digitales) sirven HTML distinto. Este filtro queda como refuerzo; no
+ *    activarlo a ciegas, porque con el preajuste de caché vigente puede no llegar
+ *    a aplicarse y tocar lo que ya funciona es más riesgoso que dejarlo.
  *
- * NO toca la config del plugin LiteSpeed (que se resetea con actualizaciones).
+ * 2. mu_litespeed_nocache_404() — evita que un 404 transitorio de infraestructura
+ *    quede cacheado y se sirva a todos los visitantes durante horas.
+ *
+ * 3. mu_is_bot() + mu_litespeed_bot_404_fast_exit() — salida instantánea para bots
+ *    que piden URLs inexistentes. Es segunda línea de defensa: el CDN de Hostinger
+ *    ya responde 429 antes de que la petición llegue a PHP.
+ *
+ * HISTORIAL — filtro 'litespeed_optimize_js_excludes' (eliminado):
+ *   Excluía gtag-events.js, 101.js, jetpack-search.js y modal-auth.js del JS Delay.
+ *   El problema que resolvía (Uncaught TypeError reading 'hooks') era en realidad
+ *   del paquete @wordpress/*: el JS Delay rompía el orden de dependencias y
+ *   wp.i18n/wp.i18nLoader llegaban después de sus consumidores. Se excluían los
+ *   consumidores, no el proveedor. Resuelto el 2026-10-02 aplicando el preajuste
+ *   de caché por defecto, que desactiva el JS Delay. Si se reactiva el JS Delay,
+ *   hay que excluir wp-hooks, wp-i18n y a18n ANTES que a los consumidores.
  *
  * @package GeneratePress_Child
  */
@@ -19,49 +34,22 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 /**
- * Excluye scripts críticos con dependencias de @wordpress/* del JS Delay de LiteSpeed.
+ * Refuerza la separación de caché entre subdominios.
  *
- * LiteSpeed Cache lee la opción 'litespeed.conf.optm-js_exc' pero también expone
- * el filtro 'litespeed_optimize_js_excludes' para exclusiones programáticas.
- * Usamos el filtro para mayor robustez (no depende de la configuración guardada).
+ * Por qué importa: el catálogo de muyunicos.com (AR) incluye productos físicos,
+ * mientras que el de los subdominios solo incluye digitales. Si ambos compartieran
+ * la misma entrada de caché, un subdominio podría servir el catálogo con físicos o
+ * la raíz podría servir un catálogo filtrado. Eso rompería a la vez la promesa
+ * comercial y las etiquetas hreflang.
  *
- * @param array $excludes Lista actual de patrones de exclusión.
- * @return array Lista ampliada.
- */
-if ( ! function_exists( 'mu_litespeed_js_delay_excludes' ) ) {
-    function mu_litespeed_js_delay_excludes( $excludes ) {
-        /*
-         * Excluir por fragmento de URL (LiteSpeed hace strpos contra la src del script).
-         * - gtag-events.js        : GLA — necesita window.wp.hooks (wp-hooks)
-         * - 101.js                : chunk interno de GLA que acompaña a gtag-events.js
-         *
-         * No excluir jquery.min.js ni wp-hooks completo ya que LiteSpeed los
-         * gestiona bien cuando no tienen scripts dependientes siendo retrasados.
-         */
-        $mu_excludes = [
-            'google-listings-and-ads/js/build/gtag-events.js',
-            'google-listings-and-ads/js/build/101.js',
-            'generatepress-child/js/jetpack-search.js',
-            'generatepress-child/js/modal-auth.js',
-        ];
-
-        return array_merge( (array) $excludes, $mu_excludes );
-    }
-    add_filter( 'litespeed_optimize_js_excludes', 'mu_litespeed_js_delay_excludes' );
-}
-
-/**
- * Fuerza a LiteSpeed Cache a crear cachés separadas por subdominio.
+ * Mecanismo real: LiteSpeed separa por variante usando la cookie _lscache_vary,
+ * emitida con dominio .muyunicos.com y con un valor derivado del host. Se verificó
+ * que produce HTML distinto por subdominio. Este filtro es una segunda línea: el
+ * header Vary observado en producción solo trae Accept-Encoding, así que esta regla
+ * puede no estar aplicándose con el preajuste de caché vigente.
  *
- * Evita Cache Collisions (contaminación cruzada de errores 404 de productos
- * físicos en otros países) y protege las etiquetas SEO Hreflang específicas
- * de cada país.
- *
- * Usa el filtro 'litespeed_vary' para agregar una regla de variación basada
- * en $_SERVER['HTTP_HOST']. Este es el método directo según la documentación
- * de LiteSpeed y no requiere cookies adicionales.
- *
- * Documentación: https://docs.litespeedtech.com/lscache/lscwp/api/
+ * NO tocar sin medir antes: si se rompe el aislamiento, reaparece el problema de
+ * productos físicas cruzados entre países.
  *
  * @param array $vary Reglas de variación actuales.
  * @return array Reglas de variación ampliadas.
