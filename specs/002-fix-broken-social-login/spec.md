@@ -1,56 +1,54 @@
-# Feature Specification: Restaurar el login social y eliminar los SVG inline
+# Feature Specification: Blindar la URL de login social y eliminar los SVG inline
 
 **Feature Branch**: `002-fix-broken-social-login`
-
 **Created**: 2026-10-02
 **Status**: Draft
-**Input**: El login con Google y Facebook devuelve 404 porque el tema
-construye la URL a mano con wp-login.php, y WPS Hide Login mueve esa ruta.
+**Input**: El login social funciona por un efecto indirecto: depende de que WPS
+Hide Login reescriba la ruta de login. Se busca que no dependa de eso, y de
+limpiar los iconos pegados en el modal.
 
 ## Problema
 
-Cuatro enlaces de login social apuntan a una URL que ya no existe. Un
-comprador que hace clic en "Continuar con Google" o "Facebook" llega a un 404.
-Es un bug activo en produccion, no una hipotesis.
+El login con Google y Facebook **funciona hoy**, y nunca estuvo roto. El tema
+construye la URL con `site_url( /wp-login.php?... )`, una ruta que da 404 de
+forma directa, pero WPS Hide Login hookea el filtro `site_url` de WordPress y la
+reescribe a la ruta vigente. El resultado es correcto por accidente.
 
-La causa es que el tema construye la URL con `site_url( "/wp-login.php?..." )` en
-lugar de dejar que WordPress resuelva la ruta de login. WPS Hide Login
-intercepta wp-login.php y lo devuelve como 404; la documentacion del plugin lo
-advierte explicitamente: "no funciona con plugins o temas que tienen wp-login.php
-hardcodeado".
+Esa dependencia es invisible en el código: si el plugin se desactiva, o cambia
+su comportamiento, los cuatro enlaces se rompen sin que nada avise y sin que una
+verificacion previa lo detecte.
 
 Aprovechamos el mismo trabajo para eliminar los SVG inline del modal de
 autenticacion, que violan el principio VIII y estan en las lineas contiguas a las
-que hay que tocar. Separarlos obligaria a editar el mismo archivo dos veces por
-dos motivos distintos.
+que hay que tocar. Separarlos obligaria a editar el mismo archivo dos veces.
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - El comprador puede autenticarse con Google o Facebook (Priority: P1)
+### User Story 1 - El login social no depende de que otro plugin lo salve (Priority: P1)
 
 Un comprador que no tiene cuenta quiere entrar con su cuenta de Google o de
-Facebook. El modal de autenticacion le ofrece ambos botones. Hoy, al hacer clic
-en cualquiera de los dos, llega a una pagina de error 404 y no puede comprar.
+Facebook. El modal le ofrece ambos botones. Hoy funciona: llega a la pantalla de
+permisos del proveedor y completa el acceso. Pero funciona porque el plugin que
+oculta la URL de login reescribe, sin que el tema lo sepa, la ruta que el tema
+escribe a mano.
 
-**Why this priority**: es un bug activo que corta la compra. Afecta a la
-conversion y no tiene workaround para el usuario.
+**Why this priority**: si ese plugin se desactiva o cambia de comportamiento, los
+cuatro enlaces dejan de funcionar y nadie se entera hasta que un comprador
+reporta que no puede comprar. El fallo es silencioso y no lo detecta ninguna
+verificacion previa.
 
-**Independent Test**: pulsar un boton de login social y completar el flujo con un
-proveedor real. Si el proveedor no llega a pedir permisos, el story falla.
+**Independent Test**: desactivar el plugin que oculta la URL de login, pulsar un
+boton de login social y completar el flujo con un proveedor real. Si funciona,
+el login deja de depender del plugin.
 
 **Acceptance Scenarios**:
 
-1. **Given** un visitante no autenticado, **When** abre el modal de
-   autenticacion y pulsa "Google", **Then** el navegador navega a la pantalla
-   de permisos de Google, no a un error 404.
-2. **Given** un visitante no autenticado, **When** pulsa "Facebook" desde el
-   checkout, **Then** el navegador navega a los permisos de Facebook, no a un
-   error 404.
+1. **Given** un visitante no autenticado, **When** abre el modal y pulsa "Google", **Then** el navegador navega a la pantalla de permisos de Google y el login se completa.
+2. **Given** un visitante no autenticado, **When** pulsa "Facebook" desde el checkout, **Then** el navegador navega a los permisos de Facebook y el login se completa.
 3. **Given** un visitante en un subdominio de otro pais, **When** completa el
    login, **Then** vuelve al mismo subdominio donde empezo, con sus precios y su
    moneda.
-4. **Given** un visitante, **When** se desactiva el plugin que oculta la URL de
-   login, **Then** el login social sigue funcionando en la ruta por defecto.
+4. **Given** un visitante, **When** se desactiva el plugin que oculta la URL de login, **Then** el login social sigue funcionando en la ruta por defecto, sin depender de que ese plugin reescriba nada.
 
 ---
 
@@ -96,6 +94,13 @@ decorativos que no son iconos.
 - **Icono que no tiene equivalente**: si el repositorio no tiene un icono
   equivalente, hay que agregarlo; no dejar una copia suelta ni reemplazar por
   otro icono que se vea parecido pero no sea el mismo.
+- **Regla del WAF sobre los callbacks**: una regla de filtrado del edge puede
+  bloquear una URL de retorno legítima si el proveedor de autenticacion manda
+  parametros con formatos raros. Se verifico que una regla del WAF bloqueaba con
+  403 cualquier parametro que contuviera la secuencia ".profile", que el
+  proveedor de Google siempre envia. El fix de URLs no resuelve eso: son capas
+  independientes. Si el login vuelve a romperse despues de este trabajo, el
+  primer sospechoso es el filtrado del edge, no el tema.
 - **Icono decorativo**: un SVG que no es un icono (por ejemplo, un gráfico de
   fondo) no pertenece al repositorio y puede quedarse donde está.
 
@@ -163,6 +168,8 @@ decorativos que no son iconos.
   punto de codigo, no cuatro.
 - **SC-008**: El login por usuario y contrasena, y el resto del checkout, siguen
   funcionando sin regresiones.
+- **SC-009**: El flujo completo de login social se verifica con una persona real
+  despues de aplicar el fix, sin errores ni mensajes del filtrado del edge.
 
 ## Assumptions
 

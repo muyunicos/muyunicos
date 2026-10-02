@@ -17,6 +17,54 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 // ============================================
+// HELPERS DE URL DE LOGIN SOCIAL
+// ============================================
+
+/**
+ * Construye la URL de autenticacion de un proveedor social.
+ *
+ * El proveedor (Nextend Social Login) recibe como destino de redireccion la
+ * propia URL de login con el parametro del proveedor dentro, y valida que
+ * coincida con lo registrado en su panel. Por eso el formato de la URL es
+ * fijo: ruta de login seguida de ?loginSocial=PROVEEDOR&redirect=DESTINO.
+ * Cualquier otra forma (por ejemplo, agregar los parametros con una funcion
+ * que reordene) cambia la URL de redireccion y el proveedor la rechaza.
+ *
+ * La ruta de login se resuelve por API de WordPress y no escribiendo el
+ * nombre del archivo de login a mano. Un plugin que oculta la ruta de login
+ * la modifica por filtro: si el tema la escribiera, dependeria de que ese
+ * plugin este activo y hookeando, y el fallo seria silencioso.
+ *
+ * @param string $provider    Identificador del proveedor (google, facebook).
+ * @param string $redirect_to URL a la que volver tras autenticarse.
+ * @return string URL de login social, o cadena vacia si el proveedor no es valido.
+ */
+if ( ! function_exists( 'mu_social_login_url' ) ) {
+    function mu_social_login_url( $provider, $redirect_to = '' ) {
+        $allowed = array( 'google', 'facebook' );
+        $provider = sanitize_key( $provider );
+
+        if ( ! in_array( $provider, $allowed, true ) ) {
+            return '';
+        }
+
+        // wp_login_url() devuelve la URL completa; nos quedamos con la ruta
+        // para no fijar el host y conservar el subdominio de la peticion.
+        $login_path = wp_login_url();
+        $path_only  = wp_parse_url( $login_path, PHP_URL_PATH );
+        $path_only  = $path_only ? $path_only : '/wp-login.php';
+
+        $url = $path_only . '?loginSocial=' . rawurlencode( $provider );
+
+        if ( $redirect_to ) {
+            $url .= '&redirect=' . rawurlencode( $redirect_to );
+        }
+
+        return $url;
+    }
+}
+
+// ============================================
 // HTML DEL MODAL
 // ============================================
 
@@ -29,7 +77,7 @@ function mu_auth_modal_html() {
     <div class="mu-modal-container">
         <div class="mu-modal-content">
                 <button class="mu-modal-close" aria-label="Cerrar" type="button">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <?php echo mu_get_icon( 'close' ); ?>
                 </button>
 
                 <div class="mu-modal-header">
@@ -51,7 +99,7 @@ function mu_auth_modal_html() {
                     <div id="mu-step-2-login" class="mu-form-step" style="display:none;">
                         <div class="mu-back-link">
                             <button type="button" id="mu-back-to-step1" class="mu-link-back">
-                                <svg class="mu-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg> Cambiar usuario
+                                <?php echo mu_get_icon( 'chevron-down' ); ?> Cambiar usuario
                             </button>
                         </div>
                         <p class="mu-welcome-text">Hola de nuevo, <strong id="mu-user-display"></strong></p>
@@ -67,7 +115,7 @@ function mu_auth_modal_html() {
                     <div id="mu-step-2-register" class="mu-form-step" style="display:none;">
                         <div class="mu-back-link">
                             <button type="button" id="mu-back-to-step1-reg" class="mu-link-back">
-                                <svg class="mu-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg> Cambiar email
+                                <?php echo mu_get_icon( 'chevron-down' ); ?> Cambiar email
                             </button>
                         </div>
                         <p class="mu-welcome-new">🎉 Primera vez por aquí</p>
@@ -87,7 +135,7 @@ function mu_auth_modal_html() {
                     <div id="mu-step-forgot" class="mu-form-step" style="display:none;">
                          <div class="mu-back-link">
                             <button type="button" id="mu-back-to-login" class="mu-link-back">
-                                <svg class="mu-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg> Volver
+                                <?php echo mu_get_icon( 'chevron-down' ); ?> Volver
                             </button>
                         </div>
                         <p class="mu-welcome-text" style="background:#f3f4f6;">Te enviaremos un enlace para crear una nueva clave.</p>
@@ -103,11 +151,11 @@ function mu_auth_modal_html() {
                 <div id="mu-social-section">
                     <div class="mu-divider"><span>o ingresa directamente con</span></div>
                     <div class="mu-social-buttons">
-                        <a href="<?php echo esc_url( site_url( '/wp-login.php?loginSocial=google&redirect=' . urlencode( $current_url ) ) ); ?>" class="mu-btn-social mu-btn-google" data-plugin="nsl" data-action="connect" data-provider="google" data-popupwidth="600" data-popupheight="600">
-                            <svg width="18" height="18" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/><path d="M9.003 18c2.43 0 4.467-.806 5.956-2.18L12.05 13.56c-.806.54-1.836.86-3.047.86-2.344 0-4.328-1.584-5.036-3.711H.96v2.332C2.44 15.983 5.485 18 9.003 18z" fill="#34A853"/><path d="M3.964 10.712c-.18-.54-.282-1.117-.282-1.71 0-.593.102-1.17.282-1.71V4.96H.957C.347 6.175 0 7.55 0 9.002c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9.003 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.464.891 11.428 0 9.003 0 5.485 0 2.44 2.017.96 4.958L3.967 7.29c.708-2.127 2.692-3.71 5.036-3.71z" fill="#EA4335"/></svg> Google
+                        <a href="<?php echo esc_url( mu_social_login_url( 'google', $current_url ) ); ?>" class="mu-btn-social mu-btn-google" data-plugin="nsl" data-action="connect" data-provider="google" data-popupwidth="600" data-popupheight="600">
+                            <?php echo mu_get_icon( 'google' ); ?> Google
                         </a>
-                        <a href="<?php echo esc_url( site_url( '/wp-login.php?loginSocial=facebook&redirect=' . urlencode( $current_url ) ) ); ?>" class="mu-btn-social mu-btn-facebook" data-plugin="nsl" data-action="connect" data-provider="facebook" data-popupwidth="600" data-popupheight="679">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg> Facebook
+                        <a href="<?php echo esc_url( mu_social_login_url( 'facebook', $current_url ) ); ?>" class="mu-btn-social mu-btn-facebook" data-plugin="nsl" data-action="connect" data-provider="facebook" data-popupwidth="600" data-popupheight="679">
+                            <?php echo mu_get_icon( 'facebook' ); ?> Facebook
                         </a>
                     </div>
                 </div>

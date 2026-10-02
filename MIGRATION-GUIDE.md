@@ -140,8 +140,16 @@ PLUGINS ACOPLADOS AL TEMA (verificado 2026-10-02 por grep en inc/):
   multiidioma (inc/ui.php).
 - WooCommerce Price Based on Country → class_exists() como guarda
   (inc/geo.php): el tema ajusta decimales y formateo solo si el plugin está.
-- Nextend Social Login → shortcode_exists('nextend_social_login') y URLs
-  ?loginSocial= (inc/auth-modal.php, inc/checkout.php).
+- Nextend Social Login → mu_social_login_url() en inc/auth-modal.php, usada por
+  inc/auth-modal.php e inc/checkout.php. Construye RUTA?loginSocial=PROVEEDOR
+  &redirect=DESTINO. El formato es contrato con el proveedor: el destino que
+  devuelve a Google y Facebook es la propia ruta de login con el parámetro del
+  proveedor dentro, y si el orden cambia el proveedor lo rechaza.
+- WPS Hide Login → hookea el filtro site_url de WordPress, de modo que
+  site_url('/wp-login.php') devuelve la ruta vigente. El tema NO depende de ese
+  hook: mu_social_login_url() resuelve la ruta con wp_login_url(), que es la API
+  que el plugin modifica. Si se desactivara el plugin, el login seguiría
+  funcionando en la ruta por defecto.
 - LiteSpeed Cache → litespeed_vary y litespeed_purge_all
   (inc/compat-litespeed.php, inc/navigation-chips.php).
 
@@ -518,6 +526,34 @@ ERRORES "wp.i18n is not defined" / gtag-events "reading 'hooks'" (2026-10-02)
 - APRENDIZAJE: si se reactiva el JS Delay, excluir PRIMERO wp-hooks, wp-i18n y
   a18n; excluir solo los consumidores no alcanza. Alternativa a evaluar: activar
   Guest Mode y excluir por paquete, no por ruta.
+
+WAF BLOQUEA EL RETORNO DE OAUTH DE GOOGLE (2026-10-02)
+- Síntoma: el login con Google completaba la autorización y, al volver al sitio,
+  la respuesta era "403 Forbidden" en texto plano. El flujo llegaba completo
+  (con un código de autenticación válido) y se rompía en el último paso.
+- REGLA AISLADA: el WAF del edge bloqueaba con 403 cualquier parámetro que
+  contuviera la secuencia ".profile" (punto seguido de profile), en cualquier
+  página y cualquier subdominio. Google siempre devuelve "userinfo.profile"
+  dentro del scope del retorno, de modo que el callback quedaba bloqueado
+  siempre. Contraste verificado el mismo día:
+    ?scope=userinfo.email    → 302 (pasaba)
+    ?scope=userinfo.profile  → 403 (bloqueaba)
+    ?z=a.profile             → 403
+    ?z=a.pro / ?z=profilea   → 200 (pasaban)
+- El 403 lo emitía el edge (Server: hcdn, Content-Type: text/plain, cuerpo
+  "Forbidden"): WordPress no se ejecutaba, así que ningún cambio en el tema podía
+  arreglarlo.
+- Mitigación: se bajó el nivel de seguridad de la CDN de Hostinger de Alto a
+  Medio. Verificado después: el callback devuelve 200, el login con Google y
+  Facebook se completa, la inyección SQL cruda y un <script> malicioso se
+  redirigen a una página de aviso (301) en lugar de ejecutar, y el bloqueo de
+  bots por país sigue activo (bot 429, humano 302).
+- APRENDIZAJE: una regla anti-inyección del borde puede bloquear una URL de
+  retorno legítima. Los proveedores de autenticación devuelven parámetros con
+  formatos raros (identificadores largos, puntos y guiones bajos). Si el login
+  vuelve a romperse después de subir el nivel de seguridad, el primer sospechoso
+  es el WAF, no el tema. Y al revés: arreglar el tema no arregla el WAF. Son
+  capas independientes.
 
 BLOQUEO DE BOTS POR PAÍS EN EL EDGE (2026-10-02)
 - Verificado: un User-Agent de bot (GPTBot) contra una URL inexistente en un

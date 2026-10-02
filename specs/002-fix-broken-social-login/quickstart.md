@@ -135,6 +135,29 @@ trabajo: el login crea ovincula un usuario en el sitio.
 
 ---
 
+## Escenario 2b — El filtrado del edge no bloquea el retorno
+
+**Prueba**: el WAF no corta el callback de OAuth. Este escenario existe porque
+el login se rompio dos veces por causas distintas: una por la construccion de la
+URL y otra por el filtrado del borde. Arreglar una no arregla la otra.
+
+```bash
+# Debe devolver 200. Con el nivel de seguridad Alto devolvia 403.
+curl -sI "https://muyunicos.com/login/?loginSocial=google&state=t&code=TEST&scope=email+profile+https://www.googleapis.com/auth/userinfo.profile"
+```
+
+| Resultado | Significado |
+|---|---|
+| 200 | El edge no bloquea el callback |
+| 403 | El WAF volvio a bloquear el retorno. El fix de URLs es correcto pero no alcanza |
+
+**Por que este parametro**: la regla del WAF bloqueaba cualquier parametro que
+contuviera la secuencia `.profile`, y el proveedor de Google siempre la envia en
+el scope del retorno. Aislado parametro a parametro: `scope=userinfo.email` pasaba,
+`scope=userinfo.profile` no.
+
+---
+
 ## Escenario 3 — Los iconos se ven iguales
 
 **Prueba**: el origen de los iconos cambió, su apariencia no.
@@ -205,6 +228,7 @@ checkout. Ese paso no lo puede hacer nadie más.
 | 1 | URLs apuntan a la ruta vigente | SC-001, SC-003, SC-007 |
 | 2 | Flujo completo con persona real | SC-001, SC-002 |
 | 3 | Iconos idénticos | SC-004, SC-005 |
+| 2b | El WAF no bloquea el retorno | SC-009 |
 | 4 | Con el plugin desactivado | SC-006 |
 | 5 | Sin regresiones en el checkout | SC-008 |
 

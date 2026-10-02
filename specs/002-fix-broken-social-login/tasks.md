@@ -1,4 +1,4 @@
-# Tasks: Restaurar el login social y eliminar los SVG inline
+# Tasks: Blindar la URL de login social y eliminar los SVG inline
 
 **Input**: Design documents from `/specs/002-fix-broken-social-login/`
 
@@ -21,10 +21,10 @@ escenarios que requieren una persona están marcados como tales.
 **Purpose**: el punto único de construcción de la URL. Ninguna story puede
 empezar sin él.
 
-- [ ] T001 [US1] Crear `mu_social_login_url( $provider, $redirect_to )` en `inc/auth-modal.php`, envuelta en `if ( ! function_exists() )`. Debe: obtener la ruta con `wp_login_url()`, quedarse con su parte de ruta, y devolver `RUTA?loginSocial=PROVEEDOR&redirect=DESTINO` con el proveedor y el destino escapados. NO usar `add_query_arg()`: el orden de los parámetros es parte del contrato con el proveedor de login social (ver research.md §2)
-- [ ] T002 [US1] En la misma función, validar que `$provider` sea solo `google` o `facebook`; si no lo es, devolver cadena vacía para que el enlace no se renderice en lugar de renderizarse roto (data-model.md §1)
-- [ ] T003 [US1] Preservar el host de la petición en la URL: el helper no debe forzar el dominio raíz, para que un comprador de `us.` vuelva a `us.` (research.md §3)
-- [ ] T004 Ejecutar `php -l inc/auth-modal.php` (debe salir sin errores)
+- [X] T001 [US1] El cambio es de ORIGEN, no de comportamiento: hoy el login ya funciona porque WPS Hide Login reescribe la ruta que el tema escribe a mano. Este helper elimina esa dependencia. Crear `mu_social_login_url( $provider, $redirect_to )` en `inc/auth-modal.php`, envuelta en `if ( ! function_exists() )`. Debe: obtener la ruta con `wp_login_url()`, quedarse con su parte de ruta, y devolver `RUTA?loginSocial=PROVEEDOR&redirect=DESTINO` con el proveedor y el destino escapados. NO usar `add_query_arg()`: el orden de los parámetros es parte del contrato con el proveedor de login social (ver research.md §2)
+- [X] T002 [US1] En la misma función, validar que `$provider` sea solo `google` o `facebook`; si no lo es, devolver cadena vacía para que el enlace no se renderice en lugar de renderizarse roto (data-model.md §1)
+- [X] T003 [US1] Preservar el host de la petición en la URL: el helper no debe forzar el dominio raíz, para que un comprador de `us.` vuelva a `us.` (research.md §3)
+- [X] T004 Ejecutar `php -l inc/auth-modal.php` (debe salir sin errores)
 
 **Checkpoint**: el helper existe y es sintácticamente válido.
 
@@ -32,24 +32,25 @@ empezar sin él.
 
 ## Phase 2: User Story 1 — El comprador puede autenticarse (P1)
 
-**Objetivo**: que los cuatro enlaces de login social lleven al proveedor en
-lugar de a un 404. Cubre FR-001 a FR-006.
+**Objetivo**: que los cuatro enlaces se construyan por API y no dependan de que el
+plugin que oculta la URL de login los reescriba. El login YA funciona hoy; el
+cambio no altera el comportamiento observable. Cubre FR-001 a FR-006.
 
-**Test independiente**: extraer los `href` del HTML servido y comprobar que
-apuntan a la ruta vigente; luego completar el flujo con una persona real
-(quickstart.md escenarios 1 y 2).
+**Test independiente**: desactivar el plugin que oculta la URL de login y
+completar el flujo con una persona real. Si funciona sin ese plugin, la URL deja
+de depender de el (quickstart.md escenarios 1 y 2).
 
 ### Implementación
 
-- [ ] T005 [US1] Reemplazar el `href` de Google en `inc/auth-modal.php:106` por una llamada a `mu_social_login_url( 'google', $current_url )`, conservando las clases y los atributos de la ventana emergente que ya tiene
-- [ ] T006 [US1] Reemplazar el `href` de Facebook en `inc/auth-modal.php:109` por una llamada a `mu_social_login_url( 'facebook', $current_url )`, conservando clases y atributos
-- [ ] T007 [US1] Reemplazar el `href` de Google en `inc/checkout.php:374` por `mu_social_login_url( 'google', $current_url )`, donde `$current_url` es `wc_get_checkout_url()` (línea 348). Añadir un comentario que indique de dónde viene la dependencia
-- [ ] T008 [US1] Reemplazar el `href` de Facebook en `inc/checkout.php:378` por `mu_social_login_url( 'facebook', $current_url )`, conservando clases y atributos
-- [ ] T009 [US1] Ejecutar `php -l inc/auth-modal.php` y `php -l inc/checkout.php` (sin errores)
-- [ ] T010 [US1] Verificar que no queda ninguna ruta de login escrita a mano: `grep -rn "wp-login.php" inc/ functions.php` (debe devolver cero)
-- [ ] T011 [US1] Verificar que los cuatro usos salen del helper: contar las llamadas a `mu_social_login_url` en ambos archivos (deben ser 4)
-- [ ] T012 [US1] Comparar la URL generada contra la que hoy funciona en producción: debe tener la misma forma `RUTA?loginSocial=PROVEEDOR&redirect=DESTINO` (research.md §2)
-- [ ] T013 [US1] Comprobar que la redirección preserva el subdominio: leer el `href` del botón social en `https://us.muyunicos.com/` y confirmar que contiene `us.muyunicos.com`
+- [X] T005 [US1] Reemplazar el `href` de Google en `inc/auth-modal.php:106` por una llamada a `mu_social_login_url( 'google', $current_url )`, conservando las clases y los atributos de la ventana emergente que ya tiene
+- [X] T006 [US1] Reemplazar el `href` de Facebook en `inc/auth-modal.php:109` por una llamada a `mu_social_login_url( 'facebook', $current_url )`, conservando clases y atributos
+- [X] T007 [US1] Reemplazar el `href` de Google en `inc/checkout.php:374` por `mu_social_login_url( 'google', $current_url )`, donde `$current_url` es `wc_get_checkout_url()` (línea 348). Añadir un comentario que indique de dónde viene la dependencia
+- [X] T008 [US1] Reemplazar el `href` de Facebook en `inc/checkout.php:378` por `mu_social_login_url( 'facebook', $current_url )`, conservando clases y atributos
+- [X] T009 [US1] Ejecutar `php -l inc/auth-modal.php` y `php -l inc/checkout.php` (sin errores)
+- [X] T010 [US1] Verificar que no queda ninguna ruta de login escrita a mano: `grep -rn "wp-login.php" inc/ functions.php` (debe devolver cero)
+- [X] T011 [US1] Verificar que los cuatro usos salen del helper: contar las llamadas a `mu_social_login_url` en ambos archivos (deben ser 4)
+- [X] T012 [US1] Comparar la URL generada contra la que hoy sirve producción: deben tener la MISMA forma `RUTA?loginSocial=PROVEEDOR&redirect=DESTINO` y el mismo subdominio. Si difieren, no desplegar: el proveedor puede rechazar la redirección
+- [X] T013 [US1] Comprobar que la redirección preserva el subdominio: leer el `href` del botón social en `https://us.muyunicos.com/` y confirmar que contiene `us.muyunicos.com`
 
 **Checkpoint**: US1 verificada en código. El flujo con persona real es
 quickstart.md escenario 2 y lo hace el mantenedor.
@@ -65,16 +66,16 @@ iconos se ven iguales (quickstart.md escenario 3).
 
 ### Implementación
 
-- [ ] T014 [P] [US2] Agregar a `inc/icons.php` el icono `close` si no está: verificar primero con `grep "'close'" inc/icons.php`. La línea 32 de `inc/auth-modal.php` tiene una X de 24x24 con `stroke="currentColor"`, `stroke-width="2"`, `stroke-linecap="round"`, `stroke-linejoin="round"` y dos `<line>`. El markup debe quedar idéntico
-- [ ] T015 [P] [US2] Agregar a `inc/icons.php` el icono `chevron-down`: es un `<polyline points="15 18 9 12 15 6">` de 16x16 con `class="mu-icon-svg"`, `stroke="currentColor"`, `stroke-width="2"`. **Un solo icono**: las líneas 54, 70 y 90 de `inc/auth-modal.php` son idénticas (verificado), así que las tres comparten la misma entrada del repositorio
-- [ ] T016 [P] [US2] Agregar a `inc/icons.php` el icono `google`: es un SVG de 18x18 con `viewBox="0 0 18 18"` y cuatro `<path>` con los colores de marca. **No existe todavía** en el repositorio: hay que crearlo. `facebook` sí existe y se reutiliza
-- [ ] T017 [US2] Reemplazar el SVG de la línea 32 de `inc/auth-modal.php` por `<?php echo mu_get_icon( 'close' ); ?>`
-- [ ] T018 [US2] Reemplazar los SVG de las líneas 54, 70 y 90 de `inc/auth-modal.php` por `<?php echo mu_get_icon( 'chevron-down' ); ?>`, en las tres
-- [ ] T019 [US2] Reemplazar el SVG de la línea 107 de `inc/auth-modal.php` (Google) por `<?php echo mu_get_icon( 'google' ); ?>`
-- [ ] T020 [US2] Reemplazar el SVG de la línea 110 de `inc/auth-modal.php` (Facebook) por `<?php echo mu_get_icon( 'facebook' ); ?>`
-- [ ] T021 [US2] Ejecutar `php -l inc/auth-modal.php` y `php -l inc/icons.php` (sin errores)
-- [ ] T022 [US2] Verificar `grep -c "<svg" inc/auth-modal.php` devuelve 0
-- [ ] T023 [US2] Confirmar que los SVG fuera de alcance siguen intactos: los 2 fallbacks de `inc/ui.php` (líneas 139 y 204), y los de `products-core.php`, `geo.php` y `cart-restriction.php`
+- [X] T014 [P] [US2] Agregar a `inc/icons.php` el icono `close` si no está: verificar primero con `grep "'close'" inc/icons.php`. La línea 32 de `inc/auth-modal.php` tiene una X de 24x24 con `stroke="currentColor"`, `stroke-width="2"`, `stroke-linecap="round"`, `stroke-linejoin="round"` y dos `<line>`. El markup debe quedar idéntico
+- [X] T015 [P] [US2] Agregar a `inc/icons.php` el icono `chevron-down`: es un `<polyline points="15 18 9 12 15 6">` de 16x16 con `class="mu-icon-svg"`, `stroke="currentColor"`, `stroke-width="2"`. **Un solo icono**: las líneas 54, 70 y 90 de `inc/auth-modal.php` son idénticas (verificado), así que las tres comparten la misma entrada del repositorio
+- [X] T016 [P] [US2] Agregar a `inc/icons.php` el icono `google`: es un SVG de 18x18 con `viewBox="0 0 18 18"` y cuatro `<path>` con los colores de marca. **No existe todavía** en el repositorio: hay que crearlo. `facebook` sí existe y se reutiliza
+- [X] T017 [US2] Reemplazar el SVG de la línea 32 de `inc/auth-modal.php` por `<?php echo mu_get_icon( 'close' ); ?>`
+- [X] T018 [US2] Reemplazar los SVG de las líneas 54, 70 y 90 de `inc/auth-modal.php` por `<?php echo mu_get_icon( 'chevron-down' ); ?>`, en las tres
+- [X] T019 [US2] Reemplazar el SVG de la línea 107 de `inc/auth-modal.php` (Google) por `<?php echo mu_get_icon( 'google' ); ?>`
+- [X] T020 [US2] Reemplazar el SVG de la línea 110 de `inc/auth-modal.php` (Facebook) por `<?php echo mu_get_icon( 'facebook' ); ?>`
+- [X] T021 [US2] Ejecutar `php -l inc/auth-modal.php` y `php -l inc/icons.php` (sin errores)
+- [X] T022 [US2] Verificar `grep -c "<svg" inc/auth-modal.php` devuelve 0
+- [X] T023 [US2] Confirmar que los SVG fuera de alcance siguen intactos: los 2 fallbacks de `inc/ui.php` (líneas 139 y 204), y los de `products-core.php`, `geo.php` y `cart-restriction.php`
 
 **Checkpoint**: US2 verificada. La comparación visual es quickstart.md
 escenario 3 y la hace el mantenedor.
@@ -83,12 +84,13 @@ escenario 3 y la hace el mantenedor.
 
 ## Phase 4: Validación y cierre
 
-- [ ] T024 Ejecutar el escenario 1 de `quickstart.md`: la ruta responde 200, los `href` extraídos usan la ruta vigente, cero rutas escritas a mano, 4 usos del helper, subdominio preservado, y el proveedor acepta el formato
-- [ ] T025 Ejecutar el escenario 5 de `quickstart.md`: sin errores fatales en la home, y el bypass de caché del checkout intacto
-- [ ] T026 Registrar en `MIGRATION-GUIDE.md` §7 el incidente: cuatro enlaces de login social apuntaban a la ruta que el plugin de ocultamiento había retirado; causa raíz, mitigación, y el aprendizaje de que las URLs de plugins de autenticación se resuelven por API y nunca a mano
-- [ ] T027 Registrar en `MIGRATION-GUIDE.md` §3 que el tema consume el plugin de ocultación de la URL de login mediante la API de WordPress, con su punto de integración
-- [ ] T028 Revisar que `MIGRATION-GUIDE.md` no contradice la constitución v2.1.0
-- [ ] T029 Revisar los 8 Success Criteria de `spec.md` y confirmar que cada uno tiene tarea o evidencia
+- [X] T024 Ejecutar el escenario 1 de `quickstart.md`: la ruta responde 200, los `href` extraídos usan la ruta vigente, cero rutas escritas a mano, 4 usos del helper, subdominio preservado, y el proveedor acepta el formato
+- [X] T034 Verificar que el filtrado del edge no bloquea el retorno de OAuth: `curl -sI "https://muyunicos.com/login/?loginSocial=google&state=t&code=TEST&scope=email+profile+https://www.googleapis.com/auth/userinfo.profile"` debe devolver 200 y no 403. Si devuelve 403, el WAF volvió a bloquear el callback: el fix de URLs es correcto pero no alcanza (research.md §6)
+- [X] T025 Ejecutar el escenario 5 de `quickstart.md`: sin errores fatales en la home, y el bypass de caché del checkout intacto
+- [X] T026 Registrar en `MIGRATION-GUIDE.md` §7 el incidente del WAF: el filtrado del edge bloqueaba con 403 el retorno de OAuth de Google por la secuencia `.profile` en los parametros; solo se resolvió bajando el nivel de seguridad de la CDN de Alto a Medio. Contexto, regla aislada, resolución y el aprendizaje de que una regla anti-inyección puede bloquear un callback legítimo
+- [X] T027 Registrar en `MIGRATION-GUIDE.md` §3 que el tema obtiene la ruta de login mediante la API de WordPress, y que el plugin que la oculta hookea `site_url`: hoy la ruta correcta depende de ese hook, y por eso el tema debe resolverla por API en lugar de escribirla a mano
+- [X] T028 Revisar que `MIGRATION-GUIDE.md` no contradice la constitución v2.1.0
+- [X] T029 Revisar los 8 Success Criteria de `spec.md` y confirmar que cada uno tiene tarea o evidencia
 
 ### Verificaciones manuales (las hace el mantenedor, no el agente)
 
@@ -174,3 +176,4 @@ El paralelismo real está dentro de Phase 3, no entre fases.
 | SC-006 | T031 | manual |
 | SC-007 | T001, T011 | automática |
 | SC-008 | T025, T032 | automática + manual |
+| SC-009 | T034, T030 | automática + manual |

@@ -371,11 +371,12 @@ if ( ! function_exists( 'mu_checkout_login_notice' ) ) {
 
                     <?php if ( shortcode_exists( 'nextend_social_login' ) || class_exists( 'NextendSocialLogin' ) ) : ?>
                     <div class="mu-checkout-social">
-                        <a href="<?php echo esc_url( site_url( '/wp-login.php?loginSocial=google&redirect=' . urlencode( $current_url ) ) ); ?>" class="mu-btn-social mu-btn-google" rel="nofollow">
+                        <!-- mu_social_login_url() vive en inc/auth-modal.php -->
+                        <a href="<?php echo esc_url( mu_social_login_url( 'google', $current_url ) ); ?>" class="mu-btn-social mu-btn-google" rel="nofollow">
                             <?php echo mu_get_icon( 'google' ); ?>
                             Google
                         </a>
-                        <a href="<?php echo esc_url( site_url( '/wp-login.php?loginSocial=facebook&redirect=' . urlencode( $current_url ) ) ); ?>" class="mu-btn-social mu-btn-facebook" rel="nofollow">
+                        <a href="<?php echo esc_url( mu_social_login_url( 'facebook', $current_url ) ); ?>" class="mu-btn-social mu-btn-facebook" rel="nofollow">
                             <?php echo mu_get_icon( 'facebook' ); ?>
                             Facebook
                         </a>
