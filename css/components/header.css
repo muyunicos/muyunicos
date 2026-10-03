@@ -547,20 +547,6 @@
         color: var(--blanco) !important;
         opacity: 1;
     }
-
-    /* Submenú Mi Cuenta en móvil (flotante)
-
-       FONDO — este bloque era el defecto reportado (research.md D-6):
-       declaraba `background-color: var(--blanco)` mientras la regla global
-       de la línea ~236 impone `color: var(--blanco)` a los enlaces. Fondo
-       blanco con texto blanco: ratio 1:1, literalmente ilegible.
-
-       Se corrige con el MISMO velo translúcido que ya usan los submenús
-       nativos unas líneas más arriba (`rgba(255,255,255,0.12)`): sobre el
-       azul del encabezado mantiene el tono de la marca y deja el texto
-       blanco por encima, con contraste suficiente (SC-003). No se inventa
-       un color nuevo: es el mismo valor ya aplicado y verificado en este
-       breakpoint. */
     .mu-sub-menu {
         position: absolute;
         top: 100%;
@@ -569,7 +555,7 @@
         transform: none;
         width: 200px;
         margin-top: 10px;
-        background-color: rgba(255, 255, 255, 0.12);
+        background-color: var(--primario);
         box-shadow: var(--mu-shadow-md);
         border-radius: var(--mu-radius-sm);
         padding: 10px 0;
