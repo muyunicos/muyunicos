@@ -18,7 +18,7 @@
 .inside-header {
     position: relative;
     padding-top: 12px;
-    padding-bottom: 0;
+    padding-bottom: 12px;
 }
 
 /* Ocultar elementos nativos de GeneratePress que no usamos */

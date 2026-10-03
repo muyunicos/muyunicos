@@ -1343,6 +1343,7 @@ nav ul ul .menu-item-has-children .dropdown-menu-toggle,
 
 .site-logo {
 	display: inline-block;
+	margin: 0 !important;
 	max-width: 100%;
 }
 
