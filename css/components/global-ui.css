@@ -711,7 +711,7 @@ a:hover, a:focus, a:active {
 
 /* 4. Botón cerrar */
 .mu-modal-close {
-    position: absolute; top: 15px; right: 15px;
+    position: absolute; top: 5px; right: 5px;
     background: transparent; border: 0; cursor: pointer;
     color: #6b7280; padding: 0;
     width: 32px; height: 32px;
