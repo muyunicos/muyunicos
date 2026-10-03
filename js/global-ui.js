@@ -568,9 +568,13 @@
             var usableBottom = vh - MU_MARGIN.bottom - h;
             var range = Math.max(0, usableBottom - usableTop);
 
-            // vertical 0 -> pegado a la zona segura inferior.
-            // vertical 100 -> pegado a la zona segura superior.
-            var top = usableTop + (range * (pos.vertical / 100));
+            // CONVERSIÓN DEL MODELO (no invertir sin cambiar endDrag):
+            //   vertical 0   -> pegado a la zona segura INFERIOR (abajo)
+            //   vertical 100 -> pegado a la zona segura SUPERIOR (arriba)
+            // Se resta desde usableBottom porque `top` se mide desde arriba:
+            // con vertical=0 el botón queda abajo del todo, que es la
+            // posición original y el valor por defecto.
+            var top = usableBottom - (range * (pos.vertical / 100));
             var left = pos.side === 0 ? MU_MARGIN.left : vw - MU_MARGIN.right - w;
 
             btn.style.left = Math.round(left) + 'px';
@@ -655,11 +659,16 @@
             var centerX = finalLeft + w / 2;
             var side = centerX < vw / 2 ? 0 : 1;
 
-            // Vertical: cuánto falta para llegar al tope de la zona segura.
+            // Vertical: PÍXELES -> PORCENTAJE. Inverso de applyPosition.
+            //   finalTop = usableBottom -> vertical 0   (abajo)
+            //   finalTop = usableTop    -> vertical 100 (arriba)
+            // Si esta fórmula y la de applyPosition no comparten el mismo
+            // criterio, el botón aparece en un lugar al moverlo y en otro
+            // al recargar la página.
             var usableTop = MU_MARGIN.top;
             var usableBottom = vh - MU_MARGIN.bottom - h;
             var range = Math.max(1, usableBottom - usableTop);
-            var vertical = ((finalTop - usableTop) / range) * 100;
+            var vertical = ((usableBottom - finalTop) / range) * 100;
             vertical = Math.max(0, Math.min(100, vertical));
 
             savePosition(side, vertical);
