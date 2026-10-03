@@ -493,6 +493,208 @@
     }
 
     /**
+     * WhatsApp Button - Arrastrable por el usuario
+     *
+     * POR QUÉ EXISTE (decisión del mantenedor, 2026-10-02):
+     * El botón tapaba la barra inferior del navegador y molestaba. Se
+     * probó agregarle una etiqueta de texto y ocupaba demasiado ancho, así
+     * que quedó solo el ícono y el usuario puede moverlo a donde quiera,
+     * como las burbujas de chat de Facebook.
+     *
+     * PERSISTENCIA (decisión explícita del mantenedor):
+     * Se guarda en localStorage, en el navegador del usuario. NUNCA en el
+     * servidor: no hay base de datos, ni AJAX, ni dato personal. Es una
+     * preferencia de interfaz, igual que `wplng_switcher_closed` que ya se
+     * guarda en este mismo archivo.
+     *
+     * MODELO DE DATOS: dos números, no píxeles.
+     *   { side: 0|1, vertical: 0-100 }
+     *     side     0 = izquierda, 1 = derecha
+     *     vertical 0 = abajo del todo (posición original), 100 = arriba
+     * Por ser porcentajes, la posición se recalcula sola al rotar el
+     * teléfono o cambiar de ancho de pantalla. Guardar píxeles dejaría el
+     * botón fuera de pantalla en cuanto cambiara el viewport.
+     *
+     * ZONA SEGURA: el botón nunca puede salir de los márgenes definidos en
+     * MU_MARGIN, así que no queda medio cortado ni encima del carrito.
+     */
+    function initDraggableWhatsapp() {
+        var btn = document.querySelector('.boton-whatsapp');
+        if (!btn) return;
+
+        var STORE_KEY = 'mu_whatsapp_pos';
+        var DRAG_THRESHOLD = 8;   // px: por debajo de esto es un toque, no arrastre
+        var MU_MARGIN = { top: 82, right: 25, bottom: 82, left: 25 };
+
+        /** Lee la posición guardada. Defaults: abajo a la derecha. */
+        function readPosition() {
+            var def = { side: 1, vertical: 0 };
+            try {
+                var raw = window.localStorage.getItem(STORE_KEY);
+                if (!raw) return def;
+                var parsed = JSON.parse(raw);
+                if (!parsed || typeof parsed !== 'object') return def;
+                return {
+                    side: parsed.side === 0 ? 0 : 1,
+                    vertical: Math.max(0, Math.min(100, Number(parsed.vertical) || 0))
+                };
+            } catch (e) {
+                // localStorage puede estar bloqueado (modo privado).
+                // Es una mejora opcional: si falla, el botón funciona igual.
+                return def;
+            }
+        }
+
+        function savePosition(side, vertical) {
+            try {
+                window.localStorage.setItem(STORE_KEY, JSON.stringify({
+                    side: side,
+                    vertical: Math.round(vertical)
+                }));
+            } catch (e) {
+                // Sin persistencia no se rompe nada: sigue siendo arrastrable.
+            }
+        }
+
+        /** Convierte el estado (side, vertical) a píxeles y lo aplica. */
+        function applyPosition(pos) {
+            var vw = window.innerWidth;
+            var vh = window.innerHeight;
+            var w = btn.offsetWidth || 50;
+            var h = btn.offsetHeight || 50;
+
+            // Rango vertical utilizable, ya descontando la zona segura.
+            var usableTop = MU_MARGIN.top;
+            var usableBottom = vh - MU_MARGIN.bottom - h;
+            var range = Math.max(0, usableBottom - usableTop);
+
+            // vertical 0 -> pegado a la zona segura inferior.
+            // vertical 100 -> pegado a la zona segura superior.
+            var top = usableTop + (range * (pos.vertical / 100));
+            var left = pos.side === 0 ? MU_MARGIN.left : vw - MU_MARGIN.right - w;
+
+            btn.style.left = Math.round(left) + 'px';
+            btn.style.top = Math.round(top) + 'px';
+            btn.style.right = 'auto';
+            btn.style.bottom = 'auto';
+        }
+
+        // Restaurar la posición guardada
+        applyPosition(readPosition());
+
+        // --- Estado del gesto ---
+        var isDragging = false;
+        var didMove = false;
+        var startX = 0, startY = 0;
+        var startLeft = 0, startTop = 0;
+
+        btn.addEventListener('pointerdown', function(e) {
+            // Solo botón principal, para no secuestrar el clic contextual.
+            if (e.button !== undefined && e.button !== 0) return;
+
+            isDragging = true;
+            didMove = false;
+            startX = e.clientX;
+            startY = e.clientY;
+            startLeft = btn.offsetLeft;
+            startTop = btn.offsetTop;
+
+            // Capturar el puntero garantiza que sigan llegando eventos
+            // aunque el dedo se salga del botón a mitad del arrastre.
+            if (btn.setPointerCapture && e.pointerId !== undefined) {
+                try { btn.setPointerCapture(e.pointerId); } catch (err) { /* no crítico */ }
+            }
+        });
+
+        btn.addEventListener('pointermove', function(e) {
+            if (!isDragging) return;
+
+            var dx = e.clientX - startX;
+            var dy = e.clientY - startY;
+
+            // Umbral: hasta acá es un toque tembloroso, no intención de
+            // mover. Recién después se considera arrastre.
+            if (!didMove) {
+                if (Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) {
+                    return;
+                }
+                didMove = true;
+                btn.classList.add('is-dragging');
+            }
+
+            e.preventDefault();
+
+            // Traducir en vez de recalcular: la caja sigue al dedo 1:1 y
+            // solo al soltar se convierte a porcentaje y se acota a la zona
+            // segura. Así el control nunca puede quedar fuera de pantalla
+            // durante el movimiento.
+            btn.style.left = Math.round(startLeft + dx) + 'px';
+            btn.style.top = Math.round(startTop + dy) + 'px';
+        });
+
+        function endDrag(e) {
+            if (!isDragging) return;
+            isDragging = false;
+
+            if (!didMove) {
+                return;  // fue un toque: el click sigue su curso normal
+            }
+
+            btn.classList.remove('is-dragging');
+
+            var vw = window.innerWidth;
+            var vh = window.innerHeight;
+            var w = btn.offsetWidth || 50;
+            var h = btn.offsetHeight || 50;
+
+            // Leer dónde quedó y traducirla a (side, vertical).
+            var finalLeft = parseFloat(btn.style.left) || 0;
+            var finalTop = parseFloat(btn.style.top) || 0;
+
+            // Lado: según de qué mitad quedó más cerca el centro.
+            var centerX = finalLeft + w / 2;
+            var side = centerX < vw / 2 ? 0 : 1;
+
+            // Vertical: cuánto falta para llegar al tope de la zona segura.
+            var usableTop = MU_MARGIN.top;
+            var usableBottom = vh - MU_MARGIN.bottom - h;
+            var range = Math.max(1, usableBottom - usableTop);
+            var vertical = ((finalTop - usableTop) / range) * 100;
+            vertical = Math.max(0, Math.min(100, vertical));
+
+            savePosition(side, vertical);
+            applyPosition({ side: side, vertical: vertical });
+
+            // Si el gesto terminó en arrastre, suprimir el click para no
+            // abrir WhatsApp al solo querer mover el botón.
+            if (e && e.preventDefault) e.preventDefault();
+        }
+
+        btn.addEventListener('pointerup', endDrag);
+        btn.addEventListener('pointercancel', endDrag);
+
+        // El clic en móvil dispara click después de pointerup. Si hubo
+        // arrastre, hay que evitar que además abra WhatsApp.
+        btn.addEventListener('click', function(e) {
+            if (didMove) {
+                e.preventDefault();
+                didMove = false;
+            }
+        }, true);
+
+        // Recalcular al cambiar el tamaño de la ventana o rotar el
+        // dispositivo: el estado guardado es porcentual, así que se
+        // reubica solo sin intervención del usuario.
+        var resizeTimer = null;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function() {
+                applyPosition(readPosition());
+            }, 150);
+        });
+    }
+
+    /**
      * Initialize all UI components
      */
     function init() {
@@ -500,6 +702,7 @@
         initWpLinguaSwitcherToggle();
         initShareButtons();
         initCarousels();
+        initDraggableWhatsapp();
     }
 
     // Run on DOM ready

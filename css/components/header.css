@@ -12,7 +12,11 @@
     width: auto !important;
 }
 
+/* `.inside-header` es el ancla del selector de país.
+   position:relative hace que el posicionado absoluto de la bandera se
+   mida contra la barra, no contra el documento entero. */
 .inside-header {
+    position: relative;
     padding-top: 12px;
     padding-bottom: 0;
 }
@@ -284,22 +288,25 @@
 /* ============================================
    COUNTRY SELECTOR (Header Left)
    ============================================ */
-/* El contenedor ya NO se posiciona de forma absoluta contra el documento.
+/* La bandera vive DENTRO de `.inside-header` (el marcado lo inyecta el
+   hook `generate_before_header_content`, ver inc/geo.php). Antes colgaba
+   de `generate_header`, que dispara FUERA del `<header>`: el marcado
+   quedaba antes de la barra en el DOM y, al pasar de absoluto a relativo,
+   ocupaba una franja vacía encima del encabezado.
 
-   PROBLEMA QUE CORRIGE (research.md D-3): `.mu-header-country-item` estaba
-   en `position:absolute; left/top` sin contenedor relativo padre, por lo
-   que se anclaba al documento entero y quedaba FUERA de la barra: el orden
-   real en producción es skip-link → mu-header-country-item → header → nav.
-   La bandera y el .menu-toggle de GeneratePress terminaban compartiendo la
-   misma franja con z-index distintos, y el dropdown podía verse por encima
-   del menú (FR-008).
+   Ahora está posicionada en absoluto contra `.inside-header`, que quedó
+   como ancla. Arriba a la izquierda con margen pequeño, alineada con el
+   borde del contenedor. El logo va centrado y mide 60px en móvil, así que
+   no hay colisión: la bandera queda a la izquierda del logo centrado.
 
-   Ahora el contenedor es un elemento normal del flujo del encabezado, así
-   que responde a la geometría de la barra y no se superpone al botón de
-   menú. El z-index se conserva para que el dropdown, que sí es
-   desplegable, quede por encima del contenido de la página. */
+   Este es el lugar correcto por dos motivos a la vez:
+   1. Visualmente vive dentro de la cabecera, no encima de ella.
+   2. Su containing block es la barra, así que ya no compite con el botón
+      hamburguesa como pasaba cuando se anclaba al documento. */
 .mu-header-country-item {
-    position: relative;
+    position: absolute;
+    top: var(--mu-space-md);
+    left: var(--mu-space-md);
     z-index: 1000;
 }
 
@@ -605,11 +612,12 @@
         outline-offset: -3px;
     }
 
-    /* El override móvil de `.mu-header-country-item` (left:20px; top:20px)
-       se eliminó junto con el posicionamiento absoluto (research.md D-3,
-       T015). Con `position: relative` esas coordenadas fijas anclaban el
-       control a una esquina de la pantalla y lo superponían al botón de
-       menú hamburguesa, que ocupa esa misma esquina (FR-008).
+    /* La bandera ya no necesita override móvil: `.mu-header-country-item`
+       usa `top`/`left` con variables de espaciado que valen en todos los
+       tamaños, y su ancla es `.inside-header`. Antes este bloque fijaba
+       `left:20px; top:20px` porque el contenedor se anclaba al documento
+       entero, fuera de la barra (research.md D-3, y el hook corregido a
+       `generate_before_header_content` en inc/geo.php).
 
        El dropdown mantiene transición más rápida en táctil, donde la
        respuesta debe ser inmediata. */

@@ -124,7 +124,6 @@ if ( ! function_exists( 'mu_boton_flotante_whatsapp' ) ) {
            class="boton-whatsapp" target="_blank" rel="noopener noreferrer"
            aria-label="Escribir por WhatsApp">
             <img src="https://muyunicos.com/wp-content/uploads/2025/10/whatsapp.webp" alt="Contacto por WhatsApp">
-            <span class="boton-whatsapp__label" aria-hidden="true">¡Escribinos!</span>
         </a>
         <?php
     }

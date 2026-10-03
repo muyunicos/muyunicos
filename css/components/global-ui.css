@@ -89,35 +89,39 @@ body.mu-wplng-hide .wplng-switcher {
    Botón de contacto, no navegación. Su función es que el comprador con
    una duda sepa que puede escribirnos y que el control se vea pulsable.
 
-   REDISEÑO (research.md D-9 a D-14):
+   REDISEÑO (research.md D-9 a D-14, ajustado por el mantenedor):
    - Era un círculo plano de 50px, sin hover, sin foco, sin estado de
-     pulsación y sin decir qué hace. Sobre un teléfono se lo pastaba todo
-     el mundo.
-   - Ahora es una píldora con ícono y etiqueta. La etiqueta es lo que
-     comunica "esto es un canal de contacto" sin depender de que el
-     comprador reconozca el ícono.
+     pulsación y sin decir qué hace.
+   - Es una píldora con sombra, escala y pulso único.
+   - SIN etiqueta de texto: se probó con "¡Escribinos!" y ocupaba demasiado
+     ancho en pantalla angosta. El ícono de WhatsApp ya comunica el canal,
+     el nombre accesible lo cubre para lector de pantalla, y la píldora
+     redondeada más la sombra ya comunican que se puede pulsar. Igual que
+     las burbujas de chat de verdad, que son solo un ícono.
 
-   DECISIÓN CLAVE — por qué la invitación se resuelve en CSS y no en JS:
-   un :hover no existe en un teléfono. Todo lo que dependa de un puntero
-   fino desaparece en táctil, que es exactamente el caso que la spec
-   prioriza. Por eso el control no tiene estado en JavaScript: su estado
-   lo resuelven :hover, :focus-visible y :active, que sí se ven en todos
-   los dispositivos (contrato C-3.1).
+   ARRASTRABLE: el mantenedor puede moverlo a cualquier lado y altura.
+   La posición se guarda en su navegador (localStorage), nunca en el
+   servidor. Ver initDraggableWhatsapp() en js/global-ui.js.
+
+   DECISIÓN — por qué el arrastre vive en JS y no en CSS: mover un control
+   siguiendo el dedo requiere conocer la posición en tiempo real; no hay
+   forma de hacerlo solo con estilos. El resto de los estados (hover, foco,
+   pulsación, pulso) sigue resolviéndose en CSS para que no dependa de
+   que exista puntero fino: un :hover no existe en un teléfono.
    ============================================ */
 .boton-whatsapp {
     position: fixed;
     display: inline-flex;
     align-items: center;
-    gap: var(--mu-space-sm);
-    /* env(safe-area-inset-bottom) mantiene el control por encima de la
-       barra de direcciones de iPhone y del indicador de inicio. El
-       margen de 82px es el espacio que ya respetaba el diseño anterior;
-       lo que cambia es que ahora se le suma la zona segura real del
-       dispositivo en lugar de adivinarla (contrato C-3.7). */
-    bottom: calc(82px + env(safe-area-inset-bottom, 0px));
-    right: 25px;
-    min-height: 50px;
-    padding: 8px 18px 8px 10px;
+    justify-content: center;
+    /* Zona segura: el mantenedor solo puede moverlo dentro de estos
+       márgenes, así que nunca queda medio cortado ni tapando un control
+       (research.md D-14). env(safe-area-inset-bottom) mantiene el control
+       por encima de la barra de direcciones de iPhone. */
+    bottom: calc(var(--mu-space-lg) * 2 + var(--mu-space-md) + env(safe-area-inset-bottom, 0px));
+    right: var(--mu-space-md);
+    width: 50px;
+    height: 50px;
     background-color: var(--mu-wa-green);
     color: var(--blanco);
     border-radius: var(--mu-radius-full);
@@ -126,6 +130,13 @@ body.mu-wplng-hide .wplng-switcher {
     line-height: 1;
     box-shadow: 2px 2px 0px 0px var(--mu-wa-accent);
     z-index: 100;
+    /* CRÍTICO para el arrastre táctil: sin esto el navegador captura el
+       gesto para hacer scroll y el control nunca recibe el movimiento.
+       `none` = el navegador no interviene; el arrastre es 100% nuestro. */
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
     /* Pulso único de atención al cargar. Ver más abajo. */
     animation: mu-wa-pulse 0.6s cubic-bezier(0.4, 0, 0.2, 1) 1;
     transition: var(--mu-transition-fast);
@@ -137,35 +148,33 @@ body.mu-wplng-hide .wplng-switcher {
     border-radius: 50%;
     flex-shrink: 0;
     display: block;
-}
-
-/* Etiqueta. En móvil es siempre visible: en un teléfono no existe
-   "pasar el puntero", así que una etiqueta que solo aparece al hover
-   sería invisible para el usuario al que la spec prioriza
-   (research.md D-10). */
-.boton-whatsapp__label {
-    font-family: var(--mu-font-base);
-    font-size: 15px;
-    font-weight: 600;
-    white-space: nowrap;
-    color: var(--blanco);
+    pointer-events: none;   /* el arrastre lo maneja el contenedor */
 }
 
 /* Estados de interacción (contrato C-3.1, FR-019) */
 .boton-whatsapp:hover {
     background-color: var(--mu-wa-green-hover);
-    transform: scale(1.03);
+    transform: scale(1.05);
 }
 
 .boton-whatsapp:focus-visible {
     outline: 3px solid var(--secundario);
     outline-offset: 3px;
-    transform: scale(1.03);
+    transform: scale(1.05);
 }
 
 .boton-whatsapp:active {
     background-color: var(--mu-wa-green-hover);
-    transform: scale(0.97);
+    transform: scale(0.95);
+}
+
+/* Estado mientras se arrastra: se agranda ligeramente para que el dedo
+   vea que lo tomó, y el cursor pasa a "coger". */
+.boton-whatsapp.is-dragging {
+    transform: scale(1.12);
+    box-shadow: 4px 4px 0px 0px var(--mu-wa-accent);
+    cursor: grabbing;
+    transition: none;   /* sin transición: debe seguir al dedo al instante */
 }
 
 /* ============================================
@@ -204,26 +213,12 @@ body.mu-wplng-hide .wplng-switcher {
 }
 
 /* ============================================
-   WHATSAPP — ETIQUETA EN ESCRITORIO
+   WHATSAPP — PERSISTENCIA DE POSICIÓN
    ============================================
-   En escritorio hay puntero fino, así que la etiqueta se revela al pasar
-   el cursor o al enfocar con teclado, y el control queda compacto en
-   reposo. En móvil (hasta 768px) la etiqueta es siempre visible: es el
-   caso que la spec prioriza y donde no existe hover. */
-@media (min-width: 769px) {
-    .boton-whatsapp__label {
-        max-width: 0;
-        opacity: 0;
-        overflow: hidden;
-        transition: max-width var(--mu-transition), opacity var(--mu-transition);
-    }
-
-    .boton-whatsapp:hover .boton-whatsapp__label,
-    .boton-whatsapp:focus-visible .boton-whatsapp__label {
-        max-width: 200px;
-        opacity: 1;
-    }
-}
+   Cuando el mantenedor mueve el botón, el JavaScript escribe acá
+   `bottom` y `left`/`right` en píxeles. Estas reglas solo definen el
+   estado por defecto; el CSS nunca compite con lo que el JS escriba
+   porque el JS escribe propiedades en línea, que ganan. */
 
 /* ============================================
    SEARCH FORM (WooCommerce Product Search)

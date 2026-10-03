@@ -724,6 +724,14 @@ add_shortcode( 'country_redirect_selector', 'render_country_redirect_selector' )
 
 /**
  * Inyecta el selector de país en el header
+ *
+ * HOOK: 'generate_before_header_content' — NO usar 'generate_header'.
+ * En GeneratePress, `generate_header` dispara ANTES del `<header>`: el
+ * marcado quedaba fuera de la barra y, al no estar posicionado en
+ * absoluto, ocupaba su propia franja vacía encima del encabezado.
+ * `generate_before_header_content` dispara dentro de `.inside-header`,
+ * que es donde la bandera debe vivir. Verificado contra producción el
+ * 2026-10-02 con el orden real del DOM.
  */
 if ( ! function_exists( 'mu_inject_country_selector_header' ) ) {
     function mu_inject_country_selector_header() {
@@ -734,7 +742,7 @@ if ( ! function_exists( 'mu_inject_country_selector_header' ) ) {
         </div>
         <?php
     }
-    add_action( 'generate_header', 'mu_inject_country_selector_header', 1 );
+    add_action( 'generate_before_header_content', 'mu_inject_country_selector_header', 1 );
 }
 
 // ============================================
