@@ -1,7 +1,7 @@
 {
   "integration": "cline",
   "version": "1.1.0",
-  "installed_at": "2026-10-03T17:41:39.754244+00:00",
+  "installed_at": "2026-10-03T18:16:14.831501+00:00",
   "files": {
     ".clinerules/workflows/speckit-analyze.md": "347f83fd9c2c2e67ebefbe583b24e8de1528acb9fe0aa5e0e12a68cc644d4a1b",
     ".clinerules/workflows/speckit-clarify.md": "5e155b88cc742214e57ed5c1828d8c210b2414b4e625219d6873e8063f8fddc1",
