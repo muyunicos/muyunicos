@@ -23,6 +23,8 @@ CARGA CONDICIONAL ESTRICTA
 
 FLUJO DE TRABAJO Y DESPLIEGUE
 - Rama semántica obligatoria: perf/, refactor/, fix/, feat/
+- Los comandos locales se ejecutan desde la raíz del repositorio, en PowerShell 7
+  (pwsh). El entorno local completo está documentado en §9.
 - No hay entorno de Staging. Las pruebas se realizan en Producción, por lo que todo código
   debe estar encapsulado (if !function_exists), ser defensivo y estar exhaustivamente revisado.
 - Despliegue MANUAL vía FTP/Administrador de archivos a /generatepress-child/.
@@ -364,6 +366,9 @@ CSS
 7. DIAGNÓSTICO DE ERRORES CONOCIDOS
 ════════════════════════════════════════════════════════════════
 
+Antes de diagnosticar cualquier fallo, verificar el entorno (§9): shell activo
+(pwsh 7), directorio actual, PATH y disponibilidad de la herramienta.
+
 ERRORES "Commands out of sync" (MySQL)
 - Causa: Plugins de terceros (Jetpack, Action Scheduler, Rank Math, Facebook Pixel,
   WooCommerce Sessions) ejecutan consultas SQL durante el hook `shutdown` de WordPress,
@@ -630,3 +635,86 @@ RESUELTOS el 2026-10-02:
   valor correcto. El dato anterior (8.3.28) estaba desactualizado.
 - [x] SC-004: el total del carrito con impuesto por dirección de envío coincide
   con el que calcula WooCommerce. Verificado por el mantenedor sobre producción.
+
+════════════════════════════════════════════════════════════════
+9. ENTORNO DE DESARROLLO LOCAL (WINDOWS + POWERSHELL 7 + SPEC KIT)
+════════════════════════════════════════════════════════════════
+
+Este apartado describe únicamente el entorno desde el que se edita y verifica el
+repositorio. No es el servidor (eso es §2): nada de lo que aquí se documenta se
+ejecuta en producción.
+
+STACK LOCAL (verificado 2026-10-03):
+- SO: Windows (10.0.26200), 64 bits.
+- Shell activo y único soportado: PowerShell 7 (pwsh 7.6.6, instalado como app
+  de Microsoft Store). NO asumir bash, WSL, cmd ni Windows PowerShell 5.1.
+  · La terminal integrada de VS Code y Cline debe abrir pwsh 7; el perfil
+    "PowerShell 7" está definido y versionado en .vscode/settings.json.
+- Editor: VS Code + extensión Cline.
+- PHP local: 8.5.9 (CLI, ZTS) — solo para php -l (§8: producción corre 8.5.4).
+- uv 0.12.3 — con él está instalado specify-cli (uv tool list → specify-cli v1.1.0).
+- specify-cli 1.1.0 (Spec Kit) — %USERPROFILE%\.local\bin\specify.exe.
+- Spec Kit: integración cline única y predeterminada, con scripts PowerShell
+  (init-options.json → "script": "ps"). Los workflows /speckit-* para Cline
+  viven en .clinerules/workflows/ y los scripts en .specify/scripts/powershell/.
+  · .clinerules/workflows/ y .specify/ son archivos GESTIONADOS por Spec Kit:
+    no editarlos a mano, no copiarlos ni moverlos.
+
+COMPROBACIÓN DEL SHELL (primer paso de todo diagnóstico):
+- $PSVersionTable.PSVersion → esperado: Major 7.
+- (Get-Process -Id $PID).Path → esperado: ruta terminada en pwsh.exe.
+- Si el shell no es pwsh 7, se corrige el entorno ANTES de diagnosticar el
+  repositorio: no se atribuye al tema lo que es deriva del shell.
+
+ESTADO DE SPEC KIT:
+- specify version → CLI 1.1.0 · Platform Windows · Python 3.14.6.
+- specify integration status → esperado: State OK; default e installed: cline;
+  Modified managed files: 0; Missing managed files: 0.
+- specify check → esperado: "Specify CLI is ready to use!" (Cline figura como
+  IDE-based, no tiene chequeo por CLI: es correcto).
+
+ACTUALIZAR LA INTEGRACIÓN (solo cuando corresponda):
+- specify integration upgrade cline --script ps, desde la raíz del repositorio.
+- Revisar SIEMPRE el resultado con git status y git diff antes de commitear: la
+  actualización reescribe .clinerules/workflows/ y .specify/ (manifiestos y
+  scripts incluidos). Commitear la actualización como cambio propio, separada
+  de cambios funcionales o de documentación.
+- La CLI se gestiona aparte: specify self check (solo lectura) y specify self
+  upgrade para actualizarla.
+
+REGLAS OPERATIVAS (aplican a personas y a agentes de IA):
+- Ejecutar los comandos desde la raíz del repositorio salvo indicación explícita.
+- Ante un fallo, diagnosticar en este orden: shell activo (pwsh 7), directorio
+  actual, PATH y disponibilidad de la herramienta. Recién después revisar el código.
+- Los ejemplos POSIX (grep, sed, export, rutas con /) no aplican aquí. Los
+  scripts de Spec Kit se invocan como PowerShell, por ejemplo:
+  .specify/scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly
+- Traducciones directas de §7 y de los quickstarts:
+  · grep -nE 'patrón' archivo  →  Select-String -Path archivo -Pattern 'patrón'
+  · grep -rn 'patrón' carpeta  →  Get-ChildItem carpeta -Recurse -File |
+    Select-String -Pattern 'patrón'
+  · curl ...                   →  curl.exe ...  (en PowerShell, curl es alias
+    de Invoke-WebRequest; el binario real es curl.exe)
+  · php -l archivo.php         →  igual; usa el PHP local 8.5.9
+  · && y || entre comandos     →  soportados en PowerShell 7; un error de parser
+    ante ellos delata Windows PowerShell 5.1 (shell incorrecto)
+- Rutas con espacios o caracteres especiales: entre comillas dobles.
+
+LÍMITES DE SEGURIDAD (también para agentes de IA):
+- PROHIBIDO modificar bases de datos, credenciales o servicios externos desde el
+  entorno local.
+- PROHIBIDO desplegar a producción: el despliegue es manual por FTP (§1) y
+  ninguna tarea de IA termina con un paso de despliegue (constitución, "Regla de
+  despliegue").
+- Cualquier operación fuera de estos límites requiere aprobación explícita del
+  mantenedor antes de ejecutarse.
+
+VERIFICACIÓN REPRODUCIBLE EN LOCAL (lo que sí se prueba aquí):
+- php -l sobre los PHP tocados (sintaxis; no verifica comportamiento).
+- Select-String para invariantes: literales de color, wp_add_inline_*,
+  style.transform, enqueue condicional, etc. (§7 y quickstarts de specs/).
+- git diff --name-only para comprobar el alcance: nada bajo Tema-GeneratePress/
+  ni plugins; el parent no se toca (principio X).
+- Navegador, sesión real, caché o pago: verificación manual contra producción
+  según §7. Este proyecto no tiene suite de pruebas, CI ni staging
+  (constitución, "Restricción dominante").
