@@ -11,7 +11,9 @@
     height: auto;
     width: auto !important;
 }
-
+.site-logo {
+	margin: 0 !important;
+}
 /* `.inside-header` es el ancla del selector de país.
    position:relative hace que el posicionado absoluto de la bandera se
    mida contra la barra, no contra el documento entero. */
