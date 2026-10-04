@@ -606,6 +606,8 @@ BLOQUEO DE BOTS POR PAÍS EN EL EDGE (2026-10-02)
 - [ ] WAF en el edge: configurar un challenge para requests con `product_tag=` multi-tag provenientes de bots no verificados. Criterio: "que no intenten ninguna combinación de etiquetas en el borde". Implementar en el WAF de la CDN de Hostinger; el edge hoy no lo soporta. OJO: verificar antes que no bloquee a Google (que rastrea combinaciones de etiquetas).
 - [ ] Excepción en el WAF para `meta-webindexer` (crawler de previews de Facebook/WhatsApp) si se desea preservar las preview cards compartidas. Criterio: las previews de enlaces en redes deben seguir renderizando la imagen.
 - [ ] Repositorio de la Calculadora de Stickers: 7 archivos modificados sin commitear, incluido el bundle `calculadora_stickers.js` que se sirve en producción. Mientras no se commiteen, el bundle servido no es reproducible desde su fuente.
+- [ ] `assets/css/main.min.css`: archivo versionado (commit "Add files via upload") que NO está encolado en ningún `wp_enqueue_*` del tema — verificado por grep sobre todo el repo. Es un reset minificado de terceros, así que NO se editó ni se purgó: se excluyó del lint con `files.exclude` en `.vscode/settings.json` para que sus avisos de vendor-prefix no mezclen código propio con código de terceros. Decidir si se borra del repo o se documenta como archivo de respaldo; no se borró por no saber si alguien lo subió a propósito.
+- [ ] `ui.php`: el `href` del botón AFIP sigue en `http://` porque NO se pudo verificar que `qr.afip.gob.ar` sirva HTTPS con certificado válido (el dominio no responde a clientes automatizados). El `src` de la imagen SÍ se migró a `https://` (verificado: responde 200 con `image/jpeg`). Mientras el `href` sea `http://`, el navegador puede avisar "conexión no segura" al navegar a AFIP. Verificar a mano y migrar a `https://` en cuanto se confirme.
 
 REGISTRO DE EXCEPCIONES (2026-10-02, feature 003-mobile-ui-fixes):
 - Colores --mu-wa-green / --mu-wa-green-hover / --mu-wa-accent: excepción al
@@ -651,6 +653,22 @@ STACK LOCAL (verificado 2026-10-03):
   · La terminal integrada de VS Code y Cline debe abrir pwsh 7; el perfil
     "PowerShell 7" está definido y versionado en .vscode/settings.json.
 - Editor: VS Code + extensión Cline.
+  · Intelephense (extensión PHP de VS Code) SIN stubs solo trae las funciones
+    de PHP: marca como "Undefined function" cada add_action(), esc_attr(),
+    wc_price(), etc. del core de WordPress y de WooCommerce. Con ~600 llamadas
+    al core, el panel de problemas queda inutilizable y los errores REALES se
+    pierden en el ruido. Por eso .vscode/settings.json declara intelephense.stubs.
+    · Tras clonar el repo hay que DESCARGAR los stubs (no vienen versionados:
+      vendor/ está en .gitignore, línea 37). Desde la raíz, en PowerShell 7:
+        New-Item -ItemType Directory -Force -Path vendor\stubs | Out-Null
+        curl.exe -sL -o vendor\stubs\wordpress-stubs.php https://raw.githubusercontent.com/php-stubs/wordpress-stubs/master/wordpress-stubs.php
+        curl.exe -sL -o vendor\stubs/woocommerce-stubs.php https://raw.githubusercontent.com/php-stubs/woocommerce-stubs/master/woocommerce-stubs.php
+    · woocommerce-stubs.php NO se autodeclara: hay que pasar los DOS archivos a
+      intelephense.stubs (ya están en .vscode/settings.json).
+    · Tras descargarlos: recargar la ventana y ejecutar "Intelephense: Index all".
+    · assets/css/main.min.css está excluido con files.exclude: es un reset
+      minificado de terceros, no está encolado en ningún wp_enqueue_* del tema,
+      y sus avisos de vendor-prefix no son código nuestro.
 - PHP local: 8.5.9 (CLI, ZTS) — solo para php -l (§8: producción corre 8.5.4).
 - uv 0.12.3 — con él está instalado specify-cli (uv tool list → specify-cli v1.1.0).
 - specify-cli 1.1.0 (Spec Kit) — %USERPROFILE%\.local\bin\specify.exe.

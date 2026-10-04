@@ -828,7 +828,12 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
                 $parent_id = $queried_object->parent;
                 while ( $parent_id ) {
                     if ( in_array( (int) $parent_id, $digital_cats, true ) ) {
-                        return [ true, get_term_link( $parent_id, 'product_cat' ) ];
+                        // get_term_link() devuelve WP_Error si el término no
+                        // resuelve (ID obsoleto en el índice). Sin este guarda el
+                        // WP_Error llegaría a execute_redirect(string) y lanzaría
+                        // TypeError fatal en lugar de degradar al shop.
+                        $link = get_term_link( $parent_id, 'product_cat' );
+                        if ( ! is_wp_error( $link ) ) return [ true, $link ];
                     }
                     $term      = get_term( $parent_id, 'product_cat' );
                     $parent_id = ( $term && ! is_wp_error( $term ) ) ? $term->parent : 0;
@@ -950,7 +955,12 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             if ( isset( $redirect_map[ $post->ID ] ) ) {
                 $target_id = $redirect_map[ $post->ID ];
                 if ( 'publish' === get_post_status( $target_id ) ) {
-                    return [ true, get_permalink( $target_id ) ];
+                    $permalink = get_permalink( $target_id );
+                    // get_permalink() devuelve false si el post ya no existe.
+                    // Se normaliza a '' para que execute_redirect caiga en la
+                    // búsqueda de respaldo, en vez de coercionarlo a '' por
+                    // el tipo string del parámetro (implícito y frágil).
+                    return [ true, $permalink ? $permalink : '' ];
                 }
             }
             
@@ -963,11 +973,17 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             if ( empty( $product_cats ) || is_wp_error( $product_cats ) ) return '';
             
             foreach ( $product_cats as $cat_id ) {
-                if ( in_array( (int) $cat_id, $digital_cats, true ) ) return get_term_link( (int) $cat_id, 'product_cat' );
+                if ( in_array( (int) $cat_id, $digital_cats, true ) ) {
+                    $link = get_term_link( (int) $cat_id, 'product_cat' );
+                    if ( ! is_wp_error( $link ) ) return $link;
+                }
             }
             foreach ( $product_cats as $cat_id ) {
                 foreach ( get_ancestors( $cat_id, 'product_cat', 'taxonomy' ) as $ancestor_id ) {
-                    if ( in_array( (int) $ancestor_id, $digital_cats, true ) ) return get_term_link( (int) $ancestor_id, 'product_cat' );
+                    if ( in_array( (int) $ancestor_id, $digital_cats, true ) ) {
+                        $link = get_term_link( (int) $ancestor_id, 'product_cat' );
+                        if ( ! is_wp_error( $link ) ) return $link;
+                    }
                 }
             }
             return '';
@@ -975,7 +991,11 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
         
         private function execute_redirect( string $target_url ): void {
             global $post;
-            if ( empty( $target_url ) || is_wp_error( $target_url ) ) {
+            // SIN is_wp_error() a propósito: el parámetro está tipado string, así
+            // que un WP_Error lanzaría TypeError ANTES de entrar al cuerpo y esta
+            // guarda sería inalcanzable. Los handlers handle_*_redirect() ya
+            // normalizan WP_Error → '' antes de llamar a este método.
+            if ( empty( $target_url ) ) {
                 $target_url = ( is_product() && isset( $post->post_title ) )
                     ? home_url( '/?s=' . urlencode( $post->post_title ) . '&post_type=product' )
                     : wc_get_page_permalink( 'shop' );
@@ -988,13 +1008,23 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             // resultaba '', y us./cr. funcionaban por coincidencia casual de
             // strtoupper(substr(...)). La función de geo.php maneja puertos,
             // www. y el dominio principal correctamente.
-            if ( function_exists( 'insertar_prefijo_idioma' ) && function_exists( 'muyu_country_language_prefix' ) ) {
+            //
+            // El prefijo se aplica con muyu_clean_uri() —el mismo helper que ya
+            // usa el selector de país (geo.php:629 y :707)— en lugar de una
+            // función insertar_prefijo_idioma() que nunca existió en este repo
+            // y dejaba este bloque como código muerto.
+            if ( function_exists( 'muyu_country_language_prefix' ) && function_exists( 'muyu_clean_uri' ) ) {
                 $country = function_exists( 'muyu_get_current_country_from_subdomain' )
                     ? muyu_get_current_country_from_subdomain()
                     : 'AR';
                 $prefix = muyu_country_language_prefix( $country );
                 if ( $prefix ) {
-                    $target_url = insertar_prefijo_idioma( $target_url, $prefix );
+                    $parts = wp_parse_url( $target_url );
+                    if ( ! empty( $parts['host'] ) ) {
+                        $path  = muyu_clean_uri( $prefix, $parts['path'] ?? '/' );
+                        $query = isset( $parts['query'] ) ? '?' . $parts['query'] : '';
+                        $target_url = ( $parts['scheme'] ?? 'https' ) . '://' . $parts['host'] . $path . $query;
+                    }
                 }
             }
             

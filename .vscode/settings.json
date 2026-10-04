@@ -9,5 +9,13 @@
   "terminal.integrated.automationProfile.windows": {
     "path": "pwsh.exe",
     "args": ["-NoLogo"]
+  },
+  "intelephense.stubs": [
+    "./vendor/stubs/wordpress-stubs.php",
+    "./vendor/stubs/woocommerce-stubs.php"
+  ],
+  "intelephense.environment.phpVersion": "8.5",
+  "files.exclude": {
+    "**/assets/css/main.min.css": true
   }
 }

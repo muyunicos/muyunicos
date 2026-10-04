@@ -259,7 +259,9 @@ if ( ! function_exists( 'mu_cart_restriction_enqueue' ) ) {
         }
 
         // URL del endpoint AJAX (wc_ajax para que WC refresque fragmentos)
-        $ajax_url = function_exists( 'WC_AJAX' ) ? WC_AJAX::get_endpoint( 'mu_remove_physical_products' ) : admin_url( 'admin-ajax.php' );
+        // WC_AJAX es una CLASE de WooCommerce: class_exists() es la guarda correcta.
+        // Con function_exists() devolvía false siempre y caía al fallback admin-ajax.
+        $ajax_url = class_exists( 'WC_AJAX' ) ? WC_AJAX::get_endpoint( 'mu_remove_physical_products' ) : admin_url( 'admin-ajax.php' );
 
         // JS: agregar al script del carrito o checkout si existe, si no inline
         $target_script = wp_script_is( 'mu-cart-js', 'enqueued' ) ? 'mu-cart-js' : ( wp_script_is( 'mu-checkout-js', 'enqueued' ) ? 'mu-checkout-js' : '' );
@@ -359,7 +361,7 @@ if ( ! function_exists( 'mu_cart_restriction_get_inline_js' ) ) {
      * @return string
      */
     function mu_cart_restriction_get_inline_js( $ajax_url = '' ) {
-        $ajax_url = esc_url_raw( $ajax_url ?: ( function_exists( 'WC_AJAX' ) ? WC_AJAX::get_endpoint( 'mu_remove_physical_products' ) : admin_url( 'admin-ajax.php' ) ) );
+        $ajax_url = esc_url_raw( $ajax_url ?: ( class_exists( 'WC_AJAX' ) ? WC_AJAX::get_endpoint( 'mu_remove_physical_products' ) : admin_url( 'admin-ajax.php' ) ) );
         return '
 (function($) {
     "use strict";

@@ -411,6 +411,7 @@ form.variations_form tr {
     text-align: center;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     margin-top: 15px !important;
 }

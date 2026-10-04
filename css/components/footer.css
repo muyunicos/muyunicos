@@ -189,6 +189,14 @@ div.site-footer:not(.mu-custom-footer) {
     color: var(--exito);
 }
 
+/* Botón de verificación AFIP (DataWeb). El width iba inline en el HTML y se
+   movió acá: la constitución II prohíbe CSS inline fuera de login y emails. */
+.mu-secure-badge img {
+    width: 50px;
+    height: auto;
+    border: 0;
+}
+
 /* ========================================
    BOTÓN DE ARREPENTIMIENTO
    ======================================== */
