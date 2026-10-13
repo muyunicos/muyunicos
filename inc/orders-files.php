@@ -254,6 +254,18 @@ add_action( 'woocommerce_email_order_details', function( $order, $sent_to_admin,
 
     $html_files = '';
     foreach ( $order->get_items() as $item ) {
+        // Caso #29088: el email de processing se renderiza en el MISMO request
+        // del checkout. El $order en memoria puede traer los items hidratados
+        // ANTES de que el plugin publicara _urls_files (promueve en
+        // woocommerce_order_status_processing, que corre antes que
+        // ..._processing_notification). Se rehidrata el item desde BD para
+        // no leer la copia vieja cacheada en el objeto. Fail-safe: si algo
+        // no existe, se sigue con el $item original.
+        if ( is_object( $item ) && method_exists( $item, 'get_id' )
+            && function_exists( 'WC_Order_Factory' ) ) {
+            $fresco = WC_Order_Factory::get_order_item( $item->get_id() );
+            if ( $fresco ) { $item = $fresco; }
+        }
         $files = $item->get_meta( '_urls_files', true );
         if ( ! empty( $files ) && is_array( $files ) ) {
             foreach ( $files as $url ) {
