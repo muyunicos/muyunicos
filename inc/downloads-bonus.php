@@ -237,6 +237,13 @@ if ( ! function_exists( 'mu_inject_bonus_in_emails' ) ) {
      * Agrega el enlace del bonus en correos de pedido completado/facturado, y en
      * procesando-PAGADO (entrega inmediata: misma regla que los archivos).
      * Los estilos inline son obligatorios en emails HTML (compatibilidad con clientes de correo).
+     *
+     * Alcance por PEDIDO (no por historial): el bonus sale solo si EL PEDIDO
+     * ACTUAL contiene al menos un producto de cat. 18 (etiquetas escolares).
+     * Un cliente viejo de etiquetas que hoy compra solo otro producto (p.ej.
+     * un sticker del PersonalizadorPDF) ya no recibe un extra que nada que ver.
+     * El historial del usuario se mantiene como condicion (premia al cliente),
+     * pero acotado a que este pedido traiga etiquetas.
      */
     function mu_inject_bonus_in_emails( $order, $sent_to_admin, $plain_text, $email ) {
         if ( $sent_to_admin || $plain_text || ! $email ) return;
@@ -251,6 +258,23 @@ if ( ! function_exists( 'mu_inject_bonus_in_emails' ) ) {
         if ( ! $user_id ) return;
 
         if ( ! mu_user_has_virtual_manual_purchases( $user_id ) ) return;
+
+        // El pedido ACTUAL debe traer etiquetas (cat. 18): sin eso, no hay bonus.
+        $pedido_trae_etiquetas = false;
+        if ( is_object( $order ) && method_exists( $order, 'get_items' ) ) {
+            foreach ( $order->get_items() as $item ) {
+                if ( ! is_object( $item ) || ! method_exists( $item, 'get_product' ) ) continue;
+                $product = $item->get_product();
+                if ( ! $product ) continue;
+                $parent_id = method_exists( $product, 'get_parent_id' ) && $product->get_parent_id()
+                    ? $product->get_parent_id() : $product->get_id();
+                if ( function_exists( 'has_term' ) && has_term( 18, 'product_cat', $parent_id ) ) {
+                    $pedido_trae_etiquetas = true;
+                    break;
+                }
+            }
+        }
+        if ( ! $pedido_trae_etiquetas ) return;
 
         $all_downloads = wc_get_customer_available_downloads( $user_id );
         $has_cat_18    = mu_user_has_cat_18_download( $all_downloads ) || mu_user_has_cat_18_custom_files( $user_id );
