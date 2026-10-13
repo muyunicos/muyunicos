@@ -235,11 +235,22 @@ function mu_update_item_files( $item_id, $file_url, $action ) {
 // ==========================================
 
 /**
- * Emails: Solo se engancha en correos de Pedido Completado o Factura.
+ * Emails: Pedido Completado, Factura, y Procesando-PAGADO (entrega inmediata).
+ *
+ * Regla "pagado -> entrega inmediata": si el cliente pago en el momento
+ * (MercadoPago/PayPal, total $0, etc.), Woo deja el pedido en "Procesando"
+ * y el email que sale es customer_processing_order. Como el plugin ya
+ * publico _urls_files al promover en processing, el link se muestra YA
+ * (sin esperar al completado). Si NO esta pagado (transferencia a coordinar,
+ * on-hold), no se muestra nada todavia: el link llega en el completado.
+ * $order->is_paid() es del core de Woo (chequea date_paid).
  */
 add_action( 'woocommerce_email_order_details', function( $order, $sent_to_admin, $plain_text, $email ) {
     if ( $sent_to_admin || $plain_text || ! $email ) return;
-    if ( ! in_array( $email->id, [ 'customer_completed_order', 'customer_invoice' ] ) ) return;
+    if ( ! in_array( $email->id, [ 'customer_completed_order', 'customer_invoice', 'customer_processing_order' ] ) ) return;
+    // En processing solo se muestra si el pedido esta PAGADO.
+    if ( $email->id === 'customer_processing_order'
+        && ( ! is_object( $order ) || ! method_exists( $order, 'is_paid' ) || ! $order->is_paid() ) ) return;
 
     $html_files = '';
     foreach ( $order->get_items() as $item ) {
@@ -268,6 +279,41 @@ add_action( 'woocommerce_email_order_details', function( $order, $sent_to_admin,
         echo '</div>';
     }
 }, 25, 4 );
+/**
+ * Pagina de gracias (order-received): entrega inmediata si YA esta pagado.
+ *
+ * Regla "pagado -> entrega inmediata": como el email de processing llega
+ * despues (o a spam), el cliente que pago en el momento sale del checkout
+ * con el link en mano. Si NO esta pagado (transferencia a coordinar),
+ * no se muestra nada: el link llega en el email de completado.
+ * Solo lectura de _urls_files; nunca genera nada aca.
+ */
+add_action( 'woocommerce_thankyou', function( $order_id ) {
+    if ( ! $order_id ) return;
+    if ( ! function_exists( 'wc_get_order' ) ) return;
+    $order = wc_get_order( $order_id );
+    if ( ! $order || ! method_exists( $order, 'is_paid' ) || ! $order->is_paid() ) return;
+    $html_files = '';
+    foreach ( $order->get_items() as $item ) {
+        if ( ! method_exists( $item, 'get_meta' ) ) continue;
+        $files = $item->get_meta( '_urls_files', true );
+        if ( ! empty( $files ) && is_array( $files ) ) {
+            foreach ( $files as $url ) {
+                $html_files .= sprintf(
+                    '<li style="margin-bottom:5px;"><strong>%s:</strong> <a href="%s" target="_blank" download>Descargar</a></li>',
+                    esc_html( $item->get_name() . ' (' . basename( $url ) . ')' ),
+                    esc_url( $url )
+                );
+            }
+        }
+    }
+    if ( ! $html_files ) return;
+    echo '<section class="woocommerce-order-downloads" style="margin: 2em 0; border:1px solid #eee; padding:15px; background:#fafafa;">';
+    echo '<h2 class="woocommerce-column__title">Tus archivos</h2>';
+    echo '<ul style="padding-left:0; list-style:none;">' . $html_files . '</ul>';
+    echo '</section>';
+}, 25 );
+
 
 
 /**
@@ -306,7 +352,8 @@ add_action( 'woocommerce_account_downloads_endpoint', function() {
                     $display_rows[] = [
                         'date' => $order->get_date_created()->date_i18n('d/m/Y'),
                         'product' => esc_html( $item->get_name() ) . $guide_link,
-                        'url' => $url
+                        'url' => $url,
+                        'paid' => ( is_object( $order ) && method_exists( $order, 'is_paid' ) ) ? (bool) $order->is_paid() : false,
                     ];
                 }
             }
@@ -329,7 +376,7 @@ add_action( 'woocommerce_account_downloads_endpoint', function() {
                 <?php foreach ( $display_rows as $row ) : ?>
                 <tr>
                     <td data-title="Fecha"><?php echo esc_html($row['date']); ?></td>
-                    <td data-title="Producto"><small><?php echo wp_kses_post($row['product']); ?></small></td>
+                    <td data-title="Producto"><small><?php echo wp_kses_post($row['product']); ?></small><?php if ( empty( $row['paid'] ) ) : ?> <small style="color:#888;">(pendiente de pago)</small><?php endif; ?></td>
                     <td><a href="<?php echo esc_url($row['url']); ?>" class="button" target="_blank" download>Descargar</a></td>
                 </tr>
                 <?php endforeach; ?>

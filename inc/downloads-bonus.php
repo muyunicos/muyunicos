@@ -234,13 +234,18 @@ if ( ! function_exists( 'mu_inject_guide_in_email_item_name' ) ) {
 
 if ( ! function_exists( 'mu_inject_bonus_in_emails' ) ) {
     /**
-     * Agrega el enlace del bonus en correos de pedido completado/facturado.
+     * Agrega el enlace del bonus en correos de pedido completado/facturado, y en
+     * procesando-PAGADO (entrega inmediata: misma regla que los archivos).
      * Los estilos inline son obligatorios en emails HTML (compatibilidad con clientes de correo).
      */
     function mu_inject_bonus_in_emails( $order, $sent_to_admin, $plain_text, $email ) {
         if ( $sent_to_admin || $plain_text || ! $email ) return;
 
-        if ( ! in_array( $email->id, [ 'customer_completed_order', 'customer_invoice' ] ) ) return;
+        if ( ! in_array( $email->id, [ 'customer_completed_order', 'customer_invoice', 'customer_processing_order' ] ) ) return;
+
+        // En processing solo se muestra si el pedido esta PAGADO.
+        if ( $email->id === 'customer_processing_order'
+            && ( ! is_object( $order ) || ! method_exists( $order, 'is_paid' ) || ! $order->is_paid() ) ) return;
 
         $user_id = $order->get_customer_id();
         if ( ! $user_id ) return;
