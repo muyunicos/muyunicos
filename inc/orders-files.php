@@ -253,6 +253,7 @@ add_action( 'woocommerce_email_order_details', function( $order, $sent_to_admin,
         && ( ! is_object( $order ) || ! method_exists( $order, 'is_paid' ) || ! $order->is_paid() ) ) return;
 
     $html_files = '';
+    $html_bonus = '';
     foreach ( $order->get_items() as $item ) {
         // Caso #29088: el email de processing se renderiza en el MISMO request
         // del checkout. El $order en memoria puede traer los items hidratados
@@ -276,11 +277,30 @@ add_action( 'woocommerce_email_order_details', function( $order, $sent_to_admin,
                 );
             }
         }
+        // Spec 018 (plugin PersonalizadorPDF): bonus congelados del PDF
+        // (meta _pmu_bonus del item: [{titulo, url, pdf}]). Viajan ADEMAS del
+        // ZIP fijo de etiquetas (ese sigue igual). Misma regla de entrega
+        // inmediata: este handler ya solo corre en completed/invoice o en
+        // processing-PAGADO, y el item ya viene rehidratado de arriba.
+        $bonus = $item->get_meta( '_pmu_bonus', true );
+        if ( ! empty( $bonus ) && is_array( $bonus ) ) {
+            foreach ( $bonus as $b ) {
+                if ( ! is_array( $b ) ) continue;
+                $b_titulo = isset( $b['titulo'] ) ? trim( (string) $b['titulo'] ) : '';
+                $b_url = isset( $b['url'] ) ? trim( (string) $b['url'] ) : '';
+                if ( $b_titulo === '' || $b_url === '' ) continue;
+                $html_bonus .= sprintf(
+                    '<li style="margin-bottom:5px;"><strong>%s:</strong> <a href="%s" target="_blank" download>Descargar</a></li>',
+                    esc_html( $b_titulo ),
+                    esc_url( $b_url )
+                );
+            }
+        }
     }
 
-    if ( $html_files ) {
+    if ( $html_files || $html_bonus ) {
         echo '<div style="margin: 20px 0; border:1px solid #eee; padding:15px; background:#fafafa;">';
-        echo '<h3 style="margin-top:0;">Archivos Disponibles</h3><ul style="padding-left:0; list-style:none;">' . $html_files . '</ul>';
+        echo '<h3 style="margin-top:0;">Archivos Disponibles</h3><ul style="padding-left:0; list-style:none;">' . $html_files . $html_bonus . '</ul>';
         
         // --- UX RESTAURADA V2.5 ---
         echo '<p style="margin-top: 15px;">';
@@ -306,6 +326,7 @@ add_action( 'woocommerce_thankyou', function( $order_id ) {
     $order = wc_get_order( $order_id );
     if ( ! $order || ! method_exists( $order, 'is_paid' ) || ! $order->is_paid() ) return;
     $html_files = '';
+    $html_bonus = '';
     foreach ( $order->get_items() as $item ) {
         if ( ! method_exists( $item, 'get_meta' ) ) continue;
         $files = $item->get_meta( '_urls_files', true );
@@ -318,11 +339,28 @@ add_action( 'woocommerce_thankyou', function( $order_id ) {
                 );
             }
         }
+        // Spec 018 (plugin PersonalizadorPDF): bonus congelados (_pmu_bonus).
+        // Aca el pedido se recarga fresco (otro request), sin problema de
+        // hidratacion como en el email. Misma regla: solo pagado (ya filtrado).
+        $bonus = $item->get_meta( '_pmu_bonus', true );
+        if ( ! empty( $bonus ) && is_array( $bonus ) ) {
+            foreach ( $bonus as $b ) {
+                if ( ! is_array( $b ) ) continue;
+                $b_titulo = isset( $b['titulo'] ) ? trim( (string) $b['titulo'] ) : '';
+                $b_url = isset( $b['url'] ) ? trim( (string) $b['url'] ) : '';
+                if ( $b_titulo === '' || $b_url === '' ) continue;
+                $html_bonus .= sprintf(
+                    '<li style="margin-bottom:5px;"><strong>%s:</strong> <a href="%s" target="_blank" download>Descargar</a></li>',
+                    esc_html( $b_titulo ),
+                    esc_url( $b_url )
+                );
+            }
+        }
     }
-    if ( ! $html_files ) return;
+    if ( ! $html_files && ! $html_bonus ) return;
     echo '<section class="woocommerce-order-downloads" style="margin: 2em 0; border:1px solid #eee; padding:15px; background:#fafafa;">';
     echo '<h2 class="woocommerce-column__title">Tus archivos</h2>';
-    echo '<ul style="padding-left:0; list-style:none;">' . $html_files . '</ul>';
+    echo '<ul style="padding-left:0; list-style:none;">' . $html_files . $html_bonus . '</ul>';
     echo '</section>';
 }, 25 );
 
@@ -365,6 +403,24 @@ add_action( 'woocommerce_account_downloads_endpoint', function() {
                         'date' => $order->get_date_created()->date_i18n('d/m/Y'),
                         'product' => esc_html( $item->get_name() ) . $guide_link,
                         'url' => $url,
+                        'paid' => ( is_object( $order ) && method_exists( $order, 'is_paid' ) ) ? (bool) $order->is_paid() : false,
+                    ];
+                }
+            }
+            // Spec 018 (plugin PersonalizadorPDF): bonus congelados (_pmu_bonus).
+            // Misma tabla, sin guia de etiquetas. La etiqueta de pago se resuelve
+            // igual que arriba (fila 'paid').
+            $bonus = $item->get_meta( '_pmu_bonus', true );
+            if ( ! empty( $bonus ) && is_array( $bonus ) ) {
+                foreach ( $bonus as $b ) {
+                    if ( ! is_array( $b ) ) continue;
+                    $b_titulo = isset( $b['titulo'] ) ? trim( (string) $b['titulo'] ) : '';
+                    $b_url = isset( $b['url'] ) ? trim( (string) $b['url'] ) : '';
+                    if ( $b_titulo === '' || $b_url === '' ) continue;
+                    $display_rows[] = [
+                        'date' => $order->get_date_created()->date_i18n('d/m/Y'),
+                        'product' => esc_html( $b_titulo ),
+                        'url' => $b_url,
                         'paid' => ( is_object( $order ) && method_exists( $order, 'is_paid' ) ) ? (bool) $order->is_paid() : false,
                     ];
                 }
