@@ -231,6 +231,22 @@
     background: #f9f9f9;
 }
 
+/* Bloque de ajustes generales (id, fechas, badge): igual en todos los idiomas */
+.mu-hero-banner-globals-block {
+    grid-column: 1 / -1;
+    border: 1px solid #ddd;
+    border-radius: var(--mu-radius-sm, 6px);
+    padding: 10px;
+    background: #f9f9f9;
+}
+.mu-hero-banner-globals-block .mu-hero-banner-globals-title {
+    margin: 0 0 var(--mu-space-sm, 10px);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #646970;
+}
+
 @media (max-width: 782px) {
     .mu-hero-banner-fields-grid { grid-template-columns: 1fr; }
 }

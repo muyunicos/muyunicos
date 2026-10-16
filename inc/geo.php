@@ -75,24 +75,38 @@ if ( ! function_exists( 'muyu_country_language_prefix' ) ) {
 
 if ( ! function_exists( 'muyu_get_current_language' ) ) {
     /**
-     * Detecta el idioma actual de la request.
-     * Lee el prefijo de URI (/pt/, /en/) o infiere desde el país del subdominio.
+     * Detecta el idioma actual de la página.
+     *
+     * Fuente principal: wpLingua (wplng_get_language_current_id()), que decide
+     * el idioma real de cada URL. Si no está activo se cae al prefijo de la
+     * ruta ('/pt', '/en') y, por último, al país del subdominio (BR→pt, US→en).
      * 
      * @return string 'es', 'en' o 'pt'
      */
     function muyu_get_current_language() {
-        $request_uri = isset( $_SERVER['REQUEST_URI'] ) ? $_SERVER['REQUEST_URI'] : '/';
+        $permitidos = [ 'es', 'en', 'pt' ];
 
-        // Prefijo de idioma en la ruta: '/pt', '/pt/', '/en', '/en/'.
-        // Se exige el separador final para no confundir rutas como /entrega/ con /en.
-        if ( preg_match( '#^/pt(/|$)#', $request_uri ) ) {
-            return 'pt';
-        }
-        if ( preg_match( '#^/en(/|$)#', $request_uri ) ) {
-            return 'en';
+        // 1) wpLingua conoce el idioma real de la página: su API es la fuente de
+        //    verdad. Devuelve el idioma de origen cuando la URL no trae prefijo.
+        if ( function_exists( 'wplng_get_language_current_id' ) ) {
+            $lang = substr( strtolower( (string) wplng_get_language_current_id() ), 0, 2 );
+            if ( in_array( $lang, $permitidos, true ) ) {
+                return $lang;
+            }
         }
 
-        // Sin prefijo: se infiere desde el país del subdominio (BR→pt, US→en).
+        // 2) Prefijo de idioma en la ruta ('/pt', '/pt/', '/en', '/en/').
+        //    Se exige el separador final para no confundir /entrega/ con /en.
+        $request_uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) $_SERVER['REQUEST_URI'] : '/';
+        $path        = '/' . ltrim( (string) wp_parse_url( $request_uri, PHP_URL_PATH ), '/' );
+
+        foreach ( $permitidos as $code ) {
+            if ( preg_match( '#^/' . $code . '(/|$)#', $path ) ) {
+                return $code;
+            }
+        }
+
+        // 3) País del subdominio (BR→pt, US→en, resto→es).
         $pais   = muyu_get_current_country_from_subdomain();
         $prefix = muyu_country_language_prefix( $pais );
         if ( '/pt' === $prefix ) return 'pt';

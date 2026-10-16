@@ -583,26 +583,6 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                 };
                 ?>
 
-                <!-- Globales: no cambian por idioma -->
-                <p>
-                    <label><strong><?php esc_html_e( 'ID (slug)', 'mu' ); ?></strong></label>
-                    <input type="text" name="<?php echo esc_attr( $name ); ?>[id]" value="<?php echo esc_attr( $b['id'] ); ?>" class="regular-text">
-                </p>
-                <p>
-                    <label><strong><?php esc_html_e( 'Inicio (DDMMAAAA)', 'mu' ); ?></strong></label>
-                    <input type="text" name="<?php echo esc_attr( $name ); ?>[inicio]" value="<?php echo esc_attr( $b['inicio'] ); ?>" pattern="\d{8}" placeholder="01012026" class="regular-text">
-                </p>
-                <p>
-                    <label><strong><?php esc_html_e( 'Fin (DDMMAAAA)', 'mu' ); ?></strong></label>
-                    <input type="text" name="<?php echo esc_attr( $name ); ?>[fin]" value="<?php echo esc_attr( $b['fin'] ); ?>" pattern="\d{8}" placeholder="31122026" class="regular-text">
-                </p>
-                <p>
-                    <label>
-                        <input type="checkbox" name="<?php echo esc_attr( $name ); ?>[show_free_badge]" value="1" <?php checked( ! empty( $b['show_free_badge'] ) ); ?>>
-                        <strong><?php esc_html_e( 'Mostrar badge promo', 'mu' ); ?></strong>
-                    </label>
-                </p>
-
                 <!-- Bloque de español (idioma base) -->
                 <div class="mu-hero-banner-lang-block" data-lang="es" style="display:<?php echo 'es' === $idioma_activo_lc ? 'block' : 'none'; ?>;">
                     <div class="mu-hero-banner-fields-grid">
@@ -628,6 +608,31 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                     </div>
                 </div>
                 <?php endforeach; ?>
+
+                <!-- Bloque global: no cambia por idioma -->
+                <div class="mu-hero-banner-globals-block">
+                    <p class="mu-hero-banner-globals-title"><strong><?php esc_html_e( 'Ajustes generales (iguales en todos los idiomas)', 'mu' ); ?></strong></p>
+                    <div class="mu-hero-banner-fields-grid">
+                        <p>
+                            <label><strong><?php esc_html_e( 'ID (slug)', 'mu' ); ?></strong></label>
+                            <input type="text" name="<?php echo esc_attr( $name ); ?>[id]" value="<?php echo esc_attr( $b['id'] ); ?>" class="regular-text">
+                        </p>
+                        <p>
+                            <label><strong><?php esc_html_e( 'Inicio (DDMMAAAA)', 'mu' ); ?></strong></label>
+                            <input type="text" name="<?php echo esc_attr( $name ); ?>[inicio]" value="<?php echo esc_attr( $b['inicio'] ); ?>" pattern="\d{8}" placeholder="01012026" class="regular-text">
+                        </p>
+                        <p>
+                            <label><strong><?php esc_html_e( 'Fin (DDMMAAAA)', 'mu' ); ?></strong></label>
+                            <input type="text" name="<?php echo esc_attr( $name ); ?>[fin]" value="<?php echo esc_attr( $b['fin'] ); ?>" pattern="\d{8}" placeholder="31122026" class="regular-text">
+                        </p>
+                        <p>
+                            <label>
+                                <input type="checkbox" name="<?php echo esc_attr( $name ); ?>[show_free_badge]" value="1" <?php checked( ! empty( $b['show_free_badge'] ) ); ?>>
+                                <strong><?php esc_html_e( 'Mostrar badge promo', 'mu' ); ?></strong>
+                            </label>
+                        </p>
+                    </div>
+                </div>
             </div>
         </div>
         <?php
