@@ -1007,7 +1007,7 @@ if ( ! function_exists( 'mu_hero_section' ) ) {
         // Helper: si el idioma actual no es español y el banner tiene la
         // traducción habilitada (traducir_XX) con contenido, usa el campo
         // traducido; en cualquier otro caso devuelve el valor en español.
-        $mu_hero_field = function( $promo, $base, $lang ) use ( $idioma_actual ) {
+        $mu_hero_field = function( $promo, $base ) use ( $idioma_actual ) {
             if ( 'es' !== $idioma_actual && ! empty( $promo[ 'traducir_' . $idioma_actual ] ) ) {
                 $value = isset( $promo[ $base . '_' . $idioma_actual ] ) ? $promo[ $base . '_' . $idioma_actual ] : '';
                 if ( '' !== $value ) {
@@ -1034,18 +1034,18 @@ if ( ! function_exists( 'mu_hero_section' ) ) {
                         $is_first      = ( 0 === $idx );
                         $show_badge    = ! empty( $promo['show_free_badge'] ) && true === $promo['show_free_badge'];
                         $badge_url     = ! empty( $promo['free_badge_url'] )  ? $promo['free_badge_url']  : $badge_defaults['url'];
-                        $badge_text    = $mu_hero_field( $promo, 'free_badge_text', $idioma_actual );
+                        $badge_text    = $mu_hero_field( $promo, 'free_badge_text' );
                         if ( '' === $badge_text ) {
                             $badge_text = $badge_defaults['text'];
                         }
-                        $cta_sec_text  = $mu_hero_field( $promo, 'cta_secundario_texto', $idioma_actual );
+                        $cta_sec_text  = $mu_hero_field( $promo, 'cta_secundario_texto' );
                     ?>
                     <div class="mu-hero-promo-slide<?php echo $is_first ? ' active' : ''; ?>"
                          data-slide-index="<?php echo esc_attr( $idx ); ?>">
 
                         <div class="mu-hero-promo-bg">
                             <img src="<?php echo esc_url( $promo['imagen'] ); ?>"
-                                 alt="<?php echo esc_attr( strip_tags( $mu_hero_field( $promo, 'titulo', $idioma_actual ) ) ); ?>"
+                                 alt="<?php echo esc_attr( strip_tags( $mu_hero_field( $promo, 'titulo' ) ) ); ?>"
                                  width="1280" height="580"
                                  loading="<?php echo $is_first ? 'eager' : 'lazy'; ?>"
                                  <?php echo $is_first ? 'fetchpriority="high"' : ''; ?>
@@ -1059,12 +1059,12 @@ if ( ! function_exists( 'mu_hero_section' ) ) {
                                 </div>
                             <?php endif; ?>
 
-                            <h1 class="mu-hero-promo-title"><?php echo wp_kses_post( $mu_hero_field( $promo, 'titulo', $idioma_actual ) ); ?></h1>
-                            <p class="mu-hero-promo-desc"><?php echo esc_html( $mu_hero_field( $promo, 'descripcion', $idioma_actual ) ); ?></p>
+                            <h1 class="mu-hero-promo-title"><?php echo wp_kses_post( $mu_hero_field( $promo, 'titulo' ) ); ?></h1>
+                            <p class="mu-hero-promo-desc"><?php echo esc_html( $mu_hero_field( $promo, 'descripcion' ) ); ?></p>
 
                             <div class="mu-hero-promo-actions">
                                 <a href="<?php echo esc_url( $promo['cta_url'] ); ?>" class="mu-btn mu-btn-primary">
-                                    <span><?php echo esc_html( $mu_hero_field( $promo, 'cta_texto', $idioma_actual ) ); ?></span>
+                                    <span><?php echo esc_html( $mu_hero_field( $promo, 'cta_texto' ) ); ?></span>
                                     <?php echo mu_get_icon( 'arrow' ); ?>
                                 </a>
 

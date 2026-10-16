@@ -4,7 +4,8 @@
  * Description: Plugin admin para gestionar los banners del Hero de la portada.
  *              Submenu bajo WooCommerce → Marketing (toplevel_page_woocommerce-marketing).
  *              Storage: wp_options 'mu_hero_banners' (array de promos).
- *              Cache: transient 'mu_hero_banners_active' (TTL 12h, invalidado al guardar).
+ *              Cache: transient por país 'mu_hero_banners_active_{PAIS}' (TTL 12h),
+ *              invalidado al guardar vía mu_hero_banners_purge_cache().
  * Version: 1.0.0
  */
 
@@ -50,7 +51,6 @@ if ( ! function_exists( 'mu_hero_banners_default_seed' ) ) {
                 'free_badge_text'       => '<strong>¡20% OFF!</strong><span>cupón: COLE26</span>',
                 'free_badge_url'        => '',
                 'paises'                => [ 'AR' ],
-                'idiomas'               => [ 'es' ],
             ],
             [
                 'id'                    => 'san-valentin',
@@ -68,7 +68,6 @@ if ( ! function_exists( 'mu_hero_banners_default_seed' ) ) {
                 'free_badge_text'       => '',
                 'free_badge_url'        => '',
                 'paises'                => [ 'AR' ],
-                'idiomas'               => [ 'es' ],
             ],
         ];
     }
@@ -86,10 +85,12 @@ if ( ! function_exists( 'mu_hero_banners_sanitize_one' ) ) {
         $raw_paises   = isset( $b['paises'] ) && is_array( $b['paises'] ) ? $b['paises'] : [];
         $paises       = array_values( array_intersect( $raw_paises, $valid_paises ) );
 
-        // Idiomas permitidos: solo es, en, pt (normalizado a minúsculas)
-        $raw_idiomas  = isset( $b['idiomas'] ) && is_array( $b['idiomas'] ) ? $b['idiomas'] : [];
-        $raw_idiomas  = array_map( function( $v ) { return strtolower( (string) $v ); }, $raw_idiomas );
-        $idiomas      = array_values( array_intersect( $raw_idiomas, [ 'es', 'en', 'pt' ] ) );
+        // Idioma activo: solo controla la pestaña abierta en el admin (ES por defecto).
+        // El estado real de idiomas del banner vive en traducir_en / traducir_pt.
+        $idioma_activo = strtolower( (string) ( $b['idioma_activo'] ?? '' ) );
+        if ( ! in_array( $idioma_activo, [ 'es', 'en', 'pt' ], true ) ) {
+            $idioma_activo = 'es';
+        }
 
         return [
             'id'                    => sanitize_title( $b['id'] ?? '' ),
@@ -107,7 +108,7 @@ if ( ! function_exists( 'mu_hero_banners_sanitize_one' ) ) {
             'free_badge_text'       => wp_kses_post( $b['free_badge_text'] ?? '' ),
             'free_badge_url'        => esc_url_raw( $b['free_badge_url'] ?? '' ),
             'paises'                => $paises,
-            'idiomas'               => ! empty( $idiomas ) ? $idiomas : [ 'es' ],
+            'idioma_activo'         => $idioma_activo,
             'traducir_pt'           => ! empty( $b['traducir_pt'] ),
             'traducir_en'           => ! empty( $b['traducir_en'] ),
             // Campos traducidos (portugués)
@@ -140,21 +141,67 @@ if ( ! function_exists( 'mu_get_hero_banners_raw' ) ) {
     }
 }
 
-if ( ! function_exists( 'mu_get_hero_banners' ) ) {
+if ( ! function_exists( 'mu_hero_banners_transient_key' ) ) {
     /**
-     * Devuelve los banners activos según fecha (DateTime::createFromFormat 'dmY').
-     * Cacheado en transient (12h). Se invalida en update_option(MU_HERO_BANNERS_OPTION).
+     * Clave de transient por país.
+     *
+     * El contenido cacheado DEPENDE del país (el filtro por `paises` se resuelve
+     * en mu_get_hero_banners()), y el object cache de LiteSpeed (LSMCD) es
+     * compartido entre todos los subdominios. Con una clave única global, el
+     * primer país que poblaba el transient contaminaba a todos los demás.
+     *
+     * El idioma NO forma parte de la clave: los banners se cachean completos
+     * (con todas sus traducciones) y el idioma se resuelve al renderizar
+     * mu_hero_section(), no al filtrar.
+     *
+     * @param string $pais Código ISO del país (AR, MX, BR...).
+     * @return string Clave de transient.
      */
-    function mu_get_hero_banners() {
-        $cached = get_transient( MU_HERO_BANNERS_TRANSIENT );
-        if ( is_array( $cached ) ) {
-            return $cached;
+    function mu_hero_banners_transient_key( $pais ) {
+        return MU_HERO_BANNERS_TRANSIENT . '_' . strtoupper( (string) $pais );
+    }
+}
+
+if ( ! function_exists( 'mu_hero_banners_purge_cache' ) ) {
+    /**
+     * Borra los transients de todas las variantes por país (y la clave legacy).
+     */
+    function mu_hero_banners_purge_cache() {
+        // Clave legacy (anterior al soporte multi-país).
+        delete_transient( MU_HERO_BANNERS_TRANSIENT );
+
+        $paises = [ 'AR' ];
+        if ( function_exists( 'muyu_get_countries_data' ) ) {
+            $paises = array_merge( $paises, array_keys( muyu_get_countries_data() ) );
         }
 
-        // País actual detectado por subdominio (cero DB, caché static por request)
+        foreach ( array_unique( $paises ) as $code ) {
+            delete_transient( mu_hero_banners_transient_key( $code ) );
+        }
+    }
+}
+
+if ( ! function_exists( 'mu_get_hero_banners' ) ) {
+    /**
+     * Devuelve los banners activos según país y fecha (DateTime::createFromFormat 'dmY').
+     *
+     * Cacheado en transient por país (12h): la clave incluye el país porque el
+     * resultado depende de él (ver mu_hero_banners_transient_key()). Se invalida
+     * con mu_hero_banners_purge_cache() en update_option/add_option.
+     */
+    function mu_get_hero_banners() {
+        // País actual detectado por subdominio (cero DB, caché static por request).
+        // Se detecta ANTES de leer el transient: la clave depende de él.
         $pais_actual = function_exists( 'muyu_get_current_country_from_subdomain' )
             ? muyu_get_current_country_from_subdomain()
             : 'AR';
+
+        $transient_key = mu_hero_banners_transient_key( $pais_actual );
+
+        $cached = get_transient( $transient_key );
+        if ( is_array( $cached ) ) {
+            return $cached;
+        }
 
         $all    = mu_get_hero_banners_raw();
         $active = [];
@@ -189,18 +236,14 @@ if ( ! function_exists( 'mu_get_hero_banners' ) ) {
             }
         }
 
-        set_transient( MU_HERO_BANNERS_TRANSIENT, $active, 12 * HOUR_IN_SECONDS );
+        set_transient( $transient_key, $active, 12 * HOUR_IN_SECONDS );
         return $active;
     }
 }
 
-// Invalidación de cache cuando la opción cambia.
-add_action( 'update_option_' . MU_HERO_BANNERS_OPTION, function() {
-    delete_transient( MU_HERO_BANNERS_TRANSIENT );
-} );
-add_action( 'add_option_' . MU_HERO_BANNERS_OPTION, function() {
-    delete_transient( MU_HERO_BANNERS_TRANSIENT );
-} );
+// Invalidación de cache cuando la opción cambia (todas las variantes por país).
+add_action( 'update_option_' . MU_HERO_BANNERS_OPTION, 'mu_hero_banners_purge_cache' );
+add_action( 'add_option_' . MU_HERO_BANNERS_OPTION, 'mu_hero_banners_purge_cache' );
 
 // ==========================================
 // 2. ADMIN — SUBMENU BAJO WC MARKETING
@@ -252,6 +295,7 @@ if ( is_admin() ) {
             wp_localize_script( 'mu-admin-hero-banners-js', 'muHeroBannersData', [
                 'mediaTitle'  => __( 'Seleccionar imagen del banner', 'mu' ),
                 'mediaButton' => __( 'Usar esta imagen', 'mu' ),
+                'removed'     => __( 'Eliminado (se descarta al guardar)', 'mu' ),
             ] );
         }
     } );
@@ -261,7 +305,6 @@ if ( is_admin() ) {
      */
     add_action( 'load-marketing_page_' . MU_HERO_BANNERS_SCREEN, 'mu_hero_banners_handle_save' );
 }
-
 if ( ! function_exists( 'mu_hero_banners_handle_save' ) ) {
     function mu_hero_banners_handle_save() {
         if ( 'POST' !== ( $_SERVER['REQUEST_METHOD'] ?? '' ) ) {
@@ -286,7 +329,30 @@ if ( ! function_exists( 'mu_hero_banners_handle_save' ) ) {
             $cleaned[] = mu_hero_banners_sanitize_one( $b );
         }
 
+        // [Hash Gate] Comparar lo nuevo contra lo almacenado con maybe_serialize()
+        // y actuar solo si cambió realmente. Evita invalidar el object cache y
+        // purgar la caché de página en guardados sin cambios reales.
+        $before = get_option( MU_HERO_BANNERS_OPTION, null );
+
+        if ( maybe_serialize( $before ) === maybe_serialize( $cleaned ) ) {
+            // Sin cambios: no se toca la opción, ni el cache, ni la caché de página.
+            wp_safe_redirect( add_query_arg( [
+                'page'    => MU_HERO_BANNERS_SCREEN,
+                'updated' => '1',
+            ], admin_url( 'admin.php' ) ) );
+            exit;
+        }
+
         update_option( MU_HERO_BANNERS_OPTION, $cleaned, false );
+        // update_option() dispara el hook 'update_option_' . MU_HERO_BANNERS_OPTION,
+        // que llama a mu_hero_banners_purge_cache(): los transients por país
+        // quedan invalidados sin necesidad de una purga explícita adicional.
+
+        // Purga condicional de la caché de página: el Hero se renderiza en la home
+        // de todos los subdominios, así que un cambio real en los banners exige
+        // regenerarla. Condicionada por el Hash Gate, en línea con la norma
+        // vigente (prohibido litespeed_purge_all() incondicional).
+        do_action( 'litespeed_purge_all' );
 
         // Redirect PRG para evitar resubmit.
         wp_safe_redirect( add_query_arg( [
@@ -309,14 +375,14 @@ if ( ! function_exists( 'mu_hero_banners_render_admin_page' ) ) {
         <div class="wrap mu-hero-banners-wrap">
             <h1><?php esc_html_e( 'Hero Banners — Portada', 'mu' ); ?></h1>
             <p class="description">
-                <?php esc_html_e( 'Gestioná los banners del slider principal de la home. Las fechas usan formato DDMMAAAA. Si dejás fechas vacías, el banner se muestra siempre.', 'mu' ); ?>
+                <?php esc_html_e( 'Gestioná los banners del slider principal de la home. Las fechas usan formato DDMMAAAA: si dejás ambas vacías, el banner se muestra siempre. Cada banner se muestra sólo en los países tildados. En los sitios en otro idioma se usa la traducción del banner si está marcada y cargada; si no, se muestra la versión en español.', 'mu' ); ?>
             </p>
 
             <?php if ( $updated ) : ?>
                 <div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Banners actualizados.', 'mu' ); ?></p></div>
             <?php endif; ?>
 
-            <form method="post" action="" class="mu-hero-banners-form">
+            <form method="post" action="">
                 <?php wp_nonce_field( 'mu_hero_banners_save', 'mu_hero_banners_nonce' ); ?>
 
                 <div id="mu-hero-banners-list" class="mu-hero-banners-list">
@@ -358,7 +424,9 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
             'free_badge_text'       => '',
             'free_badge_url'        => '',
             'paises'                => [ 'AR' ],
-            'idiomas'               => [ 'es' ],
+            'idioma_activo'         => 'es',
+            'traducir_pt'           => false,
+            'traducir_en'           => false,
             'titulo_pt'             => '',
             'descripcion_pt'        => '',
             'cta_texto_pt'          => '',
@@ -379,9 +447,9 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                 </h2>
 
                 <?php
-                $countries_data = function_exists( 'muyu_get_countries_data' ) ? muyu_get_countries_data() : [];
-                $row_paises     = isset( $b['paises'] ) && is_array( $b['paises'] ) ? $b['paises'] : [ 'AR' ];
-                $row_idiomas    = isset( $b['idiomas'] ) && is_array( $b['idiomas'] ) ? $b['idiomas'] : [ 'es' ];
+                $countries_data   = function_exists( 'muyu_get_countries_data' ) ? muyu_get_countries_data() : [];
+                $idioma_activo_lc = $b['idioma_activo'];              // es | en | pt (pestaña del editor)
+                $idioma_activo    = strtoupper( $idioma_activo_lc );  // ES | EN | PT (etiqueta visible)
                 ?>
 
                 <!-- Selector de países -->
@@ -389,26 +457,25 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                 <div class="mu-hero-banner-paises-dropdown">
                     <?php foreach ( $countries_data as $code => $c ) : ?>
                     <label style="display:block; font-size:12px; padding:2px 8px; cursor:pointer;">
-                        <input type="checkbox" name="<?php echo esc_attr( $name ); ?>[paises][]" value="<?php echo esc_attr( $code ); ?>"<?php checked( in_array( $code, $row_paises, true ) ); ?>>
+                        <input type="checkbox" name="<?php echo esc_attr( $name ); ?>[paises][]" value="<?php echo esc_attr( $code ); ?>"<?php checked( in_array( $code, $b['paises'], true ) ); ?>>
                         <?php echo esc_html( $c['name'] ); ?> (<?php echo esc_html( $code ); ?>)
                     </label>
                     <?php endforeach; ?>
                 </div>
                 <span class="mu-hero-banner-paises-pills">
-                    <?php foreach ( $row_paises as $code ) : if ( isset( $countries_data[ $code ] ) ) : ?>
+                    <?php foreach ( $b['paises'] as $code ) : if ( isset( $countries_data[ $code ] ) ) : ?>
                         <span class="mu-hero-banner-pill"><?php echo esc_html( $code ); ?></span>
                     <?php endif; endforeach; ?>
                 </span>
 
-                <!-- Selector de idioma (botón desplegable) -->
-                <?php $idioma_activo = ! empty( $row_idiomas ) ? strtoupper( $row_idiomas[0] ) : 'ES'; ?>
-                <button type="button" class="button mu-hero-banner-idioma-btn" data-name="<?php echo esc_attr( $name ); ?>" data-idioma="<?php echo esc_attr( $idioma_activo ); ?>">
+                <!-- Selector de idioma (pestaña activa del editor) -->
+                <button type="button" class="button mu-hero-banner-idioma-btn" data-idioma="<?php echo esc_attr( $idioma_activo ); ?>">
                     [<?php echo esc_html( $idioma_activo ); ?>▼]
                 </button>
-                <input type="hidden" name="<?php echo esc_attr( $name ); ?>[idiomas][]" value="<?php echo esc_attr( $idioma_activo ); ?>" class="mu-hero-banner-idioma-valor">
+                <input type="hidden" name="<?php echo esc_attr( $name ); ?>[idioma_activo]" value="<?php echo esc_attr( $idioma_activo_lc ); ?>" class="mu-hero-banner-idioma-valor">
                 <div class="mu-hero-banner-idioma-dropdown">
                     <?php foreach ( [ 'es' => 'ES', 'en' => 'EN', 'pt' => 'PT' ] as $code => $label ) : ?>
-                    <button type="button" class="mu-hero-banner-idioma-item" data-idioma="<?php echo esc_attr( $code ); ?>"<?php echo $idioma_activo === $code ? ' style="display:none;"' : ''; ?>>
+                    <button type="button" class="mu-hero-banner-idioma-item" data-idioma="<?php echo esc_attr( $code ); ?>"<?php echo $idioma_activo_lc === $code ? ' style="display:none;"' : ''; ?>>
                         [<?php echo esc_html( $label ); ?>▼]
                     </button>
                     <?php endforeach; ?>
@@ -493,39 +560,41 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                     <input type="text" name="<?php echo esc_attr( $name ); ?>[free_badge_text]" value="<?php echo esc_attr( $b['free_badge_text'] ); ?>" class="large-text" placeholder='<strong>¡20% OFF!</strong><span>cupón: COLE26</span>'>
                 </p>
 
-                <!-- Campos traducidos (solo para idiomas no español) -->
+                <!-- Traducciones (ES es el idioma base: solo EN y PT tienen bloque) -->
                 <?php foreach ( [ 'pt' => 'Portugués', 'en' => 'Inglés' ] as $lang => $lang_name ) : ?>
-                <?php $has_lang = in_array( $lang, $row_idiomas, true ); ?>
-                <?php $idioma_activo_row = ! empty( $row_idiomas ) ? strtoupper( $row_idiomas[0] ) : 'ES'; ?>
-                <div class="mu-hero-banner-traducir-wrapper" data-lang="<?php echo esc_attr( $lang ); ?>" style="display:<?php echo $idioma_activo_row === 'ES' ? 'none' : 'block'; ?>;">
+                <?php
+                $traducir_on = ! empty( $b[ 'traducir_' . $lang ] );
+                $es_pestania = ( $idioma_activo_lc === $lang );
+                ?>
+                <div class="mu-hero-banner-traducir-wrapper" data-lang="<?php echo esc_attr( $lang ); ?>" style="display:<?php echo $es_pestania ? 'block' : 'none'; ?>;">
                     <p>
                         <label>
-                            <input type="checkbox" name="<?php echo esc_attr( $name ); ?>[traducir_<?php echo esc_attr( $lang ); ?>]" value="1"<?php checked( $has_lang ); ?> class="mu-hero-banner-traducir-checkbox" data-lang="<?php echo esc_attr( $lang ); ?>">
+                            <input type="checkbox" name="<?php echo esc_attr( $name ); ?>[traducir_<?php echo esc_attr( $lang ); ?>]" value="1"<?php checked( $traducir_on ); ?> class="mu-hero-banner-traducir-checkbox" data-lang="<?php echo esc_attr( $lang ); ?>">
                             <?php echo esc_html( sprintf( __( 'Traducir a %s', 'mu' ), $lang_name ) ); ?>
                         </label>
                     </p>
-                    <div class="mu-hero-banner-traducir-fields mu-hero-banner-traducir-<?php echo esc_attr( $lang ); ?>" style="display:<?php echo $has_lang ? 'block' : 'none'; ?>; border:1px solid #ddd; padding:10px; margin-top:8px; background:#f9f9f9;">
-                    <p>
-                        <label><strong><?php echo esc_html( sprintf( __( 'Título — %s', 'mu' ), $lang_name ) ); ?></strong></label>
-                        <input type="text" name="<?php echo esc_attr( $name ); ?>[titulo_<?php echo esc_attr( $lang ); ?>]" value="<?php echo esc_attr( $b['titulo_' . $lang] ?? '' ); ?>" class="large-text">
-                    </p>
-                    <p>
-                        <label><strong><?php echo esc_html( sprintf( __( 'Descripción — %s', 'mu' ), $lang_name ) ); ?></strong></label>
-                        <textarea name="<?php echo esc_attr( $name ); ?>[descripcion_<?php echo esc_attr( $lang ); ?>]" rows="2" class="large-text"><?php echo esc_textarea( $b['descripcion_' . $lang] ?? '' ); ?></textarea>
-                    </p>
-                    <p>
-                        <label><strong><?php echo esc_html( sprintf( __( 'CTA principal — texto — %s', 'mu' ), $lang_name ) ); ?></strong></label>
-                        <input type="text" name="<?php echo esc_attr( $name ); ?>[cta_texto_<?php echo esc_attr( $lang ); ?>]" value="<?php echo esc_attr( $b['cta_texto_' . $lang] ?? '' ); ?>" class="regular-text">
-                    </p>
-                    <p>
-                        <label><strong><?php echo esc_html( sprintf( __( 'CTA secundario — texto — %s', 'mu' ), $lang_name ) ); ?></strong></label>
-                        <input type="text" name="<?php echo esc_attr( $name ); ?>[cta_secundario_texto_<?php echo esc_attr( $lang ); ?>]" value="<?php echo esc_attr( $b['cta_secundario_texto_' . $lang] ?? '' ); ?>" class="regular-text">
-                    </p>
-                    <p>
-                        <label><strong><?php echo esc_html( sprintf( __( 'Badge — texto — %s', 'mu' ), $lang_name ) ); ?></strong></label>
-                        <input type="text" name="<?php echo esc_attr( $name ); ?>[free_badge_text_<?php echo esc_attr( $lang ); ?>]" value="<?php echo esc_attr( $b['free_badge_text_' . $lang] ?? '' ); ?>" class="large-text">
-                    </p>
-                </div>
+                    <div class="mu-hero-banner-traducir-fields mu-hero-banner-traducir-<?php echo esc_attr( $lang ); ?>" style="display:<?php echo $traducir_on ? 'block' : 'none'; ?>; border:1px solid #ddd; padding:10px; margin-top:8px; background:#f9f9f9;">
+                        <p>
+                            <label><strong><?php echo esc_html( sprintf( __( 'Título — %s', 'mu' ), $lang_name ) ); ?></strong></label>
+                            <input type="text" name="<?php echo esc_attr( $name ); ?>[titulo_<?php echo esc_attr( $lang ); ?>]" value="<?php echo esc_attr( $b[ 'titulo_' . $lang ] ?? '' ); ?>" class="large-text">
+                        </p>
+                        <p>
+                            <label><strong><?php echo esc_html( sprintf( __( 'Descripción — %s', 'mu' ), $lang_name ) ); ?></strong></label>
+                            <textarea name="<?php echo esc_attr( $name ); ?>[descripcion_<?php echo esc_attr( $lang ); ?>]" rows="2" class="large-text"><?php echo esc_textarea( $b[ 'descripcion_' . $lang ] ?? '' ); ?></textarea>
+                        </p>
+                        <p>
+                            <label><strong><?php echo esc_html( sprintf( __( 'CTA principal — texto — %s', 'mu' ), $lang_name ) ); ?></strong></label>
+                            <input type="text" name="<?php echo esc_attr( $name ); ?>[cta_texto_<?php echo esc_attr( $lang ); ?>]" value="<?php echo esc_attr( $b[ 'cta_texto_' . $lang ] ?? '' ); ?>" class="regular-text">
+                        </p>
+                        <p>
+                            <label><strong><?php echo esc_html( sprintf( __( 'CTA secundario — texto — %s', 'mu' ), $lang_name ) ); ?></strong></label>
+                            <input type="text" name="<?php echo esc_attr( $name ); ?>[cta_secundario_texto_<?php echo esc_attr( $lang ); ?>]" value="<?php echo esc_attr( $b[ 'cta_secundario_texto_' . $lang ] ?? '' ); ?>" class="regular-text">
+                        </p>
+                        <p>
+                            <label><strong><?php echo esc_html( sprintf( __( 'Badge — texto — %s', 'mu' ), $lang_name ) ); ?></strong></label>
+                            <input type="text" name="<?php echo esc_attr( $name ); ?>[free_badge_text_<?php echo esc_attr( $lang ); ?>]" value="<?php echo esc_attr( $b[ 'free_badge_text_' . $lang ] ?? '' ); ?>" class="large-text">
+                        </p>
+                    </div>
                 </div>
                 <?php endforeach; ?>
             </div>

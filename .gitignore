@@ -33,6 +33,10 @@ debug.log
 wp-config.php
 wp-config-*.php
 
+# --- Exports de configuración de plugins (pueden contener credenciales) ---
+LSCWP_cfg*
+*.data
+
 # --- Dependencias de terceros (no hay composer ni npm, pero quedan cubiertos) ---
 vendor/
 node_modules/

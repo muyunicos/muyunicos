@@ -165,7 +165,7 @@
             var label = idioma.toUpperCase();
 
             $btn.attr('data-idioma', label).text('[' + label + '▼]');
-            $row.find('.mu-hero-banner-idioma-valor').val(label);
+            $row.find('.mu-hero-banner-idioma-valor').val(idioma);
 
             // El ítem elegido se oculta; el resto queda disponible
             $row.find('.mu-hero-banner-idioma-item').show();
