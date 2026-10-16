@@ -1033,18 +1033,25 @@ if ( ! function_exists( 'mu_hero_section' ) ) {
                     <?php foreach ( $active_promos as $idx => $promo ) :
                         $is_first      = ( 0 === $idx );
                         $show_badge    = ! empty( $promo['show_free_badge'] ) && true === $promo['show_free_badge'];
-                        $badge_url     = ! empty( $promo['free_badge_url'] )  ? $promo['free_badge_url']  : $badge_defaults['url'];
+                        $imagen        = $mu_hero_field( $promo, 'imagen' );
+                        $eyebrow       = $mu_hero_field( $promo, 'eyebrow' );
+                        $cta_url       = $mu_hero_field( $promo, 'cta_url' );
+                        $cta_sec_text  = $mu_hero_field( $promo, 'cta_secundario_texto' );
+                        $cta_sec_url   = $mu_hero_field( $promo, 'cta_secundario_url' );
+                        $badge_url     = $mu_hero_field( $promo, 'free_badge_url' );
+                        if ( '' === $badge_url ) {
+                            $badge_url = $badge_defaults['url'];
+                        }
                         $badge_text    = $mu_hero_field( $promo, 'free_badge_text' );
                         if ( '' === $badge_text ) {
                             $badge_text = $badge_defaults['text'];
                         }
-                        $cta_sec_text  = $mu_hero_field( $promo, 'cta_secundario_texto' );
                     ?>
                     <div class="mu-hero-promo-slide<?php echo $is_first ? ' active' : ''; ?>"
                          data-slide-index="<?php echo esc_attr( $idx ); ?>">
 
                         <div class="mu-hero-promo-bg">
-                            <img src="<?php echo esc_url( $promo['imagen'] ); ?>"
+                            <img src="<?php echo esc_url( $imagen ); ?>"
                                  alt="<?php echo esc_attr( strip_tags( $mu_hero_field( $promo, 'titulo' ) ) ); ?>"
                                  width="1280" height="580"
                                  loading="<?php echo $is_first ? 'eager' : 'lazy'; ?>"
@@ -1053,9 +1060,9 @@ if ( ! function_exists( 'mu_hero_section' ) ) {
                         </div>
 
                         <div class="mu-hero-promo-content">
-                            <?php if ( ! empty( $promo['eyebrow'] ) ) : ?>
+                            <?php if ( '' !== $eyebrow ) : ?>
                                 <div class="mu-hero-promo-eyebrow">
-                                    <?php echo esc_html( $promo['eyebrow'] ); ?>
+                                    <?php echo esc_html( $eyebrow ); ?>
                                 </div>
                             <?php endif; ?>
 
@@ -1063,13 +1070,13 @@ if ( ! function_exists( 'mu_hero_section' ) ) {
                             <p class="mu-hero-promo-desc"><?php echo esc_html( $mu_hero_field( $promo, 'descripcion' ) ); ?></p>
 
                             <div class="mu-hero-promo-actions">
-                                <a href="<?php echo esc_url( $promo['cta_url'] ); ?>" class="mu-btn mu-btn-primary">
+                                <a href="<?php echo esc_url( $cta_url ); ?>" class="mu-btn mu-btn-primary">
                                     <span><?php echo esc_html( $mu_hero_field( $promo, 'cta_texto' ) ); ?></span>
                                     <?php echo mu_get_icon( 'arrow' ); ?>
                                 </a>
 
-                                <?php if ( '' !== $cta_sec_text && ! empty( $promo['cta_secundario_url'] ) ) : ?>
-                                <a href="<?php echo esc_url( $promo['cta_secundario_url'] ); ?>" class="mu-btn mu-btn-outline">
+                                <?php if ( '' !== $cta_sec_text && '' !== $cta_sec_url ) : ?>
+                                <a href="<?php echo esc_url( $cta_sec_url ); ?>" class="mu-btn mu-btn-outline">
                                     <?php echo esc_html( $cta_sec_text ); ?>
                                 </a>
                                 <?php endif; ?>

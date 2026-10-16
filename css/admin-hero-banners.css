@@ -139,6 +139,31 @@
 }
 .mu-hero-banner-idioma-btn:hover { background: #eaeaea; }
 
+/* Caret del dropdown: sólo forma, sin texto (el botón muestra el código). */
+.mu-hero-banner-idioma-caret {
+    display: inline-block;
+    width: 0;
+    height: 0;
+    margin-left: 6px;
+    vertical-align: middle;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid currentColor;
+}
+
+/* Píldoras de idiomas con traducción activa */
+.mu-hero-banner-idiomas-pills {
+    display: inline-flex;
+    gap: 4px;
+    margin-left: 6px;
+    align-items: center;
+}
+.mu-hero-banner-pill--lang {
+    background: #f0eaff;
+    color: #5b21b6;
+    border-color: #5b21b6;
+}
+
 .mu-hero-banner-idioma-dropdown {
     display: none;
     position: absolute;
@@ -173,3 +198,39 @@
 .mu-hero-banner-traducir-fields label { font-size: 13px; }
 .mu-hero-banner-traducir-fields input,
 .mu-hero-banner-traducir-fields textarea { margin-top: 4px; }
+
+/* --- Bloques por idioma: español (base) + réplicas EN / PT --- */
+.mu-hero-banner-lang-block {
+    grid-column: 1 / -1;
+}
+
+/* Grilla interna idéntica en todos los idiomas */
+.mu-hero-banner-fields-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--mu-space-sm, 10px) var(--mu-space-md, 20px);
+}
+.mu-hero-banner-fields-grid p { margin: 0; }
+.mu-hero-banner-fields-grid label { display: block; margin-bottom: 4px; }
+
+/* Fila del checkbox "Traducir" + aviso de fallback */
+.mu-hero-banner-traducir-toggle { margin: 0 0 var(--mu-space-sm, 10px); }
+.mu-hero-banner-traducir-hint {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    font-style: italic;
+    color: #646970;
+}
+
+/* Separador visual de la réplica de traducción */
+.mu-hero-banner-traducir-fields {
+    border: 1px solid #ddd;
+    border-radius: var(--mu-radius-sm, 6px);
+    padding: 10px;
+    background: #f9f9f9;
+}
+
+@media (max-width: 782px) {
+    .mu-hero-banner-fields-grid { grid-template-columns: 1fr; }
+}

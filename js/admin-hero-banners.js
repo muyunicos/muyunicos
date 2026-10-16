@@ -4,7 +4,8 @@
  * - Add/remove rows (template clone)
  * - WP Media picker para imagen
  * - Selector de países (dropdown + píldoras)
- * - Selector de idioma (dropdown ES/EN/PT) + campos "Traducir a ..."
+ * - Selector de idioma (dropdown ES/EN/PT) con réplica de campos por idioma
+ *   y checkbox "Traducir"
  *
  * Los listeners usan delegación sobre #mu-hero-banners-list para que también
  * funcionen en las filas creadas con "+ Agregar banner" (clon del template).
@@ -15,16 +16,66 @@
     var IDIOMAS = ['es', 'en', 'pt'];
 
     /**
-     * Muestra/oculta los bloques "Traducir a ..." según el idioma activo.
-     * ES es el idioma base: no se muestra ningún bloque de traducción.
+     * Muestra el bloque del idioma activo y oculta los demás.
+     * Cada .mu-hero-banner-lang-block trae su propio juego de campos:
+     * 'es' es el idioma base y 'pt' / 'en' son las traducciones (réplica).
      */
     function actualizarTraducir($row, idioma) {
         var lang = String(idioma || '').toLowerCase();
-        var $wrappers = $row.find('.mu-hero-banner-traducir-wrapper');
-        $wrappers.hide();
-        if (lang !== 'es') {
-            $wrappers.filter('[data-lang="' + lang + '"]').show();
-        }
+        $row.find('.mu-hero-banner-lang-block').each(function () {
+            var $block = $(this);
+            $block.css('display', $block.attr('data-lang') === lang ? 'block' : 'none');
+        });
+    }
+
+    /**
+     * Sincroniza las píldoras de idiomas traducidos con los checkboxes.
+     */
+    function actualizarPillsIdiomas($row) {
+        $row.find('.mu-hero-banner-idiomas-pills .mu-hero-banner-pill--lang').each(function () {
+            var $pill   = $(this);
+            var lang    = $pill.attr('data-lang');
+            var activo  = $row.find('.mu-hero-banner-traducir-checkbox[data-lang="' + lang + '"]').is(':checked');
+            $pill.css('display', activo ? '' : 'none');
+        });
+    }
+
+    /**
+     * Muestra u oculta el juego de campos de una traducción y su aviso.
+     */
+    function actualizarCamposTraduccion($row, lang, activo) {
+        $row.find('.mu-hero-banner-traducir-' + lang).css('display', activo ? 'grid' : 'none');
+        $row.find('.mu-hero-banner-traducir-wrapper[data-lang="' + lang + '"] .mu-hero-banner-traducir-hint')
+            .css('display', activo ? 'none' : '');
+    }
+
+    /**
+     * Copia los valores de español a los campos vacíos del idioma indicado.
+     * Es sólo ayuda visual: al guardar, los valores idénticos al español no se
+     * persisten (sobrescritura dispersa en mu_hero_banners_sanitize_one()).
+     */
+    function precargarDesdeEs($row, lang) {
+        var $destino = $row.find('.mu-hero-banner-traducir-wrapper[data-lang="' + lang + '"]');
+        var $origen  = $row.find('.mu-hero-banner-lang-block[data-lang="es"]');
+        if (!$destino.length || !$origen.length) return;
+
+        $destino.find('[data-field]').each(function () {
+            var $input = $(this);
+            if ($input.val() !== '') return;
+
+            var field = $input.attr('data-field');
+            var $src  = $origen.find('[data-field="' + field + '"]');
+            if (!$src.length) return;
+
+            var valor = $src.val();
+            $input.val(valor);
+
+            // Refrescar la previsualización de la imagen si corresponde.
+            var $preview = $input.closest('.mu-hero-banner-row__image').find('.mu-hero-banner-row__image-preview');
+            if ($preview.length) {
+                $preview.attr('src', valor).css('display', valor ? '' : 'none');
+            }
+        });
     }
 
     /**
@@ -72,9 +123,10 @@
             e.preventDefault();
             if (typeof wp === 'undefined' || !wp.media) return;
 
-            var $row = $(this).closest('.mu-hero-banner-row');
-            var $url = $row.find('.mu-hero-banner-row__image-url');
-            var $img = $row.find('.mu-hero-banner-row__image-preview');
+            // Acotado al bloque de imagen de ESTE idioma: la fila tiene uno por idioma.
+            var $wrap = $(this).closest('.mu-hero-banner-row__image');
+            var $url  = $wrap.find('.mu-hero-banner-row__image-url');
+            var $img  = $wrap.find('.mu-hero-banner-row__image-preview');
 
             var frame = wp.media({
                 title: (window.muHeroBannersData && window.muHeroBannersData.mediaTitle) || 'Seleccionar imagen',
@@ -164,7 +216,8 @@
             var $btn = $row.find('.mu-hero-banner-idioma-btn');
             var label = idioma.toUpperCase();
 
-            $btn.attr('data-idioma', label).text('[' + label + '▼]');
+            $btn.attr('data-idioma', label);
+            $btn.find('.mu-hero-banner-idioma-code').text(label);
             $row.find('.mu-hero-banner-idioma-valor').val(idioma);
 
             // El ítem elegido se oculta; el resto queda disponible
@@ -182,14 +235,19 @@
         });
 
         // ---------------------------------------------------------------
-        // Checkbox "Traducir a ..."
+        // Checkbox "Traducir"
         // ---------------------------------------------------------------
         $list.on('change', '.mu-hero-banner-traducir-checkbox', function () {
-            var $cb  = $(this);
-            var lang = String($cb.attr('data-lang') || '').toLowerCase();
-            var $row = $cb.closest('.mu-hero-banner-row');
+            var $cb    = $(this);
+            var lang   = String($cb.attr('data-lang') || '').toLowerCase();
+            var $row   = $cb.closest('.mu-hero-banner-row');
+            var activo = $cb.is(':checked');
 
-            $row.find('.mu-hero-banner-traducir-' + lang).toggle($cb.is(':checked'));
+            if (activo) {
+                precargarDesdeEs($row, lang);
+            }
+            actualizarCamposTraduccion($row, lang, activo);
+            actualizarPillsIdiomas($row);
         });
 
         // ---------------------------------------------------------------
@@ -203,6 +261,16 @@
         $list.find('.mu-hero-banner-row').each(function () {
             var $row = $(this);
             actualizarTraducir($row, $row.find('.mu-hero-banner-idioma-btn').attr('data-idioma'));
+
+            // Idiomas activados: completar con el texto de español los campos
+            // vacíos (ayuda visual; al guardar no se persisten por ser idénticos).
+            $row.find('.mu-hero-banner-traducir-checkbox:checked').each(function () {
+                var lang = String($(this).attr('data-lang') || '').toLowerCase();
+                precargarDesdeEs($row, lang);
+                actualizarCamposTraduccion($row, lang, true);
+            });
+
+            actualizarPillsIdiomas($row);
         });
     }
 
