@@ -149,6 +149,24 @@ Modelo Híbrido:
     a un país extranjero, se debe bloquear la compra con el aviso: 
     "Este artículo no está disponible en tu ubicación actual".
 
+Rutas y elementos que existen en un solo país (MEDIDO 2026-10-16):
+- El sitio es UNA instalación de WordPress servida en 10 hosts: páginas, menús y bloques
+  son globales, y no existe "publicar sólo en Argentina" en wp-admin ni en los plugins
+  (WCPBC ajusta precios, wpLingua ajusta idioma: ninguno restringe una URL por país).
+  La regla vive en el tema: inc/country-scope.php (API en §6, "ALCANCE POR PAÍS").
+- Registrada hoy: /envios/ → sólo Argentina. Describe las zonas de cobertura, los costos
+  en ARS y el retiro en Catamarca 2255. En los 9 subdominios: 302 a /tienda/ del mismo
+  host (con el prefijo de idioma del país), sin el enlace en el pie, con el hreflang del
+  tema reducido al host actual y sin figurar en el page-sitemap.xml del subdominio.
+  Antes del fix (medido): 200 con el contenido argentino, con el enlace en el pie de los
+  10 hosts y con 11 alternates hacia todos los subdominios.
+- Candidata declarada, NO registrada: /reembolso_devoluciones/ ("Botón de
+  arrepentimiento", figura legal argentina). Restringirla fuera del país es una decisión
+  comercial: ver §8.
+- Fuera de alcance por diseño: /pt/envios/ y /en/envios/ del dominio raíz (el país es
+  Argentina; el idioma es otra dimensión) y los elementos de menú de WordPress (son dato
+  de la base: se quitan en wp-admin → Apariencia → Menús).
+
 Pagos, Analítica y Correos:
 - Pasarelas: Mercado Pago (principal LATAM) y PayPal. (Tarifas dinámicas por pasarela).
   ⚠️ Son pasarelas CONFIGURADAS, no plugins acoplados al tema: el tema no
@@ -265,6 +283,14 @@ muyunicos/ (generatepress-child)
 │   ├── geo.php             # Multi-país: detección por dominio, geolocalización cacheada
 │   │                        # (24h TTL), modal sugerencia, selector header, decimales.
 │   │                        # Fallback por dominio ante errores de DB ("Commands out of sync").
+│   ├── compat-wplingua.php # wpLingua: conserva el prefijo de idioma (/pt, /en) en el 301
+│   │                        # canónico del core. Módulo crítico: se autocargan desde
+│   │                        # functions.php y desde inc/geo.php, para que el filtro se
+│   │                        # registre aunque functions.php no llegue actualizado (ver §1).
+│   ├── country-scope.php   # Alcance por país de rutas y elementos: registro único
+│   │                        # (muyu_get_country_scope_routes), guard HTTP 302 en
+│   │                        # template_redirect p15, helper muyu_is_country() y hreflang
+│   │                        # reducido. Hoy: /envios/ sólo en AR. API en §6.
 │   ├── jetpack-search-integration.php # Jetpack Search: corrige homeUrl vía filtro
 │   │                        # jetpack_search_instant_search_options para que los resultados
 │   │                        # apunten al subdominio actual (+ prefijo idioma BR/pt, US/en).
@@ -393,6 +419,48 @@ JavaScript
 CSS
 - Prefijo + BEM: .mu-[componente]__elem--[mod]
 - Sobrescrituras GP: /* override GP: [motivo] */
+
+ALCANCE POR PAÍS (API REUTILIZABLE — inc/country-scope.php)
+- PROBLEMA QUE RESUELVE: el sitio es UNA instalación de WordPress en 10 hosts. WordPress no
+  tiene "publicar sólo en un país": una página, un menú o un bloque son globales. Sin esta
+  API, cualquier elemento que sólo valga en un país se sirve en los 10.
+- REGLA DE ORO: el país es el HOST (fuente única: muyu_get_current_country_from_subdomain()
+  en inc/geo.php). El idioma (/pt, /en de wpLingua) es otra dimensión: esta API NO
+  restringe por idioma.
+
+    API
+    muyu_get_current_country()                  → 'AR' | 'MX' | 'CO' | ...
+    muyu_get_current_host()                     → 'mexico.muyunicos.com' | ...
+    muyu_is_country( 'AR' | [ 'AR', 'MX' ] )    → bool   ( '' o [] = todos )
+    muyu_get_country_scope_routes()             → registro normalizado
+    muyu_get_country_scope_route( 'envios' )    → entrada | null
+    muyu_get_country_scope_route_for_request()  → slug de la ruta pedida | null
+    muyu_get_country_scope_hreflang_tags()      → alternates de la ruta | []
+    Filtro muyu_country_scope_routes            → suma rutas sin editar el módulo
+
+    CÓMO RESTRINGIR ALGO (elegir lo más barato)
+    1) Ruta completa (página o plantilla): agregarla a muyu_get_country_scope_routes() con
+       'countries', 'redirect' ('shop' | 'home' | URL absoluta) y 'label'. Con eso quedan
+       cubiertos el 302 en los países que no la publican y el hreflang reducido. El enlace
+       que apunte a la ruta se condiciona con el MISMO registro, para que ruta y enlace no
+       se desincronicen: así está hecho el <li> de "Información de Envíos" en inc/ui.php.
+    2) Elemento que imprime el tema:   if ( muyu_is_country( [ 'AR' ] ) ) { ... }
+    3) Elemento que imprime un plugin o wp-admin: CSS con la body class que ya inyecta
+       geo.php (línea 864):  body:not(.mu-country-ar) .mi-elemento { display: none; }
+       (2) es preferible a (3): no emite HTML ni trabajo de pintado.
+
+    CONTRATO DEL GUARD: template_redirect prioridad 15 (después del 301 canónico del core
+    y de mu_litespeed_nocache_404, antes de handle_redirects de digital-restriction); 302
+    al MISMO host con el prefijo de idioma del país (BR→/pt, US→/en, sin duplicarlo); se
+    aplica también a bots; no corre en admin/REST/AJAX/cron/feed; la respuesta lleva la
+    cabecera X-MU-Country-Scope: redirect (su ausencia con un 200 significa que el guard no
+    se cargó, no que la ruta esté bien).
+
+- LÍMITES: no cubre elementos de menú de WordPress (son dato de la base), ni las variantes
+  de idioma del dominio raíz, ni restricciones por visitante (IP, sesión, rol).
+- DETALLE Y ALTA DE UNA RUTA NUEVA: specs/004-country-scope/contracts/country-scope.md.
+  VERIFICACIÓN: specs/004-country-scope/quickstart.md (Fase A local con stubs, Fase B en
+  producción).
 
 ════════════════════════════════════════════════════════════════
 7. DIAGNÓSTICO DE ERRORES CONOCIDOS
@@ -659,8 +727,54 @@ EL 301 CANÓNICO DESCARTA EL PREFIJO DE IDIOMA EN LA HOME (2026-10-16)
   variable que el código leía.
 
 
+ERRORES PÁGINA SÓLO-AR VISIBLE EN SUBDOMINIOS (/envios/, MEDIDO 2026-10-16)
+- Síntoma: /envios/ responde 200 en los 9 subdominios con el contenido de Mar del Plata
+  (zonas de cobertura, costos en ARS, teléfono local, retiro en Catamarca 2255), el enlace
+  "Información de Envíos" aparece en el pie de los 10 hosts y la URL figura en cada
+  page-sitemap.xml. Medido antes del fix: 11 alternates hreflang hacia todos los subdominios.
+- Causa: el sitio es UNA instalación de WordPress servida en 10 hosts: la página, el menú y
+  los bloques son globales, y ningún plugin del sitio restringe una URL por país (WCPBC
+  ajusta precios, wpLingua ajusta idioma). Ver §3 y la API de §6.
+- Fix (feature 004-country-scope, en main): registro único en
+  inc/country-scope.php + guard en template_redirect p15 (302 a la tienda del mismo host) +
+  enlace condicionado en inc/ui.php + hreflang reducido en inc/seo-hreflang.php + filtro de
+  sitemap de Rank Math.
+- Diagnóstico (el orden importa):
+    curl.exe -sI https://mexico.muyunicos.com/envios/ | Select-String 'HTTP/|Location|X-MU-Country-Scope'
+  · 302 con Location del mismo host y X-MU-Country-Scope: redirect → correcto.
+  · 200 sin la cabecera → el guard no se cargó: revisar el orden de §1 (la causa habitual es
+    functions.php modificado en el servidor, que el deploy respeta sin avisar).
+  · 200 con la cabecera → la respuesta estaba cacheada de antes: purgar la caché de ese host
+    (el 200 de /envios/ se cachea 7 días por host) y repetir.
+  · Nunca decidir la ruta leyendo $_SERVER['REQUEST_URI'] en template_redirect: wpLingua ya
+    le quitó el prefijo de idioma (ver "LECCIÓN CLAVE" arriba). El guard usa is_page() y
+    mu_wplingua_original_uri().
+- Caso de fallo esperado si el deploy no llegó: el síntoma es idéntico al estado anterior
+  (200 en los subdominios), sin error visible. Por eso el guard emite una cabecera propia.
+
+
 ════════════════════════════════════════════════════════════════
 8. DEUDA TÉCNICA
+
+HUECOS Y DECISIONES ABIERTAS (2026-10-16, feature 004-country-scope):
+- [ ] Filtro de sitemap de Rank Math: mu_country_scope_exclude_from_sitemap() usa
+  rank_math/sitemap/entry, cuyo nombre y firma NO se pudieron confirmar contra la
+  documentación pública del plugin (no expone la sección de sitemap). Verificación:
+    curl.exe -s https://mexico.muyunicos.com/page-sitemap.xml | Select-String 'envios'
+  Esperado: sin resultados. Si siguiera listada, la URL simplemente redirige —no rompe
+  nada— y quedan dos salidas: buscar el hook correcto en la versión instalada, o aceptar la
+  entrada y mantenerla declarada acá.
+- [ ] Candidatas al registro de alcance por país, sin decidir: /reembolso_devoluciones/
+  ("Botón de arrepentimiento", figura legal argentina) y cualquier ruta que se agregue a
+  futuro. El procedimiento de alta está en
+  specs/004-country-scope/contracts/country-scope.md, sección "Agregar una ruta nueva".
+- [ ] Variantes de idioma del dominio raíz (/pt/envios/, /en/envios/): siguen publicándose
+  porque el país es Argentina. Restringirlas exige la dimensión idioma (filtros de
+  wpLingua), que no se verificó. Decisión abierta, no deuda técnica.
+- [ ] Verificación en producción de la feature 004-country-scope: Fase B de
+  specs/004-country-scope/quickstart.md (matriz de curl por host, pie de página, sitemap,
+  no-regresión). No es ejecutable en local. Sin esa fase, la feature se declara NO
+  VERIFICADA.
 
 ════════════════════════════════════════════════════════════════
 

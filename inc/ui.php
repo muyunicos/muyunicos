@@ -188,7 +188,20 @@ if ( ! function_exists( 'muyunicos_custom_footer_structure' ) ) {
                                 <ul class="mu-footer-links">
                                     <li><a href="/mi-cuenta/">Mi Cuenta</a></li>
                                     <li><a href="/mi-cuenta/downloads/">Mis Descargas</a></li>
-                                    <li><a href="/envios/">Información de Envíos</a></li>
+                                    <?php
+                                    /**
+                                     * "Información de Envíos" describe la logística de Mar del
+                                     * Plata (zonas, costos, retiro): sólo aplica a Argentina.
+                                     * El enlace sale del mismo registro que la ruta, para que no
+                                     * puedan desincronizarse (inc/country-scope.php — guía §6).
+                                     */
+                                    $mu_envios = function_exists( 'muyu_get_country_scope_route' )
+                                        ? muyu_get_country_scope_route( 'envios' )
+                                        : null;
+                                    if ( null === $mu_envios || muyu_is_country( $mu_envios['countries'] ) ) :
+                                        ?>
+                                        <li><a href="/envios/"><?php echo esc_html( $mu_envios['label'] ?? 'Información de Envíos' ); ?></a></li>
+                                    <?php endif; ?>
                                     <li><a href="/privacy-policy/">Políticas</a></li>
                                     <li><a href="/reembolso_devoluciones/" class="mu-regret-btn">Botón de arrepentimiento</a></li>
                                 </ul>

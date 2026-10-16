@@ -364,6 +364,7 @@ mu_load_module( 'performance-monitor' ); // Performance monitoring system
 mu_load_module( 'coming-soon' );         // Coming Soon override (intercepta template_redirect antes que Hostinger)
 mu_load_module( 'geo' );                 // Multi-country system
 mu_load_module( 'compat-wplingua' );     // wpLingua: conserva el prefijo de idioma en el 301 canónico del core (depende de geo.php)
+mu_load_module( 'country-scope' );       // Alcance por país de rutas y elementos (ej: /envios/ sólo en AR) — depende de geo.php (país), compat-wplingua.php (URI original) y compat-litespeed.php (bots)
 mu_load_module( 'jetpack-search-integration' ); // Jetpack Search: corrige homeUrl para que los resultados apunten al subdominio actual (depende de geo.php)
 mu_load_module( 'seo-hreflang' );        // SEO Multi-país (hreflang, títulos localizados)
 mu_load_module( 'digital-restriction' ); // Digital Restriction System

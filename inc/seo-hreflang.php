@@ -23,6 +23,27 @@ if ( ! function_exists( 'mu_add_hreflang_tags' ) ) {
     function mu_add_hreflang_tags() {
         // Solo ejecutar en el frontend
         if ( is_admin() ) return;
+
+        // Rutas con alcance por país (inc/country-scope.php): el conjunto de
+        // alternates se reduce al host actual. Declarar los 9 subdominios para una
+        // ruta que sólo existe en Argentina era un hreflang asimétrico: esos hosts
+        // no sirven la página (302 a la tienda), así que los alternates apuntaban a
+        // redirects (constitución, principio V). Medido el 2026-10-16: /envios/
+        // emitía 11 alternates más un x-default al dominio raíz.
+        $scope_tags = function_exists( 'muyu_get_country_scope_hreflang_tags' )
+            ? muyu_get_country_scope_hreflang_tags()
+            : [];
+
+        if ( ! empty( $scope_tags ) ) {
+            foreach ( $scope_tags as $scope_tag ) {
+                printf(
+                    '<link rel="alternate" hreflang="%s" href="%s" />' . "\n",
+                    esc_attr( $scope_tag['hreflang'] ),
+                    esc_url( $scope_tag['url'] )
+                );
+            }
+            return;
+        }
         
         // Obtener datos de países
         $countries = muyu_get_countries_data();
