@@ -172,3 +172,80 @@
         transform: translateY(0);
     }
 }
+
+/* ============================================
+   MODAL DE RESEÑAS (solo admin)
+   Píldoras de idioma del comentario (ES | PT | EN) + bloques por idioma
+   ============================================ */
+
+.mu-review-modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 15px;
+}
+
+/* Las tres píldoras chiquitas, arriba a la derecha del editor */
+.mu-review-lang-pills {
+    display: inline-flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.mu-review-lang-pill {
+    position: relative;
+    min-width: 34px;
+    padding: 4px 8px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    line-height: 1;
+    color: #555;
+    background: #f6f7f7;
+    border: 1px solid #ddd;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.mu-review-lang-pill:hover {
+    border-color: var(--primario, #2B9FCF);
+    color: var(--primario, #2B9FCF);
+}
+
+.mu-review-lang-pill.is-active {
+    background: var(--primario, #2B9FCF);
+    border-color: var(--primario, #2B9FCF);
+    color: #fff;
+}
+
+/* Punto: ese idioma ya tiene un comentario propio guardado */
+.mu-review-lang-pill[data-has-translation="1"]::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 7px;
+    height: 7px;
+    background: #fbbc05;
+    border: 1px solid #fff;
+    border-radius: 50%;
+}
+
+.mu-review-lang-hint {
+    margin: 6px 0 0;
+    font-size: 0.75rem;
+    color: #666;
+    line-height: 1.4;
+}
+
+.mu-review-modal-error {
+    margin: 0 0 15px;
+    padding: 10px 12px;
+    font-size: 0.85rem;
+    color: #8a1f11;
+    background: #fbe9e7;
+    border: 1px solid #f5c6bc;
+    border-radius: 6px;
+}

@@ -1,7 +1,14 @@
 /**
  * Muy Únicos — Testimonios / Reseñas Google
  * Carga: shortcode mu_testimonios_section
- * Datos PHP→JS: muTestimonials.reviews (wp_localize_script)
+ * Datos PHP→JS: muTestimonials (wp_localize_script)
+ *   reviews  → listado de reseñas (option mu_reviews_master_db)
+ *   lang     → idioma de la URL actual ('es' | 'pt' | 'en')
+ *   i18n     → cadenas fijas de la sección ya resueltas por idioma
+ *   isAdmin  → muestra los controles de edición
+ *
+ * Traducción por reseña: review.text_pt / review.text_en. Vacío = sin
+ * traducción, se muestra el comentario en español (text).
  *
  * @package GeneratePress_Child
  */
@@ -13,11 +20,30 @@
         var data = (typeof muTestimonials !== 'undefined') ? muTestimonials : {};
         var allReviews = data.reviews || [];
         var container  = document.getElementById('mu-reviews-container');
+        var i18n       = data.i18n || {};
+        var lang       = data.lang || 'es';
         
         // Variables globales para todo el scope del módulo
         var isAdmin = typeof muTestimonials !== 'undefined' && muTestimonials.isAdmin;
 
         if (!container) return;
+
+        /** Cadena de la sección en el idioma actual (fallback: español). */
+        function t(key, fallback) {
+            return i18n[key] || fallback;
+        }
+
+        /**
+         * Comentario de la reseña en el idioma actual: se usa la traducción solo
+         * si existe; si está vacía (o el idioma es español) va el original.
+         */
+        function reviewText(review) {
+            if (lang !== 'es') {
+                var translated = review['text_' + lang];
+                if (translated) return translated;
+            }
+            return review.text || '';
+        }
 
         /* --- Icono SVG de recarga --- */
         var refreshIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/></svg>';
@@ -95,24 +121,41 @@
             return '★'.repeat(Math.floor(rating));
         }
 
-        function getRelativeTime(timestamp) {
+        /**
+         * Tiempo relativo en el idioma de la página.
+         *
+         * Intl.RelativeTimeFormat cubre es/pt/en sin duplicar cadenas; si el
+         * navegador no lo soporta se cae a la descripción relativa que ya trae
+         * Google en el dato (español).
+         */
+        function getRelativeTime(review) {
+            var timestamp = review.time;
             if (!timestamp) return '';
-            
-            var now = new Date();
-            var reviewDate = new Date(timestamp * 1000);
-            var diffMs = now - reviewDate;
-            var diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-            var diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-            var diffMinutes = Math.floor(diffMs / (1000 * 60));
 
-            if (diffMinutes < 1) return 'hace un momento';
-            if (diffMinutes < 60) return 'hace ' + diffMinutes + ' minuto' + (diffMinutes !== 1 ? 's' : '');
-            if (diffHours < 24) return 'hace ' + diffHours + ' hora' + (diffHours !== 1 ? 's' : '');
-            if (diffDays === 1) return 'ayer';
-            if (diffDays < 7) return 'hace ' + diffDays + ' día' + (diffDays !== 1 ? 's' : '');
-            if (diffDays < 30) return 'hace ' + Math.floor(diffDays / 7) + ' semana' + (Math.floor(diffDays / 7) !== 1 ? 's' : '');
-            if (diffDays < 365) return 'hace ' + Math.floor(diffDays / 30) + ' mes' + (Math.floor(diffDays / 30) !== 1 ? 'es' : '');
-            return 'hace ' + Math.floor(diffDays / 365) + ' año' + (Math.floor(diffDays / 365) !== 1 ? 's' : '');
+            var seconds = Math.round((Date.now() - new Date(timestamp * 1000).getTime()) / 1000);
+            if (seconds < 60) return t('justNow', 'hace un momento');
+
+            var locale = 'es' === lang ? 'es-AR' : ('pt' === lang ? 'pt-BR' : 'en-US');
+            var units  = [
+                ['year', 31536000],
+                ['month', 2629800],
+                ['week', 604800],
+                ['day', 86400],
+                ['hour', 3600],
+                ['minute', 60]
+            ];
+
+            try {
+                var formatter = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+                for (var i = 0; i < units.length; i++) {
+                    var amount = Math.floor(seconds / units[i][1]);
+                    if (amount >= 1) return formatter.format(-amount, units[i][0]);
+                }
+            } catch (e) {
+                // Sin Intl: queda la descripción relativa de Google.
+            }
+
+            return review.relative_time_description || '';
         }
 
         function startAutoRefresh() {
@@ -140,7 +183,7 @@
 
         function renderReviews() {
             if (!allReviews.length) {
-                container.innerHTML = '<p style="text-align:center;width:100%;color:#666;">Cargando opiniones…</p>';
+                container.innerHTML = '<p style="text-align:center;width:100%;color:#666;">' + t('loading', 'Cargando opiniones…') + '</p>';
                 return;
             }
 
@@ -155,21 +198,24 @@
                 var delay    = i * 100;
                 var reviewIndex = allReviews.indexOf(review);
 
+                var rotateLabel  = t('rotateTitle', 'Ver otras opiniones');
                 var satelliteBtn = isLast
-                    ? '<button class="mu-nav-btn refresh" id="mu-btn-rotate" type="button" title="Ver otras opiniones" aria-label="Ver otras opiniones">' + refreshIcon + '</button>'
+                    ? '<button class="mu-nav-btn refresh" id="mu-btn-rotate" type="button" title="' + rotateLabel + '" aria-label="' + rotateLabel + '">' + refreshIcon + '</button>'
                     : '';
 
                 var purchasePhotoHtml = '';
                 if (review.purchase_photo_url) {
-                    purchasePhotoHtml = '<div class="mu-purchase-photo" style="margin-top:10px;"><img src="' + review.purchase_photo_url + '" alt="Foto de la compra" style="max-width:100%;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);"></div>';
+                    purchasePhotoHtml = '<div class="mu-purchase-photo" style="margin-top:10px;"><img src="' + review.purchase_photo_url + '" alt="' + t('purchasePhotoAlt', 'Foto de la compra') + '" style="max-width:100%;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);"></div>';
                 }
 
+                // El índice viaja en data-* (no concatenado en el onclick) y lo
+                // resuelve el listener delegado que se registra más abajo.
                 var editBtn = isAdmin 
-                    ? '<button onclick="event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();openReviewModal(' + reviewIndex + ')" style="font-size:11px;padding:6px 12px;margin-left:10px;background:#0073aa;color:white;border:none;border-radius:4px;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,0.1);transition:background 0.2s;z-index:10;position:relative;">Editar</button>'
+                    ? '<button type="button" class="mu-review-edit-btn" data-review-index="' + reviewIndex + '" style="font-size:11px;padding:6px 12px;margin-left:10px;background:#0073aa;color:white;border:none;border-radius:4px;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,0.1);transition:background 0.2s;z-index:10;position:relative;">Editar</button>'
                     : '';
 
-                // Generar tiempo relativo desde timestamp como fallback
-                var timeDisplay = getRelativeTime(review.time);
+                // Tiempo relativo en el idioma de la página (fallback: Google).
+                var timeDisplay = getRelativeTime(review);
 
                 html +=
                     '<div class="mu-review-wrapper mu-review-fade" style="animation-delay:' + delay + 'ms">' +
@@ -181,7 +227,7 @@
                                     '<div class="mu-stars" aria-label="' + review.rating + ' estrellas">' + getStars(review.rating) + '</div>' +
                                 '</div>' +
                             '</div>' +
-                            '<p class="mu-review-text">“' + truncate(review.text, 20) + '”</p>' +
+                            '<p class="mu-review-text">“' + truncate(reviewText(review), 20) + '”</p>' +
                             purchasePhotoHtml +
                             '<small style="margin-top:auto;color:#999;font-size:0.75rem;padding-top:10px;display:block;">' + timeDisplay + '</small>' +
                         '</a>' +
@@ -232,6 +278,21 @@
         if (container) {
             observer.observe(container);
         }
+
+        // Los botones de cada tarjeta se re-crean en cada render: el clic se
+        // delega una sola vez sobre el contenedor (evita listeners duplicados).
+        container.addEventListener('click', function (e) {
+            var btn = e.target.closest ? e.target.closest('.mu-review-edit-btn') : null;
+            if (!btn) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            var index = parseInt(btn.getAttribute('data-review-index'), 10);
+            if (!isNaN(index) && typeof window.openReviewModal === 'function') {
+                window.openReviewModal(index);
+            }
+        });
 
         renderReviews();
     });

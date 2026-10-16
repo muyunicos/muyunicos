@@ -403,23 +403,98 @@ if ( ! function_exists( 'mu_desactivar_imagen_destacada_html' ) ) {
 // API Key: define('MU_GOOGLE_PLACES_API_KEY','...') en wp-config.php
 // ============================================
 
+if ( ! function_exists( 'mu_can_manage_reviews' ) ) {
+    /**
+     * Gate único de la gestión de reseñas (editor del front + handlers AJAX).
+     *
+     * Antes era current_user_can('administrator'), un chequeo de ROL: quedaban
+     * afuera los shop managers que sí administran Hero Banners. Se usa la misma
+     * capability que el resto del panel (manage_woocommerce) con fallback a
+     * manage_options.
+     *
+     * @return bool
+     */
+    function mu_can_manage_reviews() {
+        return current_user_can( 'manage_options' ) || current_user_can( 'manage_woocommerce' );
+    }
+}
+
+if ( ! function_exists( 'mu_testimonios_i18n' ) ) {
+    /**
+     * Cadenas fijas de la sección por idioma.
+     *
+     * 'es' es la base: si una clave falta en el idioma actual se usa la de
+     * español (mismo fallback que las traducciones de cada reseña). El idioma
+     * sale de muyu_get_current_language() (geo.php), nunca del navegador.
+     *
+     * @return array<string,string> Mapa clave => texto del idioma actual.
+     */
+    function mu_testimonios_i18n() {
+        $strings = [
+            'es' => [
+                'sectionTitle'     => 'Clientes Felices',
+                'ctaReview'        => 'Déjanos tu reseña',
+                'loading'          => 'Cargando opiniones…',
+                'rotateTitle'      => 'Ver otras opiniones',
+                'purchasePhotoAlt' => 'Foto de la compra',
+                'justNow'          => 'hace un momento',
+            ],
+            'pt' => [
+                'sectionTitle'     => 'Clientes Satisfeitos',
+                'ctaReview'        => 'Deixe sua avaliação',
+                'loading'          => 'Carregando avaliações…',
+                'rotateTitle'      => 'Ver outras avaliações',
+                'purchasePhotoAlt' => 'Foto da compra',
+                'justNow'          => 'há instantes',
+            ],
+            'en' => [
+                'sectionTitle'     => 'Happy Customers',
+                'ctaReview'        => 'Leave us a review',
+                'loading'          => 'Loading reviews…',
+                'rotateTitle'      => 'See other reviews',
+                'purchasePhotoAlt' => 'Purchase photo',
+                'justNow'          => 'just now',
+            ],
+        ];
+
+        $lang = function_exists( 'muyu_get_current_language' ) ? muyu_get_current_language() : 'es';
+
+        return isset( $strings[ $lang ] ) ? $strings[ $lang ] : $strings['es'];
+    }
+}
+
 if ( ! function_exists( 'mu_testimonios_enqueue' ) ) {
     function mu_testimonios_enqueue() {
         global $post;
         if ( ! is_a( $post, 'WP_Post' ) || ! has_shortcode( $post->post_content, 'mu_testimonios_section' ) ) return;
 
         $ver = wp_get_theme()->get( 'Version' );
-        wp_enqueue_style( 'mu-testimonials', get_stylesheet_directory_uri() . '/css/testimonials.css', [], $ver );
-        wp_enqueue_script( 'mu-testimonials', get_stylesheet_directory_uri() . '/js/testimonials.js', [], $ver, true );
+        $dir = get_stylesheet_directory();
+        $uri = get_stylesheet_directory_uri();
+
+        // Cache-busting por filemtime: la Version del tema es fija, así que un
+        // JS viejo podía convivir con el modal nuevo (inline, siempre fresco).
+        // Mismo criterio que inc/hero-banners.php.
+        $css_file = $dir . '/css/testimonials.css';
+        $js_file  = $dir . '/js/testimonials.js';
+        $css_ver  = file_exists( $css_file ) ? (string) filemtime( $css_file ) : $ver;
+        $js_ver   = file_exists( $js_file ) ? (string) filemtime( $js_file ) : $ver;
+
+        wp_enqueue_style( 'mu-testimonials', $uri . '/css/testimonials.css', [], $css_ver );
+        wp_enqueue_script( 'mu-testimonials', $uri . '/js/testimonials.js', [], $js_ver, true );
         
         // Localize script en el enqueue, no en el shortcode
         if ( wp_script_is( 'mu-testimonials', 'enqueued' ) ) {
             $db_option_name = 'mu_reviews_master_db';
-            wp_localize_script( 'mu-testimonials', 'muTestimonials', [ 
+            wp_localize_script( 'mu-testimonials', 'muTestimonials', [
                 'reviews' => get_option( $db_option_name, [] ),
                 'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-                'nonce' => wp_create_nonce( 'mu_review_nonce' ),
-                'isAdmin' => current_user_can( 'administrator' )
+                'nonce'   => wp_create_nonce( 'mu_review_nonce' ),
+                'isAdmin' => mu_can_manage_reviews(),
+                // Idioma de la URL actual + cadenas de la sección (el front elige
+                // la traducción del comentario con fallback a español).
+                'lang'    => function_exists( 'muyu_get_current_language' ) ? muyu_get_current_language() : 'es',
+                'i18n'    => mu_testimonios_i18n(),
             ] );
         }
     }
@@ -434,7 +509,7 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
         $max_reviews    = 200; // [Fix #4] Límite para evitar crecimiento ilimitado en wp_options.
         $msg_update     = '';
 
-        if ( $api_key && current_user_can( 'administrator' ) && isset( $_GET['force_reviews'] ) ) {
+        if ( $api_key && mu_can_manage_reviews() && isset( $_GET['force_reviews'] ) ) {
             $url      = add_query_arg(
                 [ 'placeid' => $place_id, 'fields' => 'reviews', 'key' => $api_key, 'language' => 'es' ],
                 'https://maps.googleapis.com/maps/api/place/details/json'
@@ -460,6 +535,12 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
                     // [Fix #4] Mantener solo las últimas $max_reviews reseñas para limitar el tamaño de wp_options.
                     $current_db = array_slice( $current_db, -$max_reviews );
                     update_option( $db_option_name, $current_db );
+
+                    // El set de reseñas viaja embebido en el HTML cacheado: sin
+                    // purga, el front sigue sirviendo el JSON viejo. Solo tras un
+                    // cambio real (Hash Gate, MIGRATION-GUIDE §7).
+                    do_action( 'litespeed_purge_all' );
+
                     $msg_update = sprintf(
                         '<div style="background:#d4edda;color:#155724;padding:10px;text-align:center;border-radius:12px;margin-bottom:20px;font-size:0.9rem;">✅ Se agregaron %d reseñas nuevas.</div>',
                         $added
@@ -468,20 +549,23 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
             }
         }
 
+        // Cadenas de la sección en el idioma de la URL (fallback: español).
+        $i18n = mu_testimonios_i18n();
+
         ob_start();
         echo wp_kses_post( $msg_update );
         ?>
         <section class="mu-testimonials mu-section">
             <div class="mu-container">
-                <h2 class="mu-section-title">Clientes Felices</h2>
+                <h2 class="mu-section-title"><?php echo esc_html( $i18n['sectionTitle'] ); ?></h2>
                 <div id="mu-reviews-container" class="mu-grid-reviews"></div>
                 <div class="mu-bottom-actions">
                     <a href="https://search.google.com/local/writereview?placeid=<?php echo esc_attr( $place_id ); ?>"
                        target="_blank" rel="noopener noreferrer" class="mu-btn mu-btn-secondary">
-                        <span class="mu-btn-icon">⭐</span> Déjanos tu reseña
+                        <span class="mu-btn-icon">⭐</span> <?php echo esc_html( $i18n['ctaReview'] ); ?>
                     </a>
                 </div>
-                <?php if ( current_user_can( 'administrator' ) ) : ?>
+                <?php if ( mu_can_manage_reviews() ) : ?>
                     <div style="text-align:center;margin-top:20px;font-size:12px;opacity:0.6;">
                         <a href="?force_reviews=1" style="color:inherit;">↻ Admin: Actualizar desde Google</a>
                         <span style="margin:0 8px;">|</span>
@@ -492,10 +576,21 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
         </section>
         
         <!-- Modal para agregar/editar reseñas manualmente -->
-        <?php if ( current_user_can( 'administrator' ) ) : ?>
+        <?php if ( mu_can_manage_reviews() ) : ?>
         <div id="mu-review-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
             <div style="background:white;padding:30px;border-radius:12px;max-width:500px;width:90%;max-height:90vh;overflow-y:auto;">
-                <h3 style="margin-top:0;">Agregar/Editar Reseña</h3>
+                <div class="mu-review-modal-head">
+                    <h3 id="mu-review-modal-title" style="margin:0;">Agregar Reseña</h3>
+                    <span class="mu-review-lang-pills" role="group" aria-label="Idioma del comentario">
+                        <button type="button" class="mu-review-lang-pill is-active" data-lang="es" title="Español">ES</button>
+                        <button type="button" class="mu-review-lang-pill" data-lang="pt" title="Portugués (Brasil)">PT</button>
+                        <button type="button" class="mu-review-lang-pill" data-lang="en" title="Inglés">EN</button>
+                    </span>
+                </div>
+                <div id="mu-review-modal-error" class="mu-review-modal-error" role="alert" style="display:none;">
+                    <p id="mu-review-modal-error-text" style="margin:0 0 10px;"></p>
+                    <button type="button" onclick="window.muReviewModal.close()" style="padding:6px 14px;border:1px solid #ddd;background:white;border-radius:4px;cursor:pointer;">Cerrar</button>
+                </div>
                 <form id="mu-review-form">
                     <input type="hidden" id="mu-review-index" name="review_index" value="">
                     
@@ -517,7 +612,20 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
                     
                     <div style="margin-bottom:15px;">
                         <label style="display:block;margin-bottom:5px;font-weight:bold;">Comentario:</label>
-                        <textarea id="mu-review-text" name="text" required style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;min-height:100px;"></textarea>
+
+                        <div class="mu-review-lang-block" data-lang="es">
+                            <textarea id="mu-review-text" name="text" required style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;min-height:100px;"></textarea>
+                        </div>
+
+                        <div class="mu-review-lang-block" data-lang="pt" style="display:none;">
+                            <textarea id="mu-review-text-pt" name="text_pt" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;min-height:100px;"></textarea>
+                            <p class="mu-review-lang-hint">Si lo dejás igual al español (o vacío), no se guarda: en portugués se muestra el texto en español.</p>
+                        </div>
+
+                        <div class="mu-review-lang-block" data-lang="en" style="display:none;">
+                            <textarea id="mu-review-text-en" name="text_en" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;min-height:100px;"></textarea>
+                            <p class="mu-review-lang-hint">Si lo dejás igual al español (o vacío), no se guarda: en inglés se muestra el texto en español.</p>
+                        </div>
                     </div>
                     
                     <div style="margin-bottom:15px;">
@@ -559,39 +667,144 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
         </div>
         
         <script>
-        window.muReviewModal = {
-            open: function(index) {
-                document.getElementById('mu-review-modal').style.display = 'flex';
-                document.getElementById('mu-review-index').value = index || '';
-                
-                if (index !== '' && typeof muTestimonials !== 'undefined' && muTestimonials.reviews[index]) {
-                    var review = muTestimonials.reviews[index];
-                    document.getElementById('mu-review-name').value = review.author_name || '';
-                    document.getElementById('mu-review-rating').value = review.rating || 5;
-                    document.getElementById('mu-review-text').value = review.text || '';
-                    document.getElementById('mu-review-date').value = review.time ? new Date(review.time * 1000).toISOString().split('T')[0] : '';
-                    document.getElementById('mu-review-profile-url').value = review.author_url || review.profile_url || '';
-                    document.getElementById('mu-review-profile-photo').value = review.profile_photo_url || '';
-                    document.getElementById('mu-review-purchase-photo-url').value = review.purchase_photo_url || '';
-                    document.getElementById('mu-review-hidden').checked = review.hidden || false;
-                    
+        (function () {
+            var MODAL_LANGS = ['es', 'pt', 'en'];
+
+            function byId(id) { return document.getElementById(id); }
+
+            function reviewsData() {
+                return (typeof muTestimonials !== 'undefined' && muTestimonials.reviews) ? muTestimonials.reviews : [];
+            }
+
+            /** Muestra el bloque del idioma elegido (solo cambia el comentario). */
+            function setLang(lang) {
+                document.querySelectorAll('.mu-review-lang-pill').forEach(function (pill) {
+                    pill.classList.toggle('is-active', pill.getAttribute('data-lang') === lang);
+                });
+                document.querySelectorAll('.mu-review-lang-block').forEach(function (block) {
+                    block.style.display = (block.getAttribute('data-lang') === lang) ? 'block' : 'none';
+                });
+            }
+
+            /**
+             * El comentario en español se muestra como placeholder en PT/EN: es
+             * solo ayuda visual y nunca se envía (no se guarda por accidente una
+             * copia del español).
+             */
+            function syncPlaceholders() {
+                var es = byId('mu-review-text').value;
+                MODAL_LANGS.forEach(function (lang) {
+                    if ('es' === lang) return;
+                    var field = byId('mu-review-text-' + lang);
+                    if (field) { field.placeholder = es; }
+                });
+            }
+
+            /** Punto en la píldora: ese idioma ya tiene comentario propio guardado. */
+            function markTranslated(lang, hasValue) {
+                var pill = document.querySelector('.mu-review-lang-pill[data-lang="' + lang + '"]');
+                if (pill) { pill.setAttribute('data-has-translation', hasValue ? '1' : '0'); }
+            }
+
+            /** Fecha del input type=date, sin romper si el dato viene raro. */
+            function dateValue(timestamp) {
+                var ts = parseInt(timestamp, 10);
+                if (!ts) return '';
+                var date = new Date(ts * 1000);
+                return isNaN(date.getTime()) ? '' : date.toISOString().split('T')[0];
+            }
+
+            /** Aviso explícito en vez de un formulario vacío (índice inválido). */
+            function showError(message) {
+                byId('mu-review-modal-error-text').textContent = message;
+                byId('mu-review-modal-error').style.display = 'block';
+                byId('mu-review-form').style.display = 'none';
+                byId('mu-delete-review-btn').style.display = 'none';
+            }
+
+            /** Estado limpio: alta, sin Eliminar, sin traducciones marcadas, ES activo. */
+            function resetModal() {
+                var form = byId('mu-review-form');
+                form.reset();
+                form.style.display = 'block';
+                byId('mu-review-modal-error').style.display = 'none';
+                byId('mu-review-index').value = '';
+                byId('mu-purchase-photo-preview').innerHTML = '';
+                byId('mu-delete-review-btn').style.display = 'none';
+                MODAL_LANGS.forEach(function (lang) { markTranslated(lang, false); });
+                syncPlaceholders();
+                setLang('es');
+            }
+
+            window.muReviewModal = {
+                /** Compatibilidad: sin índice = alta (link "✎ Manual"). */
+                open: function(index) {
+                    if (typeof index === 'undefined' || index === null || index === '') {
+                        this.openNew();
+                        return;
+                    }
+                    this.openEdit(index);
+                },
+
+                /** Alta de reseña: formulario limpio, sin Eliminar. */
+                openNew: function() {
+                    resetModal();
+                    byId('mu-review-modal-title').textContent = 'Agregar Reseña';
+                    byId('mu-review-modal').style.display = 'flex';
+                },
+
+                /**
+                 * Edición: solo con un índice válido. Si la reseña no está (dato
+                 * viejo o página cacheada) avisa y oculta el formulario, en vez de
+                 * abrirlo vacío y guardar un duplicado.
+                 */
+                openEdit: function(index) {
+                    var reviews = reviewsData();
+                    var review  = reviews[index];
+
+                    resetModal();
+                    byId('mu-review-modal').style.display = 'flex';
+
+                    if (!review || 'object' !== typeof review) {
+                        console.warn('[MU] Reseña no encontrada en el índice ' + index + ' (¿página cacheada?).');
+                        showError('No se pudo cargar la reseña seleccionada. Recargá la página (F5) e intentá de nuevo.');
+                        return;
+                    }
+
+                    byId('mu-review-index').value = String(index);
+                    byId('mu-review-modal-title').textContent = 'Editar Reseña';
+                    byId('mu-review-name').value = review.author_name || '';
+                    byId('mu-review-rating').value = review.rating || 5;
+                    byId('mu-review-text').value = review.text || '';
+                    byId('mu-review-date').value = dateValue(review.time);
+                    byId('mu-review-profile-url').value = review.author_url || review.profile_url || '';
+                    byId('mu-review-profile-photo').value = review.profile_photo_url || '';
+                    byId('mu-review-purchase-photo-url').value = review.purchase_photo_url || '';
+                    byId('mu-review-hidden').checked = !!review.hidden;
+
+                    // Traducciones del comentario: valor propio o vacío (= español).
+                    MODAL_LANGS.forEach(function (lang) {
+                        if ('es' === lang) return;
+                        var field = byId('mu-review-text-' + lang);
+                        var value = review['text_' + lang] || '';
+                        if (field) { field.value = value; }
+                        markTranslated(lang, '' !== value);
+                    });
+
+                    syncPlaceholders();
+
                     // Mostrar botón de eliminar solo si es una reseña existente
-                    document.getElementById('mu-delete-review-btn').style.display = 'inline-block';
-                    
+                    byId('mu-delete-review-btn').style.display = 'inline-block';
+
                     if (review.purchase_photo_url) {
-                        document.getElementById('mu-purchase-photo-preview').innerHTML = 
+                        byId('mu-purchase-photo-preview').innerHTML =
                             '<img src="' + review.purchase_photo_url + '" style="max-width:100px;border-radius:4px;">';
                     }
-                } else {
-                    document.getElementById('mu-review-form').reset();
-                    document.getElementById('mu-purchase-photo-preview').innerHTML = '';
-                    document.getElementById('mu-delete-review-btn').style.display = 'none';
-                }
-            },
-            
-            close: function() {
-                document.getElementById('mu-review-modal').style.display = 'none';
-            },
+                },
+
+                close: function() {
+                    byId('mu-review-modal').style.display = 'none';
+                },
             
             deleteReview: function() {
                 if (!confirm('¿Estás seguro de que quieres eliminar esta reseña? Esta acción no se puede deshacer.')) {
@@ -676,6 +889,29 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
                 alert('Error al guardar la reseña');
             });
         });
+
+        // --- Píldoras de idioma del editor (solo cambia el comentario) ---
+        document.querySelectorAll('.mu-review-lang-pill').forEach(function (pill) {
+            pill.addEventListener('click', function () {
+                setLang(pill.getAttribute('data-lang'));
+            });
+        });
+
+        // El comentario en español alimenta el placeholder de PT/EN (solo visual).
+        byId('mu-review-text').addEventListener('input', syncPlaceholders);
+
+        // Si la validación falla en el comentario base (que puede estar oculto
+        // porque se está viendo PT/EN), volver a ES: el navegador no puede
+        // enfocar ni avisar sobre un campo oculto.
+        byId('mu-review-form').addEventListener('invalid', function () {
+            setLang('es');
+        }, true);
+
+        // Un clic en el fondo oscuro cierra el modal (salida rápida tras un aviso).
+        byId('mu-review-modal').addEventListener('click', function (e) {
+            if (e.target === this) { window.muReviewModal.close(); }
+        });
+        })();
         </script>
         <?php endif; ?>
         
@@ -692,40 +928,67 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
 if ( ! function_exists( 'mu_ajax_save_review' ) ) {
     function mu_ajax_save_review() {
         check_ajax_referer( 'mu_review_nonce', 'nonce' );
-        
-        if ( ! current_user_can( 'administrator' ) ) {
+
+        if ( ! mu_can_manage_reviews() ) {
             wp_send_json_error( 'No tienes permisos' );
         }
-        
+
         $db_option_name = 'mu_reviews_master_db';
-        $max_reviews = 200;
-        $current_db = get_option( $db_option_name, [] );
-        
-        $review_index = isset( $_POST['review_index'] ) ? sanitize_text_field( $_POST['review_index'] ) : '';
-        
-        $review = [
-            'author_name' => sanitize_text_field( $_POST['author_name'] ),
-            'rating' => intval( $_POST['rating'] ),
-            'text' => sanitize_textarea_field( $_POST['text'] ),
-            'time' => ! empty( $_POST['time'] ) ? strtotime( sanitize_text_field( $_POST['time'] ) ) : time(),
-            'author_url' => esc_url_raw( $_POST['profile_url'] ?? '' ),
-            'profile_url' => esc_url_raw( $_POST['profile_url'] ?? '' ),
-            'profile_photo_url' => esc_url_raw( $_POST['profile_photo_url'] ?? '' ),
-            'purchase_photo_url' => '',
-            'hidden' => isset( $_POST['hidden'] ) ? 1 : 0,
-        ];
-        
+        $max_reviews    = 200;
+        $current_db     = get_option( $db_option_name, [] );
+
+        $review_index = isset( $_POST['review_index'] ) ? sanitize_text_field( wp_unslash( $_POST['review_index'] ) ) : '';
+        $is_edit      = ( '' !== $review_index && isset( $current_db[ $review_index ] ) );
+
+        // Índice que ya no existe (página cacheada, reseña borrada en otra
+        // pestaña): error explícito. Antes caía en "nueva reseña" y duplicaba.
+        if ( '' !== $review_index && ! $is_edit ) {
+            wp_send_json_error( 'Reseña no encontrada. Recargá la página e intentá de nuevo.' );
+        }
+
+        // Base: la reseña existente. Conserva los campos que el formulario no
+        // edita (relative_time_description, language, translated, etc.).
+        $review = $is_edit ? (array) $current_db[ $review_index ] : [];
+
+        $rating = intval( $_POST['rating'] ?? 0 );
+        if ( $rating < 1 || $rating > 5 ) {
+            $rating = 5;
+        }
+
+        $text = sanitize_textarea_field( wp_unslash( $_POST['text'] ?? '' ) );
+
+        $review['author_name']       = sanitize_text_field( wp_unslash( $_POST['author_name'] ?? '' ) );
+        $review['rating']            = $rating;
+        $review['text']              = $text;
+        $review['time']              = ! empty( $_POST['time'] ) ? strtotime( sanitize_text_field( wp_unslash( $_POST['time'] ) ) ) : time();
+        $review['author_url']        = esc_url_raw( wp_unslash( $_POST['profile_url'] ?? '' ) );
+        $review['profile_url']       = esc_url_raw( wp_unslash( $_POST['profile_url'] ?? '' ) );
+        $review['profile_photo_url'] = esc_url_raw( wp_unslash( $_POST['profile_photo_url'] ?? '' ) );
+        $review['hidden']            = isset( $_POST['hidden'] ) ? 1 : 0;
+
+        // Traducciones del comentario ([sobrescritura dispersa]): se guarda ''
+        // cuando el valor está vacío o es idéntico al español, así el front usa
+        // el texto base y editar el español propaga a los idiomas sin traducción.
+        foreach ( [ 'pt', 'en' ] as $lang ) {
+            $value                     = sanitize_textarea_field( wp_unslash( $_POST[ 'text_' . $lang ] ?? '' ) );
+            $review[ 'text_' . $lang ] = ( '' === $value || trim( $value ) === trim( $text ) ) ? '' : $value;
+        }
+
+        if ( ! isset( $review['purchase_photo_url'] ) ) {
+            $review['purchase_photo_url'] = '';
+        }
+
         // Manejar upload de foto de compra
-        if ( isset( $_FILES['purchase_photo'] ) && $_FILES['purchase_photo']['error'] === UPLOAD_ERR_OK ) {
+        if ( isset( $_FILES['purchase_photo'] ) && isset( $_FILES['purchase_photo']['error'] ) && $_FILES['purchase_photo']['error'] === UPLOAD_ERR_OK ) {
             $upload = wp_handle_upload( $_FILES['purchase_photo'], [ 'test_form' => false ] );
             if ( ! isset( $upload['error'] ) ) {
                 $review['purchase_photo_url'] = $upload['url'];
             }
         } elseif ( ! empty( $_POST['purchase_photo_url'] ) ) {
-            $review['purchase_photo_url'] = esc_url_raw( $_POST['purchase_photo_url'] );
+            $review['purchase_photo_url'] = esc_url_raw( wp_unslash( $_POST['purchase_photo_url'] ) );
         }
-        
-        if ( $review_index !== '' && isset( $current_db[ $review_index ] ) ) {
+
+        if ( $is_edit ) {
             // Editar reseña existente
             $current_db[ $review_index ] = $review;
         } else {
@@ -734,9 +997,14 @@ if ( ! function_exists( 'mu_ajax_save_review' ) ) {
             // Mantener límite de reseñas
             $current_db = array_slice( $current_db, -$max_reviews );
         }
-        
+
         update_option( $db_option_name, $current_db );
-        
+
+        // El set de reseñas viaja embebido en el HTML cacheado: sin purga, el
+        // front sigue sirviendo el JSON viejo. Solo tras un cambio real
+        // (Hash Gate, MIGRATION-GUIDE §7).
+        do_action( 'litespeed_purge_all' );
+
         wp_send_json_success( 'Reseña guardada correctamente' );
     }
     add_action( 'wp_ajax_mu_save_review', 'mu_ajax_save_review' );
@@ -750,20 +1018,26 @@ if ( ! function_exists( 'mu_ajax_delete_review' ) ) {
     function mu_ajax_delete_review() {
         check_ajax_referer( 'mu_review_nonce', 'nonce' );
         
-        if ( ! current_user_can( 'administrator' ) ) {
+        if ( ! mu_can_manage_reviews() ) {
             wp_send_json_error( 'No tienes permisos' );
         }
         
         $db_option_name = 'mu_reviews_master_db';
         $current_db = get_option( $db_option_name, [] );
         
-        $review_index = isset( $_POST['review_index'] ) ? intval( $_POST['review_index'] ) : 0;
+        // Sin índice válido no se borra nada: antes el default 0 eliminaba la
+        // primera reseña del listado.
+        $review_index = isset( $_POST['review_index'] ) ? intval( wp_unslash( $_POST['review_index'] ) ) : -1;
         
         if ( isset( $current_db[ $review_index ] ) ) {
             unset( $current_db[ $review_index ] );
             // Reindexar array para mantener continuidad
             $current_db = array_values( $current_db );
             update_option( $db_option_name, $current_db );
+
+            // El set de reseñas viaja embebido en el HTML cacheado (Hash Gate).
+            do_action( 'litespeed_purge_all' );
+
             wp_send_json_success( 'Reseña eliminada correctamente' );
         } else {
             wp_send_json_error( 'Reseña no encontrada' );
