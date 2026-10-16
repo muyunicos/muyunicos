@@ -50,6 +50,14 @@ dist/
 build/
 *.min.js.map
 
+# --- Archivos de trabajo locales (NUNCA publicar) ---
+# Copias traídas del servidor para revisión: el deploy trae el repositorio
+# completo, así que un .htaccess aquí terminaría pisando el de la carpeta del
+# tema en producción y un wp-config.php expondría credenciales.
+raiz-tienda/
+tmp/
+_scratch/
+
 # --- Sistema de control de versiones ---
 # El .git ya lo gestiona Git; se listan únicamente los archivos de resolución
 # de conflictos, que no aportan nada al repositorio.
