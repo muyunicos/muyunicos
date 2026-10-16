@@ -73,6 +73,29 @@ if ( ! function_exists( 'muyu_country_language_prefix' ) ) {
     }
 }
 
+if ( ! function_exists( 'muyu_get_current_language' ) ) {
+    /**
+     * Detecta el idioma actual de la request.
+     * Lee el prefijo de URI (/pt/, /en/) o infiere desde el país del subdominio.
+     * 
+     * @return string 'es', 'en' o 'pt'
+     */
+    function muyu_get_current_language() {
+        $request_uri = isset( $_SERVER['REQUEST_URI'] ) ? $_SERVER['REQUEST_URI'] : '/';
+        if ( strpos( $request_uri, '/pt/' ) === 0 || strpos( $request_uri, '/pt' ) === 0 ) {
+            return 'pt';
+        }
+        if ( strpos( $request_uri, '/en/' ) === 0 || strpos( $request_uri, '/en' ) === 0 ) {
+            return 'en';
+        }
+        $pais = muyu_get_current_country_from_subdomain();
+        $prefix = muyu_country_language_prefix( $pais );
+        if ( $prefix === '/pt' ) return 'pt';
+        if ( $prefix === '/en' ) return 'en';
+        return 'es';
+    }
+}
+
 if ( ! function_exists( 'muyu_get_countries_data' ) ) {
     /**
      * Retorna el array completo de configuración de países

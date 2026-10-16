@@ -1001,6 +1001,17 @@ if ( ! function_exists( 'mu_hero_section' ) ) {
         $active_promos = function_exists( 'mu_get_hero_banners' ) ? mu_get_hero_banners() : [];
         if ( empty( $active_promos ) ) return '';
 
+        // Idioma actual para mostrar versión traducida del banner
+        $idioma_actual = function_exists( 'muyu_get_current_language' ) ? muyu_get_current_language() : 'es';
+
+        // Helper: devuelve el campo traducido si existe y no está vacío, fallback al valor base
+        $mu_hero_field = function( $promo, $base, $lang ) use ( $idioma_actual ) {
+            if ( $idioma_actual !== 'es' && ! empty( $promo[ $base . '_' . $idioma_actual ] ?? '' ) ) {
+                return $promo[ $base . '_' . $idioma_actual ];
+            }
+            return $promo[ $base ] ?? '';
+        };
+
         // --- DEFAULTS PARA BADGE ---
         $badge_defaults = [
             'url'  => '/tienda/digital/?min_price=0&max_price=0',
@@ -1018,14 +1029,14 @@ if ( ! function_exists( 'mu_hero_section' ) ) {
                         $is_first      = ( 0 === $idx );
                         $show_badge    = ! empty( $promo['show_free_badge'] ) && true === $promo['show_free_badge'];
                         $badge_url     = ! empty( $promo['free_badge_url'] )  ? $promo['free_badge_url']  : $badge_defaults['url'];
-                        $badge_text    = ! empty( $promo['free_badge_text'] ) ? $promo['free_badge_text'] : $badge_defaults['text'];
+                        $badge_text    = ! empty( $promo['free_badge_text'] ) ? $mu_hero_field( $promo, 'free_badge_text', $idioma_actual ) : $badge_defaults['text'];
                     ?>
                     <div class="mu-hero-promo-slide<?php echo $is_first ? ' active' : ''; ?>"
                          data-slide-index="<?php echo esc_attr( $idx ); ?>">
 
                         <div class="mu-hero-promo-bg">
                             <img src="<?php echo esc_url( $promo['imagen'] ); ?>"
-                                 alt="<?php echo esc_attr( strip_tags( $promo['titulo'] ) ); ?>"
+                                 alt="<?php echo esc_attr( strip_tags( $mu_hero_field( $promo, 'titulo', $idioma_actual ) ) ); ?>"
                                  width="1280" height="580"
                                  loading="<?php echo $is_first ? 'eager' : 'lazy'; ?>"
                                  <?php echo $is_first ? 'fetchpriority="high"' : ''; ?>
@@ -1039,18 +1050,18 @@ if ( ! function_exists( 'mu_hero_section' ) ) {
                                 </div>
                             <?php endif; ?>
 
-                            <h1 class="mu-hero-promo-title"><?php echo wp_kses_post( $promo['titulo'] ); ?></h1>
-                            <p class="mu-hero-promo-desc"><?php echo esc_html( $promo['descripcion'] ); ?></p>
+                            <h1 class="mu-hero-promo-title"><?php echo wp_kses_post( $mu_hero_field( $promo, 'titulo', $idioma_actual ) ); ?></h1>
+                            <p class="mu-hero-promo-desc"><?php echo esc_html( $mu_hero_field( $promo, 'descripcion', $idioma_actual ) ); ?></p>
 
                             <div class="mu-hero-promo-actions">
                                 <a href="<?php echo esc_url( $promo['cta_url'] ); ?>" class="mu-btn mu-btn-primary">
-                                    <span><?php echo esc_html( $promo['cta_texto'] ); ?></span>
+                                    <span><?php echo esc_html( $mu_hero_field( $promo, 'cta_texto', $idioma_actual ) ); ?></span>
                                     <?php echo mu_get_icon( 'arrow' ); ?>
                                 </a>
 
                                 <?php if ( ! empty( $promo['cta_secundario_texto'] ) && ! empty( $promo['cta_secundario_url'] ) ) : ?>
                                 <a href="<?php echo esc_url( $promo['cta_secundario_url'] ); ?>" class="mu-btn mu-btn-outline">
-                                    <?php echo esc_html( $promo['cta_secundario_texto'] ); ?>
+                                    <?php echo esc_html( $mu_hero_field( $promo, 'cta_secundario_texto', $idioma_actual ) ); ?>
                                 </a>
                                 <?php endif; ?>
 

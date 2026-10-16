@@ -49,6 +49,8 @@ if ( ! function_exists( 'mu_hero_banners_default_seed' ) ) {
                 'show_free_badge'       => true,
                 'free_badge_text'       => '<strong>¡20% OFF!</strong><span>cupón: COLE26</span>',
                 'free_badge_url'        => '',
+                'paises'                => [ 'AR' ],
+                'idiomas'               => [ 'es' ],
             ],
             [
                 'id'                    => 'san-valentin',
@@ -65,6 +67,8 @@ if ( ! function_exists( 'mu_hero_banners_default_seed' ) ) {
                 'show_free_badge'       => false,
                 'free_badge_text'       => '',
                 'free_badge_url'        => '',
+                'paises'                => [ 'AR' ],
+                'idiomas'               => [ 'es' ],
             ],
         ];
     }
@@ -76,6 +80,16 @@ if ( ! function_exists( 'mu_hero_banners_sanitize_one' ) ) {
      */
     function mu_hero_banners_sanitize_one( $b ) {
         $b = is_array( $b ) ? $b : [];
+
+        // Países permitidos: solo claves válidas de muyu_get_countries_data()
+        $valid_paises = array_keys( function_exists( 'muyu_get_countries_data' ) ? muyu_get_countries_data() : [] );
+        $raw_paises   = isset( $b['paises'] ) && is_array( $b['paises'] ) ? $b['paises'] : [];
+        $paises       = array_values( array_intersect( $raw_paises, $valid_paises ) );
+
+        // Idiomas permitidos: solo es, en, pt
+        $raw_idiomas  = isset( $b['idiomas'] ) && is_array( $b['idiomas'] ) ? $b['idiomas'] : [];
+        $idiomas      = array_values( array_intersect( $raw_idiomas, [ 'es', 'en', 'pt' ] ) );
+
         return [
             'id'                    => sanitize_title( $b['id'] ?? '' ),
             'inicio'                => preg_match( '/^\d{8}$/', $b['inicio'] ?? '' ) ? $b['inicio'] : '',
@@ -91,6 +105,22 @@ if ( ! function_exists( 'mu_hero_banners_sanitize_one' ) ) {
             'show_free_badge'       => ! empty( $b['show_free_badge'] ),
             'free_badge_text'       => wp_kses_post( $b['free_badge_text'] ?? '' ),
             'free_badge_url'        => esc_url_raw( $b['free_badge_url'] ?? '' ),
+            'paises'                => $paises,
+            'idiomas'               => $idiomas,
+            'traducir_pt'           => ! empty( $b['traducir_pt'] ),
+            'traducir_en'           => ! empty( $b['traducir_en'] ),
+            // Campos traducidos (portugués)
+            'titulo_pt'             => wp_kses_post( $b['titulo_pt'] ?? '' ),
+            'descripcion_pt'        => sanitize_textarea_field( $b['descripcion_pt'] ?? '' ),
+            'cta_texto_pt'          => sanitize_text_field( $b['cta_texto_pt'] ?? '' ),
+            'cta_secundario_texto_pt'=> sanitize_text_field( $b['cta_secundario_texto_pt'] ?? '' ),
+            'free_badge_text_pt'    => wp_kses_post( $b['free_badge_text_pt'] ?? '' ),
+            // Campos traducidos (inglés)
+            'titulo_en'             => wp_kses_post( $b['titulo_en'] ?? '' ),
+            'descripcion_en'        => sanitize_textarea_field( $b['descripcion_en'] ?? '' ),
+            'cta_texto_en'          => sanitize_text_field( $b['cta_texto_en'] ?? '' ),
+            'cta_secundario_texto_en'=> sanitize_text_field( $b['cta_secundario_texto_en'] ?? '' ),
+            'free_badge_text_en'    => wp_kses_post( $b['free_badge_text_en'] ?? '' ),
         ];
     }
 }
@@ -120,11 +150,40 @@ if ( ! function_exists( 'mu_get_hero_banners' ) ) {
             return $cached;
         }
 
+        // País actual detectado por subdominio (cero DB, caché static por request)
+        $pais_actual = function_exists( 'muyu_get_current_country_from_subdomain' )
+            ? muyu_get_current_country_from_subdomain()
+            : 'AR';
+
+        // Idioma actual detectado por prefijo de URI (/pt/, /en/) o por defecto es
+        $request_uri = isset( $_SERVER['REQUEST_URI'] ) ? $_SERVER['REQUEST_URI'] : '/';
+        if ( strpos( $request_uri, '/pt/' ) === 0 || strpos( $request_uri, '/pt' ) === 0 ) {
+            $idioma_actual = 'pt';
+        } elseif ( strpos( $request_uri, '/en/' ) === 0 || strpos( $request_uri, '/en' ) === 0 ) {
+            $idioma_actual = 'en';
+        } else {
+            $idioma_actual = 'es';
+        }
+
         $all    = mu_get_hero_banners_raw();
         $active = [];
         $now    = time();
 
         foreach ( $all as $p ) {
+            // Filtro por país: si el banner define países, el país actual debe estar incluido.
+            // Vacío = no se muestra en ningún país.
+            $paises = isset( $p['paises'] ) && is_array( $p['paises'] ) ? $p['paises'] : [];
+            if ( empty( $paises ) || ! in_array( $pais_actual, $paises, true ) ) {
+                continue;
+            }
+
+            // Filtro por idioma: si el banner define idiomas, el idioma actual debe estar incluido.
+            // Vacío = solo español (no se muestra en EN/PT).
+            $idiomas = isset( $p['idiomas'] ) && is_array( $p['idiomas'] ) ? $p['idiomas'] : [ 'es' ];
+            if ( ! in_array( $idioma_actual, $idiomas, true ) ) {
+                continue;
+            }
+
             if ( empty( $p['inicio'] ) || empty( $p['fin'] ) ) {
                 $active[] = $p;
                 continue;
@@ -301,6 +360,18 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
             'show_free_badge'       => false,
             'free_badge_text'       => '',
             'free_badge_url'        => '',
+            'paises'                => [ 'AR' ],
+            'idiomas'               => [ 'es' ],
+            'titulo_pt'             => '',
+            'descripcion_pt'        => '',
+            'cta_texto_pt'          => '',
+            'cta_secundario_texto_pt'=> '',
+            'free_badge_text_pt'    => '',
+            'titulo_en'             => '',
+            'descripcion_en'        => '',
+            'cta_texto_en'          => '',
+            'cta_secundario_texto_en'=> '',
+            'free_badge_text_en'    => '',
         ] );
         $name = 'mu_banner[' . esc_attr( $index ) . ']';
         ?>
@@ -309,6 +380,36 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                 <h2 class="mu-hero-banner-row__title">
                     <?php echo $b['titulo'] ? wp_kses_post( $b['titulo'] ) : esc_html__( 'Nuevo banner', 'mu' ); ?>
                 </h2>
+
+                <?php
+                $countries_data = function_exists( 'muyu_get_countries_data' ) ? muyu_get_countries_data() : [];
+                $row_paises     = isset( $b['paises'] ) && is_array( $b['paises'] ) ? $b['paises'] : [ 'AR' ];
+                $row_idiomas    = isset( $b['idiomas'] ) && is_array( $b['idiomas'] ) ? $b['idiomas'] : [ 'es' ];
+                ?>
+
+                <!-- Selector de países -->
+                <button type="button" class="button mu-hero-banner-paises-btn"><?php esc_html_e( 'Países', 'mu' ); ?></button>
+                <div class="mu-hero-banner-paises-dropdown">
+                    <?php foreach ( $countries_data as $code => $c ) : ?>
+                    <label style="display:block; font-size:12px; padding:2px 8px; cursor:pointer;">
+                        <input type="checkbox" name="<?php echo esc_attr( $name ); ?>[paises][]" value="<?php echo esc_attr( $code ); ?>"<?php checked( in_array( $code, $row_paises, true ) ); ?>>
+                        <?php echo esc_html( $c['name'] ); ?> (<?php echo esc_html( $code ); ?>)
+                    </label>
+                    <?php endforeach; ?>
+                </div>
+                <span class="mu-hero-banner-paises-pills">
+                    <?php foreach ( $row_paises as $code ) : if ( isset( $countries_data[ $code ] ) ) : ?>
+                        <span class="mu-hero-banner-pill"><?php echo esc_html( $code ); ?></span>
+                    <?php endif; endforeach; ?>
+                </span>
+
+                <!-- Selector de idioma -->
+                <select name="<?php echo esc_attr( $name ); ?>[idiomas][]" class="mu-hero-banner-idioma" multiple="multiple" style="width:auto; display:inline-block; margin-left:8px;">
+                    <option value="es"<?php echo in_array( 'es', $row_idiomas, true ) ? ' selected' : ''; ?>><?php esc_html_e( 'Español', 'mu' ); ?></option>
+                    <option value="en"<?php echo in_array( 'en', $row_idiomas, true ) ? ' selected' : ''; ?>><?php esc_html_e( 'Inglés', 'mu' ); ?></option>
+                    <option value="pt"<?php echo in_array( 'pt', $row_idiomas, true ) ? ' selected' : ''; ?>><?php esc_html_e( 'Portugués', 'mu' ); ?></option>
+                </select>
+
                 <button type="button" class="button-link-delete mu-hero-banner-row__remove">
                     <?php esc_html_e( 'Eliminar', 'mu' ); ?>
                 </button>
@@ -387,8 +488,64 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                     <label><strong><?php esc_html_e( 'Badge — Texto (HTML permitido)', 'mu' ); ?></strong></label>
                     <input type="text" name="<?php echo esc_attr( $name ); ?>[free_badge_text]" value="<?php echo esc_attr( $b['free_badge_text'] ); ?>" class="large-text" placeholder='<strong>¡20% OFF!</strong><span>cupón: COLE26</span>'>
                 </p>
+
+                <!-- Campos traducidos (solo para idiomas no español) -->
+                <?php foreach ( [ 'pt' => 'Portugués', 'en' => 'Inglés' ] as $lang => $lang_name ) : ?>
+                <?php $has_lang = in_array( $lang, $row_idiomas, true ); ?>
+                <p>
+                    <label>
+                        <input type="checkbox" name="<?php echo esc_attr( $name ); ?>[traducir_<?php echo esc_attr( $lang ); ?>]" value="1"<?php checked( $has_lang ); ?> class="mu-hero-banner-traducir-checkbox" data-lang="<?php echo esc_attr( $lang ); ?>">
+                        <?php echo esc_html( sprintf( __( 'Traducir a %s', 'mu' ), $lang_name ) ); ?>
+                    </label>
+                </p>
+                <div class="mu-hero-banner-traducir-fields mu-hero-banner-traducir-<?php echo esc_attr( $lang ); ?>" style="display:<?php echo $has_lang ? 'block' : 'none'; ?>; border:1px solid #ddd; padding:10px; margin-top:8px; background:#f9f9f9;">
+                    <p>
+                        <label><strong><?php echo esc_html( sprintf( __( 'Título — %s', 'mu' ), $lang_name ) ); ?></strong></label>
+                        <input type="text" name="<?php echo esc_attr( $name ); ?>[titulo_<?php echo esc_attr( $lang ); ?>]" value="<?php echo esc_attr( $b['titulo_' . $lang] ?? '' ); ?>" class="large-text">
+                    </p>
+                    <p>
+                        <label><strong><?php echo esc_html( sprintf( __( 'Descripción — %s', 'mu' ), $lang_name ) ); ?></strong></label>
+                        <textarea name="<?php echo esc_attr( $name ); ?>[descripcion_<?php echo esc_attr( $lang ); ?>]" rows="2" class="large-text"><?php echo esc_textarea( $b['descripcion_' . $lang] ?? '' ); ?></textarea>
+                    </p>
+                    <p>
+                        <label><strong><?php echo esc_html( sprintf( __( 'CTA principal — texto — %s', 'mu' ), $lang_name ) ); ?></strong></label>
+                        <input type="text" name="<?php echo esc_attr( $name ); ?>[cta_texto_<?php echo esc_attr( $lang ); ?>]" value="<?php echo esc_attr( $b['cta_texto_' . $lang] ?? '' ); ?>" class="regular-text">
+                    </p>
+                    <p>
+                        <label><strong><?php echo esc_html( sprintf( __( 'CTA secundario — texto — %s', 'mu' ), $lang_name ) ); ?></strong></label>
+                        <input type="text" name="<?php echo esc_attr( $name ); ?>[cta_secundario_texto_<?php echo esc_attr( $lang ); ?>]" value="<?php echo esc_attr( $b['cta_secundario_texto_' . $lang] ?? '' ); ?>" class="regular-text">
+                    </p>
+                    <p>
+                        <label><strong><?php echo esc_html( sprintf( __( 'Badge — texto — %s', 'mu' ), $lang_name ) ); ?></strong></label>
+                        <input type="text" name="<?php echo esc_attr( $name ); ?>[free_badge_text_<?php echo esc_attr( $lang ); ?>]" value="<?php echo esc_attr( $b['free_badge_text_' . $lang] ?? '' ); ?>" class="large-text">
+                    </p>
+                </div>
+                <?php endforeach; ?>
             </div>
         </div>
         <?php
     }
 }
+
+// ============================================
+// JS: toggle de campos traducidos y píldoras de países
+// ============================================
+?>
+<script>
+(function(){
+    var rows = document.querySelectorAll('.mu-hero-banner-row');
+    rows.forEach(function(row){
+        var traducirCheckboxes = row.querySelectorAll('.mu-hero-banner-traducir-checkbox');
+        traducirCheckboxes.forEach(function(cb){
+            cb.addEventListener('change', function(){
+                var lang = cb.getAttribute('data-lang');
+                var fields = row.querySelector('.mu-hero-banner-traducir-' + lang);
+                if (fields) {
+                    fields.style.display = cb.checked ? 'block' : 'none';
+                }
+            });
+        });
+    });
+})();
+</script>
+<?php
