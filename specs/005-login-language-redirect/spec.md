@@ -142,8 +142,8 @@ salida; repetir la medición del carrito vacío en `/pt/finalizar-compra/`.
 - **FR-010**: El idioma DEBE resolverse desde la fuente única de verdad que ya existe en el tema, sin listas de prefijos paralelas.
 - **FR-011**: Ningún destino DEBE construirse leyendo una URL que wpLingua ya reescribió.
 - **FR-012**: Las rutas técnicas y los destinos de terceros (pasarelas de pago, proveedores de identidad) NO DEBEN recibir prefijo.
-- **FR-013**: **[NEEDS CLARIFICATION: enlace de salir — ¿se exige que conserve el idioma en esta feature, o se declara fuera de alcance con la medición documentada?]**
-- **FR-014**: **[NEEDS CLARIFICATION: redirects de la tienda que pierden el prefijo (por ejemplo, el carrito vacío) — ¿se corrigen en esta feature o se registran como observación y se tratan aparte?]**
+- **FR-013**: El enlace de salir del menú de cuenta DEBE conservar el idioma de la página desde la que se cierra la sesión. Se **verifica** contra producción con una sesión real en `/pt/` y `/en/`; si la medición confirma que hoy ya lo conserva, no se modifica código (decisión del mantenedor, 2026-10-16).
+- **FR-014**: Los redirects de la tienda que pierden el prefijo (medido: `/pt/finalizar-compra/` con el carrito vacío responde `302` a `/carrito/`) quedan **fuera de alcance** de esta feature y se registran como observación medida en la documentación operativa, para tratarse aparte (decisión del mantenedor, 2026-10-16). Ningún cambio de esta feature puede agravarlos.
 
 ### Key Entities
 
@@ -179,5 +179,6 @@ salida; repetir la medición del carrito vacío en `/pt/finalizar-compra/`.
 - Cambiar la configuración de wpLingua, del proveedor de login social, o la regla vigente que manda a los clientes a "Mi Cuenta".
 - Reconfigurar LiteSpeed, la CDN de Hostinger o el bloqueo por país del edge.
 - El 301 canónico de la home con prefijo: ya resuelto en el módulo de compatibilidad con wpLingua.
+- Los redirects de la tienda que pierden el prefijo (caso medido del carrito vacío): se registran como observación en la documentación operativa y se tratan aparte (FR-014).
 - Agregar idiomas nuevos (hoy: `es`, `pt`, `en`).
 - Migrar el flujo de autenticación a otro mecanismo o agregar proveedores de login.

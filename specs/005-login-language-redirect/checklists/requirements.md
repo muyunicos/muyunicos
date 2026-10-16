@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] CHK005 No [NEEDS CLARIFICATION] markers remain
+- [x] CHK005 No [NEEDS CLARIFICATION] markers remain
 - [x] CHK006 Requirements are testable and unambiguous
 - [x] CHK007 Success criteria are measurable
 - [x] CHK008 Success criteria are technology-agnostic (no implementation details)
@@ -33,8 +33,8 @@
 
 ### Iteración 1 — redacción inicial
 
-15 de 16 ítems pasan. El único pendiente es CHK005, por dos decisiones de
-alcance que corresponden al mantenedor (ver "Preguntas abiertas").
+La iteración 1 dejó CHK005 pendiente, con dos decisiones de alcance que
+correspondían al mantenedor (ver "Preguntas resueltas").
 
 - **CHK001 / CHK008 / CHK016 — sin detalles de implementación.** Los FR y los SC
   no nombran archivos, funciones, filtros ni plugins: expresan qué debe
@@ -49,11 +49,12 @@ alcance que corresponden al mantenedor (ver "Preguntas abiertas").
   Criteria y Assumptions completas, más Key Entities (hay entidades de
   comportamiento: prefijo de la petición, destino, enlace social, página de
   cuenta) y Edge Cases con 8 casos.
-- **CHK005 — PENDIENTE.** Quedan 2 marcadores, ambos de alcance (FR-013: enlace
-  de salir; FR-014: redirects de la tienda que pierden el prefijo). No se
-  resuelven por suposición razonable: el segundo vive en código de la tienda y
-  no del login, así que incluirlo o no cambia el alcance del trabajo y la
-  superficie de riesgo. Se presentan como Q1 y Q2.
+- **CHK005 — RESUELTO en la iteración 2.** Los 2 marcadores eran de alcance
+  (FR-013: enlace de salir; FR-014: redirects de la tienda que pierden el
+  prefijo). No se resolvían por suposición razonable porque el segundo vive en
+  código de la tienda y no del login. El mantenedor eligió la opción A en ambos
+  (2026-10-16): verificar el enlace de salir sin cambiar código, y dejar los
+  redirects de la tienda como observación fuera de alcance.
 - **CHK006 / CHK013 — requisitos testeables.** FR-001 a FR-003 y FR-011 con
   inspección del enlace contra producción; FR-004 y FR-005 con login real desde
   páginas prefijadas y desde el dominio raíz; FR-006 con un usuario de cada rol;
@@ -78,13 +79,15 @@ alcance que corresponden al mantenedor (ver "Preguntas abiertas").
   sostienen la corrección: el idioma vive solo en la URL (sin prefijo no hay
   idioma) y la captura de la URL original es la fuente correcta del prefijo.
 
-### Preguntas abiertas (bloquean CHK005)
+### Preguntas resueltas (iteración 2)
 
-- **Q1 (FR-013)** — enlace de salir del menú de cuenta: ¿se exige que conserve el
-  idioma en esta feature, o se declara fuera con la medición documentada?
-- **Q2 (FR-014)** — redirects de la tienda que pierden el prefijo (caso medido:
-  `/pt/finalizar-compra/` con carrito vacío → `/carrito/`): ¿se corrigen aquí o
-  se registran como observación y se tratan aparte?
+- **Q1 (FR-013) → opción A.** El enlace de salir se **verifica** contra producción
+  con sesión real en `/pt/` y `/en/` (paso obligatorio del quickstart); no se
+  cambia código si la medición confirma que ya conserva el idioma. Decisión del
+  mantenedor, 2026-10-16.
+- **Q2 (FR-014) → opción A.** Los redirects de la tienda que pierden el prefijo
+  quedan **fuera de alcance** y se registran como observación medida en la guía
+  §8. Decisión del mantenedor, 2026-10-16.
 
 ### Riesgos registrados
 
