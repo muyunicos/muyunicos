@@ -499,13 +499,15 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                 <!-- Campos traducidos (solo para idiomas no español) -->
                 <?php foreach ( [ 'pt' => 'Portugués', 'en' => 'Inglés' ] as $lang => $lang_name ) : ?>
                 <?php $has_lang = in_array( $lang, $row_idiomas, true ); ?>
-                <p>
-                    <label>
-                        <input type="checkbox" name="<?php echo esc_attr( $name ); ?>[traducir_<?php echo esc_attr( $lang ); ?>]" value="1"<?php checked( $has_lang ); ?> class="mu-hero-banner-traducir-checkbox" data-lang="<?php echo esc_attr( $lang ); ?>">
-                        <?php echo esc_html( sprintf( __( 'Traducir a %s', 'mu' ), $lang_name ) ); ?>
-                    </label>
-                </p>
-                <div class="mu-hero-banner-traducir-fields mu-hero-banner-traducir-<?php echo esc_attr( $lang ); ?>" style="display:<?php echo $has_lang ? 'block' : 'none'; ?>; border:1px solid #ddd; padding:10px; margin-top:8px; background:#f9f9f9;">
+                <?php $idioma_activo_row = ! empty( $row_idiomas ) ? strtoupper( $row_idiomas[0] ) : 'ES'; ?>
+                <div class="mu-hero-banner-traducir-wrapper" data-lang="<?php echo esc_attr( $lang ); ?>" style="display:<?php echo $idioma_activo_row === 'ES' ? 'none' : 'block'; ?>;">
+                    <p>
+                        <label>
+                            <input type="checkbox" name="<?php echo esc_attr( $name ); ?>[traducir_<?php echo esc_attr( $lang ); ?>]" value="1"<?php checked( $has_lang ); ?> class="mu-hero-banner-traducir-checkbox" data-lang="<?php echo esc_attr( $lang ); ?>">
+                            <?php echo esc_html( sprintf( __( 'Traducir a %s', 'mu' ), $lang_name ) ); ?>
+                        </label>
+                    </p>
+                    <div class="mu-hero-banner-traducir-fields mu-hero-banner-traducir-<?php echo esc_attr( $lang ); ?>" style="display:<?php echo $has_lang ? 'block' : 'none'; ?>; border:1px solid #ddd; padding:10px; margin-top:8px; background:#f9f9f9;">
                     <p>
                         <label><strong><?php echo esc_html( sprintf( __( 'Título — %s', 'mu' ), $lang_name ) ); ?></strong></label>
                         <input type="text" name="<?php echo esc_attr( $name ); ?>[titulo_<?php echo esc_attr( $lang ); ?>]" value="<?php echo esc_attr( $b['titulo_' . $lang] ?? '' ); ?>" class="large-text">
@@ -526,6 +528,7 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                         <label><strong><?php echo esc_html( sprintf( __( 'Badge — texto — %s', 'mu' ), $lang_name ) ); ?></strong></label>
                         <input type="text" name="<?php echo esc_attr( $name ); ?>[free_badge_text_<?php echo esc_attr( $lang ); ?>]" value="<?php echo esc_attr( $b['free_badge_text_' . $lang] ?? '' ); ?>" class="large-text">
                     </p>
+                </div>
                 </div>
                 <?php endforeach; ?>
             </div>
@@ -558,15 +561,32 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
         var dropdown = row.querySelector('.mu-hero-banner-idioma-dropdown');
         var items = row.querySelectorAll('.mu-hero-banner-idioma-item');
         var valorInput = row.querySelector('.mu-hero-banner-idioma-valor');
+        var wrappers = row.querySelectorAll('.mu-hero-banner-traducir-wrapper');
+
+        function actualizarTraducirVisibilidad(idioma) {
+            wrappers.forEach(function(w){
+                var wlang = w.getAttribute('data-lang');
+                if (idioma === 'ES') {
+                    w.style.display = 'none';
+                } else {
+                    w.style.display = (wlang === idioma) ? 'block' : 'none';
+                }
+            });
+        }
 
         if (btn && dropdown) {
             btn.addEventListener('click', function(e){
                 e.stopPropagation();
+                // Cerrar otros dropdowns abiertos
+                document.querySelectorAll('.mu-hero-banner-idioma-dropdown').forEach(function(d){
+                    if (d !== dropdown) d.style.display = 'none';
+                });
                 dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
             });
 
             items.forEach(function(item){
-                item.addEventListener('click', function(){
+                item.addEventListener('click', function(e){
+                    e.stopPropagation();
                     var idioma = item.getAttribute('data-idioma');
                     btn.innerHTML = '[' + idioma + '▼]';
                     btn.setAttribute('data-idioma', idioma);
@@ -576,15 +596,27 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                     items.forEach(function(it){
                         it.style.display = it.getAttribute('data-idioma') === idioma ? 'none' : 'block';
                     });
+                    // Mostrar/ocultar campos de traducir según idioma
+                    actualizarTraducirVisibilidad(idioma);
                 });
             });
+        }
 
-            // Cerrar al hacer clic fuera
-            document.addEventListener('click', function(){
-                dropdown.style.display = 'none';
-            });
+        // Estado inicial: ocultar campos traducir si el idioma es ES
+        var idiomaInicial = btn ? btn.getAttribute('data-idioma') : 'ES';
+        if (idiomaInicial === 'ES') {
+            wrappers.forEach(function(w){ w.style.display = 'none'; });
         }
     });
 })();
+
+// Cerrar dropdowns de idioma al hacer clic fuera de ellos
+document.addEventListener('click', function(e){
+    if (!e.target.closest('.mu-hero-banner-idioma-btn') && !e.target.closest('.mu-hero-banner-idioma-dropdown')) {
+        document.querySelectorAll('.mu-hero-banner-idioma-dropdown').forEach(function(d){
+            d.style.display = 'none';
+        });
+    }
+});
 </script>
 <?php
