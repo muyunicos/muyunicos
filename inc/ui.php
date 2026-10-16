@@ -1004,12 +1004,17 @@ if ( ! function_exists( 'mu_hero_section' ) ) {
         // Idioma actual para mostrar versión traducida del banner
         $idioma_actual = function_exists( 'muyu_get_current_language' ) ? muyu_get_current_language() : 'es';
 
-        // Helper: devuelve el campo traducido si existe y no está vacío, fallback al valor base
+        // Helper: si el idioma actual no es español y el banner tiene la
+        // traducción habilitada (traducir_XX) con contenido, usa el campo
+        // traducido; en cualquier otro caso devuelve el valor en español.
         $mu_hero_field = function( $promo, $base, $lang ) use ( $idioma_actual ) {
-            if ( $idioma_actual !== 'es' && ! empty( $promo[ $base . '_' . $idioma_actual ] ?? '' ) ) {
-                return $promo[ $base . '_' . $idioma_actual ];
+            if ( 'es' !== $idioma_actual && ! empty( $promo[ 'traducir_' . $idioma_actual ] ) ) {
+                $value = isset( $promo[ $base . '_' . $idioma_actual ] ) ? $promo[ $base . '_' . $idioma_actual ] : '';
+                if ( '' !== $value ) {
+                    return $value;
+                }
             }
-            return $promo[ $base ] ?? '';
+            return isset( $promo[ $base ] ) ? $promo[ $base ] : '';
         };
 
         // --- DEFAULTS PARA BADGE ---
@@ -1029,7 +1034,11 @@ if ( ! function_exists( 'mu_hero_section' ) ) {
                         $is_first      = ( 0 === $idx );
                         $show_badge    = ! empty( $promo['show_free_badge'] ) && true === $promo['show_free_badge'];
                         $badge_url     = ! empty( $promo['free_badge_url'] )  ? $promo['free_badge_url']  : $badge_defaults['url'];
-                        $badge_text    = ! empty( $promo['free_badge_text'] ) ? $mu_hero_field( $promo, 'free_badge_text', $idioma_actual ) : $badge_defaults['text'];
+                        $badge_text    = $mu_hero_field( $promo, 'free_badge_text', $idioma_actual );
+                        if ( '' === $badge_text ) {
+                            $badge_text = $badge_defaults['text'];
+                        }
+                        $cta_sec_text  = $mu_hero_field( $promo, 'cta_secundario_texto', $idioma_actual );
                     ?>
                     <div class="mu-hero-promo-slide<?php echo $is_first ? ' active' : ''; ?>"
                          data-slide-index="<?php echo esc_attr( $idx ); ?>">
@@ -1059,9 +1068,9 @@ if ( ! function_exists( 'mu_hero_section' ) ) {
                                     <?php echo mu_get_icon( 'arrow' ); ?>
                                 </a>
 
-                                <?php if ( ! empty( $promo['cta_secundario_texto'] ) && ! empty( $promo['cta_secundario_url'] ) ) : ?>
+                                <?php if ( '' !== $cta_sec_text && ! empty( $promo['cta_secundario_url'] ) ) : ?>
                                 <a href="<?php echo esc_url( $promo['cta_secundario_url'] ); ?>" class="mu-btn mu-btn-outline">
-                                    <?php echo esc_html( $mu_hero_field( $promo, 'cta_secundario_texto', $idioma_actual ) ); ?>
+                                    <?php echo esc_html( $cta_sec_text ); ?>
                                 </a>
                                 <?php endif; ?>
 

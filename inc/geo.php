@@ -82,16 +82,21 @@ if ( ! function_exists( 'muyu_get_current_language' ) ) {
      */
     function muyu_get_current_language() {
         $request_uri = isset( $_SERVER['REQUEST_URI'] ) ? $_SERVER['REQUEST_URI'] : '/';
-        if ( strpos( $request_uri, '/pt/' ) === 0 || strpos( $request_uri, '/pt' ) === 0 ) {
+
+        // Prefijo de idioma en la ruta: '/pt', '/pt/', '/en', '/en/'.
+        // Se exige el separador final para no confundir rutas como /entrega/ con /en.
+        if ( preg_match( '#^/pt(/|$)#', $request_uri ) ) {
             return 'pt';
         }
-        if ( strpos( $request_uri, '/en/' ) === 0 || strpos( $request_uri, '/en' ) === 0 ) {
+        if ( preg_match( '#^/en(/|$)#', $request_uri ) ) {
             return 'en';
         }
-        $pais = muyu_get_current_country_from_subdomain();
+
+        // Sin prefijo: se infiere desde el país del subdominio (BR→pt, US→en).
+        $pais   = muyu_get_current_country_from_subdomain();
         $prefix = muyu_country_language_prefix( $pais );
-        if ( $prefix === '/pt' ) return 'pt';
-        if ( $prefix === '/en' ) return 'en';
+        if ( '/pt' === $prefix ) return 'pt';
+        if ( '/en' === $prefix ) return 'en';
         return 'es';
     }
 }

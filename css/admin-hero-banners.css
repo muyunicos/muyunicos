@@ -98,6 +98,8 @@
 .mu-hero-banner-paises-dropdown {
     display: none;
     position: absolute;
+    top: 100%;
+    left: 0;
     background: #fff;
     border: 1px solid #ccc;
     border-radius: 4px;
@@ -109,8 +111,6 @@
     margin-top: 4px;
     width: 220px;
 }
-.mu-hero-banner-paises-btn:focus-within + .mu-hero-banner-paises-dropdown,
-.mu-hero-banner-paises-dropdown:hover { display: block; }
 
 .mu-hero-banner-paises-pills {
     display: inline-flex;

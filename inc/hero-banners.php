@@ -86,8 +86,9 @@ if ( ! function_exists( 'mu_hero_banners_sanitize_one' ) ) {
         $raw_paises   = isset( $b['paises'] ) && is_array( $b['paises'] ) ? $b['paises'] : [];
         $paises       = array_values( array_intersect( $raw_paises, $valid_paises ) );
 
-        // Idiomas permitidos: solo es, en, pt
+        // Idiomas permitidos: solo es, en, pt (normalizado a minúsculas)
         $raw_idiomas  = isset( $b['idiomas'] ) && is_array( $b['idiomas'] ) ? $b['idiomas'] : [];
+        $raw_idiomas  = array_map( function( $v ) { return strtolower( (string) $v ); }, $raw_idiomas );
         $idiomas      = array_values( array_intersect( $raw_idiomas, [ 'es', 'en', 'pt' ] ) );
 
         return [
@@ -155,16 +156,6 @@ if ( ! function_exists( 'mu_get_hero_banners' ) ) {
             ? muyu_get_current_country_from_subdomain()
             : 'AR';
 
-        // Idioma actual detectado por prefijo de URI (/pt/, /en/) o por defecto es
-        $request_uri = isset( $_SERVER['REQUEST_URI'] ) ? $_SERVER['REQUEST_URI'] : '/';
-        if ( strpos( $request_uri, '/pt/' ) === 0 || strpos( $request_uri, '/pt' ) === 0 ) {
-            $idioma_actual = 'pt';
-        } elseif ( strpos( $request_uri, '/en/' ) === 0 || strpos( $request_uri, '/en' ) === 0 ) {
-            $idioma_actual = 'en';
-        } else {
-            $idioma_actual = 'es';
-        }
-
         $all    = mu_get_hero_banners_raw();
         $active = [];
         $now    = time();
@@ -177,12 +168,10 @@ if ( ! function_exists( 'mu_get_hero_banners' ) ) {
                 continue;
             }
 
-            // Filtro por idioma: si el banner define idiomas, el idioma actual debe estar incluido.
-            // Vacío = solo español (no se muestra en EN/PT).
-            $idiomas = isset( $p['idiomas'] ) && is_array( $p['idiomas'] ) ? $p['idiomas'] : [ 'es' ];
-            if ( ! in_array( $idioma_actual, $idiomas, true ) ) {
-                continue;
-            }
+            // Filtro por idioma: el idioma NO excluye el banner. El banner se
+            // muestra siempre que el país coincida; si existe traducción para el
+            // idioma actual se usa esa versión (ver mu_hero_section), y si no,
+            // se muestra la versión en español como fallback.
 
             if ( empty( $p['inicio'] ) || empty( $p['fin'] ) ) {
                 $active[] = $p;
@@ -246,10 +235,18 @@ if ( is_admin() ) {
         wp_enqueue_media();
 
         $uri = get_stylesheet_directory_uri();
+        $dir = get_stylesheet_directory();
         $ver = wp_get_theme()->get( 'Version' );
 
-        wp_enqueue_style( 'mu-admin-hero-banners', $uri . '/css/admin-hero-banners.css', [], $ver );
-        wp_enqueue_script( 'mu-admin-hero-banners-js', $uri . '/js/admin-hero-banners.js', [ 'jquery' ], $ver, true );
+        // Cache-busting por filemtime: evita que el navegador sirva una versión
+        // vieja del CSS/JS del módulo tras desplegar cambios.
+        $css_file = $dir . '/css/admin-hero-banners.css';
+        $js_file  = $dir . '/js/admin-hero-banners.js';
+        $css_ver  = file_exists( $css_file ) ? (string) filemtime( $css_file ) : $ver;
+        $js_ver   = file_exists( $js_file ) ? (string) filemtime( $js_file ) : $ver;
+
+        wp_enqueue_style( 'mu-admin-hero-banners', $uri . '/css/admin-hero-banners.css', [], $css_ver );
+        wp_enqueue_script( 'mu-admin-hero-banners-js', $uri . '/js/admin-hero-banners.js', [ 'jquery' ], $js_ver, true );
 
         if ( wp_script_is( 'mu-admin-hero-banners-js', 'enqueued' ) ) {
             wp_localize_script( 'mu-admin-hero-banners-js', 'muHeroBannersData', [
@@ -536,87 +533,3 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
         <?php
     }
 }
-
-// ============================================
-// JS: toggle de campos traducidos y píldoras de países
-// ============================================
-?>
-<script>
-(function(){
-    var rows = document.querySelectorAll('.mu-hero-banner-row');
-    rows.forEach(function(row){
-        var traducirCheckboxes = row.querySelectorAll('.mu-hero-banner-traducir-checkbox');
-        traducirCheckboxes.forEach(function(cb){
-            cb.addEventListener('change', function(){
-                var lang = cb.getAttribute('data-lang');
-                var fields = row.querySelector('.mu-hero-banner-traducir-' + lang);
-                if (fields) {
-                    fields.style.display = cb.checked ? 'block' : 'none';
-                }
-            });
-        });
-
-        // Selector de idioma: botón desplegable
-        var btn = row.querySelector('.mu-hero-banner-idioma-btn');
-        var dropdown = row.querySelector('.mu-hero-banner-idioma-dropdown');
-        var items = row.querySelectorAll('.mu-hero-banner-idioma-item');
-        var valorInput = row.querySelector('.mu-hero-banner-idioma-valor');
-        var wrappers = row.querySelectorAll('.mu-hero-banner-traducir-wrapper');
-
-        function actualizarTraducirVisibilidad(idioma) {
-            wrappers.forEach(function(w){
-                var wlang = w.getAttribute('data-lang');
-                if (idioma === 'ES') {
-                    w.style.display = 'none';
-                } else {
-                    w.style.display = (wlang === idioma) ? 'block' : 'none';
-                }
-            });
-        }
-
-        if (btn && dropdown) {
-            btn.addEventListener('click', function(e){
-                e.stopPropagation();
-                // Cerrar otros dropdowns abiertos
-                document.querySelectorAll('.mu-hero-banner-idioma-dropdown').forEach(function(d){
-                    if (d !== dropdown) d.style.display = 'none';
-                });
-                dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
-            });
-
-            items.forEach(function(item){
-                item.addEventListener('click', function(e){
-                    e.stopPropagation();
-                    var idioma = item.getAttribute('data-idioma');
-                    btn.innerHTML = '[' + idioma + '▼]';
-                    btn.setAttribute('data-idioma', idioma);
-                    if (valorInput) valorInput.value = idioma;
-                    dropdown.style.display = 'none';
-                    // Ocultar el ítem seleccionado, mostrar los demás
-                    items.forEach(function(it){
-                        it.style.display = it.getAttribute('data-idioma') === idioma ? 'none' : 'block';
-                    });
-                    // Mostrar/ocultar campos de traducir según idioma
-                    actualizarTraducirVisibilidad(idioma);
-                });
-            });
-        }
-
-        // Estado inicial: ocultar campos traducir si el idioma es ES
-        var idiomaInicial = btn ? btn.getAttribute('data-idioma') : 'ES';
-        if (idiomaInicial === 'ES') {
-            wrappers.forEach(function(w){ w.style.display = 'none'; });
-        }
-    });
-})();
-
-// Cerrar dropdowns de idioma al hacer clic fuera de ellos
-document.addEventListener('click', function(e){
-    if (!e.target.closest('.mu-hero-banner-idioma-btn') && !e.target.closest('.mu-hero-banner-idioma-dropdown')) {
-        document.querySelectorAll('.mu-hero-banner-idioma-dropdown').forEach(function(d){
-            d.style.display = 'none';
-        });
-    }
-});
-</script>
-<?php
