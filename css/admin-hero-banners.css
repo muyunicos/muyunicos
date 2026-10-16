@@ -30,6 +30,7 @@
     margin-bottom: var(--mu-space-sm, 10px);
     border-bottom: 1px solid #f0f0f1;
     padding-bottom: var(--mu-space-sm, 10px);
+    position: relative;
 }
 
 .mu-hero-banner-row__title {
@@ -141,6 +142,8 @@
 .mu-hero-banner-idioma-dropdown {
     display: none;
     position: absolute;
+    top: 100%;
+    left: 0;
     background: #fff;
     border: 1px solid #ccc;
     border-radius: 4px;
@@ -150,8 +153,6 @@
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     margin-top: 4px;
 }
-.mu-hero-banner-idioma-btn:focus-within + .mu-hero-banner-idioma-dropdown,
-.mu-hero-banner-idioma-dropdown:hover { display: block; }
 
 .mu-hero-banner-idioma-item {
     width: 100%;
