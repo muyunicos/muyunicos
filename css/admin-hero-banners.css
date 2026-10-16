@@ -127,12 +127,43 @@
     font-weight: 600;
 }
 
-.mu-hero-banner-idioma {
-    font-size: 12px;
-    padding: 4px 8px;
-    border-radius: 4px;
+.mu-hero-banner-idioma-btn {
+    background: #f7f7f7;
     border: 1px solid #ccc;
+    color: #333;
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
 }
+.mu-hero-banner-idioma-btn:hover { background: #eaeaea; }
+
+.mu-hero-banner-idioma-dropdown {
+    display: none;
+    position: absolute;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 6px;
+    z-index: 100;
+    min-width: 60px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    margin-top: 4px;
+}
+.mu-hero-banner-idioma-btn:focus-within + .mu-hero-banner-idioma-dropdown,
+.mu-hero-banner-idioma-dropdown:hover { display: block; }
+
+.mu-hero-banner-idioma-item {
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: 0;
+    padding: 4px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    color: #333;
+}
+.mu-hero-banner-idioma-item:hover { background: #f0f0f1; }
 
 /* --- Campos traducidos --- */
 .mu-hero-banner-traducir-checkbox {

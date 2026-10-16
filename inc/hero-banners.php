@@ -106,7 +106,7 @@ if ( ! function_exists( 'mu_hero_banners_sanitize_one' ) ) {
             'free_badge_text'       => wp_kses_post( $b['free_badge_text'] ?? '' ),
             'free_badge_url'        => esc_url_raw( $b['free_badge_url'] ?? '' ),
             'paises'                => $paises,
-            'idiomas'               => $idiomas,
+            'idiomas'               => ! empty( $idiomas ) ? $idiomas : [ 'es' ],
             'traducir_pt'           => ! empty( $b['traducir_pt'] ),
             'traducir_en'           => ! empty( $b['traducir_en'] ),
             // Campos traducidos (portugués)
@@ -172,8 +172,8 @@ if ( ! function_exists( 'mu_get_hero_banners' ) ) {
         foreach ( $all as $p ) {
             // Filtro por país: si el banner define países, el país actual debe estar incluido.
             // Vacío = no se muestra en ningún país.
-            $paises = isset( $p['paises'] ) && is_array( $p['paises'] ) ? $p['paises'] : [];
-            if ( empty( $paises ) || ! in_array( $pais_actual, $paises, true ) ) {
+            $paises = isset( $p['paises'] ) && is_array( $p['paises'] ) ? $p['paises'] : [ 'AR' ];
+            if ( ! in_array( $pais_actual, $paises, true ) ) {
                 continue;
             }
 
@@ -403,12 +403,19 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                     <?php endif; endforeach; ?>
                 </span>
 
-                <!-- Selector de idioma -->
-                <select name="<?php echo esc_attr( $name ); ?>[idiomas][]" class="mu-hero-banner-idioma" multiple="multiple" style="width:auto; display:inline-block; margin-left:8px;">
-                    <option value="es"<?php echo in_array( 'es', $row_idiomas, true ) ? ' selected' : ''; ?>><?php esc_html_e( 'Español', 'mu' ); ?></option>
-                    <option value="en"<?php echo in_array( 'en', $row_idiomas, true ) ? ' selected' : ''; ?>><?php esc_html_e( 'Inglés', 'mu' ); ?></option>
-                    <option value="pt"<?php echo in_array( 'pt', $row_idiomas, true ) ? ' selected' : ''; ?>><?php esc_html_e( 'Portugués', 'mu' ); ?></option>
-                </select>
+                <!-- Selector de idioma (botón desplegable) -->
+                <?php $idioma_activo = ! empty( $row_idiomas ) ? strtoupper( $row_idiomas[0] ) : 'ES'; ?>
+                <button type="button" class="button mu-hero-banner-idioma-btn" data-name="<?php echo esc_attr( $name ); ?>" data-idioma="<?php echo esc_attr( $idioma_activo ); ?>">
+                    [<?php echo esc_html( $idioma_activo ); ?>▼]
+                </button>
+                <input type="hidden" name="<?php echo esc_attr( $name ); ?>[idiomas][]" value="<?php echo esc_attr( $idioma_activo ); ?>" class="mu-hero-banner-idioma-valor">
+                <div class="mu-hero-banner-idioma-dropdown">
+                    <?php foreach ( [ 'es' => 'ES', 'en' => 'EN', 'pt' => 'PT' ] as $code => $label ) : ?>
+                    <button type="button" class="mu-hero-banner-idioma-item" data-idioma="<?php echo esc_attr( $code ); ?>"<?php echo $idioma_activo === $code ? ' style="display:none;"' : ''; ?>>
+                        [<?php echo esc_html( $label ); ?>▼]
+                    </button>
+                    <?php endforeach; ?>
+                </div>
 
                 <button type="button" class="button-link-delete mu-hero-banner-row__remove">
                     <?php esc_html_e( 'Eliminar', 'mu' ); ?>
@@ -545,6 +552,38 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                 }
             });
         });
+
+        // Selector de idioma: botón desplegable
+        var btn = row.querySelector('.mu-hero-banner-idioma-btn');
+        var dropdown = row.querySelector('.mu-hero-banner-idioma-dropdown');
+        var items = row.querySelectorAll('.mu-hero-banner-idioma-item');
+        var valorInput = row.querySelector('.mu-hero-banner-idioma-valor');
+
+        if (btn && dropdown) {
+            btn.addEventListener('click', function(e){
+                e.stopPropagation();
+                dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+            });
+
+            items.forEach(function(item){
+                item.addEventListener('click', function(){
+                    var idioma = item.getAttribute('data-idioma');
+                    btn.innerHTML = '[' + idioma + '▼]';
+                    btn.setAttribute('data-idioma', idioma);
+                    if (valorInput) valorInput.value = idioma;
+                    dropdown.style.display = 'none';
+                    // Ocultar el ítem seleccionado, mostrar los demás
+                    items.forEach(function(it){
+                        it.style.display = it.getAttribute('data-idioma') === idioma ? 'none' : 'block';
+                    });
+                });
+            });
+
+            // Cerrar al hacer clic fuera
+            document.addEventListener('click', function(){
+                dropdown.style.display = 'none';
+            });
+        }
     });
 })();
 </script>
