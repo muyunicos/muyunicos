@@ -34,6 +34,13 @@
  * normaliza la query del destino. Medido: la query normalizada (%2A) ya no
  * provoca el 301, así que la redirección se corta en la URL correcta.
  *
+ * Además del 301 canónico, el mismo problema —la URL pedida ya no tiene el prefijo
+ * cuando el tema la lee— afecta a cualquier destino que se construya con la URL
+ * actual. Para esos consumidores (destino del login social, "Mi Cuenta" tras el
+ * login) este módulo expone el prefijo de la petición: mu_wplingua_request_prefix(),
+ * mu_wplingua_localize_uri(), mu_wplingua_localize_url() y
+ * mu_wplingua_prefix_in_urls(). Contrato: contracts/language-prefix.md (feature 005).
+ *
  * Salvaguardas:
  *  - No actúa en el admin.
  *  - Solo en redirecciones 301 / 302 / 307.
@@ -139,6 +146,147 @@ if ( ! function_exists( 'mu_wplingua_original_uri' ) ) {
         }
 
         return isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
+    }
+}
+
+if ( ! function_exists( 'mu_wplingua_request_prefix' ) ) {
+    /**
+     * Prefijo de idioma de la URL que pidió el visitante ('' si es el idioma base).
+     *
+     * Fuente: la URI ORIGINAL capturada al cargar este módulo (ver
+     * mu_wplingua_original_uri()), porque wpLingua borra el prefijo de
+     * $_SERVER['REQUEST_URI'] en 'init'. No consulta la API de wpLingua ni el país
+     * del subdominio: en br./us. un comprador que navega en español no debe recibir
+     * /pt ni /en (FR-005 de la spec 005).
+     *
+     * @return string '' | '/pt' | '/en'.
+     */
+    function mu_wplingua_request_prefix() {
+        static $prefix = null;
+
+        if ( null !== $prefix ) {
+            return $prefix;
+        }
+
+        $prefix = '';
+        $path   = (string) wp_parse_url( mu_wplingua_original_uri(), PHP_URL_PATH );
+
+        foreach ( mu_wplingua_language_prefixes() as $candidate ) {
+            if ( preg_match( '#^' . preg_quote( $candidate, '#' ) . '(/|$)#i', $path ) ) {
+                $prefix = $candidate;
+                break;
+            }
+        }
+
+        return $prefix;
+    }
+}
+
+if ( ! function_exists( 'mu_wplingua_localize_uri' ) ) {
+    /**
+     * Devuelve una ruta o URI con el prefijo de idioma delante, sin duplicarlo.
+     *
+     * Sin segundo argumento usa el prefijo de la petición actual
+     * (mu_wplingua_request_prefix()). El prefijo explícito sirve para destinos que
+     * se resuelven fuera de la página, como "Mi Cuenta" en la pantalla de acceso
+     * (ver mu_wplingua_prefix_in_urls()).
+     *
+     * Delega en muyu_clean_uri() (geo.php: fuente única de la lista de prefijos) y
+     * devuelve la URI intacta cuando no hay prefijo que aplicar.
+     *
+     * @param string      $uri    Ruta o URI, con o sin query.
+     * @param string|null $prefix Prefijo explícito; null = el de la petición.
+     * @return string URI localizada.
+     */
+    function mu_wplingua_localize_uri( $uri, $prefix = null ) {
+        $prefix = ( null === $prefix ) ? mu_wplingua_request_prefix() : (string) $prefix;
+
+        if ( '' === $prefix ) {
+            return (string) $uri;
+        }
+
+        if ( function_exists( 'muyu_clean_uri' ) ) {
+            return muyu_clean_uri( $prefix, (string) $uri );
+        }
+
+        return (string) $uri;
+    }
+}
+
+if ( ! function_exists( 'mu_wplingua_localize_url' ) ) {
+    /**
+     * Localiza la RUTA de una URL absoluta y conserva host, puerto, query y
+     * fragmento. Si la ruta no cambia, devuelve la URL recibida tal cual.
+     *
+     * No admite credenciales embebidas (user:pass@host): las URLs que consume el
+     * tema (permalinks del sitio) no las llevan.
+     *
+     * @param string      $url    URL absoluta.
+     * @param string|null $prefix Prefijo explícito; null = el de la petición.
+     * @return string URL localizada.
+     */
+    function mu_wplingua_localize_url( $url, $prefix = null ) {
+        $parts = wp_parse_url( (string) $url );
+
+        if ( ! is_array( $parts ) || empty( $parts['host'] ) || empty( $parts['scheme'] ) ) {
+            return (string) $url;
+        }
+
+        $path = isset( $parts['path'] ) ? (string) $parts['path'] : '/';
+        $new  = mu_wplingua_localize_uri( $path, $prefix );
+
+        if ( $new === $path ) {
+            return (string) $url;
+        }
+
+        $localized = $parts['scheme'] . '://' . $parts['host'];
+        if ( ! empty( $parts['port'] ) ) {
+            $localized .= ':' . (int) $parts['port'];
+        }
+        $localized .= $new;
+        if ( ! empty( $parts['query'] ) ) {
+            $localized .= '?' . $parts['query'];
+        }
+        if ( ! empty( $parts['fragment'] ) ) {
+            $localized .= '#' . $parts['fragment'];
+        }
+
+        return $localized;
+    }
+}
+
+if ( ! function_exists( 'mu_wplingua_prefix_in_urls' ) ) {
+    /**
+     * Primer prefijo de idioma encontrado en una lista de URLs o rutas.
+     *
+     * Se usa donde la petición no trae prefijo pero puede traer el idioma en otra
+     * URL: la pantalla de acceso no tiene estado de idioma (medido 2026-10-16:
+     * <html lang="es">, sin cookie de wpLingua), así que el único indicio del
+     * idioma del visitante es el destino pedido o su procedencia.
+     *
+     * No inventa idioma: sin coincidencia devuelve ''.
+     *
+     * @param string[] $urls URLs o rutas candidatas.
+     * @return string '' | '/pt' | '/en'.
+     */
+    function mu_wplingua_prefix_in_urls( $urls ) {
+        $prefixes = mu_wplingua_language_prefixes();
+
+        foreach ( (array) $urls as $url ) {
+            $path = (string) wp_parse_url( (string) $url, PHP_URL_PATH );
+
+            if ( '' === $path ) {
+                continue;
+            }
+
+            foreach ( $prefixes as $candidate ) {
+                if ( preg_match( '#^' . preg_quote( $candidate, '#' ) . '(/|$)#i', $path ) ) {
+                    return $candidate;
+                }
+            }
+        }
+
+        return '';
     }
 }
 

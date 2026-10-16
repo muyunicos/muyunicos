@@ -345,7 +345,14 @@ if ( ! function_exists( 'mu_checkout_login_notice' ) ) {
         if ( ! is_checkout() || is_user_logged_in() || is_wc_endpoint_url( 'order-received' ) ) {
             return;
         }
+        // El permalink del checkout ya sale localizado en un request con prefijo,
+        // pero se aplica el helper igual: es idempotente y evita depender de que
+        // wpLingua lo haya filtrado en esta petición (spec 005, FR-001).
         $current_url = wc_get_checkout_url();
+
+        if ( function_exists( 'mu_wplingua_localize_url' ) ) {
+            $current_url = mu_wplingua_localize_url( $current_url );
+        }
         ?>
         <div class="mu-checkout-login-block" id="mu-checkout-notice" role="dialog" aria-modal="true" aria-labelledby="mu-gate-title">
             <div class="mu-checkout-login-content">

@@ -71,7 +71,18 @@ if ( ! function_exists( 'mu_social_login_url' ) ) {
 function mu_auth_modal_html() {
     if ( is_user_logged_in() ) return;
     
-    $current_url = ( is_ssl() ? 'https://' : 'http://' ) . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+    // La URL actual se arma con el prefijo de idioma de la peticion: en el pie de
+    // pagina wpLingua ya reescribio $_SERVER['REQUEST_URI'] quitandole /pt y /en,
+    // asi que leerla tal cual devolvia al comprador a la base despues del login
+    // social (spec 005). mu_wplingua_localize_uri() es idempotente: si el prefijo
+    // ya esta, no lo duplica.
+    $request_uri = isset( $_SERVER['REQUEST_URI'] ) ? (string) $_SERVER['REQUEST_URI'] : '/';
+
+    if ( function_exists( 'mu_wplingua_localize_uri' ) ) {
+        $request_uri = mu_wplingua_localize_uri( $request_uri );
+    }
+
+    $current_url = ( is_ssl() ? 'https://' : 'http://' ) . ( $_SERVER['HTTP_HOST'] ?? '' ) . $request_uri;
     ?>
     <div id="mu-auth-modal" class="mu-modal-overlay" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="mu-modal-title">
     <div class="mu-modal-container">

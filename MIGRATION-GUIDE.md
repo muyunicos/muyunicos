@@ -198,7 +198,9 @@ PLUGINS ACOPLADOS AL TEMA (verificado 2026-10-02 por grep en inc/):
   inc/auth-modal.php e inc/checkout.php. Construye RUTA?loginSocial=PROVEEDOR
   &redirect=DESTINO. El formato es contrato con el proveedor: el destino que
   devuelve a Google y Facebook es la propia ruta de login con el parámetro del
-  proveedor dentro, y si el orden cambia el proveedor lo rechaza.
+  proveedor dentro, y si el orden cambia el proveedor lo rechaza. El DESTINO conserva host,
+  ruta e idioma de la página (feature 005: se localiza con mu_wplingua_localize_uri(); el
+  formato y el orden de los parámetros no cambian).
 - WPS Hide Login → hookea el filtro site_url de WordPress, de modo que
   site_url('/wp-login.php') devuelve la ruta vigente. El tema NO depende de ese
   hook: mu_social_login_url() resuelve la ruta con wp_login_url(), que es la API
@@ -286,9 +288,14 @@ muyunicos/ (generatepress-child)
 │   │                        # (24h TTL), modal sugerencia, selector header, decimales.
 │   │                        # Fallback por dominio ante errores de DB ("Commands out of sync").
 │   ├── compat-wplingua.php # wpLingua: conserva el prefijo de idioma (/pt, /en) en el 301
-│   │                        # canónico del core. Módulo crítico: se autocargan desde
-│   │                        # functions.php y desde inc/geo.php, para que el filtro se
-│   │                        # registre aunque functions.php no llegue actualizado (ver §1).
+│   │                        # canónico del core. También expone el prefijo de la petición
+│   │                        # (mu_wplingua_request_prefix / localize_uri / localize_url /
+│   │                        # prefix_in_urls) para los destinos que se arman con la URL
+│   │                        # actual: login social y "Mi Cuenta" (feature 005; contrato en
+│   │                        # specs/005-login-language-redirect/contracts/language-prefix.md).
+│   │                        # Módulo crítico: se autocarga desde functions.php y desde
+│   │                        # inc/geo.php, para que el filtro se registre aunque functions.php
+│   │                        # no llegue actualizado (ver §1).
 │   ├── country-scope.php   # Alcance por país de rutas y elementos: registro único
 │   │                        # (muyu_get_country_scope_routes), guard HTTP 302 en
 │   │                        # template_redirect p15, helper muyu_is_country() y hreflang
@@ -463,6 +470,37 @@ ALCANCE POR PAÍS (API REUTILIZABLE — inc/country-scope.php)
 - DETALLE Y ALTA DE UNA RUTA NUEVA: specs/004-country-scope/contracts/country-scope.md.
   VERIFICACIÓN: specs/004-country-scope/quickstart.md (Fase A local con stubs, Fase B en
   producción).
+
+PREFIJO DE IDIOMA DE LA PETICIÓN (API REUTILIZABLE — inc/compat-wplingua.php)
+- PROBLEMA QUE RESUELVE: wpLingua reescribe $_SERVER['REQUEST_URI'] en 'init' (p1)
+  quitándole el prefijo (/pt, /en). Cualquier destino armado con la URL actual en una página
+  viva —o en /login/, donde no hay prefijo ni estado de idioma— pierde el idioma y devuelve
+  al comprador a la base. Ver §7 "EL LOGIN SOCIAL DEVOLVÍA A LA BASE SIN EL PREFIJO DE IDIOMA".
+- REGLA DE ORO: el idioma es la URL, no el país. La fuente del prefijo es la URI ORIGINAL
+  capturada al cargar el módulo (mu_wplingua_original_uri()), y la lista de prefijos sale de
+  geo.php (mu_wplingua_language_prefixes()). Nunca se deduce por país ni por navegador.
+
+    API
+    mu_wplingua_request_prefix()                → '' | '/pt' | '/en'  (idioma de la petición)
+    mu_wplingua_localize_uri( $uri, $prefix )   → ruta con el prefijo, sin duplicarlo
+    mu_wplingua_localize_url( $url, $prefix )   → URL absoluta localizada (host intacto)
+    mu_wplingua_prefix_in_urls( [ $urls ] )     → prefijo detectado en URLs de la petición
+
+    CUÁNDO USARLA
+    1) Destino de redirección en una página viva (login social, checkout): localize_uri()
+       sobre la URL actual. No rearmar la URL con add_query_arg() cuando el destino es
+       contrato con un proveedor (formato de mu_social_login_url()).
+    2) Destino resuelto fuera de la página (/login/): prefix_in_urls() con las URLs que trae la
+       petición (destino pedido, destino original, procedencia) + localize_url() con ese
+       prefijo. Sin señal se conserva el idioma origen: NO adivinar.
+    3) Nunca localizar rutas técnicas (/wp-admin, /wp-json, /wp-login, AJAX), ni destinos de
+       terceros o de otro host.
+
+- LÍMITES: no traduce slugs ni contenido (eso es de wpLingua), no cambia el idioma de una
+  página sin prefijo y no reemplaza a la API de alcance por país (arriba): son dimensiones
+  distintas, idioma vs país.
+- CONTRATO: specs/005-login-language-redirect/contracts/language-prefix.md.
+  VERIFICACIÓN: specs/005-login-language-redirect/quickstart.md.
 - AL AGREGAR O CAMBIAR UNA RUTA: además de desplegar, purgar la CACHÉ DE SITEMAP de Rank
   Math. Es un archivo XML por host en wp-content/uploads/rank-math/ (ver §8): si no se purga,
   el sitemap del host afectado sigue sirviendo la copia vieja y el cambio parece no haber
@@ -734,6 +772,32 @@ EL 301 CANÓNICO DESCARTA EL PREFIJO DE IDIOMA EN LA HOME (2026-10-16)
   variable que el código leía.
 
 
+EL LOGIN SOCIAL DEVOLVÍA A LA BASE SIN EL PREFIJO DE IDIOMA (2026-10-16)
+- Síntoma: un comprador que entraba con Google o Facebook desde br…/pt/ o us…/en/
+  aterrizaba en la base de su subdominio, en español. El destino ya venía mal formado:
+  medido con curl, el enlace del botón en /pt/tienda/ era
+  redirect=https://br.muyunicos.com/tienda/ (sin /pt).
+- Causa: el modal arma su "volver a donde estabas" con $_SERVER['REQUEST_URI'] en
+  wp_footer, y ahí wpLingua YA le quitó el prefijo (misma LECCIÓN CLAVE de arriba). El
+  destino de "Mi Cuenta" tras el login por usuario/contraseña tenía el mismo defecto,
+  porque /login/ se sirve siempre en el idioma origen: medido, responde 200 con
+  <html lang="es"> y sin cookies de wpLingua (el idioma vive sólo en la URL).
+- Fix: helpers en inc/compat-wplingua.php (prefijo de la petición desde la URI original +
+  localización idempotente de rutas y URLs) usados por inc/auth-modal.php, inc/login.php
+  e inc/checkout.php. El formato de la URL del proveedor social NO cambia: sólo su destino.
+- Verificación (PowerShell 7), después de purgar la caché del host:
+    curl.exe -s -A "Mozilla/5.0" "https://br.muyunicos.com/pt/tienda/" |
+      Select-String 'loginSocial'
+    # esperado: redirect=https%3A%2F%2Fbr.muyunicos.com%2Fpt%2Ftienda%2F
+    curl.exe -s -A "Mozilla/5.0" "https://muyunicos.com/tienda/" | Select-String 'loginSocial'
+    # esperado: sin prefijo (idioma origen)
+  Más el login real con Google y Facebook desde /pt/ y /en/, que no es automatizable.
+- APRENDIZAJE: el prefijo de idioma no se pierde sólo en el 301 canónico; cualquier
+  destino construido con la URL actual hereda el mismo problema, y el síntoma aparece en
+  el peor momento (al identificarse el comprador). Antes de armar una redirección, leer la
+  URI con mu_wplingua_original_uri() y NO con $_SERVER['REQUEST_URI'].
+
+
 ERRORES PÁGINA SÓLO-AR VISIBLE EN SUBDOMINIOS (/envios/, MEDIDO 2026-10-16)
 - Síntoma: /envios/ responde 200 en los 9 subdominios con el contenido de Mar del Plata
   (zonas de cobertura, costos en ARS, teléfono local, retiro en Catamarca 2255), el enlace
@@ -800,6 +864,10 @@ HUECOS Y DECISIONES ABIERTAS (2026-10-16, feature 004-country-scope):
   ("Botón de arrepentimiento", figura legal argentina) y cualquier ruta que se agregue a
   futuro. El procedimiento de alta está en
   specs/004-country-scope/contracts/country-scope.md, sección "Agregar una ruta nueva".
+- [ ] Redirects de la tienda que pierden el prefijo de idioma (medido 2026-10-16: /pt/finalizar-compra/
+  con el carrito vacío responde 302 a /carrito/ sin prefijo). Es el mismo patrón que el login social
+  (corregido en la feature 005) pero el redirect lo genera WooCommerce, no el tema: quedó fuera de
+  alcance declarado (FR-014 de specs/005-login-language-redirect/spec.md). Tratar aparte.
 - [ ] Variantes de idioma del dominio raíz (/pt/envios/, /en/envios/): siguen publicándose
   porque el país es Argentina. Restringirlas exige la dimensión idioma (filtros de
   wpLingua), que no se verificó. Decisión abierta, no deuda técnica.

@@ -79,6 +79,42 @@ add_filter( 'login_errors', 'mu_login_error_message' );
 // 3. REDIRECCIÓN INTELIGENTE POST-LOGIN
 // ============================================================
 
+if ( ! function_exists( 'mu_login_account_url' ) ) {
+    /**
+     * URL de "Mi Cuenta" en el idioma del visitante.
+     *
+     * La pantalla de acceso no lleva prefijo ni guarda estado de idioma (medido el
+     * 2026-10-16: <html lang="es">, sin cookie de wpLingua), así que el idioma se
+     * deduce de las URLs que trae la propia petición: el destino pedido, el destino
+     * original y la procedencia. Sin señal de idioma se conserva el comportamiento
+     * de siempre —la cuenta del idioma origen—: la feature no adivina por país
+     * (FR-005 de la spec 005).
+     *
+     * @param string $requested Destino pedido en la petición de login.
+     * @param string $request   Destino solicitado antes del login.
+     * @return string URL de "Mi Cuenta", localizada si hay señal de idioma.
+     */
+    function mu_login_account_url( $requested = '', $request = '' ) {
+        $account = function_exists( 'wc_get_page_permalink' ) ? (string) wc_get_page_permalink( 'myaccount' ) : '';
+
+        if ( '' === $account ) {
+            return (string) $requested;
+        }
+
+        if ( ! function_exists( 'mu_wplingua_prefix_in_urls' ) || ! function_exists( 'mu_wplingua_localize_url' ) ) {
+            return $account;
+        }
+
+        $prefix = mu_wplingua_prefix_in_urls( [ $requested, $request, wp_get_referer() ] );
+
+        if ( '' === $prefix ) {
+            return $account;
+        }
+
+        return mu_wplingua_localize_url( $account, $prefix );
+    }
+}
+
 if ( ! function_exists( 'mu_smart_login_redirect' ) ) {
     /**
      * Redirige clientes y suscriptores a "Mi Cuenta".
@@ -100,7 +136,7 @@ if ( ! function_exists( 'mu_smart_login_redirect' ) ) {
             return $redirect_to; // Respetar URL de origen para roles con acceso admin
         }
 
-        return wc_get_page_permalink( 'myaccount' );
+        return mu_login_account_url( $redirect_to, $request );
     }
 }
 add_filter( 'login_redirect', 'mu_smart_login_redirect', 10, 3 );
