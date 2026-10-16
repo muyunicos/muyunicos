@@ -47,6 +47,12 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
+// Captura de la URI ORIGINAL al cargar este archivo (antes de 'init', donde
+// wpLingua reescribe $_SERVER['REQUEST_URI']). Ver mu_wplingua_original_uri().
+if ( ! isset( $GLOBALS['mu_wplingua_original_uri'] ) ) {
+    $GLOBALS['mu_wplingua_original_uri'] = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
+}
+
 if ( ! function_exists( 'mu_wplingua_language_prefixes' ) ) {
     /**
      * Prefijos de idioma del proyecto, derivados de la fuente única de verdad
@@ -105,6 +111,37 @@ if ( ! function_exists( 'mu_wplingua_normalize_query' ) ) {
     }
 }
 
+if ( ! function_exists( 'mu_wplingua_original_uri' ) ) {
+    /**
+     * URI de la petición tal como la pidió el visitante.
+     *
+     * ⚠️ Clave del funcionamiento: wpLingua REESCRIBE $_SERVER['REQUEST_URI']
+     * quitando el prefijo de idioma (wplng_ob_start, hook 'init' prioridad 1) para
+     * que WordPress resuelva la página original y después traducir el HTML. Cuando
+     * redirect_canonical() emite su 301 (template_redirect), $_SERVER['REQUEST_URI']
+     * ya NO tiene el prefijo: leerlo en ese momento hacía que este filtro no
+     * reconociera el idioma y devolviera la Location sin cambios.
+     *
+     * Este archivo se carga desde functions.php y desde inc/geo.php, mucho antes
+     * de 'init', así que acá la URI todavía es la original. Medido en producción
+     * el 2026-10-16 con un mu-plugin de diagnóstico:
+     *   REQUEST_URI visto por el filtro = "/?_gl=1*abc"   (sin /pt/)
+     *   REQUEST_URI real de la visita   = "/pt/?_gl=1*abc"
+     *
+     * @return string URI original (con '?' y query), o '' si no hay.
+     */
+    function mu_wplingua_original_uri() {
+        if ( isset( $GLOBALS['mu_wplingua_original_uri'] )
+            && is_string( $GLOBALS['mu_wplingua_original_uri'] )
+            && '' !== $GLOBALS['mu_wplingua_original_uri']
+        ) {
+            return $GLOBALS['mu_wplingua_original_uri'];
+        }
+
+        return isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
+    }
+}
+
 if ( ! function_exists( 'mu_wplingua_keep_language_prefix' ) ) {
     /**
      * Filtro `wp_redirect`: conserva el prefijo de idioma en el 301 canónico.
@@ -133,7 +170,7 @@ if ( ! function_exists( 'mu_wplingua_keep_language_prefix' ) ) {
             return $location;
         }
 
-        $request_uri  = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
+        $request_uri  = mu_wplingua_original_uri(); // ⚠️ NO $_SERVER['REQUEST_URI']: wpLingua le quita el prefijo
         $request_path = (string) wp_parse_url( $request_uri, PHP_URL_PATH );
 
         $pattern = '#^(' . implode( '|', array_map( 'preg_quote', $prefixes ) ) . ')(/|$)#i';
