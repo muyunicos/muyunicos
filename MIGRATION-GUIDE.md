@@ -463,6 +463,11 @@ ALCANCE POR PAÍS (API REUTILIZABLE — inc/country-scope.php)
 - DETALLE Y ALTA DE UNA RUTA NUEVA: specs/004-country-scope/contracts/country-scope.md.
   VERIFICACIÓN: specs/004-country-scope/quickstart.md (Fase A local con stubs, Fase B en
   producción).
+- AL AGREGAR O CAMBIAR UNA RUTA: además de desplegar, purgar la CACHÉ DE SITEMAP de Rank
+  Math. Es un archivo XML por host en wp-content/uploads/rank-math/ (ver §8): si no se purga,
+  el sitemap del host afectado sigue sirviendo la copia vieja y el cambio parece no haber
+  llegado. Medido el 2026-10-16 con /envios/: ocho hosts quedaron corregidos solos y uno
+  (mexico) siguió listando la ruta por una copia de 5 minutos antes del deploy.
 
 ════════════════════════════════════════════════════════════════
 7. DIAGNÓSTICO DE ERRORES CONOCIDOS
@@ -753,6 +758,10 @@ ERRORES PÁGINA SÓLO-AR VISIBLE EN SUBDOMINIOS (/envios/, MEDIDO 2026-10-16)
     mu_wplingua_original_uri().
 - Caso de fallo esperado si el deploy no llegó: el síntoma es idéntico al estado anterior
   (200 en los subdominios), sin error visible. Por eso el guard emite una cabecera propia.
+- Síntoma relacionado, en el sitemap: si un host sigue listando la ruta en su
+  page-sitemap.xml mientras los demás ya no, no es el código: es el archivo de caché de
+  sitemap de Rank Math de ese host (wp-content/uploads/rank-math/). Cómo purgarlo: §8,
+  "SEGUNDA TRAMPA".
 
 
 ════════════════════════════════════════════════════════════════
@@ -773,6 +782,20 @@ HUECOS Y DECISIONES ABIERTAS (2026-10-16, feature 004-country-scope):
   · Verificación: curl.exe -s https://mexico.muyunicos.com/page-sitemap.xml |
     Select-String 'envios'  → esperado: sin resultados. Y en el dominio raíz la URL debe
     SEGUIR listada (la exclusión es por host).
+  · SEGUNDA TRAMPA (medida 2026-10-16, después del fix del callback): el código quedó
+    correcto en los 9 hosts y aun así mexico seguía listando /envios/. Causa: la CACHÉ DE
+    SITEMAP de Rank Math, que es un archivo XML por host —
+    wp-content/uploads/rank-math/rank_math_<md5("page_1_" + home_url())>.xml (física y
+    públicamente accesible; el archivo de mexico, creado a las 22:27, se sirvió con la copia
+    vieja mientras los de co/br/cr, escritos a las 22:32, ya salían sin la ruta). Es el
+    artefacto de despliegue, no un defecto del tema: la caché no se invalida al desplegar.
+    Arreglo (cualquiera de los tres, en wp-admin):
+      1. Rank Math → Sitemap Settings → guardar los ajustes sin cambiar nada (dispara
+         rank_math/settings/after_save → Cache::invalidate_storage()).
+      2. Editar y actualizar cualquier página (un guardado de post invalida la caché del tipo).
+      3. Borrar la carpeta wp-content/uploads/rank-math/ desde el Administrador de archivos
+         de hPanel (se regenera sola).
+    Con cualquier ruta nueva del registro aplica lo mismo: §6, "AL AGREGAR O CAMBIAR UNA RUTA".
 - [ ] Candidatas al registro de alcance por país, sin decidir: /reembolso_devoluciones/
   ("Botón de arrepentimiento", figura legal argentina) y cualquier ruta que se agregue a
   futuro. El procedimiento de alta está en

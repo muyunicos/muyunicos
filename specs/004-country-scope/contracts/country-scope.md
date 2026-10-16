@@ -148,8 +148,13 @@ Precedente vigente: precios del overlay de Jetpack Search en
    `muyu_country_scope_routes`): slug, `countries`, `redirect`, `label`.
 2. Condicionar el enlace que apunte a esa ruta con `muyu_is_country( $route['countries'] )`.
 3. Verificar en local con los escenarios de `quickstart.md` §A.6 (host + ruta).
-4. Verificar en producción con `curl -sI` sobre dos hosts (uno publicador, uno no) y
-   purgar la caché del host afectado.
+4. Desplegar y purgar, en este orden: (a) la caché de página de LiteSpeed del host que
+   tuviera la URL cacheada, y (b) **la caché de sitemap de Rank Math**, que es un archivo XML
+   por host en `wp-content/uploads/rank-math/` y **no** se invalida al desplegar (guía §8,
+   "SEGUNDA TRAMPA"): sin esa purga, el sitemap de ese host sigue listando la ruta y el
+   cambio parece no haber llegado.
+5. Verificar en producción con `curl -sI` sobre dos hosts (uno publicador, uno no) y con
+   `curl` sobre sus `page-sitemap.xml` (`quickstart.md` §B.1 y §B.4).
 
 No hace falta tocar el guard, `seo-hreflang.php` ni el sitemap: los tres se derivan del
 registro.

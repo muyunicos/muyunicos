@@ -186,7 +186,22 @@ subdominio. Causa encontrada leyendo el código del plugin instalado (1.0.280): 
 `rank_math/sitemap/entry` recibe un **array** (`[ 'loc' => … ]`), no un string, así que la
 guarda `is_string()` del callback devolvía la entrada sin tocar — la exclusión quedaba
 desactivada en silencio. Corregido: el callback trabaja sobre `$url['loc']` y devuelve `[]`
-para excluir. **Esta fase se repite después de desplegar la corrección.**
+para excluir.
+
+**Medición del 2026-10-16 — segunda ejecución: 8 de 9 hosts correctos.** Tras desplegar la
+corrección, `co`, `br`, `es`, `cl`, `pe`, `ec`, `cr` y `us` ya no listan la ruta; `mexico`
+seguía listándola. Causa: la **caché de sitemap de Rank Math**, un archivo XML por host en
+`wp-content/uploads/rank-math/` con nombre
+`rank_math_<md5("page_1_" + home_url())>.xml` (público). Evidencia: el archivo de `mexico`
+tiene `Last-Modified 22:27:17` y contiene la ruta; los de `br` (22:32:24) y `co` (22:32:36)
+son posteriores al deploy y no la contienen. **Purga obligatoria antes de medir este paso**:
+
+1. Rank Math → Sitemap Settings → guardar sin cambiar nada (dispara `Cache::invalidate_storage()`).
+2. O editar y actualizar cualquier página.
+3. O borrar la carpeta `wp-content/uploads/rank-math/` desde hPanel.
+
+Después, volver a ejecutar los dos `curl` de arriba. El sitemap del dominio raíz debe
+seguir listando la ruta (la exclusión es por host, no global).
 
 **Si aún sigue listada**: comprobar que la versión instalada de Rank Math use el mismo
 contrato (la guía §8 tiene el archivo y la línea exactos) y que el sitemap no se esté

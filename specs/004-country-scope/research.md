@@ -153,3 +153,23 @@ elemento lo imprime un plugin o wp-admin.
   cargarse y el síntoma es idéntico al actual (guía §1). Por eso el guard emite su propia
   cabecera de trazabilidad.
 
+## 11. La caché de sitemap de Rank Math (hallazgo operativo)
+
+**Decisión**: documentarla como paso obligatorio de cualquier cambio del registro. No se
+toca código por esto.
+
+**Evidencia**: la caché de sitemap del plugin es un archivo XML **por host** en
+`wp-content/uploads/rank-math/`, con nombre
+`rank_math_<md5("{$type}_{$page}_" . home_url())>.xml`
+(`seo-by-rank-math 1.0.280`, `includes/modules/sitemap/class-cache.php:157` y `:167`). Es
+pública: se descargó por HTTP durante el diagnóstico. Se invalida **desde dentro de
+WordPress** (`Cache::invalidate_storage()`, que disparan el guardado de ajustes de Rank Math,
+el guardado de un post o la modificación de un término), **no** al desplegar por Git.
+Medido: tras el fix, `/envios/` desapareció del sitemap de 8 hosts y siguió listada en
+`mexico`, cuyo archivo tenía `Last-Modified` de 5 minutos antes del deploy (22:27 contra
+22:32 de los otros): era la copia que había generado la propia verificación anterior.
+
+**Consecuencia**: la purga entra en el procedimiento de alta de una ruta (contrato §7) y en
+el diagnóstico de la guía (§7 y §8). Sin ella, un cambio correcto parece no haber llegado —
+el mismo síntoma que un deploy que no llegó, con una causa distinta.
+

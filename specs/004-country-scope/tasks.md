@@ -77,11 +77,13 @@ esta sesión; `[ ]` = pendiente, con su dependencia indicada.
 - [X] T027 [P] `MIGRATION-GUIDE.md` §7: entrada de diagnóstico con el orden de comprobación y los dos fallos posibles
 - [X] T028 [P] `MIGRATION-GUIDE.md` §8: huecos declarados (filtro de sitemap, candidatas al registro, variantes de idioma)
 - [X] T029 `git diff --name-only` sin nada bajo `Tema-GeneratePress/` y sin el arnés de `%TEMP%` en el repo
-- [ ] T030 [US1] **Producción** (`quickstart.md` §B.0 y §B.1): purga de caché y matriz de `curl` en los 10 hosts — depende del mantenedor (deploy + purga)
-- [ ] T031 [US1] **Producción** (`quickstart.md` §B.2): pie de página en dos hosts y control manual del menú en wp-admin
-- [ ] T032 [US3] **Producción** (`quickstart.md` §B.3): `hreflang`/`canonical`/`robots` en Argentina
-- [ ] T033 [US1] **Producción** (`quickstart.md` §B.5): no-regresión en tienda, blog, categoría y producto de dos hosts
-- [ ] T034 [US3] **Producción** (`quickstart.md` §B.4): remedir el sitemap del subdominio tras el deploy de la corrección del callback (la primera medición falló: ver §8 del guide)
+- [X] T030 [US1] **Producción** (`quickstart.md` §B.1): matriz ejecutada el 2026-10-16 — 9 de 9 subdominios en `302` con `Location` propio y cabecera `X-MU-Country-Scope`; Argentina en `200` con el contenido intacto; no hizo falta purgar la caché de página (`X-Litespeed-Cache: miss`)
+- [X] T031 [US1] **Producción** (`quickstart.md` §B.2): pie de página verificado — 0 enlaces en el subdominio (cacheado y fresco) y 1 en Argentina
+- [X] T032 [US3] **Producción** (`quickstart.md` §B.3): `canonical` self, `robots: index` y una sola entrada `hreflang` del tema en Argentina (antes 11 + `x-default`)
+- [X] T033 [US1] **Producción** (`quickstart.md` §B.5): no-regresión en `/tienda/` y `/blog/` del subdominio, `/tienda/` de Argentina y `br…/pt/tienda/`
+- [ ] T034 [US3] **Producción** (`quickstart.md` §B.4): purgar la caché de sitemap de Rank Math (archivo por host en `wp-content/uploads/rank-math/`) y remedir — medido: 8 de 9 hosts ya sin la ruta; `mexico` quedó con una copia anterior al deploy
+- [ ] T035 [US1] **Producción/manual** (`quickstart.md` §B.2): control del menú de WordPress en wp-admin (Apariencia → Menús) — no es verificable por código ni por curl
 
-**Hasta ejecutar T030 a T034, la feature se declara NO VERIFICADA EN PRODUCCIÓN.**
+**Estado: verificada en producción el 2026-10-16** salvo T034 (purga de una caché de sitemap
+de un host) y T035 (control manual en wp-admin), ambos del mantenedor.
 

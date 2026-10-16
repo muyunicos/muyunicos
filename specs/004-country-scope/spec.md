@@ -205,9 +205,23 @@ subdominio, comparando antes y después.
 - La lógica pura del módulo (país, ruta normalizada, destino del redirect, hreflang y
   filtro de sitemap) se verificó localmente con un arnés de stubs: 11 escenarios con su
   salida registrada en `quickstart.md` §A.6.
-- La respuesta HTTP real por host, la cabecera de trazabilidad y el sitemap **no se
-  verifican en local**: requieren producción (`quickstart.md` §B). Hasta ejecutar esa
-  fase esta feature se declara **NO VERIFICADA EN PRODUCCIÓN**.
+- **Fase B ejecutada en producción el 2026-10-16** (commits `f21ecfe` y `27f931b`). Resultados
+  medidos:
+  · 9 de 9 subdominios responden `302` a `/envios/`, con `Location` en su propio host, el
+    prefijo de idioma correcto (`br…/pt/tienda/`, `us…/en/tienda/`) y la cabecera
+    `X-MU-Country-Scope: redirect`; Argentina sigue en `200` con el contenido intacto.
+  · El pie deja de emitir el enlace fuera de Argentina (0 de 9; 1 de 1 en Argentina).
+  · En Argentina: `canonical` self, `robots: index` y **una** entrada `hreflang` del tema
+    (antes 11 más `x-default`), sin alternates hacia los subdominios.
+  · No-regresión: `/tienda/`, `/blog/`, `br…/pt/tienda/` y el dominio raíz siguen en `200`.
+  · Sitemap: 8 de 9 subdominios ya no listan la ruta. El noveno (`mexico`) la listaba por una
+    **copia vieja de la caché de sitemap de Rank Math** (un archivo por host en
+    `wp-content/uploads/rank-math/`, que no se invalida al desplegar) y no por el código:
+    se cierra purgando esa caché (`quickstart.md` §B.4).
+- La única parte no verificable en local sigue siendo la respuesta HTTP real, la cabecera
+  trazadora, el sitemap y el pie renderizado: se midieron contra producción, como exige el
+  principio IX, y sus salidas quedaron registradas en `quickstart.md`. Pendientes del
+  mantenedor: la purga de la caché de sitemap y el control del menú en wp-admin.
 - El filtro de Rank Math que saca la ruta del sitemap se verificó contra el código de la
   versión instalada (seo-by-rank-math 1.0.280): el hook es `rank_math/sitemap/entry` y
   recibe un array `[ 'loc' => … ]`; devolver `[]` excluye la entrada. La primera medición en
