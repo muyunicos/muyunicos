@@ -623,6 +623,42 @@ BLOQUEO DE BOTS POR PAÍS EN EL EDGE (2026-10-02)
 - APRENDIZAJE: al verificar el fast-exit, distinguir si el 429/404 viene del edge
   o de PHP (presencia de Server: hcdn y ausencia de X-Litespeed-Cache indica edge).
 
+EL 301 CANÓNICO DESCARTA EL PREFIJO DE IDIOMA EN LA HOME (2026-10-16)
+- Síntoma: al hacer clic en la bandera de país (enlace cross-domain del selector,
+  que el linker de Google decora con `_gl`), la URL con prefijo aterrizaba en la
+  home SIN el prefijo: br.muyunicos.com/pt/?_gl=1*abc → 301 → /?_gl=1%2Aabc.
+  Secuela: el Hero Banner mostraba el idioma del PAÍS en lugar del de la página.
+- Causa: con la query cruda (`*`, `+`, `@`) redirect_canonical() reconstruye la
+  canónica escapando esos caracteres, no coincide con la solicitada y responde
+  301 a la home, que en el idioma origen es `/` (sin prefijo). Medido con un
+  mu-plugin temporal: el 301 sale de canonical.php:840 → wp_redirect. (Los 302 de
+  wpLingua — redirección por idioma del navegador y por slug — no aplican acá.)
+- ⚠️ LECCIÓN CLAVE (para cualquier módulo que lea la URL): wpLingua REESCRIBE
+  $_SERVER['REQUEST_URI'] quitando el prefijo de idioma en wplng_ob_start (hook
+  'init', prioridad 1), para que WordPress resuelva la página original y después
+  traducir el HTML. En 'template_redirect' (donde corre el canonical) esa
+  variable YA NO tiene el prefijo: un filtro que la lea ahí no reconoce el
+  idioma. Hay que capturar la URI original al cargar el módulo (functions.php se
+  incluye antes de 'init') y usarla después: ver mu_wplingua_original_uri() en
+  inc/compat-wplingua.php.
+- Fix: filtro wp_redirect (prioridad 15) que re-inyecta el prefijo cuando el
+  destino es el mismo host con la misma ruta sin él, y normaliza la query del
+  destino (`*` → `%2A`, que el core ya acepta como canónico ⇒ el 301 no se
+  repite). Solo en 301/302/307, mismo host, misma ruta y fuera de rutas técnicas.
+  Trazabilidad: cabecera X-MU-WpLingua-Lang: kept.
+- Verificación (PowerShell 7):
+    curl.exe -s -I -A "Mozilla/5.0" "https://br.muyunicos.com/pt/?_gl=1*abc"
+    # esperado: 301 + Location .../pt/?_gl=1%2Aabc + X-MU-WpLingua-Lang: kept
+    curl.exe -sL -A "Mozilla/5.0" "https://br.muyunicos.com/pt/?_gl=1*abc" |
+      Select-String '<html[^>]*lang="pt"'
+- APRENDIZAJE: los caracteres que el saneado de WordPress escapa no son un
+  detalle cosmético de la query: cambian la comparación canónica y pueden mover
+  al visitante de página y de idioma. Y antes de dar por fallido un fix, medir
+  DENTRO de WordPress (mu-plugin temporal) en vez de deducir desde afuera: acá el
+  filtro estaba registrado y los archivos correctos; lo que fallaba era la
+  variable que el código leía.
+
+
 ════════════════════════════════════════════════════════════════
 8. DEUDA TÉCNICA
 
