@@ -190,6 +190,51 @@ if ( ! function_exists( 'muyu_clean_uri' ) ) {
     }
 }
 
+if ( ! function_exists( 'muyu_normalize_query_string' ) ) {
+    /**
+     * Normaliza una query string codificando los caracteres que WordPress
+     * considera NO canónicos al reconstruir URLs.
+     *
+     * Motivo (medido en producción el 2026-10-16): si la query trae `*`, `+` o
+     * `@` crudos — como el parámetro `_gl` que el linker de Google inyecta al
+     * hacer clic en un enlace cross-domain —, `redirect_canonical()` escapa
+     * esos caracteres al comparar con la URL canónica (`*` → `%2A`,
+     * `+` → `%20`, `@` → `%40`), no la reconoce como canónica y responde 301 a
+     * la home SIN el prefijo de idioma (`/pt/?_gl=1*abc` → `/?_gl=1%2Aabc`).
+     * Codificarlos al generar el enlace evita ese 301.
+     *
+     * Solo se toca la query cuando contiene esos caracteres: así los filtros
+     * habituales del catálogo (arrays, `filter_*`, `product_tag`...) viajan
+     * intactos, tal como los generó WordPress.
+     *
+     * @param string $query_string Query string (con o sin '?' inicial).
+     * @return string Query normalizada CON '?' inicial, o '' si no había query.
+     */
+    function muyu_normalize_query_string( $query_string ) {
+        $query_string = ltrim( (string) $query_string, '?' );
+        if ( '' === $query_string ) {
+            return '';
+        }
+
+        // Sin caracteres problemáticos se devuelve la query tal cual.
+        if ( ! preg_match( '/[*+@]/', $query_string ) ) {
+            return '?' . $query_string;
+        }
+
+        $args = [];
+        parse_str( $query_string, $args );
+        if ( empty( $args ) ) {
+            return '';
+        }
+
+        // RFC3986 (rawurlencode) es lo que el core acepta como canónico:
+        // `~`, `-`, `_` y `.` quedan sin escapar (verificado con curl).
+        $normalized = http_build_query( $args, '', '&', PHP_QUERY_RFC3986 );
+
+        return '' === $normalized ? '' : '?' . $normalized;
+    }
+}
+
 if ( ! function_exists( 'muyu_country_modal_text' ) ) {
     /**
      * Helper para obtener textos localizados del modal de país
@@ -668,7 +713,11 @@ if ( ! function_exists( 'mu_country_modal_html' ) ) {
         
         $target        = $countries[ $user_country ];
         $prefix        = muyu_country_language_prefix( $user_country );
-        $final_request = muyu_clean_uri( $prefix, $request_uri );
+        // Solo el path + query normalizada: propagar la query cruda (con '*',
+        // '+', '@' del parámetro `_gl`) provoca un 301 del core que descarta el
+        // prefijo de idioma. Ver muyu_normalize_query_string().
+        $final_request = muyu_clean_uri( $prefix, (string) wp_parse_url( $request_uri, PHP_URL_PATH ) )
+            . muyu_normalize_query_string( (string) wp_parse_url( $request_uri, PHP_URL_QUERY ) );
         $target_url    = 'https://' . rtrim( $target['host'], '/' ) . $final_request;
         $modal_title = muyu_country_modal_text( $user_country, 'title' );
         $modal_question = sprintf( muyu_country_modal_text( $user_country, 'question' ), $target['name'] );
@@ -734,6 +783,12 @@ if ( ! function_exists( 'render_country_redirect_selector' ) ) {
         $request_uri = $_SERVER['REQUEST_URI'] ?? '/';
         $scheme = ( isset( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] !== 'off' ) ? 'https' : 'http';
 
+        // Path + query normalizada: ver muyu_normalize_query_string(). Evita
+        // arrastrar caracteres crudos a otro subdominio y, sobre todo, el 301
+        // canónico que devuelve al visitante a la home sin el prefijo.
+        $request_path = (string) wp_parse_url( $request_uri, PHP_URL_PATH );
+        $request_qs   = muyu_normalize_query_string( (string) wp_parse_url( $request_uri, PHP_URL_QUERY ) );
+
         ob_start();
         ?>
         <div id="country-redirect-selector" class="country-redirect-container">
@@ -746,7 +801,7 @@ if ( ! function_exists( 'render_country_redirect_selector' ) ) {
                     <?php if ( $code !== $current_country_code ) : ?>
                         <?php
                         $prefix = muyu_country_language_prefix( $code );
-                        $target_url = $scheme . '://' . rtrim( $country['host'], '/' ) . muyu_clean_uri( $prefix, $request_uri );
+                        $target_url = $scheme . '://' . rtrim( $country['host'], '/' ) . muyu_clean_uri( $prefix, $request_path ) . $request_qs;
                         ?>
                         <li>
                             <a href="<?php echo esc_url( $target_url ); ?>">
