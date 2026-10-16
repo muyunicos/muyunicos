@@ -180,7 +180,9 @@ PLUGINS ACOPLADOS AL TEMA (verificado 2026-10-02 por grep en inc/):
 - Solo se listan los que el tema consume por hook, filtro o API. Un plugin
   instalado sin acoplamiento NO va aquí: listarlo sugeriría una integración que
   no existe.
-- Rank Math SEO → rank_math_description, rank_math_canonical (inc/seo-hreflang.php).
+- Rank Math SEO → rank_math_description, rank_math_canonical (inc/seo-hreflang.php) y
+  rank_math/sitemap/entry (inc/country-scope.php: saca del sitemap las rutas con alcance
+  por país en los hosts que no las sirven; el primer argumento es un ARRAY, ver §8).
   También engancha The SEO Framework y Yoast por si se activan.
 - Jetpack Search → jetpack_search_instant_search_options p10 y p15
   (inc/jetpack-search-integration.php): corrige homeUrl al subdominio actual y
@@ -757,13 +759,20 @@ ERRORES PÁGINA SÓLO-AR VISIBLE EN SUBDOMINIOS (/envios/, MEDIDO 2026-10-16)
 8. DEUDA TÉCNICA
 
 HUECOS Y DECISIONES ABIERTAS (2026-10-16, feature 004-country-scope):
-- [ ] Filtro de sitemap de Rank Math: mu_country_scope_exclude_from_sitemap() usa
-  rank_math/sitemap/entry, cuyo nombre y firma NO se pudieron confirmar contra la
-  documentación pública del plugin (no expone la sección de sitemap). Verificación:
-    curl.exe -s https://mexico.muyunicos.com/page-sitemap.xml | Select-String 'envios'
-  Esperado: sin resultados. Si siguiera listada, la URL simplemente redirige —no rompe
-  nada— y quedan dos salidas: buscar el hook correcto en la versión instalada, o aceptar la
-  entrada y mantenerla declarada acá.
+- [x] RESUELTO 2026-10-16 — Sitemap de Rank Math: el hook es `rank_math/sitemap/entry` y
+  su PRIMER ARGUMENTO ES UN ARRAY (`[ 'loc' => … ]`), no un string. Devolver `[]` excluye la
+  entrada (el plugin hace `continue` con un array vacío). Contrato verificado en el código
+  de la versión instalada: seo-by-rank-math 1.0.280,
+  includes/modules/sitemap/providers/class-post-type.php:222 (la misma línea del sitemap HTML,
+  html-sitemap/class-posts.php:215, se excluye con `empty( $url['loc'] )`).
+  · TRAMPA MEDIDA (y lección): la primera versión del callback llevaba una guarda
+    `is_string( $url )` —prudente en apariencia— que devolvía la entrada sin tocar y
+    desactivaba la exclusión en SILENCIO. Medido en producción: /envios/ seguía en
+    page-sitemap.xml. Una lectura defensiva no puede ser más estricta que el contrato real
+    del argumento.
+  · Verificación: curl.exe -s https://mexico.muyunicos.com/page-sitemap.xml |
+    Select-String 'envios'  → esperado: sin resultados. Y en el dominio raíz la URL debe
+    SEGUIR listada (la exclusión es por host).
 - [ ] Candidatas al registro de alcance por país, sin decidir: /reembolso_devoluciones/
   ("Botón de arrepentimiento", figura legal argentina) y cualquier ruta que se agregue a
   futuro. El procedimiento de alta está en

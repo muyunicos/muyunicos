@@ -71,8 +71,9 @@ la ruta o la página no está en el registro, sale sin emitir nada. El caso más
 | IX. Verificación | `php -l`, arnés local reproducible y matriz de `curl` por host. La fase de producción se declara explícitamente por ejecutar |
 | X. Perímetro de seguridad y plugins | No se activa ningún plugin ni se edita uno. El único acoplamiento es el filtro de sitemap de Rank Math, ya declarado como plugin acoplado en la guía §3, y el callback es defensivo |
 
-**Sin violaciones.** No se requiere Complexity Tracking más allá del punto abierto del
-sitemap, que se declara como hueco verificable, no como excepción.
+**Sin violaciones.** El único punto abierto —el contrato del filtro de sitemap de Rank Math—
+se cerró el 2026-10-16 verificando el código del plugin instalado tras una medición fallida
+en producción: ver Complexity Tracking y §8 del guide.
 
 ## Project Structure
 
@@ -111,12 +112,12 @@ declare en tres lugares y se desincronice. `inc/geo.php` **no se toca**: se reut
 
 ## Complexity Tracking
 
-> Sin violaciones de la constitución. Se registra acá el único punto abierto, porque
-> afecta la verificación:
+> Sin violaciones de la constitución. Se registra el único punto que sí costó verificación,
+> con su cierre medido:
 
-| Punto abierto | Por qué se acepta | Cómo se cierra |
+| Punto abierto | Por qué se aceptó | Cómo se cerró |
 |---|---|---|
-| Filtro de sitemap de Rank Math no confirmado contra la documentación del plugin | La documentación pública no expone la firma exacta, y hoy la ruta igual se lista en el sitemap: si el filtro no dispara, el estado no empeora | `curl` sobre `page-sitemap.xml` de un subdominio (§B.4). Si no dispara, se registra en §8 del guide con sus dos salidas: encontrar el hook correcto o aceptar la entrada que redirige |
+| Contrato del filtro de sitemap de Rank Math | La documentación pública no expone la firma (la página de hooks se trunca antes de la sección de sitemap) y el repo no versiona plugins: la primera versión del callback llevaba una guarda `is_string( $url )` que devolvía la entrada sin tocar y desactivaba la exclusión en silencio | Cerrado el 2026-10-16 leyendo el código de la versión instalada (seo-by-rank-math 1.0.280, descargada de wordpress.org — el `readme.txt` de producción confirma la misma versión): `rank_math/sitemap/entry` recibe `[ 'loc' => … ]` y `[]` excluye la entrada. Callback corregido y verificado en local (`quickstart.md` §A.6). La remedición en producción queda en `quickstart.md` §B.4 |
 
 ## Nota de despliegue (decisión del mantenedor, 2026-10-16)
 

@@ -482,31 +482,36 @@ if ( ! function_exists( 'muyu_get_country_scope_hreflang_tags' ) ) {
 
 if ( ! function_exists( 'mu_country_scope_exclude_from_sitemap' ) ) {
     /**
-     * Saca del sitemap XML las rutas con alcance por país en los hosts que no las
-     * sirven (el listado de /envios/ en cada page-sitemap.xml de subdominio).
+     * Saca del sitemap las rutas con alcance por país en los hosts que no las sirven
+     * (el listado de /envios/ en cada page-sitemap.xml de subdominio).
      *
-     * El callback es defensivo a propósito (guía §3: Rank Math es un plugin
-     * acoplado, no código propio): si el filtro cambiara de firma en una versión del
-     * plugin, la peor consecuencia es que la URL siga listada — nunca un error fatal
-     * ni un sitemap roto. Por eso la ruta se reconoce por la URL y no por el
-     * argumento $post, que depende del orden de los argumentos.
+     * CONTRATO DEL HOOK — verificado contra el código del plugin instalado
+     * (seo-by-rank-math 1.0.280, `includes/modules/sitemap/providers/class-post-type.php:222`):
      *
-     * ⚠️ Filtro NO verificado contra el plugin al momento de escribirlo: la
-     * documentación pública no expone la firma exacta. Se verifica con curl sobre el
-     * page-sitemap.xml de un subdominio (quickstart §B.4); si no dispara, la entrada
-     * sigue listada y queda registrada como hueco en §8 del guide.
+     *     $url = $this->do_filter( 'sitemap/entry', $url, 'post', $post );
+     *     if ( empty( $url ) ) { continue; }      // devolver [] EXCLUYE la entrada
      *
-     * @param mixed  $url  URL de la entrada del sitemap.
-     * @param string $type Tipo de entrada del sitemap (no se usa).
-     * @param mixed  $post Post de la entrada del sitemap (no se usa).
-     * @return mixed URL original, o '' para excluir la entrada.
+     * Dos cosas que no son obvias y costaron una verificación fallida en producción
+     * (2026-10-16, medido: la URL seguía en el sitemap):
+     *   1. Rank Math prefija los hooks con `do_filter()`: el nombre real es
+     *      `rank_math/sitemap/entry`, no `sitemap/entry`.
+     *   2. El primer argumento es un ARRAY (`[ 'loc' => … ]`), no un string. Una
+     *      guarda `is_string( $url )` —que parecía prudente— devolvía el valor sin
+     *      tocar y desactivaba la exclusión en silencio. El mismo hook lo usa el
+     *      sitemap HTML (`html-sitemap/class-posts.php:215`), donde la exclusión se
+     *      evalúa con `empty( $url['loc'] )`: devolver [] también lo cubre.
+     *
+     * @param mixed  $url  Entrada del sitemap: array con 'loc'.
+     * @param string $type Tipo de entrada ('post', 'term', 'user').
+     * @param mixed  $post Objeto de la entrada (no se usa: la ruta se reconoce por la URL).
+     * @return mixed La entrada sin cambios, o [] para excluirla.
      */
     function mu_country_scope_exclude_from_sitemap( $url, $type = '', $post = null ) {
-        if ( ! is_string( $url ) || '' === $url ) {
-            return $url;
+        if ( ! is_array( $url ) || empty( $url['loc'] ) || ! is_string( $url['loc'] ) ) {
+            return $url; // forma inesperada (otra versión del plugin): no intervenir
         }
 
-        $segments = array_values( array_filter( explode( '/', (string) wp_parse_url( $url, PHP_URL_PATH ) ), 'strlen' ) );
+        $segments = array_values( array_filter( explode( '/', (string) wp_parse_url( $url['loc'], PHP_URL_PATH ) ), 'strlen' ) );
         if ( empty( $segments ) ) {
             return $url;
         }
@@ -530,7 +535,7 @@ if ( ! function_exists( 'mu_country_scope_exclude_from_sitemap' ) ) {
             return $url;
         }
 
-        return muyu_is_country( $route['countries'] ) ? $url : '';
+        return muyu_is_country( $route['countries'] ) ? $url : [];
     }
     add_filter( 'rank_math/sitemap/entry', 'mu_country_scope_exclude_from_sitemap', 10, 3 );
 }

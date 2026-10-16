@@ -98,16 +98,30 @@ conjunto del tema no lo declara.
 
 ## 7. El sitemap
 
-**Decisión**: filtrar la entrada de Rank Math por URL, con un callback defensivo, y
-declararlo como punto a confirmar.
+**Decisión**: filtrar la entrada de Rank Math por URL sobre el hook
+`rank_math/sitemap/entry`, devolviendo `[]` para excluirla.
 
-**Evidencia**: `curl -s https://mexico.muyunicos.com/page-sitemap.xml` lista `/envios/` con
-sus alternates. La documentación pública de Rank Math no expone la firma exacta del filtro
-de sitemap (la página de hooks se trunca antes de esa sección), así que el callback:
-(a) sólo actúa si recibe una URL string, (b) reconoce la ruta por el último segmento de la
-URL y no por el argumento `$post` —cuyo orden de argumentos es lo que no se pudo
-confirmar— y (c) si no dispara, el estado es el actual (entrada listada), nunca un sitemap
-roto. Se verifica en §B.4 del quickstart.
+**Evidencia (con la medición fallida incluida)**: `curl -s
+https://mexico.muyunicos.com/page-sitemap.xml` listaba `/envios/` con sus alternates. La
+documentación pública de Rank Math no expone la firma del filtro, así que la primera versión
+del callback se escribió "defensiva": reconocía la ruta por el último segmento de la URL —para
+no depender del argumento `$post`— y sólo actuaba si el primer argumento era un string.
+Medido en producción el 2026-10-16, después del deploy: **la exclusión no ocurrió**. La causa
+estaba en el código del plugin de la versión instalada (1.0.280,
+`includes/modules/sitemap/providers/class-post-type.php:222`):
+
+    $url = $this->do_filter( 'sitemap/entry', $url, 'post', $post );
+    if ( empty( $url ) ) { continue; }
+
+Es decir: el primer argumento es un **array** con la clave `loc`, y devolver `[]` es la señal
+de exclusión. El mismo hook alimenta el sitemap HTML
+(`html-sitemap/class-posts.php:215`, donde la exclusión se evalúa con `empty( $url['loc'] )`).
+
+**Lección registrada**: una guarda que exige el tipo equivocado no falla con ruido —
+desactiva la funcionalidad en silencio y el síntoma es el estado anterior (la URL seguía
+listada). El contrato de un hook de plugin se lee en la fuente del plugin (descargable desde
+wordpress.org; el `readme.txt` de producción da la versión exacta) antes de declarar una
+verificación en producción, no se infiere de la documentación.
 
 ## 8. Por qué un módulo nuevo y no `geo.php` / `ui.php`
 

@@ -64,8 +64,8 @@ esta sesión; `[ ]` = pendiente, con su dependencia indicada.
 
 - [X] T020 [US3] Implementar `muyu_get_country_scope_hreflang_tags()` (una entrada autorreferencial, sin `x-default` propio)
 - [X] T021 [US3] Consumir el conjunto reducido en `inc/seo-hreflang.php` con `return` temprano
-- [X] T022 [US3] Implementar `mu_country_scope_exclude_from_sitemap()` (filtro `rank_math/sitemap/entry`, callback defensivo, coincidencia por URL)
-- [X] T023 [US3] Declarar en `spec.md` y en el docblock del filtro que la firma no está confirmada contra el plugin y que se verifica en producción
+- [X] T022 [US3] Implementar `mu_country_scope_exclude_from_sitemap()` (filtro `rank_math/sitemap/entry`: el argumento es un array `[ 'loc' => … ]` y se devuelve `[]` para excluir — corregido tras la medición fallida en producción del 2026-10-16)
+- [X] T023 [US3] Verificar el contrato del hook contra el código del plugin instalado (seo-by-rank-math 1.0.280, `sitemap/providers/class-post-type.php:222`), documentarlo en el docblock y en §8 del guide, incluida la trampa del `is_string()` que desactivaba la exclusión en silencio
 
 ---
 
@@ -79,8 +79,9 @@ esta sesión; `[ ]` = pendiente, con su dependencia indicada.
 - [X] T029 `git diff --name-only` sin nada bajo `Tema-GeneratePress/` y sin el arnés de `%TEMP%` en el repo
 - [ ] T030 [US1] **Producción** (`quickstart.md` §B.0 y §B.1): purga de caché y matriz de `curl` en los 10 hosts — depende del mantenedor (deploy + purga)
 - [ ] T031 [US1] **Producción** (`quickstart.md` §B.2): pie de página en dos hosts y control manual del menú en wp-admin
-- [ ] T032 [US3] **Producción** (`quickstart.md` §B.3 y §B.4): `hreflang`/`canonical`/`robots` en Argentina y sitemap del subdominio
+- [ ] T032 [US3] **Producción** (`quickstart.md` §B.3): `hreflang`/`canonical`/`robots` en Argentina
 - [ ] T033 [US1] **Producción** (`quickstart.md` §B.5): no-regresión en tienda, blog, categoría y producto de dos hosts
+- [ ] T034 [US3] **Producción** (`quickstart.md` §B.4): remedir el sitemap del subdominio tras el deploy de la corrección del callback (la primera medición falló: ver §8 del guide)
 
-**Hasta ejecutar T030 a T033, la feature se declara NO VERIFICADA EN PRODUCCIÓN.**
+**Hasta ejecutar T030 a T034, la feature se declara NO VERIFICADA EN PRODUCCIÓN.**
 

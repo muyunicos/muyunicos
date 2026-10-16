@@ -208,8 +208,11 @@ subdominio, comparando antes y después.
 - La respuesta HTTP real por host, la cabecera de trazabilidad y el sitemap **no se
   verifican en local**: requieren producción (`quickstart.md` §B). Hasta ejecutar esa
   fase esta feature se declara **NO VERIFICADA EN PRODUCCIÓN**.
-- El filtro de Rank Math que saca la ruta del sitemap no pudo confirmarse contra la
-  documentación del plugin: se verifica con `curl` en §B.4 y, si no dispara, se declara
-  el hueco en §8 del guide.
+- El filtro de Rank Math que saca la ruta del sitemap se verificó contra el código de la
+  versión instalada (seo-by-rank-math 1.0.280): el hook es `rank_math/sitemap/entry` y
+  recibe un array `[ 'loc' => … ]`; devolver `[]` excluye la entrada. La primera medición en
+  producción (2026-10-16) falló porque el callback exigía un string y devolvía la entrada sin
+  tocar; corregido, verificado en local y con la remedición en producción pendiente en §B.4
+  de `quickstart.md`.
 
 

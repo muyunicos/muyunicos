@@ -108,6 +108,12 @@ funciones de `geo.php` y `compat-wplingua.php` que el módulo reutiliza
 | `mexico.muyunicos.com` | `/envios/` con `?utm=…` | igual que la fila 2: la query no altera la resolución |
 | `muyunicos.com` | `/envios/` (modo guard) | `sin redirect: la ruta se sirve en este país` |
 | `co.muyunicos.com` | `/tienda/` (modo guard) | `sin redirect`: sólo se bloquean las rutas registradas |
+| `muyunicos.com` | `/envios/` en el sitemap | entrada conservada (`{"loc": …}`) |
+| `mexico.muyunicos.com` | `/envios/` en el sitemap | entrada descartada (`[]`): es la señal de exclusión de Rank Math |
+| cualquier host | `/tienda/` en el sitemap | entrada intacta (no está en el registro) |
+
+El arnés llama al callback del sitemap con la **forma real del plugin** —`[ 'loc' => … ]`, no
+un string—, que es exactamente lo que falló en la primera medición en producción (§B.4).
 
 > El arnés imprime, en modo normal, la traza JSON del request y en modo `guard` el
 > resultado del guard (el `header()` se emite en CLI sin efecto; la cabecera real se
@@ -169,14 +175,22 @@ curl.exe -s https://muyunicos.com/envios/ | Select-String 'rel="canonical"|hrefl
 
 ```powershell
 curl.exe -s https://mexico.muyunicos.com/page-sitemap.xml | Select-String 'envios'
+curl.exe -s https://muyunicos.com/page-sitemap.xml | Select-String 'envios'
 ```
 
-**Esperado**: sin resultados (`/envios/` ya no se lista).
+**Esperado**: sin resultados en el subdominio; **con** resultado (la URL listada) en el
+dominio raíz: la exclusión es por host, no global.
 
-**Si sigue listada**: el filtro `rank_math/sitemap/entry` no disparó en esa versión del
-plugin. No es un error del tema ni rompe nada (la URL simplemente redirige). Registrar el
-hueco en §8 del guide con las dos salidas: encontrar el hook correcto de Rank Math, o
-aceptar la entrada declarándola como hueco conocido.
+**Medición del 2026-10-16 — primera ejecución: FALLÓ.** `/envios/` seguía listada en el
+subdominio. Causa encontrada leyendo el código del plugin instalado (1.0.280): el hook
+`rank_math/sitemap/entry` recibe un **array** (`[ 'loc' => … ]`), no un string, así que la
+guarda `is_string()` del callback devolvía la entrada sin tocar — la exclusión quedaba
+desactivada en silencio. Corregido: el callback trabaja sobre `$url['loc']` y devuelve `[]`
+para excluir. **Esta fase se repite después de desplegar la corrección.**
+
+**Si aún sigue listada**: comprobar que la versión instalada de Rank Math use el mismo
+contrato (la guía §8 tiene el archivo y la línea exactos) y que el sitemap no se esté
+sirviendo desde una caché del plugin (`rank_math/sitemap/enable_caching`).
 
 ### B.5 — No-regresión (SC-006, FR-013)
 
