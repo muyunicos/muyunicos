@@ -27,7 +27,23 @@ FLUJO DE TRABAJO Y DESPLIEGUE
   (pwsh). El entorno local completo está documentado en §9.
 - No hay entorno de Staging. Las pruebas se realizan en Producción, por lo que todo código
   debe estar encapsulado (if !function_exists), ser defensivo y estar exhaustivamente revisado.
-- Despliegue MANUAL vía FTP/Administrador de archivos a /generatepress-child/.
+- DESPLIEGUE AUTOMÁTICO por Git: la función Git de Hostinger (hPanel → Avanzado →
+  Git) sincroniza el repositorio con /generatepress-child/. El push a GitHub NO
+  despliega por sí solo: es Hostinger quien trae los cambios a la carpeta del
+  tema. Verificado 2026-10-16: /generatepress-child/ es un working copy con .git/
+  (bloqueado por el servidor, 403), y geo.php / compat-wplingua.php llegaron por
+  esa vía.
+  · El deploy trae EL REPOSITORIO COMPLETO, así que la documentación y los
+    artefactos de trabajo quedan dentro de la carpeta del tema y son accesibles
+    por HTTP: MIGRATION-GUIDE.md y specs/*.md responden 200, y Tema-GeneratePress/
+    queda anidado dentro del child. NO meter secretos ni credenciales aquí.
+  · No subir archivos a mano (FTP/Administrador de archivos): un archivo editado o
+    subido directamente en el servidor deja el pull siguiente sin traer ESE
+    archivo, sin error visible (pasó con functions.php el 2026-10-16). Por eso los
+    módulos críticos se autocargan desde su dependencia: ver la autocarga de
+    compat-wplingua.php al final de inc/geo.php.
+  · Si un cambio no aparece en producción: revisar primero el estado del deploy en
+    el hPanel (conflictos locales) y después la caché (LiteSpeed + CDN).
 - Backups automáticos diarios de Hostinger actúan como red de seguridad principal.
 - Actualizar SIEMPRE este archivo en el PR o antes del despliegue.
 
@@ -721,9 +737,11 @@ REGLAS OPERATIVAS (aplican a personas y a agentes de IA):
 LÍMITES DE SEGURIDAD (también para agentes de IA):
 - PROHIBIDO modificar bases de datos, credenciales o servicios externos desde el
   entorno local.
-- PROHIBIDO desplegar a producción: el despliegue es manual por FTP (§1) y
-  ninguna tarea de IA termina con un paso de despliegue (constitución, "Regla de
-  despliegue").
+- PROHIBIDO desplegar a producción: el deploy lo dispara Hostinger desde su
+  función Git al recibir el push (§1) y ninguna tarea de IA termina con un paso
+  de despliegue (constitución, "Regla de despliegue"). Tampoco se sube nada a mano
+  por FTP/Administrador de archivos: los cambios llegan al servidor solo por el
+  repositorio, para que no existan ediciones fuera del control de versiones.
 - Cualquier operación fuera de estos límites requiere aprobación explícita del
   mantenedor antes de ejecutarse.
 

@@ -40,8 +40,10 @@ local).
 ## Límites de seguridad
 
 - No modificar bases de datos, credenciales ni servicios externos.
-- No desplegar a producción (el despliegue es manual, por FTP, y exclusivo del
-  mantenedor).
+- No desplegar a producción: el deploy lo dispara Hostinger desde su función Git
+  al recibir el push (MIGRATION-GUIDE §1) y es exclusivo del mantenedor. Tampoco se
+  suben archivos a mano (FTP/Administrador de archivos): una edición manual en el
+  servidor deja el pull siguiente sin traer ese archivo, sin error visible.
 
 Estas operaciones requieren aprobación explícita del mantenedor antes de
 ejecutarse.

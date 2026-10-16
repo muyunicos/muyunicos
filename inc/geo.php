@@ -867,3 +867,24 @@ if ( ! function_exists( 'mu_add_country_body_attribute' ) ) {
     }
     add_filter( 'body_class', 'mu_add_country_body_attribute' );
 }
+
+// ============================================
+// COMPATIBILIDAD wpLingua (autocarga)
+// ============================================
+
+/**
+ * Carga inc/compat-wplingua.php también desde aquí.
+ *
+ * Motivo: el despliegue es automático (función Git de Hostinger) y si
+ * functions.php no llega actualizado al servidor —conflicto local en el pull,
+ * subida parcial— el módulo queda en disco sin que nadie lo cargue: el filtro no
+ * se registra y el bug del prefijo de idioma sigue activo en producción sin
+ * ninguna señal visible. Cargándolo desde geo.php, el fix viaja con el módulo
+ * del que depende.
+ *
+ * require_once + function_exists: si functions.php ya lo cargó, esta línea no
+ * hace nada y el filtro no se registra dos veces.
+ */
+if ( ! function_exists( 'mu_wplingua_keep_language_prefix' ) && file_exists( __DIR__ . '/compat-wplingua.php' ) ) {
+    require_once __DIR__ . '/compat-wplingua.php';
+}

@@ -6,8 +6,10 @@
 # dependencias que NO deben llegar al repositorio.
 #
 # ⚠️ NO ignorar `css/`, `js/`, `inc/`, `templates/`, `assets/`, `style.css`
-# ni `functions.php`: son el producto. El despliegue es manual por FTP y el
-# repositorio es la única fuente versionada del tema.
+# ni `functions.php`: son el producto. El repositorio es la única fuente
+# versionada del tema y Hostinger despliega desde él con su función Git
+# (hPanel → Avanzado → Git → /generatepress-child/). No subir archivos a mano:
+# una edición manual en el servidor deja el pull siguiente sin traer ese archivo.
 
 # --- Sistema operativo y editores ---
 .DS_Store
