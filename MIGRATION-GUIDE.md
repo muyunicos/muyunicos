@@ -42,8 +42,24 @@ FLUJO DE TRABAJO Y DESPLIEGUE
     archivo, sin error visible (pasó con functions.php el 2026-10-16). Por eso los
     módulos críticos se autocargan desde su dependencia: ver la autocarga de
     compat-wplingua.php al final de inc/geo.php.
-  · Si un cambio no aparece en producción: revisar primero el estado del deploy en
-    el hPanel (conflictos locales) y después la caché (LiteSpeed + CDN).
+  · Si un cambio no aparece en producción, revisar en ESTE orden. Medido el
+    2026-10-16 con el bug del prefijo de idioma: el deploy había llegado completo
+    (probado comparando los .gitignore y .md remotos contra el repo) y aun así
+    inc/geo.php no surtía efecto.
+      1. El archivo EN DISCO no es el del repo. Un archivo subido a mano o editado
+         en el servidor queda "modificado localmente": el deploy lo respeta y no
+         lo pisa, sin error visible (pasó con functions.php e inc/geo.php). Es el
+         caso normal cuando antes se desplegaba por FTP. Verificar descargando el
+         archivo del servidor y comparándolo con el repo:
+           git diff --no-index -- inc/geo.php ruta\descargada\geo.php
+         Arreglo: volver a subir ESE archivo con el contenido exacto del repo (o
+         en el servidor: git checkout -- <archivo>). Al quedar sin diferencias, el
+         deploy siguiente ya lo actualiza solo.
+      2. Caché de OPCODE: solo si el archivo en disco coincide con el repo y el
+         cambio no surte efecto. Purgar OPcache / reiniciar los workers PHP
+         (con opcache.validate_timestamps en 0, cada deploy necesita purge).
+      3. Pull fallido o conflicto en el hPanel, y por último caché de página
+         (LiteSpeed y CDN de Hostinger).
 - Backups automáticos diarios de Hostinger actúan como red de seguridad principal.
 - Actualizar SIEMPRE este archivo en el PR o antes del despliegue.
 
