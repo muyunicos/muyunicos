@@ -341,6 +341,9 @@ muyunicos/ (generatepress-child)
 │   │                        # 'fechas[PAIS][anual]' ignoran el año guardado (sólo día y
 │   │                        # mes) y soportan el cruce de fin de año. Un evento único
 │   │                        # purga la home en cada borde (ver §8).
+│   │                        # RENDER COMPARTIDO (feature 013): mu_hero_slide_render() es
+│   │                        # la fuente ÚNICA del HTML del slide (front + lienzo del
+│   │                        # editor). Vive acá porque hero-banners carga antes que ui.
 │   ├── ui.php              # Header icons, Cart badge, WhatsApp, shortcodes, bestsellers,
 │   │                        # testimonios Google Places, hero promos, popcat.
 │   ├── ai-translate.php     # Servicio de traducción con IA (Gemini): API interna
@@ -370,7 +373,7 @@ muyunicos/ (generatepress-child)
 │
 ├── css/                    # CSS modular
 │   ├── components/         # global-ui.css, header.css, footer.css, modal-auth.css,
-│   │                        # country-modal.css, navigation-chips.css
+│   │                        # country-modal.css, navigation-chips.css, hero-promo.css
 │   ├── admin*.css          # admin.css, admin-hero-banners.css, admin-order-files.css,
 │   │                        # admin-orders.css
 │   └── [secciones].css     # home, shop, product, product-builder, cart, checkout,
@@ -385,6 +388,13 @@ muyunicos/ (generatepress-child)
 │   estaba acotada al endpoint 'downloads' y el resto de las pantallas se
 │   mostraba con los estilos genéricos de WooCommerce, pensados para
 │   escritorio. Solo se carga en la sección de cuenta (principio II).
+│
+│   NOTA — css/components/hero-promo.css: estilos del banner del hero, MOVIDOS
+│   desde home.css §3 (feature 013, Fase 0) sin cambiar ninguna regla, y
+│   encolados también en el panel de banners. El marcado tiene una única fuente:
+│   mu_hero_slide_render() en inc/hero-banners.php, que usan el front y el lienzo
+│   del editor. No es una hoja de sección: si se toca, se ve en el front Y en el
+│   editor (ver §8).
 │
 └── js/                     # JS modular
     ├── global-ui.js        # initCarousels()
@@ -969,6 +979,38 @@ VIGENCIA ANUAL DEL BANNER (2026-10-17, feature 012-vigencia-anual):
   System Cron de Hostinger. Si el sitio quedara sin visitas justo en el borde, la home se
   regeneraría en la primera visita posterior (el transient del país —la fuente de verdad
   del filtro— caduca igual en el borde).
+
+RENDER COMPARTIDO DEL HERO + LIENZO DEL PANEL (2026-10-17, feature 013-panel-hero-lienzo):
+- Fase 0 IMPLEMENTADA (front): el marcado del slide pasó de ui.php inline a
+  mu_hero_slide_render() (inc/hero-banners.php) y los estilos del hero de home.css §3 a
+  css/components/hero-promo.css, SIN cambiar una regla ni un atributo. Objetivo: que el
+  front y el futuro lienzo del editor usen la MISMA fuente (antes, cualquier vista previa
+  habría duplicado HTML y CSS, con deriva garantizada).
+- Por qué el renderer vive en hero-banners.php: functions.php carga icons (360) →
+  hero-banners (379) → ui (381) y el panel renderiza la fila desde hero-banners; un
+  renderer en ui.php no existiría cuando el panel lo necesita.
+- Verificación automática: specs/013-panel-hero-lienzo/harness/arnes-render-hero.php (37 OK)
+  compara contra un fixture capturado de PRODUCCIÓN antes de la extracción: igualdad
+  normalizada del slide, byte a byte en h1/p/src/alt/href y textos de CTA, y QUÉ función de
+  escape usa cada campo (wp_kses_post el título, esc_html el resto del texto, esc_attr el
+  alt, esc_url las URLs). La normalización de espacios es deliberada: la indentación de un
+  bucle inline no es reproducible en una función y el navegador la ignora. Atención al dato
+  medido: se comparan ambos lados serializados como DOM, porque libxml baja viewBox a
+  viewbox (el viewBox se verifica aparte sobre el HTML crudo).
+- [ ] Verificación manual en producción (Fase B del quickstart de 013): hero de
+  muyunicos.com + 2 subdominios idéntico al fixture y 'hero-promo.css' servido. Sin eso, la
+  Fase 0 se marca NO VERIFICADA.
+- [ ] Fases 1-3 (lienzo vivo + jerarquía de la fila): diseñadas, SIN empezar. El lienzo
+  reusa el renderer y el componente CSS dentro del panel (container query en lugar de vw,
+  modo móvil conmutado a mano, patch por nodos sin generar HTML en JS, sin requests).
+  Se descartó el iframe con flag de preview (?mu_banner_preview): exigía resolver flag
+  público, nonce entre subdominios, admin bar, nocache_headers, caché por query y
+  modal-auth.css condicional —todo medido— y el lienzo no necesita nada de eso.
+- 📋 HALLAZGO PREVIO (no lo introduce 013, medido): el CTA secundario del hero usa
+  .mu-btn-outline, definido en css/cart.css y css/checkout.css — hojas que la home NO carga:
+  en el front el botón secundario no tiene estilo propio. Y .mu-btn/.mu-btn-primary viven en
+  css/components/modal-auth.css, que se encola SÓLO para visitantes no logueados (un admin
+  no los ve ni en el front). Candidato a un fix/ aparte.
 
 HUECOS Y DECISIONES ABIERTAS (2026-10-16, feature 004-country-scope):
 - [x] RESUELTO 2026-10-16 — Sitemap de Rank Math: el hook es `rank_math/sitemap/entry` y

@@ -1,0 +1,304 @@
+<?php
+/**
+ * Arnés de la extracción del render del hero (feature 013, Fase 0).
+ *
+ * Compara el HTML que emite mu_hero_slide_render() —ahora fuente única del front y del
+ * futuro lienzo del panel— contra el fixture capturado de PRODUCCIÓN **antes** de la
+ * extracción. Si el front cambia una clase, un atributo, su orden o el escape, falla.
+ *
+ * Qué compara y con qué rigor:
+ *   · El slide completo, NORMALIZADO (se colapsan los espacios en blanco: la indentación
+ *     de un bucle inline no es reproducible dentro de una función y el navegador la
+ *     ignora). Etiquetas, atributos, su orden y los textos deben coincidir.
+ *   · Los nodos con contenido (h1, p, span del CTA) y los atributos (src, alt, href),
+ *     BYTE A BYTE.
+ *   · El eyebrow y el texto del CTA secundario, normalizados (el original los emite con
+ *     espacios alrededor).
+ *
+ * Se corre desde la raíz del repositorio:
+ *   php specs\013-panel-hero-lienzo\harness\arnes-render-hero.php
+ */
+define( 'ABSPATH', __DIR__ . '/' );
+date_default_timezone_set( 'UTC' );
+
+if ( ! defined( 'HOUR_IN_SECONDS' ) ) { define( 'HOUR_IN_SECONDS', 3600 ); }
+if ( ! defined( 'DAY_IN_SECONDS' ) ) { define( 'DAY_IN_SECONDS', 86400 ); }
+
+$GLOBALS['mu_ok']   = 0;
+$GLOBALS['mu_fail'] = 0;
+
+function check( $label, $cond, $extra = '' ) {
+    if ( $cond ) {
+        $GLOBALS['mu_ok']++;
+        echo "OK   {$label}\n";
+    } else {
+        $GLOBALS['mu_fail']++;
+        echo "FAIL {$label}" . ( '' !== $extra ? "  [{$extra}]" : '' ) . "\n";
+    }
+}
+
+function same( $label, $expected, $actual ) {
+    check(
+        $label,
+        $expected === $actual,
+        'esperado=' . var_export( $expected, true ) . ' obtenido=' . var_export( $actual, true )
+    );
+}
+
+/* --- WordPress simulado --------------------------------------------------- */
+/* Los escapes ANOTAN su uso: así el arnés puede exigir que el título siga pasando por
+   wp_kses_post y la descripción por esc_html (regresión clásica de una extracción). */
+$GLOBALS['mu_esc_calls'] = [];
+
+function is_admin() { return false; }
+function add_action() {}
+function __( $t ) { return $t; }
+function esc_html__( $t ) { return $t; }
+function esc_attr__( $t ) { return $t; }
+function sanitize_title( $t ) { return trim( strtolower( preg_replace( '/[^a-z0-9]+/i', '-', (string) $t ) ), '-' ); }
+function sanitize_text_field( $t ) { return trim( (string) $t ); }
+function sanitize_textarea_field( $t ) { return trim( (string) $t ); }
+function wp_parse_args( $a, $d ) { return array_merge( $d, (array) $a ); }
+function get_option( $k, $def = null ) { return $def; }
+function get_transient( $k ) { return false; }
+function set_transient( $k, $v, $t = 0 ) { return true; }
+function delete_transient( $k ) { return true; }
+function muyu_get_current_country_from_subdomain() { return 'AR'; }
+function wp_timezone() { return new DateTimeZone( 'America/Argentina/Buenos_Aires' ); }
+function wp_next_scheduled( $h ) { return false; }
+function wp_schedule_single_event( $t, $h, $a = [] ) { return true; }
+function wp_clear_scheduled_hook( $h ) { return true; }
+function has_action( $h ) { return false; }
+function do_action( $h ) {}
+
+/** Escape con anotación: el arnés verifica que cada campo use la función de siempre. */
+function mu_esc( $fn, $valor ) {
+    $GLOBALS['mu_esc_calls'][ $fn ] = ( $GLOBALS['mu_esc_calls'][ $fn ] ?? 0 ) + 1;
+
+    // Con los marcadores activos el valor sale envuelto: así el arnés comprueba QUÉ
+    // función escapó cada campo (título → wp_kses_post, descripción → esc_html…).
+    if ( ! empty( $GLOBALS['mu_esc_marcar'] ) ) {
+        return '{{' . $fn . '}}' . (string) $valor . '{{/' . $fn . '}}';
+    }
+
+    return (string) $valor;
+}
+function esc_html( $t ) { return mu_esc( 'esc_html', $t ); }
+function esc_attr( $t ) { return mu_esc( 'esc_attr', $t ); }
+function esc_url( $t ) { return mu_esc( 'esc_url', $t ); }
+function esc_url_raw( $t ) { return (string) $t; }
+function esc_textarea( $t ) { return (string) $t; }
+function wp_kses_post( $t ) { return mu_esc( 'wp_kses_post', $t ); }
+function esc_html_e( $t ) { echo $t; }
+function esc_attr_e( $t ) { echo $t; }
+function checked( $a, $b = true, $echo = true ) { return ''; }
+
+// El repositorio REAL de iconos (array puro): el SVG del CTA debe ser el de producción.
+require __DIR__ . '/../../../inc/icons.php';
+
+// El módulo real: de acá salen mu_hero_slide_render() y mu_hero_banner_field().
+require __DIR__ . '/../../../inc/hero-banners.php';
+
+/* --- Normalización, DOM y helpers ----------------------------------------- */
+function mu_norm( $html ) {
+    $html = str_replace( [ "\r\n", "\r" ], "\n", (string) $html );
+    $html = preg_replace( '/>\s+</', '><', $html );   // espacios ENTRE etiquetas
+    $html = preg_replace( '/\s+/', ' ', $html );      // corridas de espacios
+    return trim( (string) $html );
+}
+
+/** DOMDocument de un fragmento HTML (UTF-8 explícito). */
+function mu_dom( $html ) {
+    $doc = new DOMDocument();
+    libxml_use_internal_errors( true );
+    $doc->loadHTML( '<?xml encoding="utf-8" ?>' . (string) $html );
+    libxml_clear_errors();
+
+    return $doc;
+}
+
+/** Primer nodo etiqueta+clase (clase vacía = por etiqueta). */
+function mu_nodo( DOMDocument $doc, $tag, $clase = '' ) {
+    $xpath = new DOMXPath( $doc );
+    $query = '' === $clase
+        ? "//{$tag}"
+        : "//{$tag}[contains(concat(' ', normalize-space(@class), ' '), ' {$clase} ')]";
+    $nodos = $xpath->query( $query );
+
+    return ( $nodos && $nodos->length ) ? $nodos->item( 0 ) : null;
+}
+
+/** HTML completo de un nodo. */
+function mu_html_nodo( $nodo ) {
+    if ( ! $nodo instanceof DOMNode ) {
+        return '';
+    }
+
+    return (string) $nodo->ownerDocument->saveHTML( $nodo );
+}
+
+/** Contenido interno de un nodo (para eyebrow y textos de CTA). */
+function mu_inner( $nodo ) {
+    if ( ! $nodo instanceof DOMNode ) {
+        return '';
+    }
+
+    $out = '';
+    foreach ( $nodo->childNodes as $hijo ) {
+        $out .= $nodo->ownerDocument->saveHTML( $hijo );
+    }
+
+    return $out;
+}
+
+/** Valor de un atributo de un nodo. */
+function mu_attr( $nodo, $attr ) {
+    return ( $nodo instanceof DOMElement ) ? (string) $nodo->getAttribute( $attr ) : '';
+}
+
+/* --- Fixture y datos de producción ---------------------------------------- */
+$ruta_fixture = __DIR__ . '/fixtures/hero-slide-produccion-ar.html';
+
+if ( ! file_exists( $ruta_fixture ) ) {
+    echo "FAIL No se encontró el fixture de producción (harness/fixtures/).\n== 0 OK / 1 FAIL ==\n";
+    exit( 1 );
+}
+
+$doc_fixture = mu_dom( file_get_contents( $ruta_fixture ) );
+$slide_fix   = mu_nodo( $doc_fixture, 'div', 'mu-hero-promo-slide' );
+
+// Los MISMOS datos del banner que producción sirvió al capturar el fixture
+// (transcritos del propio fixture: título, descripción, eyebrow, imagen, CTAs, badge).
+$promo_ar = [
+    'id'                   => 'cotizador',
+    'titulo'               => 'Calculá el precio de tu pedido',
+    'descripcion'          => 'Conocé nuestros precios de etiquetas adhesivas para tu emprendimiento o evento.',
+    'eyebrow'              => 'Cotizador Online',
+    'imagen'               => '/wp-content/uploads/2026/07/cotizador2.webp',
+    'cta_texto'            => 'Ver más',
+    'cta_url'              => '/emprendimientos/',
+    'cta_secundario_texto' => 'Cotizar',
+    'cta_secundario_url'   => '/cotizador/',
+    'show_free_badge'      => false,
+];
+
+$render     = mu_hero_slide_render( $promo_ar, 'es', [ 'index' => 0, 'first' => true ] );
+$doc_render = mu_dom( $render );
+
+echo "--- 1. Igualdad con el fixture de producción (front intacto) ---\n";
+same(
+    'El slide renderizado coincide con producción (normalizado, ambos lados como DOM)',
+    mu_norm( mu_html_nodo( $slide_fix ) ),
+    mu_norm( mu_html_nodo( mu_nodo( $doc_render, 'div', 'mu-hero-promo-slide' ) ) )
+);
+// El icono se compara además sobre el HTML CRUDO del renderer (sin pasar por libxml,
+// que baja a minúsculas los nombres de atributo: viewBox → viewbox).
+same(
+    'El SVG del CTA sale con su viewBox tal cual (HTML crudo)',
+    1,
+    substr_count( $render, '<svg class="mu-icon-svg muy-svg" viewBox="0 0 24 24">' )
+);
+
+foreach ( [ [ 'h1', 'mu-hero-promo-title' ], [ 'p', 'mu-hero-promo-desc' ] ] as $par ) {
+    same(
+        "Nodo <{$par[0]} class=\"{$par[1]}\"> byte a byte",
+        mu_html_nodo( mu_nodo( $doc_fixture, $par[0], $par[1] ) ),
+        mu_html_nodo( mu_nodo( $doc_render, $par[0], $par[1] ) )
+    );
+}
+
+same(
+    'src de la imagen byte a byte',
+    mu_attr( mu_nodo( $doc_fixture, 'img' ), 'src' ),
+    mu_attr( mu_nodo( $doc_render, 'img' ), 'src' )
+);
+same(
+    'alt de la imagen byte a byte (strip_tags del título)',
+    mu_attr( mu_nodo( $doc_fixture, 'img' ), 'alt' ),
+    mu_attr( mu_nodo( $doc_render, 'img' ), 'alt' )
+);
+same(
+    'Atributos de la imagen (width/height/loading/fetchpriority/decoding)',
+    mu_norm( mu_html_nodo( mu_nodo( $doc_fixture, 'img' ) ) ),
+    mu_norm( mu_html_nodo( mu_nodo( $doc_render, 'img' ) ) )
+);
+
+$cta_fix = mu_nodo( $doc_fixture, 'a', 'mu-btn-primary' );
+$cta_new = mu_nodo( $doc_render, 'a', 'mu-btn-primary' );
+same( 'href del CTA principal byte a byte', mu_attr( $cta_fix, 'href' ), mu_attr( $cta_new, 'href' ) );
+same( 'Texto del CTA principal byte a byte', mu_inner( mu_nodo( $doc_fixture, 'span' ) ), mu_inner( mu_nodo( $doc_render, 'span' ) ) );
+same(
+    'El icono del CTA es el mismo SVG',
+    1,
+    substr_count( mu_norm( $render ), '<svg class="mu-icon-svg muy-svg" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>' )
+);
+
+$sec_fix = mu_nodo( $doc_fixture, 'a', 'mu-btn-outline' );
+$sec_new = mu_nodo( $doc_render, 'a', 'mu-btn-outline' );
+same( 'href del CTA secundario byte a byte', mu_attr( $sec_fix, 'href' ), mu_attr( $sec_new, 'href' ) );
+same( 'Texto del CTA secundario (normalizado)', mu_norm( mu_inner( $sec_fix ) ), mu_norm( mu_inner( $sec_new ) ) );
+same(
+    'Contenido del eyebrow (normalizado)',
+    mu_norm( mu_html_nodo( mu_nodo( $doc_fixture, 'div', 'mu-hero-promo-eyebrow' ) ) ),
+    mu_norm( mu_html_nodo( mu_nodo( $doc_render, 'div', 'mu-hero-promo-eyebrow' ) ) )
+);
+same( 'Producción no tenía badge y el render tampoco lo emite', 0, substr_count( $render, 'mu-hero-promo-free-badge' ) );
+
+echo "\n--- 2. Quién escapa cada campo (marcadores) ---\n";
+$GLOBALS['mu_esc_marcar'] = true;
+$marcado                  = mu_hero_slide_render( $promo_ar, 'es', [ 'index' => 0, 'first' => true ] );
+$GLOBALS['mu_esc_marcar'] = false;
+
+check(
+    'El título pasa por wp_kses_post (HTML permitido)',
+    false !== strpos( $marcado, '<h1 class="mu-hero-promo-title">{{wp_kses_post}}Calculá el precio de tu pedido{{/wp_kses_post}}</h1>' )
+);
+check(
+    'La descripción pasa por esc_html',
+    false !== strpos( $marcado, '<p class="mu-hero-promo-desc">{{esc_html}}Conocé nuestros precios de etiquetas adhesivas para tu emprendimiento o evento.{{/esc_html}}</p>' )
+);
+check( 'El eyebrow pasa por esc_html', false !== strpos( $marcado, '{{esc_html}}Cotizador Online{{/esc_html}}' ) );
+check( 'El alt pasa por esc_attr', false !== strpos( $marcado, 'alt="{{esc_attr}}Calculá el precio de tu pedido{{/esc_attr}}"' ) );
+check( 'El src pasa por esc_url', false !== strpos( $marcado, 'src="{{esc_url}}/wp-content/uploads/2026/07/cotizador2.webp{{/esc_url}}"' ) );
+check( 'El href del CTA principal pasa por esc_url', false !== strpos( $marcado, 'href="{{esc_url}}/emprendimientos/{{/esc_url}}"' ) );
+check( 'El texto del CTA principal pasa por esc_html', false !== strpos( $marcado, '<span>{{esc_html}}Ver más{{/esc_html}}</span>' ) );
+check( 'El texto del CTA secundario pasa por esc_html', false !== strpos( $marcado, '{{esc_html}}Cotizar{{/esc_html}}' ) );
+same( 'El texto del badge no se escapa si no se muestra', 0, substr_count( $marcado, '<strong>¡Gratis!</strong>' ) );
+
+echo "\n--- 3. first, badge e idioma ---\n";
+$no_primero = mu_hero_slide_render( $promo_ar, 'es', [ 'index' => 3, 'first' => false ] );
+same( 'Sin first no lleva la clase active', 0, substr_count( $no_primero, ' active' ) );
+check( 'Sin first la imagen carga en lazy', false !== strpos( $no_primero, 'loading="lazy"' ) );
+same( 'Sin first no hay fetchpriority', 0, substr_count( $no_primero, 'fetchpriority' ) );
+same( 'El índice sale en data-slide-index', 1, substr_count( $no_primero, 'data-slide-index="3"' ) );
+
+$con_badge = $promo_ar;
+$con_badge['show_free_badge'] = true;
+$badge = mu_hero_slide_render( $con_badge, 'es' );
+check( 'Badge activo sin datos propios: usa la URL por defecto', false !== strpos( $badge, 'href="/tienda/digital/?min_price=0&max_price=0"' ) );
+check( 'Y el texto por defecto del badge', false !== strpos( $badge, '<strong>¡Gratis!</strong><span>Envíos digitales</span>' ) );
+
+$badge_propio = $con_badge;
+$badge_propio['free_badge_text'] = '<strong>Envío gratis</strong>';
+$badge_propio['free_badge_url']  = '/envios/';
+$bd = mu_hero_slide_render( $badge_propio, 'es' );
+check( 'Con datos propios el badge los usa', false !== strpos( $bd, 'href="/envios/"' ) && false !== strpos( $bd, '<strong>Envío gratis</strong>' ) );
+
+$pt = $promo_ar;
+$pt['titulo_pt'] = 'Calcule o preço do seu pedido';
+same( 'En pt usa la traducción propia', 1, substr_count( mu_hero_slide_render( $pt, 'pt' ), '<h1 class="mu-hero-promo-title">Calcule o preço do seu pedido</h1>' ) );
+same( 'En es sigue usando el español', 1, substr_count( mu_hero_slide_render( $pt, 'es' ), '<h1 class="mu-hero-promo-title">Calculá el precio de tu pedido</h1>' ) );
+same( 'Un idioma sin traducción cae al español', 1, substr_count( mu_hero_slide_render( $promo_ar, 'en' ), '<h1 class="mu-hero-promo-title">Calculá el precio de tu pedido</h1>' ) );
+same( 'Y el alt de la imagen sigue al título del idioma activo', 1, substr_count( mu_hero_slide_render( $pt, 'pt' ), 'alt="Calcule o preço do seu pedido"' ) );
+
+same( 'Banner no-array no rompe', 1, substr_count( mu_hero_slide_render( 'x', 'es' ), 'mu-hero-promo-slide' ) );
+same( 'Sin eyebrow no se emite el bloque', 0, substr_count( mu_hero_slide_render( [ 'titulo' => 'x' ], 'es' ), 'mu-hero-promo-eyebrow' ) );
+same(
+    'Sin CTA secundario completo no se emite',
+    0,
+    substr_count( mu_hero_slide_render( [ 'titulo' => 'x', 'cta_secundario_texto' => 'Cotizar' ], 'es' ), 'mu-btn-outline' )
+);
+
+echo "\n== {$GLOBALS['mu_ok']} OK / {$GLOBALS['mu_fail']} FAIL ==\n";
+exit( $GLOBALS['mu_fail'] > 0 ? 1 : 0 );
+

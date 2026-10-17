@@ -10,11 +10,13 @@
  *              Vigencia anual: con 'anual' (general) o 'fechas[PAIS][anual]' se ignoran
  *              los años guardados (sólo cuentan día y mes) y la ventana puede cruzar el
  *              fin de año (20/12 → 10/01). Ver mu_hero_banner_ventana_anual().
+ *              Render: mu_hero_slide_render() es la FUENTE ÚNICA del HTML del slide (la
+ *              comparten el front y el lienzo del panel — feature 013).
  *              Cache: transient por país 'mu_hero_banners_active_{PAIS}' (TTL 12h,
  *              acortado al próximo borde de fecha), invalidado al guardar vía
  *              mu_hero_banners_purge_cache(). La home de los hosts se purga al guardar y
  *              en cada borde de fecha (mu_hero_banner_programar_purga_borde()).
- * Version: 1.2.0
+ * Version: 1.3.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -1124,6 +1126,119 @@ add_action( 'add_option_' . MU_HERO_BANNERS_OPTION, 'mu_hero_banners_purge_cache
 add_action( 'mu_hero_banner_purge_borde', 'mu_hero_banner_purge_borde_ejecutar' );
 add_action( 'update_option_' . MU_HERO_BANNERS_OPTION, 'mu_hero_banner_reprogramar_purga_borde' );
 add_action( 'add_option_' . MU_HERO_BANNERS_OPTION, 'mu_hero_banner_reprogramar_purga_borde' );
+
+// ==========================================
+// 1.b RENDER DEL SLIDE — FUENTE ÚNICA (FRONT + PANEL)
+// ==========================================
+
+if ( ! function_exists( 'mu_hero_slide_render' ) ) {
+    /**
+     * Render de UN slide del hero.
+     *
+     * FUENTE ÚNICA del marcado del banner: lo consume el front (mu_hero_section(), en
+     * ui.php, que sólo aporta el wrapper, el slider y los dots) y el lienzo del panel
+     * (feature 013), para que el editor muestre EXACTAMENTE el HTML del sitio.
+     *
+     * Vive acá y no en ui.php por el orden de carga de functions.php: hero-banners (379)
+     * se carga ANTES que ui (381) y el panel renderiza la fila desde este módulo. El
+     * módulo icons (360) va primero, así que mu_get_icon() está disponible.
+     *
+     * El marcado, las clases, el orden de los atributos y el escape son los que emitía
+     * ui.php inline (features 001-012): lo verifica el arnés de 013 comparando contra el
+     * fixture capturado de producción ANTES de esta extracción.
+     *
+     * @param array  $promo Banner (mismos campos que consume el front).
+     * @param string $lang  Idioma ya resuelto ('es'|'en'|'pt').
+     * @param array  $args  index (int, sale en data-slide-index) y first (bool: clase
+     *                      active, loading eager y fetchpriority high).
+     * @return string HTML del slide.
+     */
+    function mu_hero_slide_render( $promo, $lang, $args = [] ) {
+        $promo = is_array( $promo ) ? $promo : [];
+        $args  = wp_parse_args( $args, [ 'index' => 0, 'first' => true ] );
+
+        $idx   = (int) $args['index'];
+        $first = ! empty( $args['first'] );
+
+        // Campo del banner en el idioma pedido: el traducido cuando existe y el español
+        // en cualquier otro caso (sobrescritura dispersa, ver mu_hero_banner_field()).
+        $field = function ( $base ) use ( $promo, $lang ) {
+            return function_exists( 'mu_hero_banner_field' )
+                ? mu_hero_banner_field( $promo, $base, $lang )
+                : (string) ( $promo[ $base ] ?? '' );
+        };
+
+        // --- DEFAULTS PARA BADGE (los únicos del sistema) ---
+        $badge_defaults = [
+            'url'  => '/tienda/digital/?min_price=0&max_price=0',
+            'text' => '<strong>¡Gratis!</strong><span>Envíos digitales</span>',
+        ];
+
+        $titulo       = $field( 'titulo' );
+        $show_badge   = ! empty( $promo['show_free_badge'] ) && true === $promo['show_free_badge'];
+        $imagen       = $field( 'imagen' );
+        $eyebrow      = $field( 'eyebrow' );
+        $cta_url      = $field( 'cta_url' );
+        $cta_sec_text = $field( 'cta_secundario_texto' );
+        $cta_sec_url  = $field( 'cta_secundario_url' );
+        $badge_url    = $field( 'free_badge_url' );
+        $badge_text   = $field( 'free_badge_text' );
+
+        if ( '' === $badge_url ) {
+            $badge_url = $badge_defaults['url'];
+        }
+        if ( '' === $badge_text ) {
+            $badge_text = $badge_defaults['text'];
+        }
+
+        ob_start();
+        ?>
+        <div class="mu-hero-promo-slide<?php echo $first ? ' active' : ''; ?>"
+             data-slide-index="<?php echo esc_attr( $idx ); ?>">
+
+            <div class="mu-hero-promo-bg">
+                <img src="<?php echo esc_url( $imagen ); ?>"
+                     alt="<?php echo esc_attr( strip_tags( $titulo ) ); ?>"
+                     width="1280" height="580"
+                     loading="<?php echo $first ? 'eager' : 'lazy'; ?>"
+                     <?php echo $first ? 'fetchpriority="high"' : ''; ?>
+                     decoding="async">
+            </div>
+
+            <div class="mu-hero-promo-content">
+                <?php if ( '' !== $eyebrow ) : ?>
+                    <div class="mu-hero-promo-eyebrow">
+                        <?php echo esc_html( $eyebrow ); ?>
+                    </div>
+                <?php endif; ?>
+
+                <h1 class="mu-hero-promo-title"><?php echo wp_kses_post( $titulo ); ?></h1>
+                <p class="mu-hero-promo-desc"><?php echo esc_html( $field( 'descripcion' ) ); ?></p>
+
+                <div class="mu-hero-promo-actions">
+                    <a href="<?php echo esc_url( $cta_url ); ?>" class="mu-btn mu-btn-primary">
+                        <span><?php echo esc_html( $field( 'cta_texto' ) ); ?></span>
+                        <?php echo mu_get_icon( 'arrow' ); ?>
+                    </a>
+
+                    <?php if ( '' !== $cta_sec_text && '' !== $cta_sec_url ) : ?>
+                    <a href="<?php echo esc_url( $cta_sec_url ); ?>" class="mu-btn mu-btn-outline">
+                        <?php echo esc_html( $cta_sec_text ); ?>
+                    </a>
+                    <?php endif; ?>
+
+                    <?php if ( $show_badge ) : ?>
+                    <a href="<?php echo esc_url( $badge_url ); ?>" class="mu-hero-promo-free-badge">
+                        <div class="mu-hero-promo-free-text"><?php echo wp_kses_post( $badge_text ); ?></div>
+                    </a>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+        <?php
+        return (string) ob_get_clean();
+    }
+}
 
 // ==========================================
 // 2. ADMIN — SUBMENU BAJO WC MARKETING
