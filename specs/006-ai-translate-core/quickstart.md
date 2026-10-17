@@ -104,7 +104,10 @@ gratuito.
 
 ### B.1 Configuración y estado (US1)
 
-1. Definir la clave en la configuración del servidor y abrir la pantalla del servicio.
+1. Abrir la pantalla del servicio y **pegar la clave en el campo «Clave del servicio»** y
+   guardar (queda en `_mu_ai_key`, sin autoload y enmascarada). Alternativa equivalente:
+   definir `MU_GEMINI_API_KEY` en la configuración del servidor, que **tiene prioridad**
+   sobre la guardada en la base.
 2. **Probar conexión**: debe responder correctamente, indicar el modelo en uso y la
    latencia, y listar los modelos disponibles.
 3. Quitar la clave y abrir la pantalla: debe indicar "sin configurar" y el sitio público

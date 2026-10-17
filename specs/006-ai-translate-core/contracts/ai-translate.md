@@ -7,8 +7,18 @@
 Todas las funciones con guarda `function_exists`, sin estado global nuevo y sin ninguna
 escritura de contenido. Ninguna se ejecuta en la navegación de un visitante.
 
+### `mu_ai_api_key(): string` · `mu_ai_key_source(): string` · `mu_ai_save_key( string $key ): bool` · `mu_ai_key_masked(): string`
+- `mu_ai_api_key()`: clave en uso; prioridad para la constante `MU_GEMINI_API_KEY` y, si
+  no está definida, la opción `_mu_ai_key` que el mantenedor pega en la pantalla.
+- `mu_ai_key_source()`: `'constant'`, `'option'` o `''`.
+- `mu_ai_save_key()`: guarda (o borra, con `''`) la clave de la pantalla en su propia
+  opción, **sin autoload**. Nunca escribe la clave en la opción de ajustes.
+- `mu_ai_key_masked()`: versión enmascarada para mostrar (`AQ.A…c60w`). La clave completa
+  nunca se devuelve al navegador ni a un log.
+
 ### `mu_ai_is_configured(): bool`
-`true` cuando hay clave y el servicio está habilitado. Sin red, sin base de datos.
+`true` cuando hay clave (de cualquiera de las dos fuentes) y el servicio está habilitado.
+Sin red, sin consultas pesadas.
 
 ### `mu_ai_settings(): array` · `mu_ai_settings_defaults(): array` · `mu_ai_save_settings( array $patch ): bool`
 Lectura, valores de fábrica y guardado validado (modelo, límites, contextos). **Nunca**

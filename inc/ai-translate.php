@@ -15,8 +15,9 @@
  *  - Único envío saliente de escritura del tema: vive acá y en ningún otro archivo.
  *  - Nunca se ejecuta en la navegación de un visitante: solo desde el panel
  *    (wp-admin) o desde una tarea programada futura (FR-005).
- *  - La clave vive en la configuración del servidor (constante), nunca en la base de
- *    contenido, en el repositorio ni en el HTML (FR-001).
+ *  - La clave vive en la configuración del servidor (constante) o en su propia opción de
+ *    WordPress (sin autoload, pegada desde la pantalla): nunca en el contenido, en el
+ *    repositorio ni en el HTML. La constante tiene prioridad si está definida (FR-001).
  *  - Nunca se envían datos de clientes: filtro previo por patrón (FR-012).
  *  - Caché y contador en wp_options con prefijo _mu_* (sobreviven al vaciado del
  *    object cache — constitución VI). Sin transients para datos durables.
@@ -33,6 +34,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 // ============================================
 
 if ( ! defined( 'MU_AI_SETTINGS_OPTION' ) ) define( 'MU_AI_SETTINGS_OPTION', '_mu_ai_settings' );
+if ( ! defined( 'MU_AI_KEY_OPTION' ) )      define( 'MU_AI_KEY_OPTION', '_mu_ai_key' );
 if ( ! defined( 'MU_AI_CACHE_OPTION' ) )    define( 'MU_AI_CACHE_OPTION', '_mu_ai_cache' );
 if ( ! defined( 'MU_AI_USAGE_OPTION' ) )    define( 'MU_AI_USAGE_OPTION', '_mu_ai_usage' );
 if ( ! defined( 'MU_AI_ENDPOINT' ) )        define( 'MU_AI_ENDPOINT', 'https://generativelanguage.googleapis.com/v1beta' );
@@ -48,14 +50,82 @@ if ( ! defined( 'MU_AI_DEFAULT_MODEL' ) )   define( 'MU_AI_DEFAULT_MODEL', 'gemi
 
 if ( ! function_exists( 'mu_ai_api_key' ) ) {
     /**
-     * Clave del servicio, leída de la configuración del servidor.
+     * Clave del servicio, desde la configuración del servidor o desde la base.
      *
-     * Nunca se persiste en una opción, no viaja al navegador y no se registra en logs.
+     * Prioridad: la constante de `wp-config.php` gana si está definida (permite mover
+     * la clave fuera de la base sin tocar código); si no, se usa la que el mantenedor
+     * pegó en la pantalla (FR-001: configuración del servidor **o de WordPress**).
      *
-     * @return string Clave o '' si no está definida.
+     * Nunca se devuelve al navegador (la pantalla muestra solo una versión enmascarada)
+     * y nunca se registra en logs.
+     *
+     * @return string Clave o '' si no hay ninguna.
      */
     function mu_ai_api_key() {
-        return defined( 'MU_GEMINI_API_KEY' ) ? trim( (string) MU_GEMINI_API_KEY ) : '';
+        if ( defined( 'MU_GEMINI_API_KEY' ) && '' !== trim( (string) MU_GEMINI_API_KEY ) ) {
+            return trim( (string) MU_GEMINI_API_KEY );
+        }
+
+        return trim( (string) get_option( MU_AI_KEY_OPTION, '' ) );
+    }
+}
+
+if ( ! function_exists( 'mu_ai_key_source' ) ) {
+    /**
+     * De dónde sale la clave en uso: 'constant', 'option' o '' (sin configurar).
+     *
+     * @return string
+     */
+    function mu_ai_key_source() {
+        if ( defined( 'MU_GEMINI_API_KEY' ) && '' !== trim( (string) MU_GEMINI_API_KEY ) ) {
+            return 'constant';
+        }
+
+        return ( '' !== trim( (string) get_option( MU_AI_KEY_OPTION, '' ) ) ) ? 'option' : '';
+    }
+}
+
+if ( ! function_exists( 'mu_ai_save_key' ) ) {
+    /**
+     * Guarda (o borra) la clave pegada en la pantalla.
+     *
+     * Se guarda en su propia opción, sin autoload: no se carga en la navegación de
+     * visitantes y se borra con una sola acción (rollback). No se guarda en la opción de
+     * ajustes para que nunca viaje dentro de arrays que la pantalla imprime.
+     *
+     * @param string $key Clave nueva, o '' para borrarla.
+     * @return bool
+     */
+    function mu_ai_save_key( $key ) {
+        $key = trim( sanitize_text_field( (string) $key ) );
+
+        if ( '' === $key ) {
+            delete_option( MU_AI_KEY_OPTION );
+            return true;
+        }
+
+        return update_option( MU_AI_KEY_OPTION, $key, false );
+    }
+}
+
+if ( ! function_exists( 'mu_ai_key_masked' ) ) {
+    /**
+     * Versión enmascarada de la clave, solo para mostrar en pantalla.
+     *
+     * @return string Ej: 'AQ.A…c60w', o '' si no hay clave.
+     */
+    function mu_ai_key_masked() {
+        $key = mu_ai_api_key();
+
+        if ( '' === $key ) {
+            return '';
+        }
+
+        if ( strlen( $key ) <= 10 ) {
+            return str_repeat( '•', strlen( $key ) );
+        }
+
+        return substr( $key, 0, 4 ) . '…' . substr( $key, -4 );
     }
 }
 

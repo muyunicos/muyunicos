@@ -21,8 +21,15 @@ en reseñas y banners.
 ]
 ```
 
-- **Clave**: constante `MU_GEMINI_API_KEY` en la configuración del servidor. Nunca en la
-  opción, nunca en el repositorio, nunca en el HTML (FR-001).
+- **Clave** (dos fuentes, con prioridad explícita):
+  1. `MU_GEMINI_API_KEY` en la configuración del servidor — **gana si está definida**;
+     permite mover la clave fuera de la base sin tocar código.
+  2. Opción `_mu_ai_key` (sin autoload) — la que el mantenedor pega en la pantalla
+     (decisión del mantenedor, 2026-10-16: le resulta incómodo editar `wp-config.php`).
+- En ningún caso la clave se guarda en la opción de ajustes, se imprime en el HTML o se
+  registra en logs: la pantalla muestra solo su versión enmascarada
+  (`AQ.A…c60w`), el campo de reemplazo se envía vacío y hay una casilla para borrarla
+  (FR-001).
 - `contexts` se fusiona con los valores por defecto en cada lectura: agregar un ámbito
   futuro no rompe la configuración guardada.
 - La opción se guarda sin autoload: no se lee en la navegación de visitantes.

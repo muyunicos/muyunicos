@@ -85,6 +85,14 @@ if ( ! function_exists( 'mu_ai_handle_save' ) ) {
         if ( isset( $_POST['mu_ai_reset_usage'] ) ) {
             mu_ai_usage_reset();
         } else {
+            // La clave se toca solo si el mantenedor escribió una nueva o pidió borrarla
+            // (el campo se envía vacío en cada guardado para no reescribir el valor).
+            if ( isset( $_POST['mu_ai_delete_key'] ) ) {
+                mu_ai_save_key( '' );
+            } elseif ( ! empty( $_POST['api_key'] ) ) {
+                mu_ai_save_key( (string) wp_unslash( $_POST['api_key'] ) );
+            }
+
             mu_ai_save_settings( [
                 'enabled'  => isset( $_POST['enabled'] ),
                 'model'    => isset( $_POST['model'] ) ? (string) wp_unslash( $_POST['model'] ) : '',
@@ -112,6 +120,7 @@ if ( ! function_exists( 'mu_ai_render_admin_page' ) ) {
         $settings   = mu_ai_settings();
         $usage      = mu_ai_usage();
         $key_loaded = '' !== mu_ai_api_key();
+        $key_source = mu_ai_key_source();
         $updated    = isset( $_GET['updated'] ) && '1' === $_GET['updated'];
         $last_error = is_array( $usage['last_error'] ) ? $usage['last_error'] : [];
         ?>
@@ -137,7 +146,18 @@ if ( ! function_exists( 'mu_ai_render_admin_page' ) ) {
                 </p>
                 <?php if ( ! $key_loaded ) : ?>
                     <p class="mu-ai-hint">
-                        <?php esc_html_e( 'La clave no se guarda en la base de datos: definí la constante MU_GEMINI_API_KEY en la configuración del servidor (wp-config.php). Hasta entonces el sitio funciona igual y las secciones muestran el español.', 'mu' ); ?>
+                        <?php esc_html_e( 'Todavía no hay clave. Pegala en el campo «Clave del servicio» y guardá. Hasta entonces el sitio funciona igual y las secciones muestran el español.', 'mu' ); ?>
+                    </p>
+                <?php else : ?>
+                    <p class="mu-ai-hint">
+                        <?php
+                        echo esc_html( sprintf(
+                            'constant' === $key_source
+                                ? __( 'Clave %s — definida en la configuración del servidor, tiene prioridad sobre la guardada en la base.', 'mu' )
+                                : __( 'Clave %s — guardada en la base de datos (sin carga automática).', 'mu' ),
+                            mu_ai_key_masked()
+                        ) );
+                        ?>
                     </p>
                 <?php endif; ?>
                 <p>
@@ -152,6 +172,14 @@ if ( ! function_exists( 'mu_ai_render_admin_page' ) ) {
                 <div class="mu-ai-card">
                     <h2><?php esc_html_e( 'Ajustes', 'mu' ); ?></h2>
                     <div class="mu-ai-grid">
+                        <p>
+                            <label for="mu-ai-api-key"><strong><?php esc_html_e( 'Clave del servicio', 'mu' ); ?></strong></label><br>
+                            <input type="password" class="regular-text" id="mu-ai-api-key" name="api_key" value="" autocomplete="off" spellcheck="false" placeholder="<?php echo $key_loaded ? esc_attr__( 'Pegá una nueva para reemplazarla', 'mu' ) : 'AQ.…'; ?>">
+                            <span class="mu-ai-hint"><?php esc_html_e( 'Se guarda en la base de datos sin carga automática y nunca se muestra de nuevo. Dejá el campo vacío para no cambiarla.', 'mu' ); ?></span>
+                            <?php if ( 'option' === $key_source ) : ?>
+                                <label><input type="checkbox" name="mu_ai_delete_key" value="1"> <?php esc_html_e( 'Borrar la clave guardada', 'mu' ); ?></label>
+                            <?php endif; ?>
+                        </p>
                         <p>
                             <label><strong><?php esc_html_e( 'Servicio activo', 'mu' ); ?></strong></label><br>
                             <label><input type="checkbox" name="enabled" value="1" <?php checked( ! empty( $settings['enabled'] ) ); ?>> <?php esc_html_e( 'Permitir traducciones', 'mu' ); ?></label>
