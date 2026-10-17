@@ -329,7 +329,11 @@ $sin_problemas = [
     'fin'    => '31122026',
     'fechas' => [ 'BR' => [ 'inicio' => '01062026', 'fin' => '' ] ],
 ];
-same( 'Banner sano: sin avisos', [ 'invalidas' => [], 'invertidas' => [] ], mu_hero_banner_avisos( $sin_problemas ) );
+same(
+    'Banner sano: sin avisos',
+    [ 'invalidas' => [], 'invertidas' => [], 'anuales_incompletas' => [] ],
+    mu_hero_banner_avisos( $sin_problemas )
+);
 same( 'Fecha general inválida', [ '' ], mu_hero_banner_avisos( [ 'inicio' => '31132026', 'fin' => '31122026' ] )['invalidas'] );
 same( 'Fecha de país inválida', [ 'BR' ], mu_hero_banner_avisos( [ 'fechas' => [ 'BR' => [ 'inicio' => '2026-06-01', 'fin' => '' ] ] ] )['invalidas'] );
 same( 'Rango invertido en un país', [ 'BR' ], mu_hero_banner_avisos( [ 'fechas' => [ 'BR' => [ 'inicio' => '30062026', 'fin' => '01062026' ] ] ] )['invertidas'] );

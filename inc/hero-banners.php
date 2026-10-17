@@ -7,9 +7,14 @@
  *              Fechas: 'inicio'/'fin' son las GENERALES; cada país puede tener su
  *              propia ventana en 'fechas[PAIS]' (campo vacío o igual a la general =
  *              hereda). Ver mu_hero_banner_pais_fechas().
- *              Cache: transient por país 'mu_hero_banners_active_{PAIS}' (TTL 12h),
- *              invalidado al guardar vía mu_hero_banners_purge_cache().
- * Version: 1.1.0
+ *              Vigencia anual: con 'anual' (general) o 'fechas[PAIS][anual]' se ignoran
+ *              los años guardados (sólo cuentan día y mes) y la ventana puede cruzar el
+ *              fin de año (20/12 → 10/01). Ver mu_hero_banner_ventana_anual().
+ *              Cache: transient por país 'mu_hero_banners_active_{PAIS}' (TTL 12h,
+ *              acortado al próximo borde de fecha), invalidado al guardar vía
+ *              mu_hero_banners_purge_cache(). La home de los hosts se purga al guardar y
+ *              en cada borde de fecha (mu_hero_banner_programar_purga_borde()).
+ * Version: 1.2.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -147,17 +152,32 @@ if ( ! function_exists( 'mu_hero_banners_sanitize_one' ) ) {
         $fechas     = [];
         $raw_fechas = isset( $b['fechas'] ) && is_array( $b['fechas'] ) ? $b['fechas'] : [];
 
+        // [012] Vigencia anual: '1'/'0' explícitos en la general (raíz de la herencia) y
+        // por país sólo cuando DIFIERE de la general (ausente = hereda), la misma
+        // convención que inicio/fin (ver mu_hero_banner_anual_efectivo()).
+        $anual_global = ! empty( $b['anual'] ) ? '1' : '0';
+
         foreach ( $valid_paises as $code ) {
             $own = isset( $raw_fechas[ $code ] ) && is_array( $raw_fechas[ $code ] ) ? $raw_fechas[ $code ] : [];
 
             $ini = mu_hero_banner_fecha_valida( $own['inicio'] ?? '' ) ? (string) $own['inicio'] : '';
             $fin = mu_hero_banner_fecha_valida( $own['fin'] ?? '' )    ? (string) $own['fin']    : '';
 
+            $anual_pais = array_key_exists( 'anual', $own )
+                ? ( ! empty( $own['anual'] ) ? '1' : '0' )
+                : '';   // ausente = sin decisión propia (hereda); no se guarda
+
             if ( $ini === $inicio_global ) { $ini = ''; }
             if ( $fin === $fin_global )    { $fin = ''; }
-            if ( '' === $ini && '' === $fin ) { continue; }
+            if ( $anual_pais === $anual_global ) { $anual_pais = ''; }
+
+            if ( '' === $ini && '' === $fin && '' === $anual_pais ) { continue; }
 
             $fechas[ $code ] = [ 'inicio' => $ini, 'fin' => $fin ];
+
+            if ( '' !== $anual_pais ) {
+                $fechas[ $code ]['anual'] = $anual_pais;
+            }
         }
 
         return array_merge(
@@ -165,6 +185,7 @@ if ( ! function_exists( 'mu_hero_banners_sanitize_one' ) ) {
                 'id'              => sanitize_title( $b['id'] ?? '' ),
                 'inicio'          => $inicio_global,
                 'fin'             => $fin_global,
+                'anual'           => $anual_global,
                 'show_free_badge' => ! empty( $b['show_free_badge'] ),
                 'paises'          => $paises,
                 'fechas'          => $fechas,
@@ -536,16 +557,192 @@ if ( ! function_exists( 'mu_hero_banner_pais_fechas' ) ) {
     }
 }
 
+if ( ! function_exists( 'mu_hero_banner_mmdd' ) ) {
+    /**
+     * Día y mes ('MMDD') de una fecha guardada, o '' si la fecha no es válida.
+     *
+     * Base de la vigencia anual (feature 012): con el flag 'anual' los años guardados
+     * se ignoran y sólo cuentan día y mes. Función pura: la verifica el arnés de 012.
+     *
+     * @param mixed $ddmmaaaa Fecha DDMMAAAA.
+     * @return string 'MMDD' o ''.
+     */
+    function mu_hero_banner_mmdd( $ddmmaaaa ) {
+        if ( ! mu_hero_banner_fecha_valida( $ddmmaaaa ) ) {
+            return '';
+        }
+
+        $ddmmaaaa = (string) $ddmmaaaa;
+
+        return substr( $ddmmaaaa, 2, 2 ) . substr( $ddmmaaaa, 0, 2 );
+    }
+}
+
+if ( ! function_exists( 'mu_hero_banner_anual_efectivo' ) ) {
+    /**
+     * ¿La ventana de este ámbito se repite todos los años?
+     *
+     * [Sobrescritura dispersa] El país puede declarar su propio 'anual' en
+     * 'fechas[PAIS]'; como sólo se persiste cuando DIFIERE de la general, la ausencia
+     * de la clave significa "hereda el flag general". Función pura: la verifica el
+     * arnés de la feature 012.
+     *
+     * @param array  $promo Banner.
+     * @param string $pais  Código ISO del país ('' = fechas generales).
+     * @return bool
+     */
+    function mu_hero_banner_anual_efectivo( $promo, $pais ) {
+        $promo = is_array( $promo ) ? $promo : [];
+        $code  = (string) $pais;
+
+        $own = [];
+        if ( isset( $promo['fechas'] ) && is_array( $promo['fechas'] )
+            && isset( $promo['fechas'][ $code ] ) && is_array( $promo['fechas'][ $code ] ) ) {
+            $own = $promo['fechas'][ $code ];
+        }
+
+        if ( array_key_exists( 'anual', $own ) ) {
+            return ! empty( $own['anual'] );
+        }
+
+        return ! empty( $promo['anual'] );
+    }
+}
+
+if ( ! function_exists( 'mu_hero_banner_instante_dia' ) ) {
+    /**
+     * Instante de un día/mes ('MMDD') en un año y huso dados.
+     *
+     * El día se acota al último del mes cuando no existe en ese año: `checkdate()` ya
+     * impide guardar `29022026`, así que el 29/02 guardado siempre tiene un año bisiesto
+     * real, pero al repetir la ventana cada año el 29 puede no existir. Se cae al 28 en
+     * lugar de prometer un día que no llega (o de correrse a marzo).
+     *
+     * Función pura: la verifica el arnés de la feature 012.
+     *
+     * @param string       $mmdd          'MMDD'.
+     * @param int          $anio          Año de la instancia.
+     * @param DateTimeZone $tz            Huso del país de destino.
+     * @param bool         $fin_inclusive true = último segundo del día (fin del banner).
+     * @return int|null Timestamp, o null si el MMDD no sirve.
+     */
+    function mu_hero_banner_instante_dia( $mmdd, $anio, $tz, $fin_inclusive = false ) {
+        $mmdd = (string) $mmdd;
+
+        if ( 4 !== strlen( $mmdd ) ) {
+            return null;
+        }
+
+        $mes = (int) substr( $mmdd, 0, 2 );
+        $dia = (int) substr( $mmdd, 2, 2 );
+
+        if ( $mes < 1 || $mes > 12 || $dia < 1 ) {
+            return null;
+        }
+
+        $primero = new DateTimeImmutable( sprintf( '%04d-%02d-01 00:00:00', (int) $anio, $mes ), $tz );
+        $ultimo  = (int) $primero->modify( 'last day of this month' )->format( 'j' );
+        $dia     = min( $dia, $ultimo );
+
+        $dt = $primero->setDate( (int) $anio, $mes, $dia )->setTime( 0, 0, 0 );
+
+        if ( $fin_inclusive ) {
+            // Fin inclusivo = "inicio del día siguiente − 1 s" (DST-safe, ver M2).
+            return $dt->modify( '+1 day' )->setTime( 0, 0, 0 )->getTimestamp() - 1;
+        }
+
+        return $dt->getTimestamp();
+    }
+}
+
+if ( ! function_exists( 'mu_hero_banner_ventana_anual' ) ) {
+    /**
+     * Instantes de la instancia ANUAL de la ventana que corresponde a un instante dado.
+     *
+     * Con la vigencia anual se ignoran los años guardados: sólo cuentan día y mes. La
+     * ventana puede CRUZAR el fin de año (20/12 → 10/01), así que se arman las
+     * instancias de los tres años alrededor (anterior, actual y siguiente) y se elige la
+     * que contiene $now. Si ninguna lo contiene se devuelve la FUTURA más cercana con
+     * activo = false: es lo que necesita mu_hero_banner_proximo_borde() para saber
+     * cuándo vuelve a entrar (sin esto, un banner anual apagado hoy nunca se encendería
+     * solo).
+     *
+     * Función pura: la verifica el arnés de la feature 012.
+     *
+     * @param string       $inicio DDMMAAAA de inicio.
+     * @param string       $fin    DDMMAAAA de fin (inclusive).
+     * @param DateTimeZone $tz     Huso del país de destino.
+     * @param int          $now    Timestamp de referencia.
+     * @return array{0:int,1:int,2:bool}|null [ inicio, fin_inclusive, activo ] o null.
+     */
+    function mu_hero_banner_ventana_anual( $inicio, $fin, $tz, $now ) {
+        $mmdd_ini = mu_hero_banner_mmdd( $inicio );
+        $mmdd_fin = mu_hero_banner_mmdd( $fin );
+
+        if ( '' === $mmdd_ini || '' === $mmdd_fin ) {
+            return null;
+        }
+
+        $now  = (int) $now;
+        $anio = (int) ( new DateTimeImmutable( '@' . $now ) )->setTimezone( $tz )->format( 'Y' );
+
+        // 'inicio' posterior a 'fin' = la ventana cruza el fin de año (MMDD comparados
+        // como texto: '1220' > '0110'). Entonces el fin cae en el año siguiente.
+        $cruza = ( $mmdd_ini > $mmdd_fin );
+
+        $instancias = [];
+
+        foreach ( [ $anio - 1, $anio, $anio + 1 ] as $y ) {
+            $start = mu_hero_banner_instante_dia( $mmdd_ini, $y, $tz );
+            $end   = mu_hero_banner_instante_dia( $mmdd_fin, $cruza ? $y + 1 : $y, $tz, true );
+
+            if ( null === $start || null === $end ) {
+                continue;
+            }
+
+            $instancias[] = [ $start, $end ];
+        }
+
+        // La instancia que contiene el instante pedido (inclusive en los dos bordes).
+        foreach ( $instancias as $i ) {
+            if ( $now >= $i[0] && $now <= $i[1] ) {
+                return [ $i[0], $i[1], true ];
+            }
+        }
+
+        // Ninguna: la próxima futura (así proximo_borde() apunta al año que viene).
+        $futuras = array_values( array_filter( $instancias, function ( $i ) use ( $now ) {
+            return $i[0] > $now;
+        } ) );
+
+        usort( $futuras, function ( $a, $b ) {
+            return $a[0] <=> $b[0];
+        } );
+
+        if ( $futuras ) {
+            return [ $futuras[0][0], $futuras[0][1], false ];
+        }
+
+        if ( $instancias ) {
+            return [ $instancias[0][0], $instancias[0][1], false ];
+        }
+
+        return null;
+    }
+}
+
 if ( ! function_exists( 'mu_hero_banner_ventana_instantes' ) ) {
     /**
      * Instantes de la ventana efectiva de un país, resueltos en SU huso horario.
      *
-     * @param array  $promo Banner.
-     * @param string $pais  Código ISO del país.
+     * @param array    $promo Banner.
+     * @param string   $pais  Código ISO del país.
+     * @param int|null $now   Timestamp de referencia (null = time()). Con vigencia anual
+     *                       decide QUÉ instancia del ciclo se devuelve.
      * @return array{0:int,1:int}|null [ inicio, fin_inclusive ] o null si no hay límite
      *                                 (sin fechas, incompletas o inválidas).
      */
-    function mu_hero_banner_ventana_instantes( $promo, $pais ) {
+    function mu_hero_banner_ventana_instantes( $promo, $pais, $now = null ) {
         $fechas = mu_hero_banner_pais_fechas( $promo, $pais );
 
         // Sin las dos fechas el banner no tiene límite; con una fecha inválida guardada
@@ -558,7 +755,18 @@ if ( ! function_exists( 'mu_hero_banner_ventana_instantes' ) ) {
             return null;
         }
 
-        $tz = mu_hero_banner_pais_tz( $pais );
+        $tz  = mu_hero_banner_pais_tz( $pais );
+        $now = ( null === $now ) ? time() : (int) $now;
+
+        // [012] Vigencia anual: se ignoran los años guardados y la instancia la resuelve
+        // mu_hero_banner_ventana_anual(). Si el instante pedido ya quedó fuera del ciclo,
+        // devuelve la próxima instancia (arranca después de $now, así is_active da false
+        // y proximo_borde apunta al año que viene).
+        if ( mu_hero_banner_anual_efectivo( $promo, $pais ) ) {
+            $anual = mu_hero_banner_ventana_anual( $fechas['inicio'], $fechas['fin'], $tz, $now );
+
+            return ( null === $anual ) ? null : [ $anual[0], $anual[1] ];
+        }
 
         $dt_ini = DateTime::createFromFormat( 'dmY', $fechas['inicio'], $tz );
         $dt_fin = DateTime::createFromFormat( 'dmY', $fechas['fin'], $tz );
@@ -595,13 +803,15 @@ if ( ! function_exists( 'mu_hero_banner_is_active_for_pais' ) ) {
      * @return bool
      */
     function mu_hero_banner_is_active_for_pais( $promo, $pais, $now = null ) {
-        $ventana = mu_hero_banner_ventana_instantes( $promo, $pais );
+        $now = ( null === $now ) ? time() : (int) $now;
+
+        // La ventana se resuelve con el MISMO instante de referencia: con vigencia anual
+        // la instancia del ciclo depende de él (ver mu_hero_banner_ventana_anual()).
+        $ventana = mu_hero_banner_ventana_instantes( $promo, $pais, $now );
 
         if ( null === $ventana ) {
             return true;
         }
-
-        $now = ( null === $now ) ? time() : (int) $now;
 
         return ( $now >= $ventana[0] && $now <= $ventana[1] );
     }
@@ -622,13 +832,15 @@ if ( ! function_exists( 'mu_hero_banner_proximo_borde' ) ) {
      * @return int Instante del próximo cambio, o 0 si no hay ninguno.
      */
     function mu_hero_banner_proximo_borde( $promo, $pais, $now = null ) {
-        $ventana = mu_hero_banner_ventana_instantes( $promo, $pais );
+        $now = ( null === $now ) ? time() : (int) $now;
+
+        // La ventana se resuelve con el MISMO instante de referencia: con una ventana
+        // anual, la instancia devuelta (y por lo tanto sus bordes) depende de él.
+        $ventana = mu_hero_banner_ventana_instantes( $promo, $pais, $now );
 
         if ( null === $ventana ) {
             return 0;
         }
-
-        $now = ( null === $now ) ? time() : (int) $now;
 
         // El fin es inclusivo: el banner sale del aire un segundo después.
         $futuros = array_filter( [ $ventana[0], $ventana[1] + 1 ], function ( $borde ) use ( $now ) {
@@ -650,15 +862,16 @@ if ( ! function_exists( 'mu_hero_banner_avisos' ) ) {
      * Función pura: la verifica el arnés de la feature 010.
      *
      * @param array $promo Banner.
-     * @return array{invalidas:string[],invertidas:string[]} Ámbitos afectados; '' = fechas
-     *                                                      generales, o el código del país.
+     * @return array{invalidas:string[],invertidas:string[],anuales_incompletas:string[]}
+     *              Ámbitos afectados; '' = fechas generales, o el código del país.
      */
     function mu_hero_banner_avisos( $promo ) {
         $promo  = is_array( $promo ) ? $promo : [];
-        $out    = [ 'invalidas' => [], 'invertidas' => [] ];
+        $out    = [ 'invalidas' => [], 'invertidas' => [], 'anuales_incompletas' => [] ];
         $ambitos = [ '' => [
             'inicio' => (string) ( $promo['inicio'] ?? '' ),
             'fin'    => (string) ( $promo['fin'] ?? '' ),
+            'anual'  => mu_hero_banner_anual_efectivo( $promo, '' ),
         ] ];
 
         foreach ( (array) ( $promo['fechas'] ?? [] ) as $code => $fechas ) {
@@ -669,6 +882,7 @@ if ( ! function_exists( 'mu_hero_banner_avisos' ) ) {
             $ambitos[ (string) $code ] = [
                 'inicio' => (string) ( $fechas['inicio'] ?? '' ),
                 'fin'    => (string) ( $fechas['fin'] ?? '' ),
+                'anual'  => mu_hero_banner_anual_efectivo( $promo, (string) $code ),
             ];
         }
 
@@ -676,6 +890,13 @@ if ( ! function_exists( 'mu_hero_banner_avisos' ) ) {
             if ( ( '' !== $v['inicio'] && ! mu_hero_banner_fecha_valida( $v['inicio'] ) )
                 || ( '' !== $v['fin'] && ! mu_hero_banner_fecha_valida( $v['fin'] ) ) ) {
                 $out['invalidas'][] = (string) $ambito;
+                continue;
+            }
+
+            // [012] Anual con una sola fecha: no hay ciclo que repetir (se muestra siempre,
+            // igual que sin el flag) → se avisa en vez de fallar en silencio.
+            if ( $v['anual'] && ( '' === $v['inicio'] || '' === $v['fin'] ) ) {
+                $out['anuales_incompletas'][] = (string) $ambito;
                 continue;
             }
 
@@ -688,7 +909,9 @@ if ( ! function_exists( 'mu_hero_banner_avisos' ) ) {
                 return substr( $ddmmaaaa, 4, 4 ) . substr( $ddmmaaaa, 2, 2 ) . substr( $ddmmaaaa, 0, 2 );
             };
 
-            if ( $orden( $v['inicio'] ) > $orden( $v['fin'] ) ) {
+            // [012] Con vigencia anual, un inicio posterior al fin NO es un rango invertido:
+            // es la ventana que cruza el fin de año (20/12 → 10/01), el caso más común.
+            if ( ! $v['anual'] && $orden( $v['inicio'] ) > $orden( $v['fin'] ) ) {
                 $out['invertidas'][] = (string) $ambito;
             }
         }
@@ -765,9 +988,142 @@ if ( ! function_exists( 'mu_get_hero_banners' ) ) {
     }
 }
 
+if ( ! function_exists( 'mu_hero_banner_proximo_borde_global' ) ) {
+    /**
+     * Próximo instante en que cambia el hero en CUALQUIER país del sitio.
+     *
+     * Es el borde que importa para la caché de páginas: cuando llega, la home de algún
+     * host deja de ser válida. Se miran todos los banners en todos los países donde se
+     * muestran (el cron corre en un request cualquiera, no en el del visitante).
+     *
+     * @return int Timestamp del próximo borde, o 0 si no hay ninguno.
+     */
+    function mu_hero_banner_proximo_borde_global() {
+        $all     = mu_get_hero_banners_raw();
+        $now     = time();
+        $validos = function_exists( 'muyu_get_countries_data' ) ? array_keys( muyu_get_countries_data() ) : [ 'AR' ];
+        $proximo = 0;
+
+        foreach ( $all as $p ) {
+            $paises = isset( $p['paises'] ) && is_array( $p['paises'] ) ? $p['paises'] : [ 'AR' ];
+
+            foreach ( $paises as $pais ) {
+                if ( ! in_array( $pais, $validos, true ) ) {
+                    continue;
+                }
+
+                $borde = mu_hero_banner_proximo_borde( $p, (string) $pais, $now );
+
+                if ( $borde > 0 && ( 0 === $proximo || $borde < $proximo ) ) {
+                    $proximo = $borde;
+                }
+            }
+        }
+
+        return $proximo;
+    }
+}
+
+if ( ! function_exists( 'mu_hero_banner_programar_purga_borde' ) ) {
+    /**
+     * Programa UN evento único en el próximo borde de fecha.
+     *
+     * No reprograma si ya hay uno pendiente (guard `wp_next_scheduled`, mismo patrón que
+     * inc/navigation-chips.php). Cuando los datos cambian se pasa por
+     * mu_hero_banner_reprogramar_purga_borde(), que limpia el evento viejo antes.
+     */
+    function mu_hero_banner_programar_purga_borde() {
+        if ( ! function_exists( 'wp_next_scheduled' ) || ! function_exists( 'wp_schedule_single_event' ) ) {
+            return;
+        }
+
+        if ( wp_next_scheduled( 'mu_hero_banner_purge_borde' ) ) {
+            return;
+        }
+
+        $borde = mu_hero_banner_proximo_borde_global();
+
+        if ( $borde > time() ) {
+            wp_schedule_single_event( $borde, 'mu_hero_banner_purge_borde' );
+        }
+    }
+}
+
+if ( ! function_exists( 'mu_hero_banner_reprogramar_purga_borde' ) ) {
+    /**
+     * Descarta el evento pendiente y lo vuelve a calcular con los datos nuevos.
+     *
+     * Se dispara al guardar: si el borde guardado era "el 01/06" y ahora es "mañana", el
+     * evento viejo quedaría agendado en una fecha que ya no corresponde.
+     */
+    function mu_hero_banner_reprogramar_purga_borde() {
+        if ( function_exists( 'wp_clear_scheduled_hook' ) ) {
+            wp_clear_scheduled_hook( 'mu_hero_banner_purge_borde' );
+        }
+
+        mu_hero_banner_programar_purga_borde();
+    }
+}
+
+if ( ! function_exists( 'mu_hero_banner_purge_borde_ejecutar' ) ) {
+    /**
+     * Purga la home de los hosts del sitio al cruzar un borde de fecha.
+     *
+     * Purga por URL cuando el plugin expone el hook (`litespeed_purge_url`, que respeta el
+     * aislamiento por host) y cae a `litespeed_purge_all` si no está registrado — sólo en
+     * un borde real, nunca por request: el criterio del proyecto prohíbe las purgas
+     * incondicionales. Deja rastro `[MU-HERO-BORDE]` para poder auditar el disparo (§7).
+     * Al terminar reprograma el próximo borde.
+     *
+     * @param bool $programar_siguiente false = no reprogramar (lo usa el arnés).
+     */
+    function mu_hero_banner_purge_borde_ejecutar( $programar_siguiente = true ) {
+        $countries = function_exists( 'muyu_get_countries_data' ) ? muyu_get_countries_data() : [];
+        $purgados  = 0;
+
+        if ( function_exists( 'has_action' ) && has_action( 'litespeed_purge_url' ) ) {
+            foreach ( $countries as $c ) {
+                $host = (string) ( $c['host'] ?? '' );
+
+                if ( '' === $host ) {
+                    continue;
+                }
+
+                do_action( 'litespeed_purge_url', 'https://' . $host . '/' );
+                $purgados++;
+            }
+        } else {
+            do_action( 'litespeed_purge_all' );
+            $purgados = count( $countries );
+        }
+
+        // Los transients por país se invalidan también: el HTML se regenera con el
+        // escenario nuevo (si el borde era de entrada, el transient no tenía el banner).
+        mu_hero_banners_purge_cache();
+
+        error_log( sprintf(
+            '[MU-HERO-BORDE] purga de la home por borde de fechas host(s)=%d',
+            $purgados
+        ) );
+
+        if ( $programar_siguiente ) {
+            mu_hero_banner_programar_purga_borde();
+        }
+    }
+}
+
 // Invalidación de cache cuando la opción cambia (todas las variantes por país).
 add_action( 'update_option_' . MU_HERO_BANNERS_OPTION, 'mu_hero_banners_purge_cache' );
 add_action( 'add_option_' . MU_HERO_BANNERS_OPTION, 'mu_hero_banners_purge_cache' );
+
+// [012] Purga de la home en el BORDE de fecha. Con una ventana anual el cambio llega sin
+// que nadie guarde, y la caché de páginas de LiteSpeed dura 24 h (medido: max-age=86400),
+// así que sin esto la home seguiría mostrando el hero viejo hasta un día después. La purga
+// es condicionada por construcción (un evento único por borde real, nunca un barrido
+// periódico): ver mu_hero_banner_purge_borde_ejecutar().
+add_action( 'mu_hero_banner_purge_borde', 'mu_hero_banner_purge_borde_ejecutar' );
+add_action( 'update_option_' . MU_HERO_BANNERS_OPTION, 'mu_hero_banner_reprogramar_purga_borde' );
+add_action( 'add_option_' . MU_HERO_BANNERS_OPTION, 'mu_hero_banner_reprogramar_purga_borde' );
 
 // ==========================================
 // 2. ADMIN — SUBMENU BAJO WC MARKETING
@@ -832,6 +1188,8 @@ if ( is_admin() ) {
                 // Avisos del panel de fechas (formato y rango invertido).
                 'fechasMalas'   => __( 'Inicio es posterior al fin: el banner no se verá en este país.', 'mu' ),
                 'fechasFormato' => __( 'Usá el formato DDMMAAAA (8 dígitos) en Inicio y Fin.', 'mu' ),
+                // [012] Aviso de la repetición anual incompleta (una sola fecha).
+                'fechasAnualIncompleta' => __( 'Con «Se repite cada año» hacen falta las dos fechas: con una sola, el banner se muestra siempre.', 'mu' ),
             ] );
         }
     } );
@@ -931,7 +1289,7 @@ if ( ! function_exists( 'mu_hero_banners_render_admin_page' ) ) {
         <div class="wrap mu-hero-banners-wrap">
             <h1><?php esc_html_e( 'Hero Banners — Portada', 'mu' ); ?></h1>
             <p class="description">
-                <?php esc_html_e( 'Gestioná los banners del slider principal de la home. Las fechas usan formato DDMMAAAA: si dejás ambas vacías, el banner se muestra siempre. Cada banner se muestra sólo en los países tildados. Las fechas generales (píldora "Global") valen para los países sin ventana propia: elegí la píldora de un país para darle fechas distintas y el punto marcará que tiene ventana propia. En los sitios en otro idioma se usa la versión traducida de cada campo cuando está cargada; los campos vacíos (o iguales al español) muestran el español. El punto en la píldora de idioma marca los idiomas que ya tienen contenido propio.', 'mu' ); ?>
+                <?php esc_html_e( 'Gestioná los banners del slider principal de la home. Las fechas usan formato DDMMAAAA: si dejás ambas vacías, el banner se muestra siempre. Cada banner se muestra sólo en los países tildados. Las fechas generales (píldora "Global") valen para los países sin ventana propia: elegí la píldora de un país para darle fechas distintas y el punto marcará que tiene ventana propia. En los sitios en otro idioma se usa la versión traducida de cada campo cuando está cargada; los campos vacíos (o iguales al español) muestran el español. El punto en la píldora de idioma marca los idiomas que ya tienen contenido propio. Con «Se repite cada año» en un panel de fechas, esa ventana vuelve todos los años: se ignoran los años guardados y sólo cuentan el día y el mes.', 'mu' ); ?>
             </p>
 
             <?php if ( $updated ) : ?>
@@ -1094,7 +1452,7 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                 return '' === $ambito ? __( 'Fechas generales', 'mu' ) : $ambito;
             };
             ?>
-            <?php if ( $avisos['invalidas'] || $avisos['invertidas'] ) : ?>
+            <?php if ( $avisos['invalidas'] || $avisos['invertidas'] || $avisos['anuales_incompletas'] ) : ?>
             <p class="mu-hero-banner-row__alert" role="status">
                 <?php if ( $avisos['invalidas'] ) : ?>
                     <span>
@@ -1114,6 +1472,17 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                             /* translators: %s: ámbito (país o fechas generales). */
                             esc_html__( '%s: el inicio es posterior al fin; ese ámbito no ve el banner.', 'mu' ),
                             esc_html( implode( ', ', array_map( $rotular, $avisos['invertidas'] ) ) )
+                        );
+                        ?>
+                    </span>
+                <?php endif; ?>
+                <?php if ( $avisos['anuales_incompletas'] ) : ?>
+                    <span>
+                        <?php
+                        printf(
+                            /* translators: %s: ámbito (país o fechas generales). */
+                            esc_html__( '%s: la repetición anual quedó con una sola fecha, así que el banner se muestra siempre; completá Inicio y Fin.', 'mu' ),
+                            esc_html( implode( ', ', array_map( $rotular, $avisos['anuales_incompletas'] ) ) )
                         );
                         ?>
                     </span>
@@ -1272,6 +1641,12 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                                 $render_fecha( 'fin', __( 'Fin (DDMMAAAA)', 'mu' ), $name . '[fin]', $b['fin'], '31122026' );
                                 ?>
                             </span>
+                            <label class="mu-hero-banner-anual-field">
+                                <input type="hidden" name="<?php echo esc_attr( $name ); ?>[anual]" value="0">
+                                <input type="checkbox" name="<?php echo esc_attr( $name ); ?>[anual]" value="1" data-role="anual" <?php checked( mu_hero_banner_anual_efectivo( $b, '' ) ); ?>>
+                                <strong><?php esc_html_e( 'Se repite cada año', 'mu' ); ?></strong>
+                                <span class="mu-lang-hint"><?php esc_html_e( 'Con esto se ignoran los años de las fechas y sólo cuentan el día y el mes. Para promos que vuelven todos los años: 20/12 → 10/01 cruza el fin de año y sigue funcionando.', 'mu' ); ?></span>
+                            </label>
                             <span class="mu-lang-hint"><?php esc_html_e( 'Estas fechas valen para los países sin ventana propia. Si dejás ambas vacías, el banner se muestra siempre en ellos.', 'mu' ); ?></span>
                             <span class="mu-lang-hint"><?php esc_html_e( 'Se interpretan como medianoche LOCAL de cada país: 01/06 es el 01/06 a las 00:00 en el huso de ese país, no en el del servidor.', 'mu' ); ?></span>
                             <span class="mu-lang-hint mu-hero-banner-fechas-warning" data-role="fechas-warning" hidden></span>
@@ -1292,6 +1667,12 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                                 $render_fecha( 'fin', __( 'Fin (DDMMAAAA)', 'mu' ), $name . '[fechas][' . $code . '][fin]', $b['fechas'][ $code ]['fin'] ?? '', $b['fin'] );
                                 ?>
                             </span>
+                            <label class="mu-hero-banner-anual-field">
+                                <input type="hidden" name="<?php echo esc_attr( $name ); ?>[fechas][<?php echo esc_attr( $code ); ?>][anual]" value="0">
+                                <input type="checkbox" name="<?php echo esc_attr( $name ); ?>[fechas][<?php echo esc_attr( $code ); ?>][anual]" value="1" data-role="anual" <?php checked( mu_hero_banner_anual_efectivo( $b, $code ) ); ?>>
+                                <strong><?php esc_html_e( 'Se repite cada año', 'mu' ); ?></strong>
+                                <span class="mu-lang-hint"><?php esc_html_e( 'Tildado en la fila de Global, heredar este país también repite; destildalo acá para que este país use la ventana una sola vez.', 'mu' ); ?></span>
+                            </label>
                             <span class="mu-lang-hint">
                                 <?php
                                 printf(
@@ -1305,15 +1686,20 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                                 <?php
                                 // [M6] Ventana efectiva con lo GUARDADO, en el huso del país: la
                                 // pregunta "¿medianoche de dónde?" queda respondida a la vista.
+                                // [012] Con la repetición anual, el año que se muestra es el de la
+                                // instancia que corresponde a hoy (o al próximo si ya pasó).
                                 $tz_pais   = mu_hero_banner_pais_tz( $code );
                                 $ventana_e = mu_hero_banner_ventana_instantes( $b, $code );
+                                $nota      = mu_hero_banner_anual_efectivo( $b, $code )
+                                    ? ' ' . __( 'Se repite cada año: el año de las fechas se ignora.', 'mu' )
+                                    : '';
 
                                 if ( null === $ventana_e ) {
                                     echo esc_html( sprintf(
                                         /* translators: %s: huso horario del país. */
                                         __( 'Sin límite de fecha con lo guardado: se muestra siempre (huso del país: %s).', 'mu' ),
                                         $tz_pais->getName()
-                                    ) );
+                                    ) . $nota );
                                 } else {
                                     echo esc_html( sprintf(
                                         /* translators: 1: inicio, 2: fin, 3: huso horario del país. */
@@ -1321,7 +1707,7 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                                         ( new DateTimeImmutable( '@' . $ventana_e[0] ) )->setTimezone( $tz_pais )->format( 'd/m/Y H:i' ),
                                         ( new DateTimeImmutable( '@' . $ventana_e[1] ) )->setTimezone( $tz_pais )->format( 'd/m/Y H:i' ),
                                         $tz_pais->getName()
-                                    ) );
+                                    ) . $nota );
                                 }
                                 ?>
                             </span>

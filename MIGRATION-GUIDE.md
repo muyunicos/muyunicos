@@ -114,13 +114,16 @@ Object Cache (LiteSpeed):
     navegador y la CDN.
   Un error de TTL o de purga en una capa NO se propaga a la otra, y diagnosticar
   una mirando la otra lleva a conclusiones equivocadas.
-- ⚠️ TTL de la caché de PÁGINAS: NO medido. El HTML se cachea por subdominio, pero el
-  valor de expiración se cambia desde el panel de LiteSpeed, no desde un commit. Medirlo
-  antes de cualquier feature que dependa de un cambio "a hora exacta" (caso: la ventana de
-  fechas por país del Hero — el transient de datos ya caduca en el borde, pero la página
-  servida puede seguir siendo la anterior).
-  Medición: curl.exe -sI https://br.muyunicos.com/ y comparar x-litespeed-cache / age
-  entre dos visitas separadas.
+- ⚠️ TTL de la caché de PÁGINAS: MEDIDO 2026-10-17 → **24 h**
+  (`X-LiteSpeed-Cache-Control: public,max-age=86400` en la home; primera visita con
+  `X-Litespeed-Cache: miss`; igual en muyunicos.com y br.muyunicos.com). El valor se
+  cambia desde el panel de LiteSpeed, no desde un commit: si alguien lo toca, esta línea
+  queda vieja.
+  Medición: curl.exe -sI https://br.muyunicos.com/ | Select-String 'x-litespeed-cache|age'
+  Consecuencia: ningún cambio "a hora exacta" se ve solo antes de 24 h. Los cambios que
+  dependen de un borde de fecha programan un evento único en ese borde que purga la home
+  (`mu_hero_banner_purge_borde`, feature 012, ver §8). El aislamiento por subdominio sigue
+  intacto: la cookie _lscache_vary es un hash del host.
 - Caché de objetos: ON (Memcached, prueba de conexión exitosa).
 - Extensión: Memcached (Redis también disponible y activado).
 - Configuración: Método Memcached | Host ::1 | Puerto 11211.
@@ -334,6 +337,10 @@ muyunicos/ (generatepress-child)
 │   │                        # generales). La ventana se resuelve en el HUSO DEL PAÍS
 │   │                        # (mu_hero_banner_ventana_instantes) y el transient por país
 │   │                        # caduca en el próximo borde de fecha (TTL adaptativo).
+│   │                        # Vigencia ANUAL (feature 012): 'anual' /
+│   │                        # 'fechas[PAIS][anual]' ignoran el año guardado (sólo día y
+│   │                        # mes) y soportan el cruce de fin de año. Un evento único
+│   │                        # purga la home en cada borde (ver §8).
 │   ├── ui.php              # Header icons, Cart badge, WhatsApp, shortcodes, bestsellers,
 │   │                        # testimonios Google Places, hero promos, popcat.
 │   ├── ai-translate.php     # Servicio de traducción con IA (Gemini): API interna
@@ -915,10 +922,9 @@ FECHAS POR PAÍS EN EL HERO (2026-10-17, feature 010-fechas-banner-por-pais):
 - [ ] Verificación manual del PANEL (píldoras de país, puntos, placeholders, avisos, huso a
   la vista, guardado): no es automatizable en este proyecto — el manejo de jQuery del editor
   sigue sin arnés, la misma deuda que la feature 008. Fase B del quickstart de 010.
-- [ ] Decisión abierta: si la caché de PÁGINAS demora un cambio de borde, la salida es
-  programar un evento único en el borde (wp_schedule_single_event + purga de la home del
-  host afectado, condicionada). No se implementó: primero hay que MEDIR el TTL de páginas
-  (§2). Sin medir, cualquier purga programada es a ciegas.
+- [x] RESUELTO en la feature 012 (2026-10-17): el TTL de páginas se MIDIÓ (24 h, §2) y el
+  evento único en el borde quedó implementado (mu_hero_banner_programar_purga_borde +
+  mu_hero_banner_purge_borde_ejecutar). Ver el bloque "VIGENCIA ANUAL" más abajo.
 
 VARIANTES DE TRADUCCIÓN EN EL EDITOR DE BANNERS (2026-10-17, feature 011):
 - El editor de banners ahora ofrece los botones numerados 1·2·3… (uno por persona) igual que
@@ -933,6 +939,36 @@ VARIANTES DE TRADUCCIÓN EN EL EDITOR DE BANNERS (2026-10-17, feature 011):
   (el servicio descarta los textos vacíos) y el title del botón puede no coincidir con la
   persona real. Se mitiga mostrando los campos sin texto; corregirlo del lado del servicio
   afecta también a reseñas: decisión aparte.
+
+VIGENCIA ANUAL DEL BANNER (2026-10-17, feature 012-vigencia-anual):
+- Estado: un banner (o un país) puede repetir su ventana todos los años con 'anual' /
+  'fechas[PAIS][anual]': se ignoran los años guardados y sólo cuentan día y mes. Soporta el
+  cruce de fin de año (20/12 → 10/01) y acota el 29/02 al 28/02 en años no bisiestos. La
+  clave por país se persiste SÓLO si difiere de la general (ausente = hereda); el panel
+  manda un campo oculto junto a la casilla para que "destildado" no se confunda con
+  "ausente" (un país añadido después no se guarda como excepción por accidente).
+- Cascada: mu_hero_banner_ventana_instantes() recibió un $now OPCIONAL y delega en
+  mu_hero_banner_ventana_anual(); is_active_for_pais() y proximo_borde() le pasan el MISMO
+  instante (antes proximo_borde resolvía la ventana con time(): con ventanas anuales habría
+  devuelto un borde del pasado y el TTL habría quedado corto).
+- Caché de páginas: TTL medido en 24 h (§2). Por eso el borde programa un EVENTO ÚNICO
+  (wp_schedule_single_event 'mu_hero_banner_purge_borde') que purga la home de cada host
+  —por URL si el plugin expone litespeed_purge_url; si no, litespeed_purge_all, siempre
+  condicionado a un borde real—, limpia los transients y se reprograma. Rastro
+  "[MU-HERO-BORDE]" en debug.log. Al guardar se descarta el evento viejo y se recalcula.
+- ⚠️ Primer guardado tras el deploy: la opción gana la clave 'anual' en todos los banners,
+  así que el Hash Gate detecta un cambio real y purga la caché UNA vez (esperado).
+- Verificación automática: specs/012-vigencia-anual/quickstart.md Fase A (arnés PHP 87 OK +
+  arnés JS 18 OK, más la no-regresión de 006/008/010/011). 010 se ajustó en UNA aserción:
+  la forma exacta del array de mu_hero_banner_avisos(), que ahora incluye
+  'anuales_incompletas'.
+- [ ] Verificación manual del PANEL y del CRON (Fase B del quickstart de 012): la casilla y
+  su herencia, los avisos, y el disparo del borde con su purga. Misma deuda declarada que
+  008/010/011 (el manejo de jQuery no es automatizable en este proyecto).
+- [ ] Purga en el borde y cron: DISABLE_WP_CRON está activo y las tareas las ejecuta el
+  System Cron de Hostinger. Si el sitio quedara sin visitas justo en el borde, la home se
+  regeneraría en la primera visita posterior (el transient del país —la fuente de verdad
+  del filtro— caduca igual en el borde).
 
 HUECOS Y DECISIONES ABIERTAS (2026-10-16, feature 004-country-scope):
 - [x] RESUELTO 2026-10-16 — Sitemap de Rank Math: el hook es `rank_math/sitemap/entry` y

@@ -8,6 +8,9 @@
  *   editan las fechas ('Global' = las generales, que heredan los países sin ventana
  *   propia). El punto marca los países con fechas propias y el valor general se usa
  *   como placeholder. Mismo patrón que las píldoras de idioma.
+ * - Repetición anual (feature 012): la casilla «Se repite cada año» de cada panel hace
+ *   que sólo cuenten día y mes (el año de las fechas se ignora). La de Global arrastra a
+ *   los países que no tenían decisión propia; el aviso replica anuales_incompletas.
  * - Píldoras de idioma ES | PT | EN (mismo componente que el editor de reseñas):
  *   eligen qué bloque se edita. El punto marca los idiomas con contenido propio y
  *   sale automático del contenido — ya no hay checkbox "Traducir".
@@ -153,11 +156,31 @@
         return parseInt(s.substr(4, 4) + s.substr(2, 2) + s.substr(0, 2), 10);
     }
 
-    /** ¿El inicio es posterior al fin? Función PURA (aviso de rango invertido). */
-    function rangoInvertido(inicio, fin) {
+    /**
+     * ¿El inicio es posterior al fin? Función PURA (aviso de rango invertido).
+     *
+     * [012] Con repetición anual (`anual`) un inicio posterior al fin NO es un error: es
+     * la ventana que cruza el fin de año (20/12 → 10/01), el caso más común de promos
+     * anuales. Se replica el mismo criterio que mu_hero_banner_avisos() en el servidor.
+     */
+    function rangoInvertido(inicio, fin, anual) {
+        if (anual) { return false; }
         var a = parseDdmmaaaa(inicio);
         var b = parseDdmmaaaa(fin);
         return a !== null && b !== null && a > b;
+    }
+
+    /**
+     * ¿La repetición anual quedó con una sola fecha? Función PURA.
+     *
+     * Una sola fecha = sin límite real (se muestra siempre), así que el panel lo avisa:
+     * mismo criterio que `anuales_incompletas` en mu_hero_banner_avisos().
+     */
+    function anualIncompleta(inicio, fin, anual) {
+        if (!anual) { return false; }
+        var a = String(inicio || '').trim();
+        var b = String(fin || '').trim();
+        return (a === '') !== (b === '');
     }
 
     /** Días del mes indicado (28/29/30/31), con bisiesto. Función PURA. */
@@ -203,6 +226,40 @@
     function fechaEfectiva($row, pais, campo) {
         var propia = fechaPropia($row, pais, campo);
         return propia !== '' ? propia : fechaPropia($row, '', campo);
+    }
+
+    /**
+     * Estado de la casilla «Se repite cada año» de un ámbito de la fila ('' = general).
+     * [012] Espejo en el DOM de mu_hero_banner_anual_efectivo().
+     */
+    function anualDeFila($row, pais) {
+        return !!bloqueFechas($row, pais).find('[data-role="anual"]').prop('checked');
+    }
+
+    /**
+     * ¿La repetición anual del país DIFIERE de la general? Entonces el país tiene una
+     * decisión propia y el servidor la persiste (si coincide, la clave no se guarda).
+     */
+    function anualPropio($row, pais) {
+        if (pais === '') { return false; }
+        return anualDeFila($row, pais) !== anualDeFila($row, '');
+    }
+
+    /**
+     * Al cambiar la casilla de Global, los países que seguían a la general la siguen
+     * (los que tenían decisión propia no se tocan). Evita que una casilla heredada quede
+     * mostrando un estado que no es el que se va a guardar.
+     */
+    function sincronizarAnualPaises($row) {
+        var general = anualDeFila($row, '');
+        var previo  = $row.data('anualGeneral');
+        if (typeof previo === 'undefined') { previo = general; }
+        $row.data('anualGeneral', general);
+
+        $row.find('.mu-hero-banner-fechas-block[data-pais!=""] [data-role="anual"]').each(function () {
+            var $c = $(this);
+            if (!!$c.prop('checked') === !!previo) { $c.prop('checked', general); }
+        });
     }
 
     /** País cuyas fechas se están editando ('' = generales). */
@@ -252,6 +309,9 @@
             var propia = fechaPropia($row, pais, campo);
             if (propia !== '' && propia !== fechaPropia($row, '', campo)) { tiene = true; }
         });
+
+        // [012] La repetición anual propia también es una ventana propia.
+        if (anualPropio($row, pais)) { tiene = true; }
 
         $pill.attr('data-has-fechas', tiene ? '1' : '0');
     }
@@ -304,8 +364,9 @@
         var $aviso = bloqueFechas($row, pais).find('[data-role="fechas-warning"]');
         if (!$aviso.length) return;
 
-        var ini = fechaEfectiva($row, pais, 'inicio');
-        var fin = fechaEfectiva($row, pais, 'fin');
+        var ini   = fechaEfectiva($row, pais, 'inicio');
+        var fin   = fechaEfectiva($row, pais, 'fin');
+        var anual = anualDeFila($row, pais);
 
         function avisoTexto(clave, porDefecto) {
             return (window.muHeroBannersData && window.muHeroBannersData[clave]) || porDefecto;
@@ -317,7 +378,15 @@
             return;
         }
 
-        var invertido = rangoInvertido(ini, fin);
+        // [012] Anual con una sola fecha: no hay ciclo que repetir (se muestra siempre).
+        if (anualIncompleta(ini, fin, anual)) {
+            $aviso.text(avisoTexto('fechasAnualIncompleta', 'Con «Se repite cada año» hacen falta las dos fechas: con una sola, el banner se muestra siempre.'));
+            $aviso.prop('hidden', false);
+            return;
+        }
+
+        // [012] Con repetición anual, cruzar el fin de año NO es un rango invertido.
+        var invertido = rangoInvertido(ini, fin, anual);
         $aviso.text(invertido ? avisoTexto('fechasMalas', 'Inicio es posterior al fin: el banner no se verá en este país.') : '');
         $aviso.prop('hidden', !invertido);
     }
@@ -653,6 +722,27 @@
             avisarFechas($row, pais);
         });
 
+        // Repetición anual (feature 012): al tildar/destildar se rehace el aviso del panel.
+        // La casilla de Global arrastra a los países que seguían a la general y recalcula
+        // puntos/placeholders de todos (heredan de ella).
+        $list.on('change', '.mu-hero-banner-fechas-block [data-role="anual"]', function () {
+            var $campo = $(this);
+            var $row   = $campo.closest('.mu-hero-banner-row');
+            var pais   = String($campo.closest('.mu-hero-banner-fechas-block').attr('data-pais') || '');
+
+            if (pais === '') {
+                sincronizarAnualPaises($row);
+                aplicarPlaceholdersFechas($row);
+                actualizarPuntosFechas($row);
+                $row.find('.mu-hero-banner-fechas-block').each(function () {
+                    avisarFechas($row, String($(this).attr('data-pais') || ''));
+                });
+            } else {
+                actualizarPuntoFechas($row, pais);
+                avisarFechas($row, pais);
+            }
+        });
+
         // ---------------------------------------------------------------
         // Píldoras de idioma: eligen qué bloque se edita (ES | PT | EN)
         // ---------------------------------------------------------------
@@ -800,6 +890,7 @@
         parseDdmmaaaa: parseDdmmaaaa,
         rangoInvertido: rangoInvertido,
         fechaMalFormada: fechaMalFormada,
+        anualIncompleta: anualIncompleta,
         variantesDeFila: variantesDeFila,
         mensajeVariante: mensajeVariante
     };

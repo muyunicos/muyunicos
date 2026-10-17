@@ -169,6 +169,18 @@
 .mu-hero-banner-fechas-warning { color: #8a1f11; }
 .mu-hero-banner-fechas-warning[hidden] { display: none; }
 
+/* Repetición anual (feature 012): una casilla por ámbito, dentro de su panel de fechas.
+   El hint explica que el año de las fechas se ignora. */
+.mu-hero-banner-anual-field {
+    display: block;
+    margin-top: var(--mu-space-sm, 10px);
+    padding-top: var(--mu-space-sm, 10px);
+    border-top: 1px dashed #e0e0e0;
+    cursor: pointer;
+}
+.mu-hero-banner-anual-field input { margin-right: 4px; }
+.mu-hero-banner-anual-field .mu-lang-hint { display: block; margin-left: 22px; }
+
 /* Píldoras de idioma (ES | PT | EN): componente COMPARTIDO con el editor de
    reseñas. Sus estilos (.mu-lang-pill, .mu-ai-inline-btn, .mu-ai-inline-status,
    .mu-lang-hint) viven en css/components/ai-translate-inline.css: acá solo se
