@@ -283,3 +283,128 @@
     .mu-hero-banner-fields-grid { grid-template-columns: 1fr; }
     .mu-hero-banner-fechas-grid { grid-template-columns: 1fr; }
 }
+
+/* ============================================================
+   LIENZO DEL EDITOR (feature 013)
+   Muestra el banner con el MISMO componente del front
+   (css/components/hero-promo.css). El panel no carga style.css
+   (mu-base), así que acá se declaran los tokens del sistema de
+   diseño que el componente consume —valores copiados de
+   style.css :root, que sigue siendo la fuente de verdad— y las
+   reglas de botón que usa el banner.
+   ============================================================ */
+.mu-hero-banner-canvas {
+    --primario: #2B9FCF;
+    --secundario: #FFD77A;
+    --texto: #277292;
+    --texto-light: #6C6F7A;
+    --fondo: #fbf7f5;
+    --blanco: #FFFFFF;
+    --resaltado: #237FA9;
+    --mu-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+    --mu-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --mu-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.15);
+    --mu-radius-sm: 6px;
+    --mu-radius: 12px;
+    --mu-radius-md: 16px;
+    --mu-radius-lg: 20px;
+    --mu-radius-full: 9999px;
+    --mu-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --mu-font-display: 'Fredoka One', display, sans-serif;
+    --mu-font-base: Inter, sans-serif;
+    --mu-space-xs: 5px;
+    --mu-space-sm: 10px;
+    --mu-space-md: 20px;
+    --mu-space-lg: 40px;
+
+    container-type: inline-size;
+    position: relative;
+    overflow: hidden;
+    background: var(--fondo);
+    border: 1px solid #dcdcde;
+    border-radius: var(--mu-radius-sm);
+    height: calc(var(--mu-canvas-h, 580px) * var(--mu-canvas-scale, 1));
+}
+
+/* El ancho real (1280 / 390) escalado para encajar en la columna. */
+.mu-hero-banner-canvas-inner {
+    width: var(--mu-canvas-w, 1280px);
+    transform: scale(var(--mu-canvas-scale, 1));
+    transform-origin: top left;
+}
+
+/* Botones del banner: copiados de style.css (que no se carga en el admin).
+   Si cambian allá, cambian acá (deuda declarada en MIGRATION-GUIDE §8). */
+.mu-hero-banner-canvas .mu-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 16px 32px; border-radius: var(--mu-radius); font-weight: 600;
+    font-size: 1.05rem; text-decoration: none; transition: var(--mu-transition);
+    border: 2px solid transparent; cursor: pointer; position: relative; overflow: hidden;
+}
+.mu-hero-banner-canvas .mu-btn-primary {
+    background: var(--primario); color: var(--blanco) !important;
+    border-color: var(--primario); box-shadow: var(--mu-shadow);
+}
+.mu-hero-banner-canvas .mu-btn-outline {
+    background: #ffffff99; color: var(--primario); border-color: var(--primario);
+}
+
+/* Tipografía fluida: en el front es 4vw (ancho de la VENTANA); en el lienzo tiene que
+   medir el ancho del LIENZO, así que se usa la unidad de container query. Mismo clamp. */
+.mu-hero-banner-canvas .mu-hero-promo-title {
+    font-size: clamp(2rem, 4cqw, 3.2rem);
+}
+
+/* Modo móvil: las reglas del @media (max-width: 968px) del componente, replicadas como
+   CONTAINER QUERY para que respondan al ancho del lienzo y no al de la ventana del admin
+   (mismo motivo que la tipografía). */
+@container (max-width: 968px) {
+    .mu-hero-promo-slider { min-height: auto; aspect-ratio: auto; border: 2px solid var(--primario, #2B9FCF); }
+    .mu-hero-promo-slide { flex-direction: column; }
+    .mu-hero-promo-bg { position: relative; height: 280px; width: 100%; flex-shrink: 0; }
+    .mu-hero-promo-content { padding: var(--mu-space-md, 20px); text-align: center; }
+    .mu-hero-promo-eyebrow { position: absolute; top: -260px; left: 16px; z-index: 5; font-size: 0.75rem; }
+    .mu-hero-promo-title { font-size: 1.8rem; max-width: 100%; margin: 0 auto 12px; }
+    .mu-hero-promo-desc { width: 100%; max-width: 100%; background: transparent; backdrop-filter: none; padding: 0; margin-bottom: 20px; }
+    .mu-hero-promo-actions { justify-content: center; width: 100%; gap: 10px; }
+    .mu-hero-promo-free-badge { position: static; margin-top: 10px; width: 100%; justify-content: center; animation: none; box-shadow: none; border: 1px solid var(--secundario, #FFD77A); background: var(--blanco, #fff); transform: none !important; }
+}
+
+.mu-hero-banner-canvas-head {
+    display: flex; align-items: center; gap: var(--mu-space-sm, 10px);
+    flex-wrap: wrap; margin-bottom: var(--mu-space-sm, 10px);
+}
+.mu-hero-banner-canvas-head strong {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; color: #646970;
+}
+.mu-hero-banner-canvas-head .mu-lang-hint { flex-basis: 100%; margin: 0; }
+.mu-hero-banner-canvas-w {
+    background: #f7f7f7; border: 1px solid #ccc; border-radius: 4px;
+    font-size: 12px; padding: 3px 10px; cursor: pointer; color: #333;
+}
+.mu-hero-banner-canvas-w:hover { background: #eaeaea; }
+.mu-hero-banner-canvas-w.is-active { background: #2B9FCF; border-color: #2B9FCF; color: #fff; }
+
+/* N1 (feature 013): cada nodo del lienzo es un atajo al campo del formulario. */
+.mu-hero-banner-canvas [data-mu] {
+    cursor: pointer;
+    outline: 2px dashed transparent;
+    outline-offset: 3px;
+    transition: outline-color 0.15s ease;
+}
+.mu-hero-banner-canvas [data-mu]:hover { outline-color: rgba(43, 159, 207, 0.6); }
+.mu-hero-banner-canvas [data-mu].is-target { outline-color: #2B9FCF; }
+
+/* Nombre del campo al pasar el mouse (el <img> no admite pseudo-elementos). */
+.mu-hero-banner-canvas [data-mu]:not([data-mu="imagen"]):hover::after {
+    content: attr(data-mu);
+    position: absolute; top: -20px; left: 0; z-index: 20;
+    background: #1d2327; color: #fff; font-size: 10px; line-height: 1.7;
+    padding: 0 6px; border-radius: 3px; white-space: nowrap;
+}
+
+/* El campo del formulario al que apunta el clic (N1). */
+.mu-hero-banner-row [data-field].is-target {
+    box-shadow: 0 0 0 2px rgba(43, 159, 207, 0.6);
+    border-radius: 4px;
+}

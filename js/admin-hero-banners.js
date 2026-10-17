@@ -11,6 +11,9 @@
  * - Repetición anual (feature 012): la casilla «Se repite cada año» de cada panel hace
  *   que sólo cuenten día y mes (el año de las fechas se ignora). La de Global arrastra a
  *   los países que no tenían decisión propia; el aviso replica anuales_incompletas.
+ * - Lienzo del editor (feature 013): el banner REAL (mu_hero_slide_render) dentro de la
+ *   fila, sincronizado con el formulario por nodos data-mu. Es vista: no guarda nada, no
+ *   hace requests y no genera HTML nuevo. El clic en un nodo lleva a su campo (N1).
  * - Píldoras de idioma ES | PT | EN (mismo componente que el editor de reseñas):
  *   eligen qué bloque se edita. El punto marca los idiomas con contenido propio y
  *   sale automático del contenido — ya no hay checkbox "Traducir".
@@ -108,6 +111,136 @@
         return $('<div></div>').html(String(valor || '')).text().trim();
     }
 
+    // ---------------------------------------------------------------
+    // Lienzo del editor (feature 013): el banner REAL, en vivo
+    // ---------------------------------------------------------------
+
+    /** Mapa marca del lienzo → campo del formulario (clic-para-foco, N1). */
+    var MU_A_CAMPO = {
+        imagen: 'imagen',
+        eyebrow: 'eyebrow',
+        titulo: 'titulo',
+        descripcion: 'descripcion',
+        cta: 'cta_url',
+        cta_texto: 'cta_texto',
+        cta_secundario: 'cta_secundario_url',
+        cta_secundario_texto: 'cta_secundario_texto',
+        badge: 'free_badge_url',
+        badge_text: 'free_badge_text'
+    };
+
+    /**
+     * Escala del lienzo para encajar en la columna (nunca agranda). Función PURA: la
+     * verifica el arnés JS de 013.
+     */
+    function escalaCanvas(disponible, ancho) {
+        ancho = parseFloat(ancho) || 0;
+        disponible = parseFloat(disponible) || 0;
+
+        if (ancho <= 0 || disponible <= 0) { return 1; }
+
+        var escala = disponible / ancho;
+
+        if (escala > 1) { escala = 1; }
+        if (escala < 0.05) { escala = 0.05; }
+
+        return escala;
+    }
+
+    /** Valor de un campo en el idioma pedido, con el respaldo al español (como el front). */
+    function valorCampo($row, lang, campo) {
+        var $bloque = $row.find('.mu-hero-banner-lang-block[data-lang="' + lang + '"]');
+        var valor   = $bloque.length ? String($bloque.find('[data-field="' + campo + '"]').val() || '') : '';
+
+        if (valor === '' && lang !== 'es') {
+            valor = String($row.find('.mu-hero-banner-lang-block[data-lang="es"] [data-field="' + campo + '"]').val() || '');
+        }
+
+        return valor;
+    }
+
+    /** Defaults del badge (los del front), para mostrar lo que se vería con el campo vacío. */
+    function badgeDefaults() {
+        var d = (window.muHeroBannersData && window.muHeroBannersData.badgeDefaults) || {};
+
+        return { url: String(d.url || ''), text: String(d.text || '') };
+    }
+
+    /**
+     * Pinta el lienzo con los valores ACTUALES del formulario (no guarda nada) y replica
+     * las condiciones del front: eyebrow, CTA secundario y badge se ocultan cuando el sitio
+     * tampoco los mostraría. El título admite HTML (<span class="highlight">); el resto es
+     * texto plano. Sin request y sin generar HTML nuevo: se actualizan los nodos marcados.
+     */
+    function pintarLienzo($row) {
+        var $c = $row.find('[data-mu-canvas]');
+        if (!$c.length) { return; }
+
+        var lang     = idiomaActivo($row);
+        var defaults = badgeDefaults();
+
+        $c.attr('data-idioma', lang);
+
+        var titulo  = valorCampo($row, lang, 'titulo');
+        var eyebrow = valorCampo($row, lang, 'eyebrow');
+        var imagen  = valorCampo($row, lang, 'imagen');
+        var ctaU    = valorCampo($row, lang, 'cta_url');
+        var secT    = valorCampo($row, lang, 'cta_secundario_texto');
+        var secU    = valorCampo($row, lang, 'cta_secundario_url');
+        var bdgT    = valorCampo($row, lang, 'free_badge_text');
+        var bdgU    = valorCampo($row, lang, 'free_badge_url');
+
+        $c.find('[data-mu="titulo"]').html(titulo);
+        $c.find('[data-mu="descripcion"]').text(valorCampo($row, lang, 'descripcion'));
+        $c.find('[data-mu="cta_texto"]').text(valorCampo($row, lang, 'cta_texto'));
+        $c.find('[data-mu="cta_secundario_texto"]').text(secT);
+        $c.find('[data-mu="badge_text"]').html(bdgT || defaults.text);
+
+        $c.find('[data-mu="cta"]').attr('href', ctaU);
+        $c.find('[data-mu="cta_secundario"]').attr('href', secU);
+        $c.find('[data-mu="badge"]').attr('href', bdgU || defaults.url);
+        $c.find('[data-mu="imagen"]').attr('src', imagen).attr('alt', textoPlano(titulo));
+
+        // Visibilidad: las mismas tres condiciones del front.
+        $c.find('[data-mu="eyebrow"]').toggle(eyebrow !== '');
+        $c.find('[data-mu="cta_secundario"]').toggle(secT !== '' && secU !== '');
+        $c.find('[data-mu="badge"]').toggle(!!$row.find('input[name$="[show_free_badge]"]').prop('checked'));
+    }
+
+    /** Ajusta ancho, escala y alto del lienzo según el modo elegido (Escritorio / Móvil). */
+    function escalarLienzo($row) {
+        var $c = $row.find('[data-mu-canvas]');
+        if (!$c.length) { return; }
+
+        var ancho  = parseInt($c.attr('data-ancho'), 10) || 1280;
+        var $inner = $c.find('.mu-hero-banner-canvas-inner');
+        var alto   = $inner.length ? $inner[0].scrollHeight : 0;
+
+        $c.css('--mu-canvas-w', ancho + 'px');
+        $c.css('--mu-canvas-h', (alto > 0 ? alto : 580) + 'px');
+        $c.css('--mu-canvas-scale', escalaCanvas($c.width(), ancho));
+    }
+
+    /** N1: lleva el foco (con scroll) al campo del formulario que corresponde al nodo. */
+    function irAlCampo($row, marca) {
+        var campo   = MU_A_CAMPO[marca] || marca;
+        var $bloque = $row.find('.mu-hero-banner-lang-block[data-lang="' + idiomaActivo($row) + '"]');
+        var $campo  = $bloque.find('[data-field="' + campo + '"]');
+
+        if (!$campo.length) { return; }
+
+        $row.find('[data-field].is-target').removeClass('is-target');
+        $campo.addClass('is-target');
+
+        var $destino = $campo.closest('p');
+        if ($destino.length) {
+            $('html, body').animate({ scrollTop: Math.max(0, $destino.offset().top - 120) }, 200);
+        }
+
+        $campo.trigger('focus');
+        window.setTimeout(function () { $campo.removeClass('is-target'); }, 1600);
+    }
+
     /**
      * El español se muestra como placeholder en los campos vacíos de PT/EN: es
      * ayuda visual y no se envía, así el punto sigue marcando solo lo que tiene
@@ -141,6 +274,9 @@
         sincronizarPillsPais($row);
         aplicarPlaceholdersFechas($row);
         actualizarPuntosFechas($row);
+        // [013] Lienzo: valores actuales del formulario y encaje en la columna.
+        pintarLienzo($row);
+        escalarLienzo($row);
     }
 
     // ---------------------------------------------------------------
@@ -765,13 +901,22 @@
             var $row   = $campo.closest('.mu-hero-banner-row');
             var lang   = String($campo.closest('.mu-hero-banner-lang-block').attr('data-lang') || 'es').toLowerCase();
 
+            // [013] El lienzo se repinta siempre (es vista, no guarda nada).
+            pintarLienzo($row);
+
             if (lang === 'es') {
                 aplicarPlaceholders($row);
                 actualizarPuntos($row);
+                escalarLienzo($row);   // el alto puede cambiar (p. ej. un título de dos líneas)
                 return;
             }
 
             actualizarPunto($row, lang);
+        });
+
+        // [013] La casilla del badge también cambia el lienzo (lo muestra o lo oculta).
+        $list.on('change', '.mu-hero-banner-row input[name$="[show_free_badge]"]', function () {
+            pintarLienzo($(this).closest('.mu-hero-banner-row'));
         });
 
         // ---------------------------------------------------------------
@@ -870,6 +1015,42 @@
         });
 
         // ---------------------------------------------------------------
+        // Lienzo (feature 013): ancho, clic-para-foco y reencaje
+        // ---------------------------------------------------------------
+        $list.on('click', '.mu-hero-banner-canvas-w', function (e) {
+            e.preventDefault();
+
+            var $btn = $(this);
+            var $row = $btn.closest('.mu-hero-banner-row');
+
+            $row.find('[data-mu-canvas]').attr('data-ancho', String($btn.attr('data-ancho') || '1280'));
+            $btn.closest('.mu-hero-banner-canvas-widths').find('.mu-hero-banner-canvas-w').removeClass('is-active');
+            $btn.addClass('is-active');
+            escalarLienzo($row);
+        });
+
+        // Un solo handler para el lienzo: los CTA son enlaces y desde el editor NUNCA
+        // navegan; si el clic cayó en un nodo marcado, se salta a su campo del formulario.
+        $list.on('click', '[data-mu-canvas]', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            var $nodo = $(e.target).closest('[data-mu]');
+            if (!$nodo.length) { return; }
+
+            irAlCampo($(this).closest('.mu-hero-banner-row'), String($nodo.attr('data-mu') || ''));
+        });
+
+        // Al redimensionar la ventana, los lienzos se reencajan a su columna.
+        var muResizeTimer = null;
+        $(window).on('resize', function () {
+            window.clearTimeout(muResizeTimer);
+            muResizeTimer = window.setTimeout(function () {
+                $list.find('.mu-hero-banner-row').each(function () { escalarLienzo($(this)); });
+            }, 150);
+        });
+
+        // ---------------------------------------------------------------
         // Cerrar dropdowns al hacer clic fuera
         // ---------------------------------------------------------------
         $(document).on('click', function () {
@@ -891,6 +1072,7 @@
         rangoInvertido: rangoInvertido,
         fechaMalFormada: fechaMalFormada,
         anualIncompleta: anualIncompleta,
+        escalaCanvas: escalaCanvas,
         variantesDeFila: variantesDeFila,
         mensajeVariante: mensajeVariante
     };

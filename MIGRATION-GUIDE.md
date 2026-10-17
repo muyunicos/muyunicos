@@ -1000,17 +1000,34 @@ RENDER COMPARTIDO DEL HERO + LIENZO DEL PANEL (2026-10-17, feature 013-panel-her
 - [ ] Verificación manual en producción (Fase B del quickstart de 013): hero de
   muyunicos.com + 2 subdominios idéntico al fixture y 'hero-promo.css' servido. Sin eso, la
   Fase 0 se marca NO VERIFICADA.
-- [ ] Fases 1-3 (lienzo vivo + jerarquía de la fila): diseñadas, SIN empezar. El lienzo
-  reusa el renderer y el componente CSS dentro del panel (container query en lugar de vw,
-  modo móvil conmutado a mano, patch por nodos sin generar HTML en JS, sin requests).
-  Se descartó el iframe con flag de preview (?mu_banner_preview): exigía resolver flag
-  público, nonce entre subdominios, admin bar, nocache_headers, caché por query y
-  modal-auth.css condicional —todo medido— y el lienzo no necesita nada de eso.
-- 📋 HALLAZGO PREVIO (no lo introduce 013, medido): el CTA secundario del hero usa
-  .mu-btn-outline, definido en css/cart.css y css/checkout.css — hojas que la home NO carga:
-  en el front el botón secundario no tiene estilo propio. Y .mu-btn/.mu-btn-primary viven en
-  css/components/modal-auth.css, que se encola SÓLO para visitantes no logueados (un admin
-  no los ve ni en el front). Candidato a un fix/ aparte.
+- [ ] Fase 1 (jerarquía de la fila): PENDIENTE. Fila-resumen con estado calculado, chips de
+  país unificados (retirar el dropdown «Países»), secciones Contenido/Vigencia/Identidad con la
+  vigencia como tabla comparable, plegado por fila, Duplicar / Ordenar / Eliminar con deshacer.
+- [x] Fase 2 (LIENZO VIVO, misma fecha): el banner REAL dentro de la fila del panel. El
+  renderer compartido acepta 'mu' => true, que marca los 10 nodos con data-mu y emite siempre
+  eyebrow/CTA secundario/badge (para poder editarlos); el JS los repinta desde el formulario en
+  cada tecla, con el respaldo al español y las mismas condiciones de visibilidad del front. Sin
+  requests y sin generar HTML en JS. El panel encola el componente hero-promo.css (y el handle
+  'generate-google-fonts' del padre) y su CSS declara los tokens del sistema de diseño y las 3
+  reglas de botón con alcance al lienzo, porque style.css (mu-base) NO se carga en el admin.
+- Fidelidad del lienzo sin iframe (medido y resuelto): el front usa 4vw (ancho de la VENTANA) y
+  un @media de 968px; el lienzo usa container-type: inline-size + 4cqw y las reglas móviles
+  replicadas como @container, para que respondan al ancho del LIENZO. El ancho real (1280/390)
+  se escala con transform para encajar en la columna; escalaCanvas() es pura y tiene arnés.
+- Al redimensionar la ventana el lienzo se reencaja; al cambiar de idioma y al tildar el badge
+  se repinta. El clic en cualquier nodo lleva (con scroll y resaltado) al campo real del
+  formulario, y los CTA nunca navegan desde el editor.
+- - Verificación automática de 013: arnés PHP 63 OK (incluye la Fase 0 y el lienzo en la fila) +
+  arnés JS 9 OK (escalaCanvas). Los arneses 010 y 012 necesitaron un `require` del repositorio
+  real de iconos (inc/icons.php): el lienzo llama mu_get_icon() al renderizar la fila.
+- ⚠️ CORRECCIÓN de un hallazgo anterior (era mío y estaba mal): .mu-btn, .mu-btn-primary y
+  .mu-btn-outline SÍ están definidos para el front en style.css (:root y líneas 101-112). El
+  problema real no es que falte el estilo en el front, sino que el ADMIN no carga style.css
+  (mu-base se encola en wp_enqueue_scripts): por eso el lienzo declara los tokens y esos tres
+  botones con alcance propio —deuda declarada: si cambian en style.css, cambian acá—.
+- [ ] Verificación manual del LIENZO en el panel (Fase B del quickstart de 013): alcance y
+  encaje, tipografía (la fuente display la aporta el padre: si no está en el admin, degrada a la
+  de reemplazo), sincronización en vivo, modo móvil y clic-para-foco.
 
 HUECOS Y DECISIONES ABIERTAS (2026-10-16, feature 004-country-scope):
 - [x] RESUELTO 2026-10-16 — Sitemap de Rank Math: el hook es `rank_math/sitemap/entry` y

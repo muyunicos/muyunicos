@@ -86,6 +86,10 @@ function muyu_get_countries_data() {
     ];
 }
 
+// Repositorio REAL de iconos: el lienzo del editor (feature 013) renderiza el CTA con
+// mu_get_icon(), y el arnés de 013 exige que sea el mismo SVG que el del front.
+require __DIR__ . '/../../../inc/icons.php';
+
 require __DIR__ . '/../../../inc/hero-banners.php';
 
 /* Ventanas de referencia (misma zona horaria que el módulo). */

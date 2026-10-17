@@ -1131,6 +1131,23 @@ add_action( 'add_option_' . MU_HERO_BANNERS_OPTION, 'mu_hero_banner_reprogramar_
 // 1.b RENDER DEL SLIDE — FUENTE ÚNICA (FRONT + PANEL)
 // ==========================================
 
+if ( ! function_exists( 'mu_hero_badge_defaults' ) ) {
+    /**
+     * Defaults del badge promo (los únicos del sistema).
+     *
+     * Fuente única: los usa el render del slide y el lienzo del panel (que los expone al
+     * JS para replicar lo que se vería con el badge vacío).
+     *
+     * @return array{url:string,text:string}
+     */
+    function mu_hero_badge_defaults() {
+        return [
+            'url'  => '/tienda/digital/?min_price=0&max_price=0',
+            'text' => '<strong>¡Gratis!</strong><span>Envíos digitales</span>',
+        ];
+    }
+}
+
 if ( ! function_exists( 'mu_hero_slide_render' ) ) {
     /**
      * Render de UN slide del hero.
@@ -1149,16 +1166,29 @@ if ( ! function_exists( 'mu_hero_slide_render' ) ) {
      *
      * @param array  $promo Banner (mismos campos que consume el front).
      * @param string $lang  Idioma ya resuelto ('es'|'en'|'pt').
-     * @param array  $args  index (int, sale en data-slide-index) y first (bool: clase
-     *                      active, loading eager y fetchpriority high).
+     * @param array  $args  index (int, sale en data-slide-index), first (bool: clase
+     *                      active, loading eager y fetchpriority high) y mu (bool: marca
+     *                      los nodos con data-mu para el lienzo del editor).
      * @return string HTML del slide.
      */
     function mu_hero_slide_render( $promo, $lang, $args = [] ) {
         $promo = is_array( $promo ) ? $promo : [];
-        $args  = wp_parse_args( $args, [ 'index' => 0, 'first' => true ] );
+        $args  = wp_parse_args( $args, [ 'index' => 0, 'first' => true, 'mu' => false ] );
 
         $idx   = (int) $args['index'];
         $first = ! empty( $args['first'] );
+
+        // [Lienzo del editor] Con 'mu' los nodos salen marcados (data-mu="campo") para que
+        // el JS del panel los mantenga sincronizados con el formulario, y se emiten
+        // SIEMPRE el eyebrow, el CTA secundario y el badge (aunque hoy no se muestren):
+        // si no, no habría dónde editar su texto. El JS replica las condiciones del front
+        // (oculta lo que no se mostraría). El front NUNCA pide 'mu'.
+        $mu = ! empty( $args['mu'] );
+
+        $dm = function ( $campo ) use ( $mu ) {
+            // $campo es un literal del código, no un dato de usuario: no se escapa.
+            return $mu ? ' data-mu="' . $campo . '"' : '';
+        };
 
         // Campo del banner en el idioma pedido: el traducido cuando existe y el español
         // en cualquier otro caso (sobrescritura dispersa, ver mu_hero_banner_field()).
@@ -1168,14 +1198,13 @@ if ( ! function_exists( 'mu_hero_slide_render' ) ) {
                 : (string) ( $promo[ $base ] ?? '' );
         };
 
-        // --- DEFAULTS PARA BADGE (los únicos del sistema) ---
-        $badge_defaults = [
-            'url'  => '/tienda/digital/?min_price=0&max_price=0',
-            'text' => '<strong>¡Gratis!</strong><span>Envíos digitales</span>',
-        ];
+        // --- DEFAULTS PARA BADGE (fuente única: mu_hero_badge_defaults) ---
+        $badge_defaults = mu_hero_badge_defaults();
 
         $titulo       = $field( 'titulo' );
-        $show_badge   = ! empty( $promo['show_free_badge'] ) && true === $promo['show_free_badge'];
+        // Con 'mu' el badge sale visible aunque la casilla esté apagada: en el lienzo hay
+        // que poder editar su texto (el JS lo oculta si la casilla no está tildada).
+        $show_badge   = $mu || ( ! empty( $promo['show_free_badge'] ) && true === $promo['show_free_badge'] );
         $imagen       = $field( 'imagen' );
         $eyebrow      = $field( 'eyebrow' );
         $cta_url      = $field( 'cta_url' );
@@ -1202,34 +1231,34 @@ if ( ! function_exists( 'mu_hero_slide_render' ) ) {
                      width="1280" height="580"
                      loading="<?php echo $first ? 'eager' : 'lazy'; ?>"
                      <?php echo $first ? 'fetchpriority="high"' : ''; ?>
-                     decoding="async">
+                     decoding="async"<?php echo $dm( 'imagen' ); ?>>
             </div>
 
             <div class="mu-hero-promo-content">
-                <?php if ( '' !== $eyebrow ) : ?>
-                    <div class="mu-hero-promo-eyebrow">
+                <?php if ( '' !== $eyebrow || $mu ) : ?>
+                    <div class="mu-hero-promo-eyebrow"<?php echo $dm( 'eyebrow' ); ?>>
                         <?php echo esc_html( $eyebrow ); ?>
                     </div>
                 <?php endif; ?>
 
-                <h1 class="mu-hero-promo-title"><?php echo wp_kses_post( $titulo ); ?></h1>
-                <p class="mu-hero-promo-desc"><?php echo esc_html( $field( 'descripcion' ) ); ?></p>
+                <h1 class="mu-hero-promo-title"<?php echo $dm( 'titulo' ); ?>><?php echo wp_kses_post( $titulo ); ?></h1>
+                <p class="mu-hero-promo-desc"<?php echo $dm( 'descripcion' ); ?>><?php echo esc_html( $field( 'descripcion' ) ); ?></p>
 
                 <div class="mu-hero-promo-actions">
-                    <a href="<?php echo esc_url( $cta_url ); ?>" class="mu-btn mu-btn-primary">
-                        <span><?php echo esc_html( $field( 'cta_texto' ) ); ?></span>
+                    <a href="<?php echo esc_url( $cta_url ); ?>" class="mu-btn mu-btn-primary"<?php echo $dm( 'cta' ); ?>>
+                        <span<?php echo $dm( 'cta_texto' ); ?>><?php echo esc_html( $field( 'cta_texto' ) ); ?></span>
                         <?php echo mu_get_icon( 'arrow' ); ?>
                     </a>
 
-                    <?php if ( '' !== $cta_sec_text && '' !== $cta_sec_url ) : ?>
-                    <a href="<?php echo esc_url( $cta_sec_url ); ?>" class="mu-btn mu-btn-outline">
-                        <?php echo esc_html( $cta_sec_text ); ?>
+                    <?php if ( ( '' !== $cta_sec_text && '' !== $cta_sec_url ) || $mu ) : ?>
+                    <a href="<?php echo esc_url( $cta_sec_url ); ?>" class="mu-btn mu-btn-outline"<?php echo $dm( 'cta_secundario' ); ?>>
+                        <?php echo $mu ? '<span data-mu="cta_secundario_texto">' : ''; ?><?php echo esc_html( $cta_sec_text ); ?><?php echo $mu ? '</span>' : ''; ?>
                     </a>
                     <?php endif; ?>
 
                     <?php if ( $show_badge ) : ?>
-                    <a href="<?php echo esc_url( $badge_url ); ?>" class="mu-hero-promo-free-badge">
-                        <div class="mu-hero-promo-free-text"><?php echo wp_kses_post( $badge_text ); ?></div>
+                    <a href="<?php echo esc_url( $badge_url ); ?>" class="mu-hero-promo-free-badge"<?php echo $dm( 'badge' ); ?>>
+                        <div class="mu-hero-promo-free-text"<?php echo $dm( 'badge_text' ); ?>><?php echo wp_kses_post( $badge_text ); ?></div>
                     </a>
                     <?php endif; ?>
                 </div>
@@ -1288,6 +1317,18 @@ if ( is_admin() ) {
         $pills_file = $dir . '/css/components/ai-translate-inline.css';
         $pills_ver  = file_exists( $pills_file ) ? (string) filemtime( $pills_file ) : $ver;
 
+        // [013] El MISMO componente CSS del front: así el lienzo del editor muestra el
+        // banner con sus estilos reales (y admin-hero-banners.css lo ajusta a la columna).
+        $hero_css = $dir . '/css/components/hero-promo.css';
+        $hero_ver = file_exists( $hero_css ) ? (string) filemtime( $hero_css ) : $ver;
+        wp_enqueue_style( 'mu-hero-promo', $uri . '/css/components/hero-promo.css', [], $hero_ver );
+
+        // La tipografía del front la aporta el tema padre (handle 'generate-google-fonts').
+        // Se reusa ese handle en vez de inventar una URL: si el padre no lo registró en el
+        // admin, wp_enqueue_style() no hace nada y el lienzo degrada a la fuente de
+        // reemplazo (deuda declarada en MIGRATION-GUIDE §8).
+        wp_enqueue_style( 'generate-google-fonts' );
+
         wp_enqueue_style( 'mu-ai-translate-inline', $uri . '/css/components/ai-translate-inline.css', [], $pills_ver );
         wp_enqueue_style( 'mu-admin-hero-banners', $uri . '/css/admin-hero-banners.css', [], $css_ver );
         wp_enqueue_script( 'mu-admin-hero-banners-js', $uri . '/js/admin-hero-banners.js', [ 'jquery' ], $js_ver, true );
@@ -1305,6 +1346,9 @@ if ( is_admin() ) {
                 'fechasFormato' => __( 'Usá el formato DDMMAAAA (8 dígitos) en Inicio y Fin.', 'mu' ),
                 // [012] Aviso de la repetición anual incompleta (una sola fecha).
                 'fechasAnualIncompleta' => __( 'Con «Se repite cada año» hacen falta las dos fechas: con una sola, el banner se muestra siempre.', 'mu' ),
+                // [013] Lienzo del editor: defaults del badge (los del front) para que la
+                // vista previa muestre lo mismo cuando los campos están vacíos.
+                'badgeDefaults' => mu_hero_badge_defaults(),
             ] );
         }
     } );
@@ -1606,6 +1650,42 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
             <?php endif; ?>
 
             <div class="mu-hero-banner-row__grid">
+                <?php
+                // Lienzo del editor (feature 013): el banner REAL, renderizado con la MISMA
+                // pieza que el front (mu_hero_slide_render) y sincronizado con el formulario
+                // por el JS (data-mu). No guarda nada: es vista.
+                $anchos = [
+                    '1280' => __( 'Escritorio', 'mu' ),
+                    '390'  => __( 'Móvil', 'mu' ),
+                ];
+                ?>
+                <div class="mu-hero-banner-canvas-block mu-hero-banner-row__full">
+                    <div class="mu-hero-banner-canvas-head">
+                        <strong><?php esc_html_e( 'Vista previa editable', 'mu' ); ?></strong>
+                        <span class="mu-hero-banner-canvas-widths" role="group" aria-label="<?php esc_attr_e( 'Ancho de la vista previa', 'mu' ); ?>">
+                            <?php foreach ( $anchos as $ancho => $etiqueta ) : ?>
+                                <button type="button"
+                                        class="mu-hero-banner-canvas-w<?php echo '1280' === (string) $ancho ? ' is-active' : ''; ?>"
+                                        data-ancho="<?php echo esc_attr( $ancho ); ?>"><?php echo esc_html( $etiqueta ); ?></button>
+                            <?php endforeach; ?>
+                        </span>
+                        <span class="mu-lang-hint"><?php esc_html_e( 'Sigue el idioma de la píldora y se actualiza mientras escribís (no se guarda hasta que guardes la lista). Hacé clic en cualquier parte del banner para ir a su campo.', 'mu' ); ?></span>
+                    </div>
+                    <div class="mu-hero-banner-canvas" data-mu-canvas data-ancho="1280" data-idioma="<?php echo esc_attr( $idioma_activo_lc ); ?>">
+                        <div class="mu-hero-banner-canvas-inner">
+                            <div class="mu-hero-promo-slider">
+                                <?php
+                                echo mu_hero_slide_render( $b, $idioma_activo_lc, [
+                                    'index' => 0,
+                                    'first' => true,
+                                    'mu'    => true,
+                                ] );   // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML escapado dentro del renderer.
+                                ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <?php
                 // Los 10 campos que existen por idioma (base ES + sufijos _pt / _en).
                 // Se declaran una sola vez para que el bloque de español y las

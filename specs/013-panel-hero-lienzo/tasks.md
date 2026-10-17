@@ -26,7 +26,16 @@
 - [ ] T008 Fase B en producción (mantenedor): hero idéntico en `muyunicos.com` + 2 subdominios y `hero-promo.css` servido
 - [ ] T009 Declarar el resultado: sin T008 la Fase 0 se marca NO VERIFICADA en producción
 
-## Fase 1 — Jerarquía de la fila
+## Fase 2 — Lienzo (implementada ANTES de la Fase 1: es aditiva y así el panel nunca queda roto a mitad de camino)
+
+- [X] T015 `inc/hero-banners.php`: el lienzo renderiza `mu_hero_slide_render( …, [ 'mu' => true ] )` con los datos de la fila (PHP; funciona sin JS)
+- [X] T016 `data-mu="campo"` en los 10 nodos + `pintarLienzo()` en `js/admin-hero-banners.js` (idioma activo con respaldo al español, visibilidad del badge/CTA secundario/eyebrow; sin generar HTML en JS y sin requests)
+- [X] T017 CSS del lienzo: tokens del sistema de diseño y botones con alcance al lienzo, `container-type: inline-size`, `4cqw` en lugar de `4vw`, `@container (max-width: 968px)` para el modo móvil, `transform: scale()` (JS) y alto calculado
+- [X] T018 Encolar `css/components/hero-promo.css` y el handle `generate-google-fonts` en la pantalla del panel + selector Escritorio/Móvil
+- [X] T019 **N1**: clic-para-foco con resaltado del campo y nombre del nodo al pasar el mouse; los CTA no navegan desde el editor
+- [ ] T019b Verificación manual del lienzo en el panel (alcance, tipografía, sincronización, móvil, clic-para-foco): Fase B del quickstart
+
+## Fase 1 — Jerarquía de la fila (pendiente)
 
 - [ ] T010 Fila-resumen: título + **estado calculado** (`mu_hero_banner_is_active_for_pais` + `mu_hero_banner_proximo_borde` en PHP) y miniatura
 - [ ] T011 Chips de país unificados: activar/desactivar y elegir ámbito con el mismo control; retirar el dropdown «Países» y `posicionarDropdown()`

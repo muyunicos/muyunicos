@@ -64,6 +64,12 @@ function get_transient( $k ) { return false; }
 function set_transient( $k, $v, $t = 0 ) { return true; }
 function delete_transient( $k ) { return true; }
 function muyu_get_current_country_from_subdomain() { return 'AR'; }
+function muyu_get_countries_data() {
+    return [
+        'AR' => [ 'name' => 'Argentina', 'host' => 'muyunicos.com',    'tz' => 'America/Argentina/Buenos_Aires' ],
+        'BR' => [ 'name' => 'Brasil',    'host' => 'br.muyunicos.com', 'tz' => 'America/Sao_Paulo' ],
+    ];
+}
 function wp_timezone() { return new DateTimeZone( 'America/Argentina/Buenos_Aires' ); }
 function wp_next_scheduled( $h ) { return false; }
 function wp_schedule_single_event( $t, $h, $a = [] ) { return true; }
@@ -298,6 +304,41 @@ same(
     0,
     substr_count( mu_hero_slide_render( [ 'titulo' => 'x', 'cta_secundario_texto' => 'Cotizar' ], 'es' ), 'mu-btn-outline' )
 );
+
+echo "\n--- 4. Modo lienzo (mu): marcas y nodos siempre presentes ---\n";
+$lienzo = mu_hero_slide_render( [ 'titulo' => 'Calculá', 'descripcion' => 'D', 'cta_texto' => 'Ver' ], 'es', [ 'mu' => true ] );
+
+foreach ( [ 'imagen', 'eyebrow', 'titulo', 'descripcion', 'cta', 'cta_texto', 'cta_secundario', 'cta_secundario_texto', 'badge', 'badge_text' ] as $marca ) {
+    same( "Marca data-mu=\"{$marca}\" presente una vez", 1, substr_count( $lienzo, 'data-mu="' . $marca . '"' ) );
+}
+same( 'Con mu, el eyebrow existe aunque esté vacío', 1, substr_count( $lienzo, 'data-mu="eyebrow"' ) );
+same( 'Con mu, el CTA secundario existe aunque esté vacío', 1, substr_count( $lienzo, 'data-mu="cta_secundario"' ) );
+same( 'Con mu, el badge existe aunque la casilla esté apagada', 1, substr_count( $lienzo, 'data-mu="badge"' ) );
+same( 'Con mu, el texto del badge sale con los defaults', 1, substr_count( $lienzo, '<strong>¡Gratis!</strong><span>Envíos digitales</span>' ) );
+same( 'El HTML del front NO lleva marcas data-mu', 0, substr_count( $render, 'data-mu=' ) );
+same( 'Sin mu, el eyebrow vacío sigue sin emitirse', 0, substr_count( mu_hero_slide_render( [ 'titulo' => 'x' ], 'es' ), 'mu-hero-promo-eyebrow' ) );
+
+echo "\n--- 5. El lienzo dentro de la fila del panel ---\n";
+ob_start();
+mu_hero_banners_render_row( 0, [
+    'id'     => 'cotizador',
+    'titulo' => 'Calculá el precio de tu pedido',
+    'inicio' => '01012026',
+    'fin'    => '31122026',
+    'paises' => [ 'AR' ],
+] );
+$fila = ob_get_clean();
+
+same( 'La fila trae el lienzo', 1, substr_count( $fila, 'data-mu-canvas' ) );
+same( 'Con el slide renderizado dentro', 1, substr_count( $fila, 'data-slide-index="0"' ) );
+same( 'Y los 10 nodos marcados para el JS', 10, substr_count( $fila, 'data-mu="' ) );
+same( 'El lienzo arranca en escritorio (1280)', 1, substr_count( $fila, 'data-mu-canvas data-ancho="1280"' ) );
+same( 'Botón de escritorio (activo por defecto)', 1, substr_count( $fila, 'class="mu-hero-banner-canvas-w is-active"' ) );
+same( 'Botón de móvil', 1, substr_count( $fila, 'class="mu-hero-banner-canvas-w"' ) );
+check( 'Declara el idioma activo', false !== strpos( $fila, 'data-idioma="es"' ) );
+check( 'El envoltorio es el slider del componente (para sus estilos)', false !== strpos( $fila, 'mu-hero-promo-slider' ) );
+same( 'El lienzo es sólo vista: no agrega campos al POST', 0, substr_count( $fila, 'name="mu_banner[0][canvas' ) );
+same( 'El CTA del lienzo usa el mismo SVG del front', 1, substr_count( $fila, '<svg class="mu-icon-svg muy-svg" viewBox="0 0 24 24">' ) );
 
 echo "\n== {$GLOBALS['mu_ok']} OK / {$GLOBALS['mu_fail']} FAIL ==\n";
 exit( $GLOBALS['mu_fail'] > 0 ? 1 : 0 );

@@ -50,7 +50,26 @@ El editor de banners tiene tres problemas que se refuerzan entre sí:
 - **Byte a byte** en los nodos con contenido y en `src`/`alt`/`href`, donde no hay ambigüedad de
   espacios.
 
-## Fases 1-3 — Lienzo vivo + jerarquía (diseñadas, sin empezar)
+## Fase 2 — Lienzo vivo (IMPLEMENTADA)
+
+El lienzo renderiza el slide **con la misma función que el front** dentro de la fila y lo
+mantiene sincronizado con el formulario, sin requests y sin generar HTML en JS:
+
+| # | Cambio | Archivos |
+|---|---|---|
+| 1 | `mu_hero_slide_render( …, [ 'mu' => true ] )`: los nodos salen con `data-mu="campo"` y se emiten **siempre** el eyebrow, el CTA secundario y el badge (aunque hoy no se muestren, para poder editarlos). El front nunca pide `mu`: su HTML no cambia (verificado). | `inc/hero-banners.php` |
+| 2 | `mu_hero_badge_defaults()`: fuente única de los defaults del badge (render + JS). | `inc/hero-banners.php` |
+| 3 | Bloque del lienzo en la fila: envoltorio `.mu-hero-promo-slider` (para los estilos del componente), selector **Escritorio (1280) / Móvil (390)** y hint. | `inc/hero-banners.php` |
+| 4 | El componente `hero-promo.css` **y** el handle del padre `generate-google-fonts` se encolan en la pantalla del panel. | `inc/hero-banners.php` |
+| 5 | CSS: tokens del sistema de diseño y las 3 reglas de botón **con alcance al lienzo** (el panel no carga `style.css`), `container-type: inline-size` + `4cqw` en lugar de `4vw`, y las reglas móviles del componente replicadas como `@container (max-width: 968px)` para que respondan al ancho del lienzo. | `css/admin-hero-banners.css` |
+| 6 | JS: `pintarLienzo()` (patch por nodos desde el formulario, con el respaldo al español y las condiciones de visibilidad del front), `escalarLienzo()` + `escalaCanvas()` (encaje por `transform: scale`, nunca agranda), repintado en cada `input`, al cambiar de idioma y al tildar el badge. | `js/admin-hero-banners.js` |
+| 7 | **N1**: clic en cualquier nodo → foco + scroll al campo real del formulario, con resaltado; los CTA no navegan desde el editor. | `js/admin-hero-banners.js`, `css/admin-hero-banners.css` |
+
+Criterios de aceptación (cumplidos): el arnés verifica los 10 nodos marcados, que el lienzo
+esté dentro de la fila con el selector de ancho y el idioma activo, que **no agregue campos al
+POST**, que use el mismo SVG del front, y que el front siga sin marcas `data-mu`.
+
+## Fases 1 y 3 — Jerarquía e interacción (pendientes)
 
 Se descartó el iframe con `?mu_banner_preview`: para lograr fidelidad había que resolver flag
 público, nonce entre subdominios, admin bar, `nocache_headers`, caché por query y
@@ -76,8 +95,10 @@ ninguna request: usa el mismo renderer y el mismo CSS que el front.
 | El CSS del hero estaba mezclado con otras secciones | Bloque 186-486 de `home.css`, autocontenido (su `@media` y su `@keyframes` incluidos); **ningún** otro CSS define `.mu-hero-promo-*` | ✅ movimiento limpio (0 reglas quedan en `home.css`) |
 | El problema de fidelidad sin iframe | **Una sola** regla usa `vw` (`home.css:292`, el título): se resuelve con `4cqw` + contenedor | ✅ acotado a una línea en Fase 2 |
 | El orden de carga impedía compartir el renderer | `icons` 360 → `hero-banners` 379 → `ui` 381 | ✅ el renderer va en `hero-banners` |
-| **El front cambia** (riesgo real de la Fase 0) | 37 asertos contra el fixture de producción, escape por campo verificado; Fase B con `curl` en 3 hosts | ✅ cubierto; pendiente la verificación en producción |
-| Hallazgo **previo** (no lo introduce esta spec) | `.mu-btn-outline` (CTA secundario del hero) está definido en `css/cart.css` y `css/checkout.css`, hojas que la home **no** carga: el botón secundario no tiene estilo propio en el front. El lienzo lo mostrará igual (fiel) | 📋 reportado; se resuelve en un commit `fix/` aparte si se decide |
+| **El front cambia** (riesgo real de la Fase 0) | 63 asertos contra el fixture de producción, escape por campo verificado; Fase B con `curl` en 3 hosts | ✅ cubierto; pendiente la verificación en producción |
+| El panel NO carga `style.css` (mu-base) | `mu-base` se encola en `wp_enqueue_scripts` (solo front). En el admin faltan los tokens del sistema de diseño y las reglas de `.mu-btn*` que el banner usa (definidas en `style.css:101-112`) | ✅ resuelto declarando los tokens y los 3 botones **con alcance al lienzo** en `admin-hero-banners.css`, con `style.css` como fuente de verdad (deuda: si cambian allá, cambian acá) |
+| Tipografía display en el panel | La fuente (Fredoka One) la encola el tema padre (`generate-google-fonts`) **solo en el front**. El lienzo reusa ese handle (`wp_enqueue_style('generate-google-fonts')`): si el padre no lo registró en el admin, degrada a la fuente de reemplazo | ⚠️ declarado; sin inventar URLs nuevas |
+| **Corrección** de un hallazgo anterior mío | Dije que `.mu-btn-outline` "no tenía estilo en la home": **era falso** — está en `style.css:111` (yo había grepeado solo `css/`). El CTA secundario del hero **sí** está estilado en el front | ✅ hallazgo retirado; lo que queda es el punto anterior (el admin no carga esa hoja) |
 
 ## Limitaciones declaradas
 

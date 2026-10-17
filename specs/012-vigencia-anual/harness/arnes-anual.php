@@ -111,6 +111,10 @@ $MU_LOG = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'mu-hero-borde-harness.log'
 @unlink( $MU_LOG );
 ini_set( 'error_log', $MU_LOG );
 
+// Repositorio REAL de iconos: el lienzo del editor (feature 013) renderiza el CTA con
+// mu_get_icon(), que de otro modo no existe en el WordPress simulado.
+require __DIR__ . '/../../../inc/icons.php';
+
 require __DIR__ . '/../../../inc/hero-banners.php';
 
 $GLOBALS['mu_hooks']   = $GLOBALS['mu_hooks'] ?? [];
