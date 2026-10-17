@@ -1128,6 +1128,29 @@ FIDELIDAD DEL LIENZO Y DENSIDAD (2026-10-17, feature 016):
 - [ ] Verificación manual (Fase B del quickstart de 016): píldora sin punto · preview con eyebrow
   rosa + hover + sin móvil fantasma · layout sin hueco · los tres bloques con caja · «Próximo
   borde» visible; y adelantar un borde (Fin = hoy) para ver la purga real.
+
+UN SOLO BLOQUE DE IDIOMA POR EDITOR (2026-10-17, feature 017, idea del mantenedor):
+- Qué cambió y por qué: había TRES .mu-hero-banner-lang-block (ES, PT, EN) y se ocultaban enteros al
+  cambiar de idioma. Por eso el toolbar de idioma (píldoras + variantes de IA + «Traducir») no podía
+  vivir junto a los campos —se habría ocultado con su bloque— y ocupaba una barra propia
+  (row__head) arriba del contenido. Ahora hay UN bloque y los idiomas son VARIANTES DE CADA CAMPO
+  (.mu-hero-banner-variante[data-lang], con `hidden` en las inactivas). El toolbar vive en la línea
+  del primer grupo («Texto»), a la derecha del rótulo: no se mueve ni se oculta nunca.
+- Menos marcado: 3 títulos de grupo en vez de 9 y una sola caja por fila (la observación «el bloque
+  de ES no tiene la caja de PT/EN» de 016 desaparece por construcción).
+- Regla crítica, con arnés: ocultar con `hidden` y NUNCA con `disabled`. Un campo disabled no viaja
+  en el POST: guardar estando en PT habría borrado las traducciones sin aviso. El arnés cuenta los
+  `disabled` en campos y exige 0. Los `name` de las tres lenguas no se tocaron (…[titulo],
+  …[titulo_pt], …[titulo_en]), así que el guardado y el front quedan idénticos.
+- Trampa que apareció en el modal de reseñas (inc/ui.php, el que usa el administrador desde el
+  front): el textarea ES tiene `required` y, al editar en PT, quedaba requerido pero OCULTO. Algunos
+  navegadores bloquean el submit con un mensaje invisible («not focusable»). Ahora setLang() pone
+  `required` sólo cuando el español está a la vista.
+- El formulario de reseñas del CLIENTE mantiene su estructura: no tiene campos por idioma.
+- Verificación: CSS 85 OK · 013 arnés PHP 130 OK (+12) · 007 41 OK (+5) · 012 (102 + 18) · 010
+  (99 + 38) · 011 18 · 008 (30 + 17) · 006 54; php -l y node --check limpios.
+- [ ] Verificación manual (Fase B del quickstart de 017): guardar ESTANDO EN PT y recargar (las tres
+  versiones persisten: es la prueba del `disabled`) y el toolbar que no se mueve al alternar idiomas.
 - [x] Fase 2 (LIENZO VIVO, misma fecha): el banner REAL dentro de la fila del panel. El
   renderer compartido acepta 'mu' => true, que marca los 10 nodos con data-mu y emite siempre
   eyebrow/CTA secundario/badge (para poder editarlos); el JS los repinta desde el formulario en
