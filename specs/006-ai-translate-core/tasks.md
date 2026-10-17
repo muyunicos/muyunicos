@@ -37,10 +37,10 @@ US4 (lote y automatización) queda **fuera** de esta entrega (decisión del mant
 
 **Independent Test**: traducir una reseña a PT, guardar y verla en portugués en `/pt/`.
 
-- [ ] T014 [US2] Extraer el JS del editor de reseñas de `inc/ui.php` a `js/reviews-admin-modal.js` y encolarlo condicionalmente (solo quien gestiona reseñas y donde está el shortcode), cerrando la deuda del principio II.
-- [ ] T015 [US2] Botón "Traducir" en el modal de reseñas: llama a la acción del administrador, completa el campo del idioma activo, muestra estados (cargando, sin cambios, error tipado) y **no guarda**.
-- [ ] T016 [US2] Marca de origen en el guardado de reseñas (`text_pt_hash` / `text_en_hash`) y aviso de "traducción desactualizada" en el editor.
-- [ ] T017 [US2] Verificación: arnés JS del modal (como en `005`) + prueba manual de §B.2 del quickstart.
+- [X] T014 [US2] Extraer el JS del editor de reseñas de `inc/ui.php` a `js/reviews-admin-modal.js` y encolarlo condicionalmente (solo quien gestiona reseñas y donde está el shortcode), cerrando la deuda del principio II.
+- [X] T015 [US2] Botón "Traducir" en el modal de reseñas: llama a la acción del administrador, completa el campo del idioma activo, muestra estados (cargando, sin cambios, error tipado) y **no guarda**.
+- [X] T016 [US2] Marca de origen en el guardado de reseñas (`text_pt_hash` / `text_en_hash`) y aviso de "traducción desactualizada" en el editor.
+- [X] T017 [US2] Verificación: arnés JS del modal (como en `005`) + prueba manual de §B.2 del quickstart.
 
 ## Fase 4 — US3: botón "Traducir" en hero banners (Priority: P2)
 
@@ -70,4 +70,5 @@ US4 (lote y automatización) queda **fuera** de esta entrega (decisión del mant
 
 Lote de pendientes, disparo automático al importar reseñas y ejecución programada: se
 planifican después de medir calidad y consumo reales (spec, historia US4).
+
 

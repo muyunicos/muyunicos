@@ -119,7 +119,13 @@ gratuito.
 
 ### B.2 Reseña traducida (US2)
 
-1. Abrir una reseña real en el editor, elegir PT y apretar "Traducir".
+0. **Antes de nada**: tocar «Editar» en una tarjeta y comprobar que el editor abre con
+   **nombre y comentario cargados**. El editor ya no depende del listado impreso en la
+   página: al abrir pide la reseña a la base (acción `mu_get_review`) y, si no la
+   encuentra, lo avisa en pantalla en vez de mostrar el formulario vacío. Si la caché de
+   la página sirve un marcado anterior, el editor igual funciona (deja un aviso en la
+   consola del navegador).
+1. Con el editor abierto, elegir PT y apretar **"Traducir con IA"**.
 2. Revisar el texto propuesto: debe ser fiel al original, sin agregar ni quitar sentido.
 3. Guardar y purgar la caché del host donde se mide.
 4. Verificar la sección de reseñas en `br.muyunicos.com/pt/`: el comentario debe aparecer en
