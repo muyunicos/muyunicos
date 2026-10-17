@@ -430,6 +430,19 @@ check( 'La columna «Se ve» muestra el huso del ámbito', false !== strpos( $fi
 check( 'Y la columna tiene su aviso por fila', false !== strpos( $fila, 'mu-hero-banner-fechas-warning' ) );
 same( 'Cada ámbito conserva sus 2 campos de fecha', 6, substr_count( $fila, 'data-fecha="' ) );
 
+echo "\n--- 10. Densidad: grupos del contenido y huso del sitio (014) ---\n";
+check( 'Los grupos están en el orden del banner (Texto → Botones → Imagen)',
+    strpos( $fila, '>Texto<' ) < strpos( $fila, '>Botones<' ) && strpos( $fila, '>Botones<' ) < strpos( $fila, '>Imagen<' ) );
+check( 'Dentro de «Texto» el eyebrow va antes que el título',
+    strpos( $fila, 'data-field="eyebrow"' ) < strpos( $fila, 'data-field="titulo"' ) );
+check( 'Y el título antes que la descripción',
+    strpos( $fila, 'data-field="titulo"' ) < strpos( $fila, 'data-field="descripcion"' ) );
+check( 'La imagen quedó en su propio grupo', false !== strpos( $fila, '>Imagen<' ) );
+same( 'Tres grupos por idioma × 3 idiomas', 9, substr_count( $fila, 'mu-hero-banner-group-title' ) );
+check( 'La fila de Global dice «huso del sitio» en vez de un offset', false !== strpos( $fila, 'huso del sitio' ) );
+same( 'Y ya no muestra el offset crudo', 0, substr_count( $fila, '(-03:00)' ) );
+check( 'Los ajustes de la fila apuntan al grupo Botones', false !== strpos( $fila, 'en el grupo «Botones»' ) );
+
 echo "\n== {$GLOBALS['mu_ok']} OK / {$GLOBALS['mu_fail']} FAIL ==\n";
 exit( $GLOBALS['mu_fail'] > 0 ? 1 : 0 );
 

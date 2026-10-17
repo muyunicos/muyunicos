@@ -457,7 +457,44 @@
 }
 .mu-hero-banner-vigencia-limpiar:hover { color: #d63638; }
 
-/* --- Tabla de vigencia por EXCEPCIÓN (014) ---------------------------------
+/* ============================================================
+   DENSIDAD Y DOS COLUMNAS (014)
+   Contenido a la izquierda; el lienzo, pegajoso, a la derecha.
+   ============================================================ */
+.mu-hero-banner-group-title {
+    margin: var(--mu-space-md, 20px) 0 4px;
+    padding-bottom: 2px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #646970;
+    border-bottom: 1px solid #f0f0f1;
+}
+.mu-hero-banner-lang-block > .mu-hero-banner-group-title:first-child { margin-top: 0; }
+
+@media (min-width: 1100px) {
+    .mu-hero-banner-row__grid {
+        grid-template-columns: minmax(0, 1fr) 400px;
+        align-items: start;
+        gap: var(--mu-space-md, 20px);
+    }
+
+    /* Todo el contenido va a la columna 1... */
+    .mu-hero-banner-row__grid > .mu-hero-banner-lang-block,
+    .mu-hero-banner-row__grid > .mu-hero-banner-globals-block {
+        grid-column: 1 / 2;
+    }
+
+    /* ...y el lienzo ocupa la columna 2, pegajoso mientras se edita. */
+    .mu-hero-banner-row__grid > .mu-hero-banner-canvas-block {
+        grid-column: 2 / 3;
+        grid-row: 1 / span 30;
+        position: sticky;
+        top: 48px;              /* debajo de la barra de admin */
+        margin-bottom: 0;
+    }
+}
    Global siempre; cada país sólo si difiere de la general (o con "ver todos"). */
 .mu-hero-banner-fechas-block.is-hereda { display: none; }
 .mu-hero-banner-tabla.is-ver-todos .mu-hero-banner-fechas-block.is-hereda { display: table-row; }

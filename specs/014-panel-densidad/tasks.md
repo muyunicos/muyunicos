@@ -21,8 +21,11 @@
 - [X] T006 Acciones en menú `⋯` (Duplicar visible; Subir · Bajar · Eliminar adentro)
 - [X] T007 Chips: sólo los tildados + selector `+N` (mismo checkbox, un lugar por país) con `$chip_markup()` reutilizado
 - [X] T008 JS: `sincronizarChips` mueve el chip entre el resumen y el selector y actualiza `+N`
-- [ ] T009 Contenido agrupado (Texto · Botones · Imagen) **en el orden del banner**
-- [ ] T010 El badge en un solo lugar (casilla junto a sus campos) y «Identidad» → Avanzado plegado
+- [X] T009 Contenido agrupado (**Texto** · **Botones** · **Imagen**) **en el orden del banner** (`$grupos_campos` reordena el render: eyebrow → título → descripción → botones → imagen) con título por grupo
+- [X] T010 «Ajustes de la fila» (identidad y badge) con el hint que apunta al grupo «Botones» para el texto del badge
+- [X] T015 Lienzo pegajoso en dos columnas (el contenido a la izquierda; el lienzo, `position: sticky`, a la derecha desde 1100px) + hint en una línea
+- [X] T016 Huso del sitio legible en la fila Global (`-03:00` → «huso del sitio»)
+- [X] T017 Arnés: sección 10 de 013 con 8 aserciones (orden de grupos, orden de campos, 3 grupos × 3 idiomas, huso del sitio) — 013 PHP queda en **118 OK**
 
 ## Fase 3 · Vigencia por excepción
 
@@ -33,8 +36,8 @@
 
 ## Fase 4 · Cierre
 
-- [ ] T015 Lienzo pegajoso en dos columnas + hint en una línea (densidad visual)
-- [ ] T016 Huso del sitio legible en la fila Global (`-03:00` → «huso del sitio»)
-- [ ] T017 Arnés: aserciones de marcado de los tramos 1/2/4/7 (hoy cubiertos por las secciones 8 y 9 de 013) y no-regresión completa
+- [X] T015 Lienzo pegajoso en dos columnas + hint en una línea (densidad visual)
+- [X] T016 Huso del sitio legible en la fila Global (`-03:00` → «huso del sitio»)
+- [X] T017 Arnés: sección 10 de 013 (orden de grupos y de campos, huso del sitio) y no-regresión completa
 - [X] T018 `spec.md` + `tasks.md` + `quickstart.md` + `MIGRATION-GUIDE.md` §8
 - [ ] T019 Fase B manual (mantenedor): plegado, chips que se mueven, excepción creada/borrada, «ver todos», menú ⋯ y el estado rojo de «sin países»

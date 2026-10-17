@@ -1039,10 +1039,13 @@ DENSIDAD DEL PANEL DE BANNERS (2026-10-17, feature 014-panel-densidad):
   porque es un dato y rompe el banner en el sitio); (5) acciones de la fila en un menú ⋯.
 - Cero cambios de datos y de contrato del POST: mismos nombres de campo, mismo saneado. Los países
   que heredan siguen renderizados (ocultos con is-hereda) justamente para no cambiar el POST.
-- Pendiente (mismo spec): agrupar el contenido en Texto/Botones/Imagen en el orden del banner, el
-  badge en un solo lugar, el lienzo pegajoso en dos columnas y el huso del sitio legible
-  («-03:00» → «huso del sitio»).
-- Verificación: arnés 013 PHP 110 OK (14 aserciones nuevas de excepciones/estado) y JS 17 OK;
+- Pendiente (mismo spec): NADA. Los cuatro tramos restantes se implementaron en el mismo día:
+  contenido agrupado en Texto/Botones/Imagen EN EL ORDEN DEL BANNER ($grupos_campos reordena el
+  render), «Ajustes de la fila» con el hint de dónde se edita el texto del badge, lienzo pegajoso
+  en dos columnas desde 1100px (por CSS, sin mover el DOM) y el huso del sitio legible («-03:00» →
+  «huso del sitio») en la fila Global.
+- Verificación: arnés 013 PHP 118 OK (14 aserciones nuevas de excepciones/estado y 8 de los grupos
+  y el huso del sitio) y JS 17 OK;
   010 migró 2 aserciones (una regex de clase y una nueva de «Global nunca se oculta») y quedó en
   99 OK + 28; 012 (87 + 18), 011 (18), 008 (30 + 17) y 006 (54) sin cambios.
 - ⚠️ Bug detectado y corregido en la implementación: la fila de Global recibía is-hereda y el CSS

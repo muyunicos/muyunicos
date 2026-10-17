@@ -1896,7 +1896,7 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                                         data-ancho="<?php echo esc_attr( $ancho ); ?>"><?php echo esc_html( $etiqueta ); ?></button>
                             <?php endforeach; ?>
                         </span>
-                        <span class="mu-lang-hint"><?php esc_html_e( 'Sigue el idioma de la píldora y se actualiza mientras escribís (no se guarda hasta que guardes la lista). Hacé clic en cualquier parte del banner para ir a su campo.', 'mu' ); ?></span>
+                        <span class="mu-lang-hint"><?php esc_html_e( 'Se actualiza mientras escribís y sigue el idioma activo. Clic en el banner para ir a su campo.', 'mu' ); ?></span>
                     </div>
                     <div class="mu-hero-banner-canvas" data-mu-canvas data-ancho="1280" data-idioma="<?php echo esc_attr( $idioma_activo_lc ); ?>">
                         <div class="mu-hero-banner-canvas-inner">
@@ -1930,6 +1930,16 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                     'free_badge_url'       => [ 'type' => 'text',     'label' => __( 'Badge — URL o ruta relativa', 'mu' ) ],
                 ];
                 $full_fields = [ 'titulo', 'descripcion', 'eyebrow', 'imagen', 'free_badge_text', 'free_badge_url' ];
+
+                // [014] Agrupación y ORDEN del contenido: los campos se muestran agrupados por
+                // lo que SON y en el orden en que aparecen en el banner (eyebrow → título →
+                // descripción → botones → imagen), no en el orden en que se guardan. Antes los
+                // 10 campos salían en una lista plana y con el mismo peso.
+                $grupos_campos = [
+                    __( 'Texto', 'mu' )   => [ 'eyebrow', 'titulo', 'descripcion' ],
+                    __( 'Botones', 'mu' ) => [ 'cta_texto', 'cta_url', 'cta_secundario_texto', 'cta_secundario_url', 'free_badge_text', 'free_badge_url' ],
+                    __( 'Imagen', 'mu' )  => [ 'imagen' ],
+                ];
 
                 // Renderiza un campo del bloque de idioma. El sufijo es '' para
                 // español, '_pt' o '_en' para las traducciones.
@@ -1976,9 +1986,12 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
 
                 <!-- Bloque de español (idioma base) -->
                 <div class="mu-hero-banner-lang-block" data-lang="es" style="display:<?php echo 'es' === $idioma_activo_lc ? 'block' : 'none'; ?>;">
-                    <div class="mu-hero-banner-fields-grid">
-                        <?php foreach ( array_keys( $lang_fields ) as $field ) { $render_lang_field( $field, '' ); } ?>
-                    </div>
+                    <?php foreach ( $grupos_campos as $titulo_grupo => $campos_grupo ) : ?>
+                        <p class="mu-hero-banner-group-title"><?php echo esc_html( $titulo_grupo ); ?></p>
+                        <div class="mu-hero-banner-fields-grid">
+                            <?php foreach ( $campos_grupo as $field ) { $render_lang_field( $field, '' ); } ?>
+                        </div>
+                    <?php endforeach; ?>
                 </div>
 
                 <!-- Réplicas por idioma: siempre editables (no hay casilla que las habilite).
@@ -1991,9 +2004,12 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                             <?php esc_html_e( 'El texto en español cambió después de esta traducción: conviene revisarla (o volver a traducirla con IA).', 'mu' ); ?>
                         </p>
                     <?php endif; ?>
-                    <div class="mu-hero-banner-fields-grid">
-                        <?php foreach ( array_keys( $lang_fields ) as $field ) { $render_lang_field( $field, '_' . $lang ); } ?>
-                    </div>
+                    <?php foreach ( $grupos_campos as $titulo_grupo => $campos_grupo ) : ?>
+                        <p class="mu-hero-banner-group-title"><?php echo esc_html( $titulo_grupo ); ?></p>
+                        <div class="mu-hero-banner-fields-grid">
+                            <?php foreach ( $campos_grupo as $field ) { $render_lang_field( $field, '_' . $lang ); } ?>
+                        </div>
+                    <?php endforeach; ?>
                     <p class="mu-lang-hint">
                         <?php esc_html_e( 'Lo que dejes vacío (o igual al español) muestra el español en el sitio.', 'mu' ); ?>
                     </p>
@@ -2008,7 +2024,8 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                     // a la vez (antes había una píldora = pestaña por país).
                     ?>
                     <p class="mu-hero-banner-globals-title">
-                        <strong><?php esc_html_e( 'Identidad y badge (iguales en todos los idiomas)', 'mu' ); ?></strong>
+                        <strong><?php esc_html_e( 'Ajustes de la fila (iguales en todos los idiomas)', 'mu' ); ?></strong>
+                        <span class="mu-lang-hint"><?php esc_html_e( 'Identidad y badge. El TEXTO del badge se edita por idioma, en el grupo «Botones».', 'mu' ); ?></span>
                     </p>
 
                     <?php
@@ -2103,7 +2120,9 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                                         '%1$s → %2$s (%3$s)%4$s',
                                         ( new DateTimeImmutable( '@' . $ventana_e[0] ) )->setTimezone( $tz )->format( 'd/m/Y' ),
                                         ( new DateTimeImmutable( '@' . $ventana_e[1] ) )->setTimezone( $tz )->format( 'd/m/Y' ),
-                                        $tz->getName(),
+                                        // [014] En Global el "huso" es el del sitio, que suele estar
+                                        // configurado por offset: "-03:00" no dice nada.
+                                        $es_global ? __( 'huso del sitio', 'mu' ) : $tz->getName(),
                                         $nota
                                     ) );
                                 }

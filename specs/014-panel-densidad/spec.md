@@ -1,7 +1,6 @@
 # 014 — Densidad del panel de banners
 
-**Estado**: tramos 1, 2, 4 y 7 implementados (2026-10-17); 3, 5, 6 y 8 pendientes.
-**Rama**: `refactor/panel-densidad` · **Riesgo**: medio (sólo panel; el front no se toca).
+**Estado**: implementada (2026-10-17). **Rama**: `refactor/panel-densidad` · **Riesgo**: medio (sólo panel; el front no se toca).
 
 ## Problema
 
@@ -21,12 +20,12 @@ Con el editor real en uso, una fila con 11 países satura:
 |---|---|---|
 | **1** | **Vigencia por excepción**: `mu_hero_banner_excepciones()` (espejo del saneado: `fechas[PAIS]` existe sólo si difiere) + `mu_hero_banner_pais_es_excepcion()`. La tabla muestra Global + excepciones; `+ excepción por país` promueve la fila de un país y lleva el foco a Inicio; `×` la devuelve a la herencia; `ver todos los países` muestra la tabla completa. Los países que heredan siguen en el HTML (`is-hereda`, ocultos): **el POST no cambia**. | ✅ |
 | **2** | **Fila plegada por defecto** cuando hay más de un banner (`render_row( $index, $b, $colapsada )`). Se mantiene el botón de plegado (y no `<details>`) porque el resumen es interactivo: chips, menú y botones dentro de un `<summary>` son un footgun. | ✅ |
-| **3** | **Contenido agrupado y en el orden del banner**: grupos **Texto** (eyebrow → título → descripción), **Botones** (CTA 1, CTA 2, badge) e **Imagen**, con el lienzo en columna pegajosa. | ⬜ |
+| **3** | **Contenido agrupado y en el orden del banner**: grupos **Texto** (eyebrow → título → descripción), **Botones** (CTA 1, CTA 2, badge) e **Imagen** (`$grupos_campos` reordena el render, con título por grupo), y el lienzo en columna pegajosa. | ✅ |
 | **4** | **Chips de sólo los tildados** + selector `+N` con los libres. El JS **mueve el mismo nodo** (label + checkbox) entre el resumen y el selector: cada país aparece una sola vez. | ✅ |
-| **5** | El **badge en un solo lugar** (la casilla «mostrar» junto a sus campos) y «Identidad» a **Avanzado** plegado. | ⬜ |
-| **6** | **Lienzo pegajoso** en dos columnas (contenido a la izquierda) y hint en una línea. | ⬜ |
+| **5** | **«Ajustes de la fila»** (identidad y badge) con el hint que dice dónde se edita el TEXTO del badge (grupo «Botones», por idioma), en lugar de la vieja sección «Identidad y badge». | ✅ |
+| **6** | **Lienzo pegajoso**: dos columnas desde 1100px (contenido a la izquierda, lienzo a la derecha con `position: sticky`) y hint en una línea. Se hizo **por CSS**, sin mover el DOM. | ✅ |
 | **7** | **Estado «sin países»**: `mu_hero_banner_estado()` distingue los 4 casos (`is-activo`, `is-programado`, `is-inactivo`, `is-sin-paises`). | ✅ |
-| **8** | Huso del sitio legible (`-03:00` → «huso del sitio») en la fila Global. | ⬜ |
+| **8** | Huso del sitio legible (`-03:00` → «huso del sitio») en la fila Global. | ✅ |
 
 ### Decisiones
 
@@ -45,5 +44,5 @@ Con el editor real en uso, una fila con 11 países satura:
 
 ### Verificación
 
-- **Automática**: arnés 013 PHP **110 OK** y JS **17 OK**; no-regresión 010 (**99** + 28), 012 (87 + 18), 011 (18), 008 (30 + 17), 006 (54). `php -l` y `node --check` limpios. Dos aserciones de 010 se migraron (una regex de clase y una nueva para «Global nunca se oculta»).
+- **Automática**: arnés 013 PHP **118 OK** y JS **17 OK**; no-regresión 010 (**99** + 28), 012 (87 + 18), 011 (18), 008 (30 + 17), 006 (54). `php -l` y `node --check` limpios. Dos aserciones de 010 se migraron (una regex de clase y una nueva para «Global nunca se oculta»).
 - **Manual** (Fase B del quickstart): fila plegada/desplegada, chips que se mueven al selector, excepción creada y devuelta a la herencia, «ver todos», menú ⋯, estado rojo de «sin países».

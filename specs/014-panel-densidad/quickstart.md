@@ -8,7 +8,7 @@ php -l inc\hero-banners.php
 node --check js\admin-hero-banners.js
 
 # Arnés del panel (013, donde vive el marcado y la lógica del editor)
-php specs\013-panel-hero-lienzo\harness\arnes-render-hero.php   # esperado: 110 OK / 0 FAIL
+php specs\013-panel-hero-lienzo\harness\arnes-render-hero.php   # esperado: 118 OK / 0 FAIL
 node specs\013-panel-hero-lienzo\harness\lienzo-js.js           # esperado: 17 OK / 0 FAIL
 
 # No-regresión
