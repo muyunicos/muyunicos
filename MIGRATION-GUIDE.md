@@ -1017,8 +1017,8 @@ RENDER COMPARTIDO DEL HERO + LIENZO DEL PANEL (2026-10-17, feature 013-panel-her
   (<span class="mu-highlight">) y editarlo en texto plano rompería el marcado.
 - Desviaciones declaradas de la Fase 1: las píldoras de idioma y «Traducir» se quedan en la barra de
   la fila (gobiernan el idioma del lienzo y no deben esconderse al plegar) y las filas nacen
-  desplegadas (plegar por defecto escondería el lienzo). Pendiente menor (T011b): borrar el código
-  muerto de posicionarDropdown() y el CSS del dropdown/píldoras.
+  desplegadas (plegar por defecto escondería el lienzo). El código muerto del dropdown se borró
+  (T011b): posicionarDropdown(), el handler de cierre y el CSS de las píldoras/dropdown (−94 líneas).
 - Verificación automática de 013: arnés PHP 97 OK (Fase 0 + lienzo + resumen + chips + tabla) y JS
   17 OK (escalaCanvas + textoPlanoDeNodo). El arnés 010 se ajustó en 5 aserciones (medían las
   píldoras y los paneles alternados, que ya no existen: ahora miden chips y filas de la tabla) y el

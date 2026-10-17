@@ -578,18 +578,6 @@
     }
 
     /**
-     * Posiciona un dropdown justo debajo de su botón, dentro del head de la fila.
-     */
-    function posicionarDropdown($btn, $dd) {
-        var offset = $btn.position();
-        if (!offset) return;
-        $dd.css({
-            left: Math.round(offset.left) + 'px',
-            top: Math.round(offset.top + $btn.outerHeight(true)) + 'px'
-        });
-    }
-
-    /**
      * Clasifica la respuesta del servicio para los campos pedidos. Función PURA: no
      * toca el DOM ni jQuery, así que se puede verificar con un arnés
      * (specs/008-banners-pildoras-ia/harness/banners-js.js).
@@ -1161,13 +1149,6 @@
             muResizeTimer = window.setTimeout(function () {
                 $list.find('.mu-hero-banner-row').each(function () { escalarLienzo($(this)); });
             }, 150);
-        });
-
-        // ---------------------------------------------------------------
-        // Cerrar dropdowns al hacer clic fuera
-        // ---------------------------------------------------------------
-        $(document).on('click', function () {
-            $list.find('.mu-hero-banner-paises-dropdown').hide();
         });
 
         // Estado inicial de cada fila ya renderizada

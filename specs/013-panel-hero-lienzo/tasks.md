@@ -43,7 +43,7 @@
 - [X] T011 **Chips de país unificados (primer tramo)**: el checkbox de `paises[]` es el chip del resumen, así que activar el país y elegir el ámbito son el mismo control; se retiró el botón/dropdown «Países» y sus handlers. **PENDIENTE**: retirar las píldoras de ámbito reemplazándolas por la tabla de vigencia (T012).
 - [X] T012 **Vigencia como tabla** comparable: las píldoras de ámbito y los paneles que se alternaban por país se retiraron; ahora hay **una fila por ámbito** (Global + cada país del sitio) con Inicio, Fin, «Cada año», la columna **«Se ve»** (ventana efectiva con el huso del ámbito, con el aviso por fila) y un botón **×** para limpiar esa ventana. Los países sin tildar quedan atenuados (su ventana se conserva, M7).
 - [X] T020 **N2**: edición directa en el lienzo con `contenteditable="plaintext-only"` en eyebrow, descripción, textos de CTA y texto del badge (dos vías con el formulario: `textoPlanoDeNodo()` normaliza los `<br>`/`<div>` del navegador a `\n`). El **título** queda fuera a propósito (admite HTML): su clic sigue llevando al campo.
-- [ ] T011b Limpieza pendiente (código muerto, inofensivo): `posicionarDropdown()` en el JS y el CSS de `.mu-hero-banner-paises-btn/-dropdown/-pill`.
+- [X] T011b Limpieza del código muerto: se borraron `posicionarDropdown()`, el handler de «cerrar dropdowns al hacer clic fuera» y el CSS de `.mu-hero-banner-paises-btn/-dropdown/-pills` y `.mu-hero-banner-pill*` (−94 líneas).
 - [ ] T021 N2-bis (opcional): título editable en el lienzo con «resaltar selección».
 
 ### Desviaciones declaradas de la Fase 1

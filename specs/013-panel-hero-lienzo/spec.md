@@ -82,7 +82,6 @@ POST**, que use el mismo SVG del front, y que el front siga sin marcas `data-mu`
 Desviaciones declaradas: las píldoras de idioma y el botón «Traducir» se quedan en la barra de la
 fila (gobiernan también el idioma del lienzo y no deben esconderse al plegar), y las filas nacen
 **desplegadas** (plegar por defecto escondería el lienzo, que es el objetivo de la feature).
-Pendiente menor: T011b (borrar `posicionarDropdown()` y el CSS del dropdown/píldoras, código muerto).
 
 ## Fase 3 — Interacción (N1 implementada)
 
