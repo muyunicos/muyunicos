@@ -61,13 +61,12 @@ y del hero cambian). La caché de **páginas** de la home dura 24 h
 (`X-LiteSpeed-Cache-Control: public,max-age=86400`, medido 2026-10-17), así que el cron del
 borde es el que la adelanta; el transient del país caduca solo en el próximo borde.
 
-1. **Panel** (WC → Marketing → Hero Banners): en el panel general debe verse la casilla
-   «Se repite cada año» con su hint.
-   - Tildarla: la casilla de los países que **no** tenían decisión propia debe tildarse
-     sola (heredan). El panel de cada país debe decir *«… Se repite cada año: el año de las
-     fechas se ignora.»*
-   - Destildar la de un país: el **punto** de su píldora debe encenderse (tiene ventana
-     propia: usa el flag contrario al global). Volver a tildarla → el punto se apaga.
+1. **Panel** (WC → Marketing → Hero Banners): en la **tabla de vigencia**, la columna «Cada año».
+   - Tildarla en la fila de `Global`: las filas de los países que **no** tenían decisión propia
+     deben tildarse solas (heredan) y la columna «Se ve» agrega `· cada año`.
+   - Para darle al flag un valor propio a un país, primero tiene que ser una **excepción**
+     (`+ excepción por país`). Al destildar su casilla, el **punto** de su chip se enciende (usa el
+     flag contrario al de Global); volver a tildarla → el punto se apaga.
 2. **Front con un año pasado**: cargar un banner con `01/10/2020` → `31/10/2020` y la
    casilla tildada. Hoy (octubre) el banner **debe verse**: la ventana volvió este año.
    Sin la casilla, el mismo banner **no** debe verse. Repetir con `20/12/2020` →

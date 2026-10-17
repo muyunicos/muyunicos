@@ -51,24 +51,23 @@ hero cambian). El transient del país ya caduca en el próximo borde de fecha, p
 páginas** de LiteSpeed (HTML) puede seguir sirviendo la home vieja: por eso se purga el host antes
 de medir.
 
-1. **Panel** (WC → Marketing → Hero Banners): en el bloque *Ajustes generales* deben verse las
-   píldoras `Global` + los países tildados del banner.
-   - Hacer clic en la píldora de un país: se abre **sólo** su par Inicio/Fin y la píldora queda
-     resaltada. `Global` vuelve a las fechas generales.
-   - Los campos del país deben mostrar la fecha general como **placeholder** (en gris), con el
+1. **Panel** (WC → Marketing → Hero Banners): el **resumen** de la fila trae los **chips** de los
+   países tildados y, al desplegarla, **Contenido** agrupado y la **tabla de vigencia** con
+   `Global` + las excepciones.
+   - `+ excepción por país`: elegir un país → su fila aparece con el foco en **Inicio**.
+   - Los campos de ese país deben mostrar la fecha general como **placeholder** (en gris) y el
      valor vacío (comprobar con el inspector).
-2. **Punto**: escribir una fecha propia en un país → el punto amarillo aparece en su píldora.
+2. **Punto**: escribir una fecha propia en la fila de un país → el punto aparece en su **chip** del resumen.
    Borrarla, o dejarla igual a la general → el punto desaparece. Mover la fecha **general** debe
    recalcular los puntos y los placeholders de todos los países.
 3. **Fecha imposible**: escribir `31/02/2026` o `99012026` → aviso del panel (“Usá el formato
    DDMMAAAA…”); y un inicio posterior al fin → aviso de rango invertido. Guardar y mirar la
    **lista**: la fila avisa *“BR: hay una fecha inválida guardada… / Fechas generales: el inicio es
    posterior al fin…”* sin abrir el panel.
-4. **Huso del país**: en el panel de cada país debe verse el huso y la ventana efectiva de lo
-   guardado (`… en el huso del país (America/Sao_Paulo)`). Con el mismo `01/06`, Madrid y Buenos
+4. **Huso del país**: en la columna **«Se ve»** de cada fila debe verse la ventana efectiva con su huso
+   (`dd/mm/aaaa → dd/mm/aaaa (America/Sao_Paulo)`, y en la fila de Global «huso del sitio»). Con el mismo `01/06`, Madrid y Buenos
    Aires deben entrar/salir en momentos distintos (5 h de diferencia en junio).
-5. **Países**: destildar un país en el botón *Países* → su píldora y su panel desaparecen; si era
-   el activo, el panel vuelve a `Global`. Volver a tildarlo **sí** recupera las fechas cargadas.
+5. **Países**: destildar un chip del resumen → el país pasa al selector `+N` y su fila queda atenuada, pero **conserva** su ventana: volver a tildarlo la recupera. (La tabla completa se ve con «ver todos los países».)
 6. **Guardar** y comprobar el front: con un país dentro de su ventana propia, el banner se ve en ese
    subdominio; con el país fuera de su ventana (fecha pasada), no se ve; en un subdominio sin ventana
    propia sigue la general. Repetir en `/pt/` y `/en/` (el idioma no cambia la ventana).
