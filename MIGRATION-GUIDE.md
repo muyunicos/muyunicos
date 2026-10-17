@@ -114,6 +114,13 @@ Object Cache (LiteSpeed):
     navegador y la CDN.
   Un error de TTL o de purga en una capa NO se propaga a la otra, y diagnosticar
   una mirando la otra lleva a conclusiones equivocadas.
+- ⚠️ TTL de la caché de PÁGINAS: NO medido. El HTML se cachea por subdominio, pero el
+  valor de expiración se cambia desde el panel de LiteSpeed, no desde un commit. Medirlo
+  antes de cualquier feature que dependa de un cambio "a hora exacta" (caso: la ventana de
+  fechas por país del Hero — el transient de datos ya caduca en el borde, pero la página
+  servida puede seguir siendo la anterior).
+  Medición: curl.exe -sI https://br.muyunicos.com/ y comparar x-litespeed-cache / age
+  entre dos visitas separadas.
 - Caché de objetos: ON (Memcached, prueba de conexión exitosa).
 - Extensión: Memcached (Redis también disponible y activado).
 - Configuración: Método Memcached | Host ::1 | Puerto 11211.
@@ -290,6 +297,9 @@ muyunicos/ (generatepress-child)
 │   │                        # Intercepta template_redirect p1 (antes del plugin p10).
 │   ├── geo.php             # Multi-país: detección por dominio, geolocalización cacheada
 │   │                        # (24h TTL), modal sugerencia, selector header, decimales.
+│   │                        # muyu_get_countries_data() es la fuente única de la config
+│   │                        # del país e incluye 'tz' (huso del DESTINO): lo usa el Hero
+│   │                        # para resolver fechas locales, nunca el huso del servidor.
 │   │                        # Fallback por dominio ante errores de DB ("Commands out of sync").
 │   ├── compat-wplingua.php # wpLingua: conserva el prefijo de idioma (/pt, /en) en el 301
 │   │                        # canónico del core. También expone el prefijo de la petición
@@ -318,12 +328,18 @@ muyunicos/ (generatepress-child)
 │   │                        # subdominio) + redirección al subdominio al cambiar país.
 │   ├── cart.php            # Multi-item add, buffers BACS
 │   ├── flexible-price.php  # Precio Flexible: mapa O(1), validación, AJAX handler.
-│   ├── hero-banners.php    # Hero Banners Manager (UI Admin y render).
+│   ├── hero-banners.php    # Hero Banners Manager (UI Admin y render). Fechas por país:
+│   │                        # 'inicio'/'fin' generales + 'fechas[PAIS]' que las
+│   │                        # sobrescribe (píldoras de país en el bloque de ajustes
+│   │                        # generales). La ventana se resuelve en el HUSO DEL PAÍS
+│   │                        # (mu_hero_banner_ventana_instantes) y el transient por país
+│   │                        # caduca en el próximo borde de fecha (TTL adaptativo).
 │   ├── ui.php              # Header icons, Cart badge, WhatsApp, shortcodes, bestsellers,
 │   │                        # testimonios Google Places, hero promos, popcat.
 │   ├── ai-translate.php     # Servicio de traducción con IA (Gemini): API interna
-│   │                        # mu_ai_translate() + caché + contador de uso. Único
-│   │                        # envío saliente con contenido del sitio (ver §7).
+│   │                        # mu_ai_translate() + caché + contador de uso. Tope de textos
+│   │                        # por acción POR ÁMBITO (mu_ai_ambito_per_action).
+│   │                        # Único envío saliente con contenido del sitio (ver §7).
 │   ├── ai-translate-admin.php # Pantalla del servicio (WC → Marketing → Traducciones IA).
 │   ├── reviews-identity.php # Identidad de reseñas: deduplicación por enlace/nombre (puro).
 │   ├── orders-files.php    # Gestor de archivos de pedido: Admin + Email + Mi Cuenta
@@ -423,7 +439,15 @@ SERVICIO DE TRADUCCIÓN CON IA (API INTERNA)
   variants, missing y usage. Nunca lanza: siempre devuelve estado.
 - Ámbitos en mu_ai_ambitos(): reviews (el comentario) y hero_banner (6 textos).
 - Perfil por ámbito (ajustes → contexts[ámbito]): role, tone, glossary, exclude, personas,
-  variants (1..5), temperature, max_chars, allow_html.
+  variants (1..5), per_action, temperature, max_chars, allow_html.
+- Tope de textos por acción: es POR ÁMBITO (mu_ai_ambito_per_action()). Por defecto, la cantidad
+  de campos del ámbito (reviews 1, hero_banner 6) y el perfil puede ajustarlo (0 = automático).
+  Antes era una sola cifra global (5) y un banner completo (6 textos) quedaba bloqueado con
+  "la acción tiene 6 textos y el límite por acción es 5". Los límites de servicio (por minuto y
+  por día) siguen en limits[].
+- Consumidores de variantes: el editor de reseñas pide una tanda de 5 (acotada a las personas) y
+  ofrece botones numerados; el de banners deja que la cantidad la fije el ámbito y ofrece los
+  mismos botones cuando la respuesta trae más de una versión (feature 011).
 - Firma de instrucciones: mu_ai_glossary_version() incluye TODOS los campos del perfil; si se
   edita cualquiera, la caché anterior deja de reutilizarse (es lo buscado).
 - Caché: opción _mu_ai_cache (500 entradas, 180 días). Guarda la tanda completa de variantes en
@@ -870,6 +894,45 @@ ERRORES PÁGINA SÓLO-AR VISIBLE EN SUBDOMINIOS (/envios/, MEDIDO 2026-10-16)
 
 ════════════════════════════════════════════════════════════════
 8. DEUDA TÉCNICA
+
+FECHAS POR PAÍS EN EL HERO (2026-10-17, feature 010-fechas-banner-por-pais):
+- Estado: cada país puede sobrescribir la ventana de fechas del banner en 'fechas[PAIS]';
+  un campo vacío (o idéntico a la general del mismo campo) hereda 'inicio'/'fin'. La
+  clave del transient no cambió: sigue siendo por país (mu_hero_banners_active_{PAIS}).
+- Huso horario: la ventana se resuelve en el huso del DESTINO ('tz' de
+  muyu_get_countries_data(), respaldo wp_timezone()). Antes el mismo '01/06' caía a horas
+  distintas por subdominio (Madrid y Buenos Aires están a 5 h en junio). El fin del día se
+  calcula como "inicio del día siguiente − 1 s" para que un cambio de horario de verano no
+  deje el borde en una hora inexistente.
+- Fechas inválidas: se validan con checkdate() al guardar ('99012026' ya no se interpreta
+  como 2026-04-09 por rollover). Un valor inválido guardado se trata como "sin límite" (no
+  se oculta la promo) y la fila del panel lo avisa, junto con los rangos invertidos.
+- TTL adaptativo: el transient caduca en el próximo borde de fecha del país
+  (mu_hero_banner_proximo_borde()), con piso de 60 s y techo de 12 h.
+- Verificación automática: specs/010-fechas-banner-por-pais/quickstart.md Fase A
+  (arnés PHP 96 OK + arnés JS 28 OK, más la no-regresión de 008 —30 OK + 17 OK—,
+  011 —18 OK— y 006 —54 OK—).
+- [ ] Verificación manual del PANEL (píldoras de país, puntos, placeholders, avisos, huso a
+  la vista, guardado): no es automatizable en este proyecto — el manejo de jQuery del editor
+  sigue sin arnés, la misma deuda que la feature 008. Fase B del quickstart de 010.
+- [ ] Decisión abierta: si la caché de PÁGINAS demora un cambio de borde, la salida es
+  programar un evento único en el borde (wp_schedule_single_event + purga de la home del
+  host afectado, condicionada). No se implementó: primero hay que MEDIR el TTL de páginas
+  (§2). Sin medir, cualquier purga programada es a ciegas.
+
+VARIANTES DE TRADUCCIÓN EN EL EDITOR DE BANNERS (2026-10-17, feature 011):
+- El editor de banners ahora ofrece los botones numerados 1·2·3… (uno por persona) igual que
+  el de reseñas: elige la versión que queda en los 6 campos del idioma activo. La cantidad la
+  fija el ámbito (personas × variantes); el banner NO pide un número fijo de variantes (a
+  diferencia de reseñas, que pide 5). Ver specs/011-variantes-banners-ia/.
+- Tope de textos por acción por ámbito: ver §6 (mu_ai_ambito_per_action()). Antes, un banner
+  con los 6 campos cargados quedaba bloqueado por el tope global de 5.
+- [ ] Verificación manual de los botones (jQuery + navegador): Fase B del quickstart de 011.
+  Misma deuda declarada que 008/010.
+- Índice ↔ persona: si el modelo omite una versión, las siguientes se corren de índice
+  (el servicio descarta los textos vacíos) y el title del botón puede no coincidir con la
+  persona real. Se mitiga mostrando los campos sin texto; corregirlo del lado del servicio
+  afecta también a reseñas: decisión aparte.
 
 HUECOS Y DECISIONES ABIERTAS (2026-10-16, feature 004-country-scope):
 - [x] RESUELTO 2026-10-16 — Sitemap de Rank Math: el hook es `rank_math/sitemap/entry` y

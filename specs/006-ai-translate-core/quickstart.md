@@ -46,9 +46,10 @@ Escenarios que el arnés debe cubrir y su resultado esperado:
 
 ```powershell
 php specs\006-ai-translate-core\harness\arnes.php
-# Esperado: 42 OK / 0 FAIL. El arnés está VERSIONADO en el repo (reemplaza a los viejos
-# %TEMP%\mu006\{stubs,tests}.php, que se perdían con la limpieza del temporal): trae
-# WordPress simulado y captura las solicitudes salientes.
+# Esperado: 54 OK / 0 FAIL (2026-10-17: +9 aserciones del tope de textos por acción del
+# ámbito —ver mu_ai_ambito_per_action()—; antes 45). El arnés está VERSIONADO en el repo
+# (reemplaza a los viejos %TEMP%\mu006\{stubs,tests}.php, que se perdían con la limpieza
+# del temporal): trae WordPress simulado y captura las solicitudes salientes.
 # esperado: todas las aserciones OK y exit=0
 ```
 

@@ -4,9 +4,12 @@
  * Description: Plugin admin para gestionar los banners del Hero de la portada.
  *              Submenu bajo WooCommerce → Marketing (toplevel_page_woocommerce-marketing).
  *              Storage: wp_options 'mu_hero_banners' (array de promos).
+ *              Fechas: 'inicio'/'fin' son las GENERALES; cada país puede tener su
+ *              propia ventana en 'fechas[PAIS]' (campo vacío o igual a la general =
+ *              hereda). Ver mu_hero_banner_pais_fechas().
  *              Cache: transient por país 'mu_hero_banners_active_{PAIS}' (TTL 12h),
  *              invalidado al guardar vía mu_hero_banners_purge_cache().
- * Version: 1.0.0
+ * Version: 1.1.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -126,13 +129,45 @@ if ( ! function_exists( 'mu_hero_banners_sanitize_one' ) ) {
             }
         }
 
+        // Fechas generales (DDMMAAAA): las heredan los países sin ventana propia.
+        // [M3] Se valida la fecha REAL (checkdate), no sólo 8 dígitos: '99012026' o
+        // '31022026' se descartan en lugar de resolverse por rollover a otro día.
+        $inicio_global = mu_hero_banner_fecha_valida( $b['inicio'] ?? '' ) ? (string) $b['inicio'] : '';
+        $fin_global    = mu_hero_banner_fecha_valida( $b['fin'] ?? '' )    ? (string) $b['fin']    : '';
+
+        // [Sobrescritura dispersa] Ventana propia por país: se guarda sólo el campo que
+        // difiere de la general del MISMO campo (lo igual se persiste vacío = hereda).
+        // Misma convención que las traducciones, así que el estado ("tiene fechas
+        // propias") se deduce del contenido y nunca se desincroniza de la regla de
+        // guardado.
+        //
+        // [M7] Se conservan las fechas de TODOS los países válidos, estén tildados o no:
+        // el front filtra primero por 'paises', así que no se muestran, y destildar y
+        // volver a tildar un país no pierde la ventana cargada.
+        $fechas     = [];
+        $raw_fechas = isset( $b['fechas'] ) && is_array( $b['fechas'] ) ? $b['fechas'] : [];
+
+        foreach ( $valid_paises as $code ) {
+            $own = isset( $raw_fechas[ $code ] ) && is_array( $raw_fechas[ $code ] ) ? $raw_fechas[ $code ] : [];
+
+            $ini = mu_hero_banner_fecha_valida( $own['inicio'] ?? '' ) ? (string) $own['inicio'] : '';
+            $fin = mu_hero_banner_fecha_valida( $own['fin'] ?? '' )    ? (string) $own['fin']    : '';
+
+            if ( $ini === $inicio_global ) { $ini = ''; }
+            if ( $fin === $fin_global )    { $fin = ''; }
+            if ( '' === $ini && '' === $fin ) { continue; }
+
+            $fechas[ $code ] = [ 'inicio' => $ini, 'fin' => $fin ];
+        }
+
         return array_merge(
             [
                 'id'              => sanitize_title( $b['id'] ?? '' ),
-                'inicio'          => preg_match( '/^\d{8}$/', $b['inicio'] ?? '' ) ? $b['inicio'] : '',
-                'fin'             => preg_match( '/^\d{8}$/', $b['fin'] ?? '' )    ? $b['fin']    : '',
+                'inicio'          => $inicio_global,
+                'fin'             => $fin_global,
                 'show_free_badge' => ! empty( $b['show_free_badge'] ),
                 'paises'          => $paises,
+                'fechas'          => $fechas,
                 'idioma_activo'   => $idioma_activo,
                 // [Automático] Un idioma "tiene traducción" cuando guarda algún valor
                 // propio: como lo idéntico al español se guarda vacío, el contenido
@@ -416,6 +451,252 @@ if ( ! function_exists( 'mu_hero_banners_purge_cache' ) ) {
     }
 }
 
+if ( ! function_exists( 'mu_hero_banner_fecha_valida' ) ) {
+    /**
+     * ¿El valor es una fecha DDMMAAAA REAL?
+     *
+     * El saneado sólo exigía 8 dígitos, y DateTime::createFromFormat() no rechaza días
+     * ni meses fuera de rango: '99012026' se interpretaba como 2026-04-09 y '31132026'
+     * como 2027-01-31 (el guard `! $dt_start` del código anterior era inefectivo). Con
+     * checkdate() un 31/02 o un día 99 se descartan.
+     *
+     * Función pura: la verifica el arnés de la feature 010.
+     *
+     * @param mixed $ddmmaaaa Valor a validar.
+     * @return bool
+     */
+    function mu_hero_banner_fecha_valida( $ddmmaaaa ) {
+        if ( ! preg_match( '/^(\d{2})(\d{2})(\d{4})$/', (string) $ddmmaaaa, $m ) ) {
+            return false;
+        }
+
+        return checkdate( (int) $m[2], (int) $m[1], (int) $m[3] );   // mes, día, año
+    }
+}
+
+if ( ! function_exists( 'mu_hero_banner_pais_tz' ) ) {
+    /**
+     * Huso horario del país de destino (el subdominio), no el del servidor.
+     *
+     * Antes, "01/06" se resolvía con el huso por defecto de PHP: el mismo borde caía a
+     * horas distintas en cada subdominio (Madrid y Buenos Aires están a 5 h en junio) y
+     * en Brasil podía caer el 31/05. Fuente: la clave 'tz' de muyu_get_countries_data();
+     * si falta o está mal escrita se cae a wp_timezone() (el huso del sitio), nunca al
+     * huso por defecto de PHP.
+     *
+     * @param string $pais Código ISO del país.
+     * @return DateTimeZone
+     */
+    function mu_hero_banner_pais_tz( $pais ) {
+        $countries = function_exists( 'muyu_get_countries_data' ) ? muyu_get_countries_data() : [];
+        $tz        = (string) ( $countries[ (string) $pais ]['tz'] ?? '' );
+
+        if ( '' !== $tz ) {
+            try {
+                return new DateTimeZone( $tz );
+            } catch ( Exception $e ) {
+                // Huso mal escrito en la configuración del país: se usa el del sitio.
+            }
+        }
+
+        return function_exists( 'wp_timezone' ) ? wp_timezone() : new DateTimeZone( 'UTC' );
+    }
+}
+
+if ( ! function_exists( 'mu_hero_banner_pais_fechas' ) ) {
+    /**
+     * Ventana de fechas efectiva de un país para un banner.
+     *
+     * [Sobrescritura dispersa] El país puede definir su propia ventana en
+     * 'fechas[PAIS]'; el campo que esté vacío (o igual a la general, que es cuando no
+     * se persiste) hereda la fecha general. Si no hay ninguna de las dos, el banner no
+     * tiene límite de fecha y se muestra siempre en ese país.
+     *
+     * Función pura (sin WordPress): la verifica el arnés de la feature 010.
+     *
+     * @param array  $promo Banner.
+     * @param string $pais  Código ISO del país (AR, BR...).
+     * @return array{inicio:string,fin:string}
+     */
+    function mu_hero_banner_pais_fechas( $promo, $pais ) {
+        $promo = is_array( $promo ) ? $promo : [];
+        $code  = (string) $pais;
+
+        $own = ( isset( $promo['fechas'] ) && is_array( $promo['fechas'] ) && isset( $promo['fechas'][ $code ] ) && is_array( $promo['fechas'][ $code ] ) )
+            ? $promo['fechas'][ $code ]
+            : [];
+
+        $inicio = (string) ( $own['inicio'] ?? '' );
+        $fin    = (string) ( $own['fin'] ?? '' );
+
+        if ( '' === $inicio ) { $inicio = (string) ( $promo['inicio'] ?? '' ); }
+        if ( '' === $fin )    { $fin    = (string) ( $promo['fin'] ?? '' ); }
+
+        return [ 'inicio' => $inicio, 'fin' => $fin ];
+    }
+}
+
+if ( ! function_exists( 'mu_hero_banner_ventana_instantes' ) ) {
+    /**
+     * Instantes de la ventana efectiva de un país, resueltos en SU huso horario.
+     *
+     * @param array  $promo Banner.
+     * @param string $pais  Código ISO del país.
+     * @return array{0:int,1:int}|null [ inicio, fin_inclusive ] o null si no hay límite
+     *                                 (sin fechas, incompletas o inválidas).
+     */
+    function mu_hero_banner_ventana_instantes( $promo, $pais ) {
+        $fechas = mu_hero_banner_pais_fechas( $promo, $pais );
+
+        // Sin las dos fechas el banner no tiene límite; con una fecha inválida guardada
+        // (dato viejo) tampoco: se prefiere mostrar de más y marcarlo en el panel antes
+        // que ocultar una promo viva por un error de tipeo.
+        if ( '' === $fechas['inicio'] || '' === $fechas['fin'] ) {
+            return null;
+        }
+        if ( ! mu_hero_banner_fecha_valida( $fechas['inicio'] ) || ! mu_hero_banner_fecha_valida( $fechas['fin'] ) ) {
+            return null;
+        }
+
+        $tz = mu_hero_banner_pais_tz( $pais );
+
+        $dt_ini = DateTime::createFromFormat( 'dmY', $fechas['inicio'], $tz );
+        $dt_fin = DateTime::createFromFormat( 'dmY', $fechas['fin'], $tz );
+
+        if ( ! $dt_ini || ! $dt_fin ) {
+            return null;
+        }
+
+        $start = $dt_ini->setTime( 0, 0, 0 )->getTimestamp();
+
+        // Fin inclusivo = "inicio del día siguiente − 1 s". No se usa setTime(23,59,59)
+        // porque con un huso propio esa hora de reloj puede no existir (cambios de
+        // horario de verano) o no ser el cierre real del día.
+        $end = $dt_fin->modify( '+1 day' )->setTime( 0, 0, 0 )->getTimestamp() - 1;
+
+        return [ $start, $end ];
+    }
+}
+
+if ( ! function_exists( 'mu_hero_banner_is_active_for_pais' ) ) {
+    /**
+     * ¿El banner está dentro de su ventana de fechas para ese país?
+     *
+     * Sin ventana (sin fechas, incompletas o inválidas) se muestra siempre. Con
+     * ventana, es inclusiva: desde el 00:00 del inicio (hora del país) hasta el último
+     * segundo del fin. Un rango invertido (inicio posterior al fin) no se muestra nunca.
+     *
+     * Función pura (recibe el timestamp de referencia): la verifica el arnés de la
+     * feature 010.
+     *
+     * @param array    $promo Banner.
+     * @param string   $pais  Código ISO del país.
+     * @param int|null $now   Timestamp de referencia (null = time()).
+     * @return bool
+     */
+    function mu_hero_banner_is_active_for_pais( $promo, $pais, $now = null ) {
+        $ventana = mu_hero_banner_ventana_instantes( $promo, $pais );
+
+        if ( null === $ventana ) {
+            return true;
+        }
+
+        $now = ( null === $now ) ? time() : (int) $now;
+
+        return ( $now >= $ventana[0] && $now <= $ventana[1] );
+    }
+}
+
+if ( ! function_exists( 'mu_hero_banner_proximo_borde' ) ) {
+    /**
+     * Próximo instante en que cambia el escenario de este banner para ese país.
+     *
+     * Sirve para que el transient del país expire justo cuando el hero cambia (entrada
+     * o salida de la ventana) en lugar de esperar las 12 h fijas.
+     *
+     * Función pura: la verifica el arnés de la feature 010.
+     *
+     * @param array    $promo Banner.
+     * @param string   $pais  Código ISO del país.
+     * @param int|null $now   Timestamp de referencia (null = time()).
+     * @return int Instante del próximo cambio, o 0 si no hay ninguno.
+     */
+    function mu_hero_banner_proximo_borde( $promo, $pais, $now = null ) {
+        $ventana = mu_hero_banner_ventana_instantes( $promo, $pais );
+
+        if ( null === $ventana ) {
+            return 0;
+        }
+
+        $now = ( null === $now ) ? time() : (int) $now;
+
+        // El fin es inclusivo: el banner sale del aire un segundo después.
+        $futuros = array_filter( [ $ventana[0], $ventana[1] + 1 ], function ( $borde ) use ( $now ) {
+            return $borde > $now;
+        } );
+
+        return $futuros ? min( $futuros ) : 0;
+    }
+}
+
+if ( ! function_exists( 'mu_hero_banner_avisos' ) ) {
+    /**
+     * Avisos de fecha de un banner: datos inválidos guardados y rangos invertidos.
+     *
+     * Existe para que el problema se vea EN LA LISTA, sin abrir el panel: una fecha
+     * inválida se ignora (el banner se muestra siempre) y un rango invertido hace que
+     * ese país no lo vea nunca. Las dos cosas se descubrían recién mirando el sitio.
+     *
+     * Función pura: la verifica el arnés de la feature 010.
+     *
+     * @param array $promo Banner.
+     * @return array{invalidas:string[],invertidas:string[]} Ámbitos afectados; '' = fechas
+     *                                                      generales, o el código del país.
+     */
+    function mu_hero_banner_avisos( $promo ) {
+        $promo  = is_array( $promo ) ? $promo : [];
+        $out    = [ 'invalidas' => [], 'invertidas' => [] ];
+        $ambitos = [ '' => [
+            'inicio' => (string) ( $promo['inicio'] ?? '' ),
+            'fin'    => (string) ( $promo['fin'] ?? '' ),
+        ] ];
+
+        foreach ( (array) ( $promo['fechas'] ?? [] ) as $code => $fechas ) {
+            if ( ! is_array( $fechas ) ) {
+                continue;
+            }
+
+            $ambitos[ (string) $code ] = [
+                'inicio' => (string) ( $fechas['inicio'] ?? '' ),
+                'fin'    => (string) ( $fechas['fin'] ?? '' ),
+            ];
+        }
+
+        foreach ( $ambitos as $ambito => $v ) {
+            if ( ( '' !== $v['inicio'] && ! mu_hero_banner_fecha_valida( $v['inicio'] ) )
+                || ( '' !== $v['fin'] && ! mu_hero_banner_fecha_valida( $v['fin'] ) ) ) {
+                $out['invalidas'][] = (string) $ambito;
+                continue;
+            }
+
+            if ( '' === $v['inicio'] || '' === $v['fin'] ) {
+                continue;
+            }
+
+            // Orden de calendario sin husos: AAAA-MM-DD comparado como texto.
+            $orden = function ( $ddmmaaaa ) {
+                return substr( $ddmmaaaa, 4, 4 ) . substr( $ddmmaaaa, 2, 2 ) . substr( $ddmmaaaa, 0, 2 );
+            };
+
+            if ( $orden( $v['inicio'] ) > $orden( $v['fin'] ) ) {
+                $out['invertidas'][] = (string) $ambito;
+            }
+        }
+
+        return $out;
+    }
+}
+
 if ( ! function_exists( 'mu_get_hero_banners' ) ) {
     /**
      * Devuelve los banners activos según país y fecha (DateTime::createFromFormat 'dmY').
@@ -438,9 +719,10 @@ if ( ! function_exists( 'mu_get_hero_banners' ) ) {
             return $cached;
         }
 
-        $all    = mu_get_hero_banners_raw();
-        $active = [];
-        $now    = time();
+        $all     = mu_get_hero_banners_raw();
+        $active  = [];
+        $now     = time();
+        $proximo = 0;   // próximo instante en que cambia el escenario de este país
 
         foreach ( $all as $p ) {
             // Filtro por país: si el banner define países, el país actual debe estar incluido.
@@ -455,23 +737,30 @@ if ( ! function_exists( 'mu_get_hero_banners' ) ) {
             // idioma actual se usa esa versión (ver mu_hero_section), y si no,
             // se muestra la versión en español como fallback.
 
-            if ( empty( $p['inicio'] ) || empty( $p['fin'] ) ) {
-                $active[] = $p;
-                continue;
+            // [M5-A] Borde de este banner para este país (entra o sale del aire). Se
+            // mira TODOS los banners del país, incluidos los que hoy no se muestran:
+            // el inicio de uno inactivo también cambia el hero.
+            $borde = mu_hero_banner_proximo_borde( $p, $pais_actual, $now );
+            if ( $borde > 0 && ( 0 === $proximo || $borde < $proximo ) ) {
+                $proximo = $borde;
             }
-            $dt_start = DateTime::createFromFormat( 'dmY', $p['inicio'] );
-            $dt_end   = DateTime::createFromFormat( 'dmY', $p['fin'] );
-            if ( ! $dt_start || ! $dt_end ) {
-                continue;
-            }
-            $start = $dt_start->setTime( 0, 0, 0 )->getTimestamp();
-            $end   = $dt_end->setTime( 23, 59, 59 )->getTimestamp();
-            if ( $now >= $start && $now <= $end ) {
+
+            // Fecha: ventana EFECTIVA del país (propia o heredada) en su huso horario;
+            // funciones puras y testeables (arnés de la feature 010).
+            if ( mu_hero_banner_is_active_for_pais( $p, $pais_actual, $now ) ) {
                 $active[] = $p;
             }
         }
 
-        set_transient( $transient_key, $active, 12 * HOUR_IN_SECONDS );
+        // TTL: 12 h, pero se acorta hasta el próximo borde para que el hero cambie cuando
+        // corresponde y no hasta 12 h después. Piso de 60 s para no martillar la caché
+        // cuando el borde es inminente.
+        $ttl = 12 * HOUR_IN_SECONDS;
+        if ( $proximo > 0 ) {
+            $ttl = max( 60, min( $ttl, $proximo - $now + 1 ) );
+        }
+
+        set_transient( $transient_key, $active, $ttl );
         return $active;
     }
 }
@@ -540,6 +829,9 @@ if ( is_admin() ) {
                 // Servicio de traducción con IA (botón "Traducir con IA").
                 'aiUrl'       => admin_url( 'admin-ajax.php' ),
                 'aiNonce'     => wp_create_nonce( 'mu_ai_nonce' ),
+                // Avisos del panel de fechas (formato y rango invertido).
+                'fechasMalas'   => __( 'Inicio es posterior al fin: el banner no se verá en este país.', 'mu' ),
+                'fechasFormato' => __( 'Usá el formato DDMMAAAA (8 dígitos) en Inicio y Fin.', 'mu' ),
             ] );
         }
     } );
@@ -639,7 +931,7 @@ if ( ! function_exists( 'mu_hero_banners_render_admin_page' ) ) {
         <div class="wrap mu-hero-banners-wrap">
             <h1><?php esc_html_e( 'Hero Banners — Portada', 'mu' ); ?></h1>
             <p class="description">
-                <?php esc_html_e( 'Gestioná los banners del slider principal de la home. Las fechas usan formato DDMMAAAA: si dejás ambas vacías, el banner se muestra siempre. Cada banner se muestra sólo en los países tildados. En los sitios en otro idioma se usa la versión traducida de cada campo cuando está cargada; los campos vacíos (o iguales al español) muestran el español. El punto en la píldora marca los idiomas que ya tienen contenido propio.', 'mu' ); ?>
+                <?php esc_html_e( 'Gestioná los banners del slider principal de la home. Las fechas usan formato DDMMAAAA: si dejás ambas vacías, el banner se muestra siempre. Cada banner se muestra sólo en los países tildados. Las fechas generales (píldora "Global") valen para los países sin ventana propia: elegí la píldora de un país para darle fechas distintas y el punto marcará que tiene ventana propia. En los sitios en otro idioma se usa la versión traducida de cada campo cuando está cargada; los campos vacíos (o iguales al español) muestran el español. El punto en la píldora de idioma marca los idiomas que ya tienen contenido propio.', 'mu' ); ?>
             </p>
 
             <?php if ( $updated ) : ?>
@@ -679,6 +971,7 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
             'fin'             => '',
             'show_free_badge' => false,
             'paises'          => [ 'AR' ],
+            'fechas'          => [],
             'idioma_activo'   => 'es',
             'traducir_pt'     => false,
             'traducir_en'     => false,
@@ -739,11 +1032,11 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                     </label>
                     <?php endforeach; ?>
                 </div>
-                <span class="mu-hero-banner-paises-pills">
-                    <?php foreach ( $b['paises'] as $code ) : if ( isset( $countries_data[ $code ] ) ) : ?>
-                        <span class="mu-hero-banner-pill"><?php echo esc_html( $code ); ?></span>
-                    <?php endif; endforeach; ?>
-                </span>
+                <?php
+                // Las píldoras de país se mudaron al bloque de ajustes generales, donde
+                // además eligen DE QUÉ país se editan las fechas (píldora = pestaña).
+                // Acá queda sólo la selección de países activos (checkbox del dropdown).
+                ?>
 
                 <!-- Selector de idioma (pestaña activa del editor) -->
                 <?php
@@ -765,6 +1058,13 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                 </span>
                 <input type="hidden" name="<?php echo esc_attr( $name ); ?>[idioma_activo]" value="<?php echo esc_attr( $idioma_activo_lc ); ?>" class="mu-hero-banner-idioma-valor">
 
+                <?php
+                // Variantes (una versión por persona): los botones numerados los llena el
+                // JS cuando la respuesta del servicio trae más de una versión. Mismo
+                // componente que el editor de reseñas.
+                ?>
+                <span class="mu-ai-variants" data-role="ai-variants" role="group" aria-label="<?php esc_attr_e( 'Variantes de la traducción', 'mu' ); ?>"></span>
+
                 <?php // Traduce del español al idioma activo; nunca guarda. ?>
                 <span class="mu-hero-banner-ai">
                     <span class="mu-ai-inline-status" data-role="ai-status"></span>
@@ -784,6 +1084,42 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                 </button>
                 <input type="hidden" name="<?php echo esc_attr( $name ); ?>[_delete]" value="0" class="mu-hero-banner-row__delete-flag">
             </div>
+
+            <?php
+            // [M4] Avisos de fecha visibles en la lista, sin abrir el panel: una fecha
+            // inválida guardada se ignora (el banner se muestra siempre) y un rango
+            // invertido hace que ese ámbito no lo vea nunca.
+            $avisos = mu_hero_banner_avisos( $b );
+            $rotular = function ( $ambito ) {
+                return '' === $ambito ? __( 'Fechas generales', 'mu' ) : $ambito;
+            };
+            ?>
+            <?php if ( $avisos['invalidas'] || $avisos['invertidas'] ) : ?>
+            <p class="mu-hero-banner-row__alert" role="status">
+                <?php if ( $avisos['invalidas'] ) : ?>
+                    <span>
+                        <?php
+                        printf(
+                            /* translators: %s: ámbito (país o fechas generales). */
+                            esc_html__( '%s: hay una fecha inválida guardada; se ignora hasta corregirla.', 'mu' ),
+                            esc_html( implode( ', ', array_map( $rotular, $avisos['invalidas'] ) ) )
+                        );
+                        ?>
+                    </span>
+                <?php endif; ?>
+                <?php if ( $avisos['invertidas'] ) : ?>
+                    <span>
+                        <?php
+                        printf(
+                            /* translators: %s: ámbito (país o fechas generales). */
+                            esc_html__( '%s: el inicio es posterior al fin; ese ámbito no ve el banner.', 'mu' ),
+                            esc_html( implode( ', ', array_map( $rotular, $avisos['invertidas'] ) ) )
+                        );
+                        ?>
+                    </span>
+                <?php endif; ?>
+            </p>
+            <?php endif; ?>
 
             <div class="mu-hero-banner-row__grid">
                 <?php
@@ -875,19 +1211,70 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
 
                 <!-- Bloque global: no cambia por idioma -->
                 <div class="mu-hero-banner-globals-block">
-                    <p class="mu-hero-banner-globals-title"><strong><?php esc_html_e( 'Ajustes generales (iguales en todos los idiomas)', 'mu' ); ?></strong></p>
+                    <?php
+                    // Píldoras de país: eligen DE QUÉ país se editan las fechas (misma
+                    // mecánica que las píldoras de idioma). "Global" son las fechas
+                    // generales, que heredan los países sin ventana propia; el punto
+                    // marca los países con fechas propias. Los países ACTIVOS se eligen
+                    // con el botón "Países" de la cabecera: acá se ven los tildados.
+                    ?>
+                    <p class="mu-hero-banner-globals-title">
+                        <strong><?php esc_html_e( 'Ajustes generales (iguales en todos los idiomas)', 'mu' ); ?></strong>
+                        <span class="mu-hero-banner-paises-pills" role="group" aria-label="<?php esc_attr_e( 'País cuyas fechas se editan', 'mu' ); ?>">
+                            <button type="button"
+                                    class="mu-hero-banner-pill is-selectable is-active"
+                                    data-pais=""
+                                    data-has-fechas="0"
+                                    title="<?php esc_attr_e( 'Fechas generales (las usan los países sin ventana propia)', 'mu' ); ?>"><?php esc_html_e( 'Global', 'mu' ); ?></button>
+                            <?php
+                            foreach ( $countries_data as $code => $c ) :
+                                $pais_activo = in_array( $code, $b['paises'], true );
+                                $ini_propio  = (string) ( $b['fechas'][ $code ]['inicio'] ?? '' );
+                                $fin_propio  = (string) ( $b['fechas'][ $code ]['fin'] ?? '' );
+                                ?>
+                                <button type="button"
+                                        class="mu-hero-banner-pill is-selectable"
+                                        data-pais="<?php echo esc_attr( $code ); ?>"
+                                        data-has-fechas="<?php echo ( '' !== $ini_propio || '' !== $fin_propio ) ? '1' : '0'; ?>"
+                                        title="<?php echo esc_attr( $c['name'] ); ?>"
+                                        <?php echo $pais_activo ? '' : 'style="display:none;"'; ?>><?php echo esc_html( $code ); ?></button>
+                            <?php endforeach; ?>
+                        </span>
+                    </p>
+
+                    <?php
+                    // Campo de fecha (DDMMAAAA). El nombre completo se arma afuera: las
+                    // generales usan [inicio]/[fin] y cada país [fechas][PAIS][inicio].
+                    //
+                    // SIN `pattern`: los paneles se ocultan al cambiar de píldora y un
+                    // campo oculto con formato inválido bloquea el envío con un
+                    // "not focusable" que no se ve. El formato lo avisa el JS (aviso del
+                    // panel) y lo sanea el servidor, igual que antes.
+                    $render_fecha = function ( $field, $label, $input, $valor, $placeholder ) {
+                        ?>
+                        <span class="mu-hero-banner-fechas-field">
+                            <label><strong><?php echo esc_html( $label ); ?></strong></label>
+                            <input type="text" name="<?php echo esc_attr( $input ); ?>" value="<?php echo esc_attr( $valor ); ?>" data-fecha="<?php echo esc_attr( $field ); ?>" maxlength="8" inputmode="numeric" placeholder="<?php echo esc_attr( $placeholder ); ?>" class="regular-text">
+                        </span>
+                        <?php
+                    };
+                    ?>
                     <div class="mu-hero-banner-fields-grid">
                         <p>
                             <label><strong><?php esc_html_e( 'ID (slug)', 'mu' ); ?></strong></label>
                             <input type="text" name="<?php echo esc_attr( $name ); ?>[id]" value="<?php echo esc_attr( $b['id'] ); ?>" class="regular-text">
                         </p>
-                        <p>
-                            <label><strong><?php esc_html_e( 'Inicio (DDMMAAAA)', 'mu' ); ?></strong></label>
-                            <input type="text" name="<?php echo esc_attr( $name ); ?>[inicio]" value="<?php echo esc_attr( $b['inicio'] ); ?>" pattern="\d{8}" placeholder="01012026" class="regular-text">
-                        </p>
-                        <p>
-                            <label><strong><?php esc_html_e( 'Fin (DDMMAAAA)', 'mu' ); ?></strong></label>
-                            <input type="text" name="<?php echo esc_attr( $name ); ?>[fin]" value="<?php echo esc_attr( $b['fin'] ); ?>" pattern="\d{8}" placeholder="31122026" class="regular-text">
+                        <!-- Fechas generales: las heredan los países sin ventana propia -->
+                        <p class="mu-hero-banner-fechas-block mu-hero-banner-row__full" data-pais="">
+                            <span class="mu-hero-banner-fechas-grid">
+                                <?php
+                                $render_fecha( 'inicio', __( 'Inicio (DDMMAAAA)', 'mu' ), $name . '[inicio]', $b['inicio'], '01012026' );
+                                $render_fecha( 'fin', __( 'Fin (DDMMAAAA)', 'mu' ), $name . '[fin]', $b['fin'], '31122026' );
+                                ?>
+                            </span>
+                            <span class="mu-lang-hint"><?php esc_html_e( 'Estas fechas valen para los países sin ventana propia. Si dejás ambas vacías, el banner se muestra siempre en ellos.', 'mu' ); ?></span>
+                            <span class="mu-lang-hint"><?php esc_html_e( 'Se interpretan como medianoche LOCAL de cada país: 01/06 es el 01/06 a las 00:00 en el huso de ese país, no en el del servidor.', 'mu' ); ?></span>
+                            <span class="mu-lang-hint mu-hero-banner-fechas-warning" data-role="fechas-warning" hidden></span>
                         </p>
                         <p>
                             <label>
@@ -895,6 +1282,52 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                                 <strong><?php esc_html_e( 'Mostrar badge promo', 'mu' ); ?></strong>
                             </label>
                         </p>
+
+                        <?php // Ventana propia de cada país (oculta hasta que se elija su píldora) ?>
+                        <?php foreach ( $countries_data as $code => $c ) : ?>
+                        <p class="mu-hero-banner-fechas-block mu-hero-banner-row__full" data-pais="<?php echo esc_attr( $code ); ?>" style="display:none;">
+                            <span class="mu-hero-banner-fechas-grid">
+                                <?php
+                                $render_fecha( 'inicio', __( 'Inicio (DDMMAAAA)', 'mu' ), $name . '[fechas][' . $code . '][inicio]', $b['fechas'][ $code ]['inicio'] ?? '', $b['inicio'] );
+                                $render_fecha( 'fin', __( 'Fin (DDMMAAAA)', 'mu' ), $name . '[fechas][' . $code . '][fin]', $b['fechas'][ $code ]['fin'] ?? '', $b['fin'] );
+                                ?>
+                            </span>
+                            <span class="mu-lang-hint">
+                                <?php
+                                printf(
+                                    /* translators: %s: nombre del país. */
+                                    esc_html__( '%s: lo que dejes vacío (o igual a las fechas generales) usa las fechas generales; si dejás ambas vacías, el banner se muestra siempre en este país.', 'mu' ),
+                                    esc_html( $c['name'] )
+                                );
+                                ?>
+                            </span>
+                            <span class="mu-lang-hint">
+                                <?php
+                                // [M6] Ventana efectiva con lo GUARDADO, en el huso del país: la
+                                // pregunta "¿medianoche de dónde?" queda respondida a la vista.
+                                $tz_pais   = mu_hero_banner_pais_tz( $code );
+                                $ventana_e = mu_hero_banner_ventana_instantes( $b, $code );
+
+                                if ( null === $ventana_e ) {
+                                    echo esc_html( sprintf(
+                                        /* translators: %s: huso horario del país. */
+                                        __( 'Sin límite de fecha con lo guardado: se muestra siempre (huso del país: %s).', 'mu' ),
+                                        $tz_pais->getName()
+                                    ) );
+                                } else {
+                                    echo esc_html( sprintf(
+                                        /* translators: 1: inicio, 2: fin, 3: huso horario del país. */
+                                        __( 'Con lo guardado se ve del %1$s al %2$s, en el huso del país (%3$s).', 'mu' ),
+                                        ( new DateTimeImmutable( '@' . $ventana_e[0] ) )->setTimezone( $tz_pais )->format( 'd/m/Y H:i' ),
+                                        ( new DateTimeImmutable( '@' . $ventana_e[1] ) )->setTimezone( $tz_pais )->format( 'd/m/Y H:i' ),
+                                        $tz_pais->getName()
+                                    ) );
+                                }
+                                ?>
+                            </span>
+                            <span class="mu-lang-hint mu-hero-banner-fechas-warning" data-role="fechas-warning" hidden></span>
+                        </p>
+                        <?php endforeach; ?>
                     </div>
                 </div>
             </div>

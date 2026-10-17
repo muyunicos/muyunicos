@@ -190,8 +190,10 @@ if ( ! function_exists( 'mu_ai_render_admin_page' ) ) {
                             <span class="mu-ai-hint"><?php esc_html_e( 'Usá «Probar conexión» para ver los modelos disponibles con esta clave.', 'mu' ); ?></span>
                         </p>
                         <?php
+                        // El tope de textos por acción vive en cada ámbito (abajo): un
+                        // banner trae 6 campos y una reseña 1. Acá quedan los límites del
+                        // servicio.
                         $limites = [
-                            'per_action' => __( 'Textos por acción', 'mu' ),
                             'per_minute' => __( 'Solicitudes por minuto', 'mu' ),
                             'per_day'    => __( 'Solicitudes por día', 'mu' ),
                         ];
@@ -234,6 +236,21 @@ if ( ! function_exists( 'mu_ai_render_admin_page' ) ) {
                         <label for="mu-ai-variants-<?php echo esc_attr( $ambito ); ?>"><strong><?php esc_html_e( 'Variantes por traducción manual (1 a 5)', 'mu' ); ?></strong></label><br>
                         <input type="number" min="1" max="5" id="mu-ai-variants-<?php echo esc_attr( $ambito ); ?>" name="contexts[<?php echo esc_attr( $ambito ); ?>][variants]" value="<?php echo esc_attr( max( 1, min( 5, (int) ( $ctx['variants'] ?? 1 ) ) ) ); ?>">
                         <span class="mu-ai-hint"><?php esc_html_e( 'Cuántas versiones distintas (una por persona) devuelve el botón «Traducir». Se acota solo a la cantidad de personas cargadas.', 'mu' ); ?></span>
+                    </p>
+
+                    <p>
+                        <label for="mu-ai-peraction-<?php echo esc_attr( $ambito ); ?>"><strong><?php esc_html_e( 'Textos por acción', 'mu' ); ?></strong></label><br>
+                        <input type="number" min="0" max="50" id="mu-ai-peraction-<?php echo esc_attr( $ambito ); ?>" name="contexts[<?php echo esc_attr( $ambito ); ?>][per_action]" value="<?php echo esc_attr( (int) ( $ctx['per_action'] ?? 0 ) ); ?>">
+                        <span class="mu-ai-hint">
+                            <?php
+                            printf(
+                                /* translators: 1: cantidad de campos del ámbito, 2: tope efectivo. */
+                                esc_html__( 'Cuántos textos puede traducir UNA acción del botón en este ámbito. El ámbito declara %1$d campo(s); con 0 o vacío se usa esa cantidad. Hoy el tope efectivo es %2$d.', 'mu' ),
+                                count( (array) ( $def['fields'] ?? [] ) ),
+                                mu_ai_ambito_per_action( $ambito )
+                            );
+                            ?>
+                        </span>
                     </p>
 
                     <p>

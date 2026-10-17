@@ -183,6 +183,8 @@ if ( ! function_exists( 'mu_ai_settings_defaults' ) ) {
                     // Una persona por línea: cada variante se escribe como una de ellas.
                     'personas'    => "El Escritor Rápido\nLa Mamá Práctica\nEl Gente de Campo\nEl Sofisticado\nEl Cliente Escéptico",
                     'variants'    => 5,
+                    // Textos por acción: el comentario es uno solo.
+                    'per_action'  => 1,
                     'temperature' => 0.9,
                     'max_chars'   => 700,
                     'allow_html'  => false,
@@ -194,6 +196,11 @@ if ( ! function_exists( 'mu_ai_settings_defaults' ) ) {
                     'exclude'     => 'Conservá el marcado <span class="mu-highlight">…</span> tal cual. No traduzcas URLs, rutas ni nombres de archivo. No marques unchanged en botones, etiquetas ni títulos cortos: traducilos siempre, aunque el texto sea un nombre de producto (los nombres también se traducen).',
                     'personas'    => '',
                     'variants'    => 1,
+                    // Textos por acción: el banner tiene 6 campos traducibles (título,
+                    // descripción, eyebrow, CTA, CTA secundario y badge). Con el tope
+                    // global anterior (5) un banner completo quedaba bloqueado con
+                    // "la acción tiene 6 textos y el límite por acción es 5".
+                    'per_action'  => 6,
                     'temperature' => 0.2,
                     'max_chars'   => 1200,
                     'allow_html'  => true,
@@ -290,6 +297,13 @@ if ( ! function_exists( 'mu_ai_save_settings' ) ) {
                 }
                 if ( isset( $values['variants'] ) ) {
                     $contexts[ $ambito ]['variants'] = max( 1, min( 5, intval( $values['variants'] ) ) );
+                }
+                if ( isset( $values['per_action'] ) ) {
+                    // El tope por acción es del ámbito (ver mu_ai_ambito_per_action()).
+                    // 0 o vacío = automático (la cantidad de campos del ámbito).
+                    $per_action = intval( $values['per_action'] );
+
+                    $contexts[ $ambito ]['per_action'] = $per_action > 0 ? max( 1, min( 50, $per_action ) ) : 0;
                 }
                 if ( isset( $values['temperature'] ) ) {
                     $contexts[ $ambito ]['temperature'] = max( 0, min( 1.5, (float) $values['temperature'] ) );
@@ -435,6 +449,32 @@ if ( ! function_exists( 'mu_ai_variants' ) ) {
         }
 
         return max( 1, min( count( $personas ), min( 5, (int) ( $profile['variants'] ?? 1 ) ) ) );
+    }
+}
+
+if ( ! function_exists( 'mu_ai_ambito_per_action' ) ) {
+    /**
+     * Cuántos textos admite UNA acción manual de ese ámbito.
+     *
+     * El tope es del ámbito, no del servicio: una acción traduce los campos de UN
+     * elemento (la reseña = 1 texto; el banner = 6 textos), así que el valor natural es
+     * la cantidad de campos declarados. El perfil puede subirlo o bajarlo, y sin perfil
+     * se usa esa cantidad. Antes el tope era global (`limits.per_action` = 5) y un banner
+     * completo quedaba bloqueado: "la acción tiene 6 textos y el límite por acción es 5".
+     *
+     * No invalida la caché de traducciones: no cambia las instrucciones (ver
+     * mu_ai_glossary_version()).
+     *
+     * @param string $ambito
+     * @return int 1..50
+     */
+    function mu_ai_ambito_per_action( $ambito ) {
+        $profile = mu_ai_context_profile( $ambito );
+        $def     = mu_ai_ambito( $ambito );
+        $campos  = max( 1, count( (array) ( $def['fields'] ?? [] ) ) );
+        $valor   = isset( $profile['per_action'] ) ? (int) $profile['per_action'] : 0;
+
+        return max( 1, min( 50, $valor > 0 ? $valor : $campos ) );
     }
 }
 
@@ -1248,12 +1288,14 @@ if ( ! function_exists( 'mu_ai_translate' ) ) {
             return $result;
         }
 
-        // 3) Límites: por acción, por minuto y techo diario.
+        // 3) Límites: por acción (del ámbito), por minuto y techo diario.
         $limits = mu_ai_settings()['limits'];
 
-        if ( count( $pending ) > (int) $limits['per_action'] ) {
+        $per_action = mu_ai_ambito_per_action( $ambito );
+
+        if ( count( $pending ) > $per_action ) {
             $result['code']  = 'rate_limited';
-            $result['error'] = sprintf( 'La acción tiene %d textos y el límite por acción es %d. Dividila en partes.', count( $pending ), (int) $limits['per_action'] );
+            $result['error'] = sprintf( 'La acción tiene %d textos y este ámbito admite %d por acción. Dividila en partes.', count( $pending ), $per_action );
             return $result;
         }
 

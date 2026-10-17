@@ -13,10 +13,13 @@ en reseñas y banners.
 [
   'enabled'  => true,
   'model'    => 'gemini-flash-lite-latest',   // editable; la pantalla lista los válidos
-  'limits'   => [ 'per_action' => 5, 'per_minute' => 10, 'per_day' => 120 ],
+  'limits'   => [ 'per_minute' => 10, 'per_day' => 120 ],   // límites del servicio
   'contexts' => [
-    'reviews'     => [ 'role' => '…', 'tone' => '…', 'glossary' => '…', 'exclude' => '…', 'max_chars' => 700,  'allow_html' => false ],
-    'hero_banner' => [ 'role' => '…', 'tone' => '…', 'glossary' => '…', 'exclude' => '…', 'max_chars' => 1200, 'allow_html' => true  ],
+    // per_action es POR ÁMBITO (2026-10-17): por defecto, la cantidad de campos del ámbito
+    // (reviews 1, hero_banner 6); 0 = automático. Antes era una cifra global de 5 y un
+    // banner completo (6 textos) quedaba bloqueado. Ver mu_ai_ambito_per_action().
+    'reviews'     => [ 'role' => '…', 'tone' => '…', 'glossary' => '…', 'exclude' => '…', 'personas' => '…', 'variants' => 5, 'per_action' => 1, 'max_chars' => 700,  'allow_html' => false ],
+    'hero_banner' => [ 'role' => '…', 'tone' => '…', 'glossary' => '…', 'exclude' => '…', 'personas' => '',  'variants' => 1, 'per_action' => 6, 'max_chars' => 1200, 'allow_html' => true  ],
   ],
 ]
 ```

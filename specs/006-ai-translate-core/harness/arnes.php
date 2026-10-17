@@ -284,6 +284,53 @@ unset( $GLOBALS['mu_respuesta'] );
 ok( 'El campo unchanged se informa como tal', ! empty( $r['items']['titulo']['unchanged'] ) );
 ok( 'El campo traducido llega con su texto', 'New description' === ( $r['items']['descripcion']['translation'] ?? '' ), var_export( $r['items']['descripcion'] ?? [], true ) );
 ok( 'El campo que el modelo omitio queda en missing (no como unchanged)', in_array( 'eyebrow', (array) ( $r['missing'] ?? [] ), true ), var_export( $r['missing'] ?? [], true ) );
+
+echo "\n--- 11. Tope de textos por acción: del ámbito, no global ---\n";
+same( 'Reseñas: 1 texto por acción', 1, mu_ai_ambito_per_action( 'reviews' ) );
+same( 'Banner: 6 textos por acción (sus 6 campos)', 6, mu_ai_ambito_per_action( 'hero_banner' ) );
+
+// Un banner completo (6 campos) entra en UNA acción: con el tope global anterior (5)
+// quedaba bloqueado con "la acción tiene 6 textos y el límite por acción es 5".
+$campos_banner = [];
+foreach ( [ 'titulo', 'descripcion', 'eyebrow', 'cta_texto', 'cta_secundario_texto', 'free_badge_text' ] as $i => $campo ) {
+    $campos_banner[] = [ 'key' => $campo, 'text' => 'Texto de banner ' . ( $i + 1 ) ];
+}
+
+$antes = count( $GLOBALS['mu_posts'] );
+$r     = mu_ai_translate( $campos_banner, 'en', 'hero_banner' );
+
+ok(
+    'Un banner con los 6 textos se traduce en una sola acción',
+    ! empty( $r['ok'] ) && 6 === count( $r['items'] ?? [] ),
+    var_export( $r['code'] ?? '', true )
+);
+same( 'Y sale una sola solicitud', $antes + 1, count( $GLOBALS['mu_posts'] ) );
+
+// Textos nuevos (los anteriores ya quedaron en caché y lo cacheado no cuenta como
+// pendiente): 7 campos distintos superan el tope del ámbito.
+$siete = [];
+foreach ( [ 'titulo', 'descripcion', 'eyebrow', 'cta_texto', 'cta_secundario_texto', 'free_badge_text', 'extra' ] as $i => $campo ) {
+    $siete[] = [ 'key' => $campo, 'text' => 'Otra tanda de banner ' . ( $i + 1 ) ];
+}
+
+$antes   = count( $GLOBALS['mu_posts'] );
+$r       = mu_ai_translate( $siete, 'en', 'hero_banner' );
+
+ok( 'Siete textos: rechazado sin gastar solicitud', empty( $r['ok'] ) && 'rate_limited' === ( $r['code'] ?? '' ), var_export( $r['code'] ?? '', true ) );
+same( 'Y no hay solicitud nueva', $antes, count( $GLOBALS['mu_posts'] ) );
+ok( 'El mensaje nombra el tope del ámbito', false !== strpos( (string) ( $r['error'] ?? '' ), 'este ámbito admite 6' ), (string) ( $r['error'] ?? '' ) );
+
+$settings = mu_ai_settings();
+$settings['contexts']['hero_banner']['per_action'] = 2;
+update_option( MU_AI_SETTINGS_OPTION, $settings );
+mu_ai_settings( true );
+same( 'El perfil puede bajar el tope', 2, mu_ai_ambito_per_action( 'hero_banner' ) );
+
+$settings['contexts']['hero_banner']['per_action'] = 0;
+update_option( MU_AI_SETTINGS_OPTION, $settings );
+mu_ai_settings( true );
+same( 'Con 0 vuelve al automático (campos del ámbito)', 6, mu_ai_ambito_per_action( 'hero_banner' ) );
+
 echo "\n== {$GLOBALS['mu_ok']} OK / {$GLOBALS['mu_fail']} FAIL ==\n";
 exit( $GLOBALS['mu_fail'] > 0 ? 1 : 0 );
 

@@ -119,14 +119,55 @@
     align-items: center;
 }
 .mu-hero-banner-pill {
+    position: relative;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.4;
+    text-transform: none;
     background: #e8f4ff;
     color: #0066cc;
     border: 1px solid #0066cc;
     border-radius: 10px;
     padding: 1px 8px;
-    font-size: 11px;
-    font-weight: 600;
 }
+
+/* Píldoras de país interactivas (bloque de ajustes generales): eligen de qué país
+   se editan las fechas. El punto marca el país con ventana propia, igual que el
+   punto de las píldoras de idioma. */
+.mu-hero-banner-pill.is-selectable { cursor: pointer; }
+.mu-hero-banner-pill.is-selectable:hover {
+    background: #fff;
+    border-color: var(--primario, #2B9FCF);
+    color: var(--primario, #2B9FCF);
+}
+.mu-hero-banner-pill.is-active {
+    background: var(--primario, #2B9FCF);
+    border-color: var(--primario, #2B9FCF);
+    color: #fff;
+}
+.mu-hero-banner-pill[data-has-fechas="1"]::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 7px;
+    height: 7px;
+    background: #fbbc05;
+    border: 1px solid #fff;
+    border-radius: 50%;
+}
+
+/* Fechas por país (bloque de ajustes generales) */
+.mu-hero-banner-fechas-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--mu-space-sm, 10px) var(--mu-space-md, 20px);
+}
+.mu-hero-banner-fechas-field label { display: block; margin-bottom: 4px; font-size: 13px; }
+.mu-hero-banner-fechas-field input { width: 100%; }
+.mu-hero-banner-fechas-warning { color: #8a1f11; }
+.mu-hero-banner-fechas-warning[hidden] { display: none; }
 
 /* Píldoras de idioma (ES | PT | EN): componente COMPARTIDO con el editor de
    reseñas. Sus estilos (.mu-lang-pill, .mu-ai-inline-btn, .mu-ai-inline-status,
@@ -141,6 +182,12 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
+    margin-left: 6px;
+}
+
+/* Botones numerados de variante (1·2·3…) del botón de IA, en la misma cabecera.
+   El aspecto vive en el componente compartido (css/components/ai-translate-inline.css). */
+.mu-hero-banner-row__head .mu-ai-variants {
     margin-left: 6px;
 }
 .mu-hero-banner-ai .mu-ai-inline-status {
@@ -192,6 +239,10 @@
     background: #f9f9f9;
 }
 .mu-hero-banner-globals-block .mu-hero-banner-globals-title {
+    display: flex;
+    align-items: center;
+    gap: var(--mu-space-sm, 10px);
+    flex-wrap: wrap;
     margin: 0 0 var(--mu-space-sm, 10px);
     font-size: 12px;
     text-transform: uppercase;
@@ -199,6 +250,24 @@
     color: #646970;
 }
 
+/* --- Avisos de fecha en la fila (fechas inválidas o rango invertido) --- */
+.mu-hero-banner-row__alert {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0 0 var(--mu-space-sm, 10px);
+    padding: 8px 10px;
+    font-size: 12px;
+    color: #7a4b00;
+    background: #fdf6e3;
+    border: 1px solid #f0d9a0;
+    border-radius: var(--mu-radius-sm, 6px);
+}
+
+/* Las fechas (y sus avisos) van uno debajo del otro */
+.mu-hero-banner-fechas-block .mu-lang-hint { display: block; }
+
 @media (max-width: 782px) {
     .mu-hero-banner-fields-grid { grid-template-columns: 1fr; }
+    .mu-hero-banner-fechas-grid { grid-template-columns: 1fr; }
 }

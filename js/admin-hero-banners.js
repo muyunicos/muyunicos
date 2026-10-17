@@ -4,6 +4,10 @@
  * - Add/remove rows (template clone)
  * - WP Media picker para imagen
  * - Selector de países (dropdown + píldoras)
+ * - Fechas por país (bloque de ajustes generales): las píldoras eligen DE QUÉ país se
+ *   editan las fechas ('Global' = las generales, que heredan los países sin ventana
+ *   propia). El punto marca los países con fechas propias y el valor general se usa
+ *   como placeholder. Mismo patrón que las píldoras de idioma.
  * - Píldoras de idioma ES | PT | EN (mismo componente que el editor de reseñas):
  *   eligen qué bloque se edita. El punto marca los idiomas con contenido propio y
  *   sale automático del contenido — ya no hay checkbox "Traducir".
@@ -54,6 +58,11 @@
 
         // El idioma abierto se recuerda al guardar (solo la pestaña del editor).
         $row.find('.mu-hero-banner-idioma-valor').val(lang);
+
+        // Las variantes son de un idioma concreto: al cambiar de idioma se descartan.
+        var previo = String($row.data('langActual') || '');
+        if ('' !== previo && previo !== lang) { limpiarVariantes($row); }
+        $row.data('langActual', lang);
 
         // La IA traduce del español a otro idioma: en ES no aplica.
         $row.find('.mu-hero-banner-ai-btn').prop('disabled', lang === 'es');
@@ -126,6 +135,191 @@
         setLang($row, idiomaActivo($row));
         aplicarPlaceholders($row);
         actualizarPuntos($row);
+        sincronizarPillsPais($row);
+        aplicarPlaceholdersFechas($row);
+        actualizarPuntosFechas($row);
+    }
+
+    // ---------------------------------------------------------------
+    // Fechas por país (bloque de ajustes generales)
+    // La píldora activa elige QUÉ país se edita; la píldora sin país ('') son las
+    // fechas generales, que heredan los países sin ventana propia.
+    // ---------------------------------------------------------------
+
+    /** Timestamp comparable de una fecha DDMMAAAA (null si el formato no sirve). Pura. */
+    function parseDdmmaaaa(valor) {
+        var s = String(valor || '').trim();
+        if (!/^\d{8}$/.test(s)) return null;
+        return parseInt(s.substr(4, 4) + s.substr(2, 2) + s.substr(0, 2), 10);
+    }
+
+    /** ¿El inicio es posterior al fin? Función PURA (aviso de rango invertido). */
+    function rangoInvertido(inicio, fin) {
+        var a = parseDdmmaaaa(inicio);
+        var b = parseDdmmaaaa(fin);
+        return a !== null && b !== null && a > b;
+    }
+
+    /** Días del mes indicado (28/29/30/31), con bisiesto. Función PURA. */
+    function diasDelMes(mes, anio) {
+        if (2 === mes) {
+            var bisiesto = (anio % 4 === 0 && anio % 100 !== 0) || (anio % 400 === 0);
+            return bisiesto ? 29 : 28;
+        }
+        return [4, 6, 9, 11].indexOf(mes) !== -1 ? 30 : 31;
+    }
+
+    /**
+     * ¿El valor no está vacío y NO es una fecha DDMMAAAA real? Función PURA.
+     * Replica del servidor (checkdate): un 31/02 o un día 99 se avisan en el panel en
+     * lugar de guardarse y quedar ignorados en el front.
+     */
+    function fechaMalFormada(valor) {
+        var s = String(valor || '').trim();
+
+        if ('' === s) { return false; }
+        if (null === parseDdmmaaaa(s)) { return true; }
+
+        var dia  = parseInt(s.substr(0, 2), 10);
+        var mes  = parseInt(s.substr(2, 2), 10);
+        var anio = parseInt(s.substr(4, 4), 10);
+
+        if (mes < 1 || mes > 12) { return true; }
+
+        return dia < 1 || dia > diasDelMes(mes, anio);
+    }
+
+    /** Bloque de fechas de un país de la fila ('' = generales). */
+    function bloqueFechas($row, pais) {
+        return $row.find('.mu-hero-banner-fechas-block[data-pais="' + String(pais || '') + '"]');
+    }
+
+    /** Valor propio de un campo de fecha ('' = hereda la general). */
+    function fechaPropia($row, pais, campo) {
+        return String(bloqueFechas($row, pais).find('[data-fecha="' + campo + '"]').val() || '');
+    }
+
+    /** Fecha efectiva de un país: la propia o, si está vacía, la general. */
+    function fechaEfectiva($row, pais, campo) {
+        var propia = fechaPropia($row, pais, campo);
+        return propia !== '' ? propia : fechaPropia($row, '', campo);
+    }
+
+    /** País cuyas fechas se están editando ('' = generales). */
+    function paisFechas($row) {
+        return String($row.find('.mu-hero-banner-paises-pills .mu-hero-banner-pill.is-active').attr('data-pais') || '');
+    }
+
+    /**
+     * Muestra las fechas del país pedido ('' = generales) y marca su píldora. Si el
+     * país ya no está tildado, cae a las generales: no se edita una ventana que no se
+     * va a guardar.
+     */
+    function setPaisFechas($row, pais) {
+        var code  = String(pais || '');
+        var $pill = $row.find('.mu-hero-banner-paises-pills .mu-hero-banner-pill[data-pais="' + code + '"]');
+
+        if (!$pill.length || (code !== '' && $pill.is(':hidden'))) {
+            code  = '';
+            $pill = $row.find('.mu-hero-banner-paises-pills .mu-hero-banner-pill[data-pais=""]');
+        }
+
+        $row.find('.mu-hero-banner-paises-pills .mu-hero-banner-pill').each(function () {
+            var $p     = $(this);
+            var activa = String($p.attr('data-pais') || '') === code;
+            $p.toggleClass('is-active', activa);
+            $p.attr('aria-pressed', activa ? 'true' : 'false');
+        });
+
+        $row.find('.mu-hero-banner-fechas-block').each(function () {
+            var $block = $(this);
+            $block.css('display', String($block.attr('data-pais') || '') === code ? 'block' : 'none');
+        });
+
+        avisarFechas($row, code);
+    }
+
+    /** Punto de la píldora: ese país tiene una ventana propia (distinta de la general). */
+    function actualizarPuntoFechas($row, pais) {
+        if (pais === '') return;
+
+        var $pill = $row.find('.mu-hero-banner-paises-pills .mu-hero-banner-pill[data-pais="' + pais + '"]');
+        if (!$pill.length) return;
+
+        var tiene = false;
+
+        ['inicio', 'fin'].forEach(function (campo) {
+            var propia = fechaPropia($row, pais, campo);
+            if (propia !== '' && propia !== fechaPropia($row, '', campo)) { tiene = true; }
+        });
+
+        $pill.attr('data-has-fechas', tiene ? '1' : '0');
+    }
+
+    /** Puntos de todas las píldoras de país (mover las generales los afecta a todos). */
+    function actualizarPuntosFechas($row) {
+        $row.find('.mu-hero-banner-paises-pills .mu-hero-banner-pill[data-pais!=""]').each(function () {
+            actualizarPuntoFechas($row, String($(this).attr('data-pais') || ''));
+        });
+    }
+
+    /**
+     * Muestra/oculta las píldoras de país según los checkboxes tildados ('Global'
+     * siempre visible) y reencuadra la píldora activa si su país dejó de estar tildado.
+     */
+    function sincronizarPillsPais($row) {
+        var tildados = [];
+
+        $row.find('.mu-hero-banner-paises-dropdown input[type="checkbox"]:checked').each(function () {
+            tildados.push(String($(this).val()));
+        });
+
+        $row.find('.mu-hero-banner-paises-pills .mu-hero-banner-pill').each(function () {
+            var $pill = $(this);
+            var code  = String($pill.attr('data-pais') || '');
+            if (code === '') return; // Global: siempre visible
+            $pill.toggle(tildados.indexOf(code) !== -1);
+        });
+
+        setPaisFechas($row, paisFechas($row));
+    }
+
+    /** El valor general como placeholder de los campos de cada país (ayuda visual). */
+    function aplicarPlaceholdersFechas($row) {
+        ['inicio', 'fin'].forEach(function (campo) {
+            var base = fechaPropia($row, '', campo);
+            if (base === '') { base = campo === 'inicio' ? '01012026' : '31122026'; }
+
+            $row.find('.mu-hero-banner-fechas-block[data-pais!=""] [data-fecha="' + campo + '"]')
+                .attr('placeholder', base);
+        });
+    }
+
+    /**
+     * Aviso del panel de fechas: formato DDMMAAAA inválido o rango invertido. Los
+     * paneles ocultos no pueden avisar por el navegador (un campo oculto con `pattern`
+     * bloquearía el envío sin poder mostrarse), así que el aviso es propio del panel.
+     */
+    function avisarFechas($row, pais) {
+        var $aviso = bloqueFechas($row, pais).find('[data-role="fechas-warning"]');
+        if (!$aviso.length) return;
+
+        var ini = fechaEfectiva($row, pais, 'inicio');
+        var fin = fechaEfectiva($row, pais, 'fin');
+
+        function avisoTexto(clave, porDefecto) {
+            return (window.muHeroBannersData && window.muHeroBannersData[clave]) || porDefecto;
+        }
+
+        if (fechaMalFormada(ini) || fechaMalFormada(fin)) {
+            $aviso.text(avisoTexto('fechasFormato', 'Usá el formato DDMMAAAA (8 dígitos) en Inicio y Fin.'));
+            $aviso.prop('hidden', false);
+            return;
+        }
+
+        var invertido = rangoInvertido(ini, fin);
+        $aviso.text(invertido ? avisoTexto('fechasMalas', 'Inicio es posterior al fin: el banner no se verá en este país.') : '');
+        $aviso.prop('hidden', !invertido);
     }
 
     /** Aviso del botón de IA (verde si salió bien). */
@@ -216,6 +410,127 @@
             ok: false
         };
     }
+    // ---------------------------------------------------------------
+    // Variantes de la traducción (una versión por persona)
+    // El servicio devuelve una versión por persona y acá se ofrecen botones numerados
+    // (1·2·3…), igual que en el editor de reseñas: el número activo es la versión que
+    // quedó en los campos y no se guarda nada hasta «Guardar cambios». La cantidad la
+    // decide el ámbito (personas × variantes); si el ámbito no declara personas, no hay
+    // botones y queda la traducción estándar de siempre.
+    // ---------------------------------------------------------------
+
+    /**
+     * Textos de la variante pedida para los campos indicados. Función PURA.
+     *
+     * @param {object}   items  Respuesta del servicio por campo (con `variants`).
+     * @param {number}   indice Variante pedida (0 = la primera).
+     * @param {string[]} campos Campos del ámbito que se enviaron.
+     * @return {{aplicar: object, faltantes: string[]}}
+     */
+    function variantesDeFila( items, indice, campos ) {
+        var res = { aplicar: {}, faltantes: [] };
+
+        ( campos || [] ).forEach( function ( field ) {
+            var item  = ( items || {} )[ field ];
+            var lista = ( item && item.variants && item.variants.length ) ? item.variants : [];
+            var texto = lista[ indice ];
+
+            if ( 'string' !== typeof texto || '' === texto.trim() ) {
+                res.faltantes.push( field );
+                return;
+            }
+
+            res.aplicar[ field ] = texto;
+        } );
+
+        return res;
+    }
+
+    /**
+     * Mensaje de estado al elegir una variante. Función PURA.
+     *
+     * @param {number}   indice    Variante elegida (0 = la primera).
+     * @param {string}   persona   Persona que la escribió ('' si no se sabe).
+     * @param {string[]} faltantes Campos sin texto en esa variante.
+     * @return {{texto: string, ok: boolean}}
+     */
+    function mensajeVariante( indice, persona, faltantes ) {
+        var sin = ( faltantes && faltantes.length ) ? ' Sin texto en: ' + faltantes.join( ', ' ) + '.' : '';
+
+        return {
+            texto: 'Variante ' + ( indice + 1 ) + ( persona ? ' (' + persona + ')' : '' ) + ' aplicada.' + sin + ' Revisá y guardá.',
+            ok: ! ( faltantes && faltantes.length )
+        };
+    }
+
+    /** Descarta la tanda de variantes de la fila (al cambiar de idioma). */
+    function limpiarVariantes($row) {
+        $row.data('aiBatch', null);
+        $row.find('[data-role="ai-variants"]').empty();
+    }
+
+    /**
+     * Pinta un botón por variante. El 1 queda activo porque es la que el servicio ya
+     * dejó puesta en los campos. Los botones son dinámicos (la cantidad la decide la
+     * respuesta), igual que en el editor de reseñas.
+     */
+    function pintarVariantes($row, lang, items, personas, campos) {
+        $row.data('aiBatch', {
+            lang: lang,
+            items: items || {},
+            personas: personas || [],
+            campos: campos || []
+        });
+
+        var $box = $row.find('[data-role="ai-variants"]');
+        $box.empty();
+
+        var total = 0;
+
+        ( campos || [] ).forEach(function (field) {
+            var item  = ( items || {} )[field];
+            var lista = ( item && item.variants ) ? item.variants : [];
+            if (lista.length > total) { total = lista.length; }
+        });
+
+        if (total < 2) { return; }
+
+        for (var i = 0; i < total; i++) {
+            var persona = String((personas || [])[i] || '');
+            var $b      = $('<button type="button" class="mu-ai-variant-btn"></button>');
+
+            $b.text(String(i + 1))
+                .attr('title', persona ? persona : 'Variante ' + (i + 1))
+                .attr('data-variante', String(i))
+                .toggleClass('is-active', 0 === i);
+
+            $box.append($b);
+        }
+    }
+
+    /** Aplica la variante pedida a todos los campos del idioma activo y refresca la fila. */
+    function aplicarVariante($row, indice) {
+        var batch = $row.data('aiBatch');
+        if (!batch) { return; }
+
+        var res = variantesDeFila(batch.items, indice, batch.campos);
+
+        Object.keys(res.aplicar).forEach(function (field) {
+            $row.find('.mu-hero-banner-lang-block[data-lang="' + batch.lang + '"] [data-field="' + field + '"]')
+                .val(res.aplicar[field]);
+        });
+
+        $row.find('[data-role="ai-variants"] .mu-ai-variant-btn').each(function () {
+            var $b = $(this);
+            $b.toggleClass('is-active', parseInt($b.attr('data-variante'), 10) === indice);
+        });
+
+        refrescarFila($row);
+
+        var aviso = mensajeVariante(indice, (batch.personas || [])[indice] || '', res.faltantes);
+        setAiStatus($row.find('[data-role="ai-status"]'), aviso.texto, aviso.ok);
+    }
+
     function ready() {
         var $list = $('#mu-hero-banners-list');
         var $tpl  = $('#mu-hero-banner-template');
@@ -297,19 +612,45 @@
             }
         });
 
-        // Refrescar las píldoras al marcar/desmarcar un país
+        // Al marcar/desmarcar un país se muestran u ocultan sus píldoras y su panel de
+        // fechas (el marcado se genera en PHP; acá sólo se alterna la visibilidad).
         $list.on('change', '.mu-hero-banner-paises-dropdown input[type="checkbox"]', function () {
-            var $row   = $(this).closest('.mu-hero-banner-row');
-            var $pills = $row.find('.mu-hero-banner-paises-pills');
-            $pills.empty();
-            $row.find('.mu-hero-banner-paises-dropdown input[type="checkbox"]:checked').each(function () {
-                $('<span class="mu-hero-banner-pill"></span>').text($(this).val()).appendTo($pills);
-            });
+            var $row = $(this).closest('.mu-hero-banner-row');
+            sincronizarPillsPais($row);
+            aplicarPlaceholdersFechas($row);
         });
 
         // Evitar que el clic dentro del dropdown de países lo cierre
         $list.on('click', '.mu-hero-banner-paises-dropdown', function (e) {
             e.stopPropagation();
+        });
+
+        // ---------------------------------------------------------------
+        // Píldoras de país del bloque de ajustes: eligen qué fechas se editan
+        // ---------------------------------------------------------------
+        $list.on('click', '.mu-hero-banner-paises-pills .mu-hero-banner-pill', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            var $pill = $(this);
+            setPaisFechas($pill.closest('.mu-hero-banner-row'), String($pill.attr('data-pais') || ''));
+        });
+
+        // Fechas: el punto del país se recalcula al escribir. Mover las GENERALES
+        // refresca además placeholders y puntos de todos los países (heredan de ellas).
+        $list.on('input change', '.mu-hero-banner-fechas-block [data-fecha]', function () {
+            var $campo = $(this);
+            var $row   = $campo.closest('.mu-hero-banner-row');
+            var pais   = String($campo.closest('.mu-hero-banner-fechas-block').attr('data-pais') || '');
+
+            if (pais === '') {
+                aplicarPlaceholdersFechas($row);
+                actualizarPuntosFechas($row);
+            } else {
+                actualizarPuntoFechas($row, pais);
+            }
+
+            avisarFechas($row, pais);
         });
 
         // ---------------------------------------------------------------
@@ -382,6 +723,12 @@
             data.append('lang', lang);
             data.append('fields', JSON.stringify(payload));
 
+            // La cantidad de variantes la decide el ámbito (personas × variantes): no se
+            // pide un número fijo. Si ya hay una tanda para este idioma, el clic siguiente
+            // pide una nueva (force).
+            var tanda = $row.data('aiBatch');
+            if (tanda && tanda.lang === lang) { data.append('force', '1'); }
+
             $btn.prop('disabled', true);
             setAiStatus($estado, 'Traduciendo…', false);
 
@@ -408,6 +755,10 @@
 
                     refrescarFila($row);
 
+                    // Una versión por persona: botones numerados para cambiar de variante
+                    // sin volver a pedirle nada al servicio.
+                    pintarVariantes($row, lang, d.items || {}, d.personas || [], campos);
+
                     var aviso = mensajeTraduccion(res, lang);
                     setAiStatus($estado, aviso.texto, aviso.ok);
                 })
@@ -415,6 +766,17 @@
                     $btn.prop('disabled', false);
                     setAiStatus($estado, 'No se pudo traducir. Revisá la conexión e intentá de nuevo.', false);
                 });
+        });
+
+        // ---------------------------------------------------------------
+        // Variantes: el número elegido se aplica a todos los campos del idioma activo
+        // ---------------------------------------------------------------
+        $list.on('click', '[data-role="ai-variants"] .mu-ai-variant-btn', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            var $b = $(this);
+            aplicarVariante($b.closest('.mu-hero-banner-row'), parseInt($b.attr('data-variante'), 10) || 0);
         });
 
         // ---------------------------------------------------------------
@@ -430,8 +792,17 @@
         });
     }
 
-    // Funciones puras expuestas para el arnés (specs/008-banners-pildoras-ia/harness/banners-js.js).
-    window.muHeroBanners = { clasificarCampos: clasificarCampos, mensajeTraduccion: mensajeTraduccion };
+    // Funciones puras expuestas para los arneses (specs/008-…/harness/banners-js.js,
+    // specs/010-…/harness/fechas-js.js y specs/011-…/harness/variantes-js.js).
+    window.muHeroBanners = {
+        clasificarCampos: clasificarCampos,
+        mensajeTraduccion: mensajeTraduccion,
+        parseDdmmaaaa: parseDdmmaaaa,
+        rangoInvertido: rangoInvertido,
+        fechaMalFormada: fechaMalFormada,
+        variantesDeFila: variantesDeFila,
+        mensajeVariante: mensajeVariante
+    };
 
     $(ready);
 })(jQuery);
