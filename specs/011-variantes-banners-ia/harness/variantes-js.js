@@ -104,5 +104,27 @@ check('sin persona no rompe el mensaje', true === m.ok && m.texto.indexOf('Varia
 m = MU.mensajeVariante(1, 'La Mamá Práctica', ['eyebrow', 'cta_texto']);
 check('con faltantes: avisa y queda en no-ok', false === m.ok && m.texto.indexOf('Sin texto en: eyebrow, cta_texto.') !== -1, m.texto);
 
+console.log('\n--- 7. Una tanda de variantes por idioma (018) ---');
+check('expone tandaDeIdioma', !!MU && 'function' === typeof MU.tandaDeIdioma);
+
+if (MU && 'function' === typeof MU.tandaDeIdioma) {
+    const tandas = {
+        pt: { lang: 'pt', items: { titulo: { variants: ['A', 'B'] } }, activa: 1 },
+        en: { lang: 'en', items: {}, activa: 0 }
+    };
+
+    check('devuelve la tanda del idioma pedido', 'pt' === MU.tandaDeIdioma(tandas, 'pt').lang);
+    same('y recuerda qué número quedó puesto', 1, MU.tandaDeIdioma(tandas, 'pt').activa);
+    check('normaliza el idioma (PT ⇒ pt)', 'pt' === MU.tandaDeIdioma(tandas, 'PT').lang);
+    same('un idioma sin tanda devuelve null', null, MU.tandaDeIdioma(tandas, 'es'));
+    same('sin tandas devuelve null', null, MU.tandaDeIdioma(null, 'pt'));
+    same('objeto vacío devuelve null', null, MU.tandaDeIdioma({}, 'pt'));
+    // Lo que importa: mirar un idioma NO toca las opciones de los otros (era el bug: el cambio
+    // de idioma las descartaba y al volver ya no estaban).
+    check('consultar PT no borra las de EN', 'en' === MU.tandaDeIdioma(tandas, 'en').lang);
+    check('y las dos siguen guardadas', 2 === Object.keys(tandas).length);
+    check('la tanda de PT conserva sus variantes', 2 === MU.tandaDeIdioma(tandas, 'pt').items.titulo.variants.length);
+}
+
 console.log('\n== ' + ok + ' OK / ' + fail + ' FAIL ==');
 process.exit(fail > 0 ? 1 : 0);

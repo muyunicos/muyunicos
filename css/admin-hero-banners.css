@@ -133,7 +133,10 @@
     margin-left: 6px;
 }
 .mu-hero-banner-ai .mu-ai-inline-status {
-    max-width: 320px;
+    /* [018] Acá sólo se muestran los avisos que importan (y cortos): el mensaje de éxito
+       pasó al title del botón «Traducir» (se lee al pasar el mouse). El ancho bajó de 320px
+       porque el toolbar vive en una columna de 420px. */
+    max-width: 200px;
 }
 
 /* Aviso de traducción desactualizada (el español cambió desde la traducción) */
@@ -529,11 +532,15 @@
        contenido «subía»). Reparto acordado: fila 1 = bloque de idioma (hasta 420px) + lienzo
        (hasta 400px); fila 2 = ajustes y vigencia a TODO el ancho, que es la fila que necesita
        ≥720px. El lienzo ya no es pegajoso: va arriba, junto a los campos. */
+    /* [018] Dos columnas: el sobrante va al LIENZO, no a una celda vacía. Con tres columnas
+       (420 / 400 / 1fr) en pantalla ancha quedaban ~400-540px muertos a la derecha de la
+       vista previa y el lienzo seguía en 400px (escala 0,31). Ahora la preview crece con el
+       panel (escala ~0,64 a 1440px) y la fila de ajustes llega igual al ancho completo con
+       «1 / -1». */
     .mu-hero-banner-row__grid {
-        /* minmax: los topes 420/400 se respetan cuando hay lugar y las columnas encogen (hasta
-           320px) en vez de desbordar cerca de los 1100px. La tercera columna se queda con el
-           sobrante para que la fila de ajustes pueda ser la más ancha. */
-        grid-template-columns: minmax(320px, 420px) minmax(320px, 400px) minmax(0, 1fr);
+        /* minmax: topes 420 y 400 cuando hay lugar, y las columnas encogen (hasta 320px) en
+           vez de desbordar cerca de los 1100px. El JS escala el lienzo a su ancho real. */
+        grid-template-columns: minmax(320px, 420px) minmax(400px, 1fr);
         align-items: start;
         gap: var(--mu-space-md, 20px);
     }

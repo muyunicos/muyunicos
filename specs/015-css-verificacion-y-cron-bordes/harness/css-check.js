@@ -199,12 +199,16 @@ check('La fila plegada oculta su cuerpo', panelCss.includes('.mu-hero-banner-row
 check('El estado «sin países» tiene su estilo', panelCss.includes('.mu-hero-banner-row__estado.is-sin-paises'));
 check('El modo móvil del lienzo responde al ancho del LIENZO', panelCss.includes('@container (max-width: 968px)'));
 check(
-    'El lienzo va al LADO del bloque de idioma con filas explícitas y sin filas infinitas (016)' +
+    'El lienzo va al LADO del bloque de idioma, con filas explícitas y sin filas infinitas (016)' +
         ' (nada de grid-row «span 30»: era el hueco de abajo)',
     panelCss.includes('@media (min-width: 1100px)')
-        && panelCss.includes('grid-template-columns: minmax(320px, 420px) minmax(320px, 400px)')
+        && panelCss.includes('grid-template-columns: minmax(320px, 420px) minmax(400px, 1fr)')
         && !panelCss.includes('grid-row: 1 / span 30')
         && !panelCss.includes('position: sticky')
+);
+check(
+    'Y el sobrante va al LIENZO, no a una celda vacía (018: en pantalla ancha se perdían ~540px)',
+    !panelCss.includes('minmax(320px, 420px) minmax(320px, 400px) minmax(0, 1fr)')
 );
 check(
     'La fila de ajustes/vigencia ocupa el ancho completo (es la que necesita ≥720px)',

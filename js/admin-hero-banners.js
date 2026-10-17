@@ -68,10 +68,11 @@
         // El idioma abierto se recuerda al guardar (solo la pestaña del editor).
         $row.find('.mu-hero-banner-idioma-valor').val(lang);
 
-        // Las variantes son de un idioma concreto: al cambiar de idioma se descartan.
-        var previo = String($row.data('langActual') || '');
-        if ('' !== previo && previo !== lang) { limpiarVariantes($row); }
+        // [018] Las variantes son de un idioma, pero NO se descartan al cambiar: cada idioma
+        // conserva las suyas y acá se repintan las del idioma activo. Antes, mirar el original
+        // en español borraba las opciones que ya habías generado para PT y EN.
         $row.data('langActual', lang);
+        pintarVariantesDeIdioma($row, lang);
 
         // La IA traduce del español a otro idioma: en ES no aplica.
         $row.find('.mu-hero-banner-ai-btn').prop('disabled', lang === 'es');
@@ -628,13 +629,35 @@
         $aviso.prop('hidden', !invertido);
     }
 
-    /** Aviso del botón de IA (verde si salió bien). */
+    /**
+     * Estado del botón de IA.
+     *
+     * [018] Los mensajes de ÉXITO ya no ocupan la fila: van al `title` del botón «Traducir»,
+     * así se leen al pasar el mouse (el renglón de estado queda limpio). Los avisos que
+     * importan —no se pudo traducir, el servicio cree que ya está en el idioma— siguen
+     * visibles en rojo y cortos. Sin texto se limpia todo y se RESTAURA el tooltip original
+     * del botón (se guarda la primera vez en data('tituloBase')).
+     */
     function setAiStatus($estado, texto, ok) {
         if (!$estado || !$estado.length) return;
 
-        $estado.text(texto || '');
-        $estado.toggleClass('is-ok', !!ok);
-        $estado.toggleClass('is-bad', !ok && !!texto);
+        var $btn = $estado.closest('.mu-hero-banner-ai').find('.mu-hero-banner-ai-btn');
+        var base = '';
+
+        if ($btn.length) {
+            base = String($btn.data('tituloBase') || $btn.attr('title') || '');
+            if (!$btn.data('tituloBase')) { $btn.data('tituloBase', base); }
+        }
+
+        if (texto && ok) {
+            if ($btn.length) { $btn.attr('title', texto + (base ? ' · ' + base : '')); }
+            $estado.text('').removeClass('is-ok is-bad');
+            return;
+        }
+
+        $estado.text(texto || '').toggleClass('is-bad', !!texto).removeClass('is-ok');
+
+        if ($btn.length && !texto) { $btn.attr('title', base); }
     }
 
     /**
@@ -757,32 +780,53 @@
         };
     }
 
-    /** Descarta la tanda de variantes de la fila (al cambiar de idioma). */
-    function limpiarVariantes($row) {
-        $row.data('aiBatch', null);
-        $row.find('[data-role="ai-variants"]').empty();
+    /**
+     * Tandas de variantes de una fila, POR IDIOMA.
+     *
+     * [018] Antes había una sola (`aiBatch`) y el cambio de idioma la descartaba: mirar el
+     * original en español borraba las opciones que ya estabas probando para PT o EN.
+     */
+    function tandasDeVariantes($row) {
+        var tandas = $row.data('aiBatches');
+        if (!tandas) { tandas = {}; $row.data('aiBatches', tandas); }
+        return tandas;
     }
 
     /**
-     * Pinta un botón por variante. El 1 queda activo porque es la que el servicio ya
-     * dejó puesta en los campos. Los botones son dinámicos (la cantidad la decide la
-     * respuesta), igual que en el editor de reseñas.
+     * Tanda guardada de un idioma. Función PURA: la verifica el arnés JS de 011.
+     *
+     * @param {object} tandas
+     * @param {string} lang
+     * @return {object|null}
      */
-    function pintarVariantes($row, lang, items, personas, campos) {
-        $row.data('aiBatch', {
-            lang: lang,
-            items: items || {},
-            personas: personas || [],
-            campos: campos || []
-        });
+    function tandaDeIdioma(tandas, lang) {
+        var tanda = ( tandas || {} )[ String(lang || '').toLowerCase() ];
+        return tanda ? tanda : null;
+    }
 
-        var $box = $row.find('[data-role="ai-variants"]');
+    /** Contenedor de variantes con las del idioma pedido (o vacío si no hay tanda). */
+    function pintarVariantesDeIdioma($row, lang) {
+        var $box  = $row.find('[data-role="ai-variants"]');
+        var tanda = tandaDeIdioma(tandasDeVariantes($row), lang);
+
+        $box.empty();
+        if (!tanda) { return; }
+
+        pintarBotonesVariantes($box, tanda);
+    }
+
+    /**
+     * Pinta un botón por variante de la tanda. El número activo es la versión que quedó puesta
+     * en los campos. Los botones son dinámicos (la cantidad la decide la respuesta), igual que
+     * en el editor de reseñas.
+     */
+    function pintarBotonesVariantes($box, tanda) {
         $box.empty();
 
         var total = 0;
 
-        ( campos || [] ).forEach(function (field) {
-            var item  = ( items || {} )[field];
+        ( tanda.campos || [] ).forEach(function (field) {
+            var item  = ( tanda.items || {} )[field];
             var lista = ( item && item.variants ) ? item.variants : [];
             if (lista.length > total) { total = lista.length; }
         });
@@ -790,29 +834,47 @@
         if (total < 2) { return; }
 
         for (var i = 0; i < total; i++) {
-            var persona = String((personas || [])[i] || '');
+            var persona = String(( tanda.personas || [] )[i] || '');
             var $b      = $('<button type="button" class="mu-ai-variant-btn"></button>');
 
             $b.text(String(i + 1))
                 .attr('title', persona ? persona : 'Variante ' + (i + 1))
                 .attr('data-variante', String(i))
-                .toggleClass('is-active', 0 === i);
+                .toggleClass('is-active', ( tanda.activa || 0 ) === i);
 
             $box.append($b);
         }
     }
 
+    /** Guarda la tanda del idioma (una por idioma) y pinta sus botones. */
+    function pintarVariantes($row, lang, items, personas, campos) {
+        var tanda = {
+            lang: lang,
+            items: items || {},
+            personas: personas || [],
+            campos: campos || [],
+            activa: 0
+        };
+
+        tandasDeVariantes($row)[lang] = tanda;
+        pintarBotonesVariantes($row.find('[data-role="ai-variants"]'), tanda);
+    }
+
     /** Aplica la variante pedida a todos los campos del idioma activo y refresca la fila. */
     function aplicarVariante($row, indice) {
-        var batch = $row.data('aiBatch');
-        if (!batch) { return; }
+        var tanda = tandaDeIdioma(tandasDeVariantes($row), idiomaActivo($row));
+        if (!tanda) { return; }
 
-        var res = variantesDeFila(batch.items, indice, batch.campos);
+        var res = variantesDeFila(tanda.items, indice, tanda.campos);
 
         Object.keys(res.aplicar).forEach(function (field) {
-            $row.find('.mu-hero-banner-variante[data-lang="' + batch.lang + '"] [data-field="' + field + '"]')
+            $row.find('.mu-hero-banner-variante[data-lang="' + tanda.lang + '"] [data-field="' + field + '"]')
                 .val(res.aplicar[field]);
         });
+
+        // Se recuerda qué número quedó puesto EN ESTE idioma: al volver, el botón marcado es el
+        // correcto (refrescarFila → setLang repinta desde la tanda).
+        tanda.activa = indice;
 
         $row.find('[data-role="ai-variants"] .mu-ai-variant-btn').each(function () {
             var $b = $(this);
@@ -821,7 +883,7 @@
 
         refrescarFila($row);
 
-        var aviso = mensajeVariante(indice, (batch.personas || [])[indice] || '', res.faltantes);
+        var aviso = mensajeVariante(indice, (tanda.personas || [])[indice] || '', res.faltantes);
         setAiStatus($row.find('[data-role="ai-status"]'), aviso.texto, aviso.ok);
     }
 
@@ -1254,7 +1316,8 @@
         escalaCanvas: escalaCanvas,
         textoPlanoDeNodo: textoPlanoDeNodo,
         variantesDeFila: variantesDeFila,
-        mensajeVariante: mensajeVariante
+        mensajeVariante: mensajeVariante,
+        tandaDeIdioma: tandaDeIdioma
     };
 
     $(ready);
