@@ -1,0 +1,83 @@
+/*
+ * Muy Únicos — Pantalla "Traducciones IA" (WC → Marketing)
+ * Carga: solo en la pantalla del servicio (inc/ai-translate-admin.php)
+ * Versión: filemtime (patrón de admin-hero-banners)
+ *
+ * @package GeneratePress_Child
+ */
+
+.mu-ai-wrap .mu-ai-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.mu-ai-wrap .mu-ai-status.is-on {
+    color: #14532d;
+    background: #dcfce7;
+}
+
+.mu-ai-wrap .mu-ai-status.is-off {
+    color: #7f1d1d;
+    background: #fee2e2;
+}
+
+.mu-ai-wrap .mu-ai-card {
+    background: #fff;
+    border: 1px solid #dcdcde;
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin: 16px 0;
+    max-width: 980px;
+}
+
+.mu-ai-wrap .mu-ai-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px 20px;
+}
+
+.mu-ai-wrap .mu-ai-context textarea {
+    width: 100%;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 12px;
+}
+
+.mu-ai-wrap .mu-ai-context h3 {
+    margin: 12px 0 4px;
+}
+
+.mu-ai-wrap .mu-ai-hint {
+    color: #646970;
+    font-size: 12px;
+    margin: 4px 0 0;
+}
+
+.mu-ai-wrap .mu-ai-usage {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    font-size: 13px;
+}
+
+.mu-ai-wrap .mu-ai-error {
+    color: #8a1f11;
+}
+
+.mu-ai-wrap .mu-ai-result {
+    margin-top: 10px;
+    font-size: 13px;
+    min-height: 20px;
+}
+
+.mu-ai-wrap .mu-ai-result.is-ok {
+    color: #14532d;
+}
+
+.mu-ai-wrap .mu-ai-result.is-bad {
+    color: #8a1f11;
+}
