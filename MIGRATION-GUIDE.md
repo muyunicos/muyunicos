@@ -1093,6 +1093,41 @@ VERIFICACIÓN DE CSS + CRON DE BORDES (2026-10-17, feature 015):
   (30 + 17) y 006 (54) sin cambios.
 - [ ] Verificación manual (Fase B del quickstart de 015): «ver todos» alternando de verdad, los dos
   eventos agendados, «Última purga por borde» actualizándose sin leer logs, y el archivo plano.
+
+FIDELIDAD DEL LIENZO Y DENSIDAD (2026-10-17, feature 016):
+- Bug real (observado por el mantenedor): el punto de la píldora de idioma salía SIEMPRE. El
+  servidor estaba bien (guarda vacío lo idéntico al español); el cliente comparaba el campo del
+  idioma con el español sin exigir contenido, y un campo VACÍO difiere ⇒ marcaba todas las filas y
+  pisaba el valor correcto del PHP. Arreglado con el helper puro tieneContenidoPropio(valor, base)
+  (no vacío Y distinto, con trim como el saneado) + 10 aserciones nuevas en el arnés JS de 010.
+- La vista previa NO se veía como la home, por 4 causas concretas y verificables: (1) las variables
+  locales del hero (--mu-hero-h-desktop, --mu-hero-transition y --mu-hero-eyebrow-bg = el rosa del
+  eyebrow) se declaraban en .mu-hero-promo, la SECCIÓN, que el lienzo no incluye ⇒ en la preview el
+  eyebrow salía sin fondo, sin altura mínima y sin transición; ahora se declaran en
+  .mu-hero-promo-slider, la raíz que ambos contextos comparten (verificado: el front no cambia,
+  porque los consumidores son el slider y sus descendientes); (2) los CTA copiaban .mu-btn* pero no
+  sus estados :hover/:focus-visible; (3) el @media (max-width: 968px) del componente responde en el
+  admin al ancho de la VENTANA ⇒ con la ventana angosta la preview se volvía móvil: se agrega el
+  espejo @container (min-width: 969px); (4) la tipografía display la encola el tema padre sólo en el
+  front ⇒ si en la preview el título se ve con otra fuente, hay que registrar el mismo handle en la
+  pantalla del panel (declarado, sin verificar).
+- El arnés de CSS de 015 ganó 12 aserciones para que esto no vuelva a pasar sin que lo cace:
+  variables del componente declaradas en un ancestro que el lienzo incluya · las 3 del hero en el
+  slider · cada @media con su espejo @container · .mu-btn* con estados · la caja del bloque de
+  idioma en los tres idiomas. Validado contra el CSS anterior: falla; con el arreglo pasa (82 OK).
+- Densidad (acordado con el mantenedor): el hueco vacío de abajo venía de colocar el lienzo en
+  grid-row «1 / span 30» (30 filas implícitas). Ahora ≥1100px: fila 1 = bloque de idioma (hasta
+  420px) + lienzo (hasta 400px) lado a lado; fila 2 = ajustes y vigencia a TODO el ancho (la fila
+  que necesita ≥720px, con la tabla en un envoltorio con scroll horizontal). El lienzo ya no es
+  pegajoso. Los anchos usan minmax(320px, …) para que encojan antes de desbordar.
+- El bloque de idioma ESPAÑOL ahora lleva la misma caja que PT y EN (antes sólo los traducidos).
+- El panel muestra también «Próximo borde: …» (de wp_next_scheduled) junto a la última purga: así
+  «Todavía no hubo purgas por borde» deja de ser ambiguo — se ve si el cron está armado.
+- Verificación: CSS 82 OK · 013 (118 + 17) · 012 (102 + 18) · 010 (99 + 38) · 011 18 · 008 (30 + 17)
+  · 006 54; php -l y node --check limpios; sin cambios bajo Tema-GeneratePress/.
+- [ ] Verificación manual (Fase B del quickstart de 016): píldora sin punto · preview con eyebrow
+  rosa + hover + sin móvil fantasma · layout sin hueco · los tres bloques con caja · «Próximo
+  borde» visible; y adelantar un borde (Fin = hoy) para ver la purga real.
 - [x] Fase 2 (LIENZO VIVO, misma fecha): el banner REAL dentro de la fila del panel. El
   renderer compartido acepta 'mu' => true, que marca los 10 nodos con data-mu y emite siempre
   eyebrow/CTA secundario/badge (para poder editarlos); el JS los repinta desde el formulario en
