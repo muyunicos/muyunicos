@@ -167,6 +167,23 @@
     }
 
     /**
+     * Texto plano del HTML que deja un nodo editable del lienzo. Función PURA: la verifica
+     * el arnés JS. `contenteditable="plaintext-only"` marca los saltos de línea con <br> (o
+     * <div>), según el navegador: acá se normalizan a \n para que el textarea del formulario
+     * reciba el mismo contenido que se ve.
+     */
+    function textoPlanoDeNodo(html) {
+        var plano = String(html || '')
+            .replace(/<br\s*\/?>/gi, '\n')
+            .replace(/<\/(div|p)>/gi, '\n')
+            .replace(/<(div|p)[^>]*>/gi, '\n')
+            .replace(/\n{2,}/g, '\n')
+            .replace(/\n+$/, '');
+
+        return $('<div></div>').html(plano).text();
+    }
+
+    /**
      * Pinta el lienzo con los valores ACTUALES del formulario (no guarda nada) y replica
      * las condiciones del front: eyebrow, CTA secundario y badge se ocultan cuando el sitio
      * tampoco los mostraría. El título admite HTML (<span class="highlight">); el resto es
@@ -205,6 +222,13 @@
         $c.find('[data-mu="eyebrow"]').toggle(eyebrow !== '');
         $c.find('[data-mu="cta_secundario"]').toggle(secT !== '' && secU !== '');
         $c.find('[data-mu="badge"]').toggle(!!$row.find('input[name$="[show_free_badge]"]').prop('checked'));
+
+        // N2: los nodos de TEXTO PLANO se editan en el lienzo (contenteditable plaintext-only).
+        // El TÍTULO queda afuera: admite HTML (<span class="mu-highlight">) y editarlo a
+        // texto plano rompería el marcado; su clic sigue llevando al campo del formulario.
+        ['eyebrow', 'descripcion', 'cta_texto', 'cta_secundario_texto', 'badge_text'].forEach(function (campo) {
+            $c.find('[data-mu="' + campo + '"]').attr({ contenteditable: 'plaintext-only', spellcheck: 'true' });
+        });
     }
 
     /** Ajusta ancho, escala y alto del lienzo según el modo elegido (Escritorio / Móvil). */
@@ -322,10 +346,9 @@
         setLang($row, idiomaActivo($row));
         aplicarPlaceholders($row);
         actualizarPuntos($row);
-        sincronizarPillsPais($row);
+        sincronizarChips($row);
         aplicarPlaceholdersFechas($row);
         actualizarPuntosFechas($row);
-        // [013] Lienzo: valores actuales del formulario y encaje en la columna.
         pintarLienzo($row);
         escalarLienzo($row);
     }
@@ -449,46 +472,16 @@
         });
     }
 
-    /** País cuyas fechas se están editando ('' = generales). */
-    function paisFechas($row) {
-        return String($row.find('.mu-hero-banner-paises-pills .mu-hero-banner-pill.is-active').attr('data-pais') || '');
-    }
-
-    /**
-     * Muestra las fechas del país pedido ('' = generales) y marca su píldora. Si el
-     * país ya no está tildado, cae a las generales: no se edita una ventana que no se
-     * va a guardar.
-     */
-    function setPaisFechas($row, pais) {
-        var code  = String(pais || '');
-        var $pill = $row.find('.mu-hero-banner-paises-pills .mu-hero-banner-pill[data-pais="' + code + '"]');
-
-        if (!$pill.length || (code !== '' && $pill.is(':hidden'))) {
-            code  = '';
-            $pill = $row.find('.mu-hero-banner-paises-pills .mu-hero-banner-pill[data-pais=""]');
-        }
-
-        $row.find('.mu-hero-banner-paises-pills .mu-hero-banner-pill').each(function () {
-            var $p     = $(this);
-            var activa = String($p.attr('data-pais') || '') === code;
-            $p.toggleClass('is-active', activa);
-            $p.attr('aria-pressed', activa ? 'true' : 'false');
-        });
-
-        $row.find('.mu-hero-banner-fechas-block').each(function () {
-            var $block = $(this);
-            $block.css('display', String($block.attr('data-pais') || '') === code ? 'block' : 'none');
-        });
-
-        avisarFechas($row, code);
-    }
+    // [013] Las píldoras de ámbito y su "¿de qué país edito las fechas?" se retiraron: la
+    // tabla de vigencia muestra TODOS los ámbitos a la vez, así que ya no hay un ámbito
+    // activo que recordar (`paisFechas`/`setPaisFechas` vivieron acá hasta esta feature).
 
     /** Punto de la píldora: ese país tiene una ventana propia (distinta de la general). */
     function actualizarPuntoFechas($row, pais) {
         if (pais === '') return;
 
-        var $pill = $row.find('.mu-hero-banner-paises-pills .mu-hero-banner-pill[data-pais="' + pais + '"]');
-        if (!$pill.length) return;
+        var $chip = $row.find('.mu-hero-banner-chip[data-pais="' + pais + '"]');
+        if (!$chip.length) return;
 
         var tiene = false;
 
@@ -500,41 +493,32 @@
         // [012] La repetición anual propia también es una ventana propia.
         if (anualPropio($row, pais)) { tiene = true; }
 
-        $pill.attr('data-has-fechas', tiene ? '1' : '0');
+        $chip.attr('data-has-fechas', tiene ? '1' : '0');
     }
 
-    /** Puntos de todas las píldoras de país (mover las generales los afecta a todos). */
+    /** Puntos de todos los chips de país (mover las generales los afecta a todos). */
     function actualizarPuntosFechas($row) {
-        $row.find('.mu-hero-banner-paises-pills .mu-hero-banner-pill[data-pais!=""]').each(function () {
+        $row.find('.mu-hero-banner-chip[data-pais!=""]').each(function () {
             actualizarPuntoFechas($row, String($(this).attr('data-pais') || ''));
         });
     }
 
     /**
-     * Muestra/oculta las píldoras de país según los checkboxes tildados ('Global'
-     * siempre visible) y reencuadra la píldora activa si su país dejó de estar tildado.
+     * Chips de país y tabla de vigencia (feature 013): marca el chip activo y la fila del
+     * país en la tabla. Las filas de países SIN tildar quedan atenuadas: su ventana se
+     * conserva (M7) pero el front no la mira hasta activar el país.
      */
-    function sincronizarPillsPais($row) {
-        var tildados = [];
-
-        // Los países se tildan con los CHIPS del resumen (feature 013): el checkbox es el
-        // chip. Se marca el chip como activo para que se vea el estado.
+    function sincronizarChips($row) {
         $row.find('.mu-hero-banner-chip input[type="checkbox"]').each(function () {
             var $check = $(this);
             var activo = !!$check.prop('checked');
+            var code   = String($check.val() || '');
 
-            if (activo) { tildados.push(String($check.val())); }
             $check.closest('.mu-hero-banner-chip').toggleClass('is-active', activo);
+            $row.find('.mu-hero-banner-fechas-block[data-pais="' + code + '"]')
+                .toggleClass('is-inactivo', !activo)
+                .attr('data-tildado', activo ? '1' : '0');
         });
-
-        $row.find('.mu-hero-banner-paises-pills .mu-hero-banner-pill').each(function () {
-            var $pill = $(this);
-            var code  = String($pill.attr('data-pais') || '');
-            if (code === '') return; // Global: siempre visible
-            $pill.toggle(tildados.indexOf(code) !== -1);
-        });
-
-        setPaisFechas($row, paisFechas($row));
     }
 
     /** El valor general como placeholder de los campos de cada país (ayuda visual). */
@@ -873,19 +857,32 @@
         $list.on('change', '.mu-hero-banner-chip input[type="checkbox"]', function () {
             var $row = $(this).closest('.mu-hero-banner-row');
 
-            sincronizarPillsPais($row);
+            sincronizarChips($row);
             aplicarPlaceholdersFechas($row);
         });
 
         // ---------------------------------------------------------------
-        // Píldoras de país del bloque de ajustes: eligen qué fechas se editan
+        // Tabla de vigencia: «limpiar» la ventana de un ámbito
         // ---------------------------------------------------------------
-        $list.on('click', '.mu-hero-banner-paises-pills .mu-hero-banner-pill', function (e) {
+        $list.on('click', '[data-role="limpiar-ventana"]', function (e) {
             e.preventDefault();
-            e.stopPropagation();
 
-            var $pill = $(this);
-            setPaisFechas($pill.closest('.mu-hero-banner-row'), String($pill.attr('data-pais') || ''));
+            var $btn  = $(this);
+            var $row  = $btn.closest('.mu-hero-banner-row');
+            var $fila = $btn.closest('.mu-hero-banner-fechas-block');
+            var ambito = String($fila.attr('data-pais') || '');
+
+            $fila.find('[data-fecha]').val('');
+            $fila.find('input[data-role="anual"]').prop('checked', false);
+
+            if (ambito === '') {
+                aplicarPlaceholdersFechas($row);
+                actualizarPuntosFechas($row);
+            } else {
+                actualizarPuntoFechas($row, ambito);
+            }
+
+            avisarFechas($row, ambito);
         });
 
         // Fechas: el punto del país se recalcula al escribir. Mover las GENERALES
@@ -1120,7 +1117,41 @@
             var $nodo = $(e.target).closest('[data-mu]');
             if (!$nodo.length) { return; }
 
+            // N2: si el nodo es editable en el lienzo, el clic se queda ahí (no salta al
+            // formulario): el usuario quiere escribir, no navegar.
+            var editable = $nodo.attr('contenteditable');
+            if ('undefined' !== typeof editable && false !== editable && 'false' !== editable) { return; }
+
             irAlCampo($(this).closest('.mu-hero-banner-row'), String($nodo.attr('data-mu') || ''));
+        });
+
+        // N2: escribir en el lienzo escribe en el campo REAL del formulario (no guarda nada).
+        // El título no participa: admite HTML y se edita en su campo.
+        $list.on('input', '[data-mu-canvas] [data-mu][contenteditable]', function () {
+            var $nodo = $(this);
+            var $row  = $nodo.closest('.mu-hero-banner-row');
+            var lang  = idiomaActivo($row);
+            var campo = MU_A_CAMPO[String($nodo.attr('data-mu') || '')] || '';
+            var $in   = $row.find('.mu-hero-banner-lang-block[data-lang="' + lang + '"] [data-field="' + campo + '"]');
+
+            if (!$in.length) { return; }
+
+            $in.val(textoPlanoDeNodo($nodo.html()));
+
+            // Estado de la fila sin repintar el lienzo: el caret está ahí dentro.
+            actualizarPunto($row, lang);
+        });
+
+        // Al salir del nodo se normaliza (sin <br> sueltos) y el lienzo vuelve a su forma.
+        $list.on('focusout', '[data-mu-canvas] [data-mu][contenteditable]', function () {
+            var $nodo = $(this);
+            var $row  = $nodo.closest('.mu-hero-banner-row');
+            var campo = MU_A_CAMPO[String($nodo.attr('data-mu') || '')] || '';
+            var $in   = $row.find('.mu-hero-banner-lang-block[data-lang="' + idiomaActivo($row) + '"] [data-field="' + campo + '"]');
+
+            if ($in.length) { $in.val(textoPlanoDeNodo($nodo.html())); }
+
+            pintarLienzo($row);
         });
 
         // Al redimensionar la ventana, los lienzos se reencajan a su columna.
@@ -1155,6 +1186,7 @@
         fechaMalFormada: fechaMalFormada,
         anualIncompleta: anualIncompleta,
         escalaCanvas: escalaCanvas,
+        textoPlanoDeNodo: textoPlanoDeNodo,
         variantesDeFila: variantesDeFila,
         mensajeVariante: mensajeVariante
     };

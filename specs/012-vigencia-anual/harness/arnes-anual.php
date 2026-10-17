@@ -343,9 +343,9 @@ check( 'La casilla general nace tildada', (bool) preg_match( '/type="checkbox" n
 check( 'La del país que lo apaga nace destildada', (bool) preg_match( '/type="checkbox" name="mu_banner\[0\]\[fechas\]\[BR\]\[anual\]"(?![^>]*checked)/', $html ) );
 check( 'La del país que hereda nace tildada', (bool) preg_match( '/type="checkbox" name="mu_banner\[0\]\[fechas\]\[MX\]\[anual\]"[^>]*checked/', $html ) );
 check( 'La fila explica la repetición', false !== strpos( $html, 'Se repite cada año' ) );
-check( 'El panel del país aclara que el año se ignora', false !== strpos( $html, 'Se repite cada año: el año de las fechas se ignora.' ) );
+check( 'La fila del ámbito anual lo dice en la columna «Se ve» (feature 013)', false !== strpos( $html, '· cada año' ) );
 same( 'Una fila sana no muestra avisos', 0, substr_count( $html, 'mu-hero-banner-row__alert' ) );
-same( 'Sigue habiendo un panel de fechas por país (invariante de 010)', 8, substr_count( $html, 'mu-hero-banner-fechas-block mu-hero-banner-row__full' ) );
+same( 'Sigue habiendo una fila de vigencia por ámbito (invariante de 010)', 8, substr_count( $html, '<tr class="mu-hero-banner-fechas-block' ) );
 same( 'Los campos de fecha siguen limitados a 8 caracteres (invariante de 010)', 16, substr_count( $html, 'maxlength="8"' ) );
 same( 'Ningún campo usa pattern (invariante de 010)', 0, substr_count( $html, 'pattern=' ) );
 

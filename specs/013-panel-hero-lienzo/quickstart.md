@@ -9,14 +9,14 @@ php -l inc\ui.php
 node --check js\admin-hero-banners.js
 
 # Arnés de la Fase 0 (igualdad con el fixture de producción) y del lienzo
-php specs\013-panel-hero-lienzo\harness\arnes-render-hero.php   # esperado: 82 OK / 0 FAIL
-node specs\013-panel-hero-lienzo\harness\lienzo-js.js           # esperado: 9 OK / 0 FAIL
+php specs\013-panel-hero-lienzo\harness\arnes-render-hero.php   # esperado: 97 OK / 0 FAIL
+node specs\013-panel-hero-lienzo\harness\lienzo-js.js           # esperado: 17 OK / 0 FAIL
 
 # No-regresión de todo lo demás
 php specs\006-ai-translate-core\harness\arnes.php                      # 54 OK
 php specs\008-banners-pildoras-ia\harness\arnes-banners.php            # 30 OK
 node specs\008-banners-pildoras-ia\harness\banners-js.js               # 17 OK
-php specs\010-fechas-banner-por-pais\harness\arnes-fechas-por-pais.php # 96 OK
+php specs\010-fechas-banner-por-pais\harness\arnes-fechas-por-pais.php # 98 OK (5 aserciones migradas a chips + tabla)
 node specs\010-fechas-banner-por-pais\harness\fechas-js.js             # 28 OK
 node specs\011-variantes-banners-ia\harness\variantes-js.js            # 18 OK
 php specs\012-vigencia-anual\harness\arnes-anual.php                   # 87 OK
@@ -110,8 +110,21 @@ tamaño de tipografía, mismo fondo, mismos botones, mismos espacios. Es la úni
 5. **Eliminar con deshacer**: «Eliminar» marca la fila (queda atenuada y sus campos deshabilitados);
    el **mismo** botón dice ahora *«… clic para deshacer»* y devuelve la fila con sus valores.
 
-**Fase 1 pendiente.** Chips de país unificados y la vigencia como tabla comparable: traerán su
-verificación manual en este mismo quickstart al implementarse.
+**Tabla de vigencia y edición en el lienzo (Fase 1 + N2).**
+
+1. **Tabla**: cada fila es un ámbito (Global + los países del sitio) con Inicio, Fin, «Cada año» y la
+   columna **«Se ve»** (`dd/mm/aaaa → dd/mm/aaaa (huso)` o `Siempre`, con el aviso del panel si hay
+   rango invertido o fecha inválida). Destildar un país en sus chips **atenúa** su fila (la ventana
+   se conserva: volver a tildarlo la recupera).
+2. **Limpiar**: el **×** de una fila vacía sus fechas y su flag anual → la columna «Se ve» debe decir
+   `Siempre` en ese ámbito.
+3. **Edición en el lienzo (N2)**: hacer clic en el eyebrow, la descripción, un CTA o el texto del
+   badge y escribir **ahí**: el campo del formulario se actualiza al mismo tiempo y el lienzo no
+   pierde el cursor. Probar un salto de línea en la descripción (debe llegar al `textarea`). En el
+   **título** el clic NO edita: lleva al campo (admite HTML).
+
+**Fase 1 pendiente.** Nada funcional: queda T011b (borrar el código muerto de `posicionarDropdown()`
+y el CSS del dropdown/píldoras) y, opcional, N2-bis (título editable con «resaltar selección»).
 
 ## C. Reversión
 

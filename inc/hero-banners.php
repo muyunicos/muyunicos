@@ -1895,34 +1895,12 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                 <!-- Bloque global: no cambia por idioma -->
                 <div class="mu-hero-banner-globals-block">
                     <?php
-                    // Píldoras de país: eligen DE QUÉ país se editan las fechas (misma
-                    // mecánica que las píldoras de idioma). "Global" son las fechas
-                    // generales, que heredan los países sin ventana propia; el punto
-                    // marca los países con fechas propias. Los países ACTIVOS se eligen
-                    // con el botón "Países" de la cabecera: acá se ven los tildados.
+                    // Identidad de la fila (feature 013): el ID y la casilla del badge. Las
+                    // FECHAS se mudaron a la tabla de vigencia, que muestra todos los ámbitos
+                    // a la vez (antes había una píldora = pestaña por país).
                     ?>
                     <p class="mu-hero-banner-globals-title">
-                        <strong><?php esc_html_e( 'Ajustes generales (iguales en todos los idiomas)', 'mu' ); ?></strong>
-                        <span class="mu-hero-banner-paises-pills" role="group" aria-label="<?php esc_attr_e( 'País cuyas fechas se editan', 'mu' ); ?>">
-                            <button type="button"
-                                    class="mu-hero-banner-pill is-selectable is-active"
-                                    data-pais=""
-                                    data-has-fechas="0"
-                                    title="<?php esc_attr_e( 'Fechas generales (las usan los países sin ventana propia)', 'mu' ); ?>"><?php esc_html_e( 'Global', 'mu' ); ?></button>
-                            <?php
-                            foreach ( $countries_data as $code => $c ) :
-                                $pais_activo = in_array( $code, $b['paises'], true );
-                                $ini_propio  = (string) ( $b['fechas'][ $code ]['inicio'] ?? '' );
-                                $fin_propio  = (string) ( $b['fechas'][ $code ]['fin'] ?? '' );
-                                ?>
-                                <button type="button"
-                                        class="mu-hero-banner-pill is-selectable"
-                                        data-pais="<?php echo esc_attr( $code ); ?>"
-                                        data-has-fechas="<?php echo ( '' !== $ini_propio || '' !== $fin_propio ) ? '1' : '0'; ?>"
-                                        title="<?php echo esc_attr( $c['name'] ); ?>"
-                                        <?php echo $pais_activo ? '' : 'style="display:none;"'; ?>><?php echo esc_html( $code ); ?></button>
-                            <?php endforeach; ?>
-                        </span>
+                        <strong><?php esc_html_e( 'Identidad y badge (iguales en todos los idiomas)', 'mu' ); ?></strong>
                     </p>
 
                     <?php
@@ -1947,24 +1925,7 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                             <label><strong><?php esc_html_e( 'ID (slug)', 'mu' ); ?></strong></label>
                             <input type="text" name="<?php echo esc_attr( $name ); ?>[id]" value="<?php echo esc_attr( $b['id'] ); ?>" class="regular-text">
                         </p>
-                        <!-- Fechas generales: las heredan los países sin ventana propia -->
-                        <p class="mu-hero-banner-fechas-block mu-hero-banner-row__full" data-pais="">
-                            <span class="mu-hero-banner-fechas-grid">
-                                <?php
-                                $render_fecha( 'inicio', __( 'Inicio (DDMMAAAA)', 'mu' ), $name . '[inicio]', $b['inicio'], '01012026' );
-                                $render_fecha( 'fin', __( 'Fin (DDMMAAAA)', 'mu' ), $name . '[fin]', $b['fin'], '31122026' );
-                                ?>
-                            </span>
-                            <label class="mu-hero-banner-anual-field">
-                                <input type="hidden" name="<?php echo esc_attr( $name ); ?>[anual]" value="0">
-                                <input type="checkbox" name="<?php echo esc_attr( $name ); ?>[anual]" value="1" data-role="anual" <?php checked( mu_hero_banner_anual_efectivo( $b, '' ) ); ?>>
-                                <strong><?php esc_html_e( 'Se repite cada año', 'mu' ); ?></strong>
-                                <span class="mu-lang-hint"><?php esc_html_e( 'Con esto se ignoran los años de las fechas y sólo cuentan el día y el mes. Para promos que vuelven todos los años: 20/12 → 10/01 cruza el fin de año y sigue funcionando.', 'mu' ); ?></span>
-                            </label>
-                            <span class="mu-lang-hint"><?php esc_html_e( 'Estas fechas valen para los países sin ventana propia. Si dejás ambas vacías, el banner se muestra siempre en ellos.', 'mu' ); ?></span>
-                            <span class="mu-lang-hint"><?php esc_html_e( 'Se interpretan como medianoche LOCAL de cada país: 01/06 es el 01/06 a las 00:00 en el huso de ese país, no en el del servidor.', 'mu' ); ?></span>
-                            <span class="mu-lang-hint mu-hero-banner-fechas-warning" data-role="fechas-warning" hidden></span>
-                        </p>
+                        <!-- Las fechas generales viven en la tabla de vigencia (feature 013) -->
                         <p>
                             <label>
                                 <input type="checkbox" name="<?php echo esc_attr( $name ); ?>[show_free_badge]" value="1" <?php checked( ! empty( $b['show_free_badge'] ) ); ?>>
@@ -1972,62 +1933,102 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                             </label>
                         </p>
 
-                        <?php // Ventana propia de cada país (oculta hasta que se elija su píldora) ?>
-                        <?php foreach ( $countries_data as $code => $c ) : ?>
-                        <p class="mu-hero-banner-fechas-block mu-hero-banner-row__full" data-pais="<?php echo esc_attr( $code ); ?>" style="display:none;">
-                            <span class="mu-hero-banner-fechas-grid">
-                                <?php
-                                $render_fecha( 'inicio', __( 'Inicio (DDMMAAAA)', 'mu' ), $name . '[fechas][' . $code . '][inicio]', $b['fechas'][ $code ]['inicio'] ?? '', $b['inicio'] );
-                                $render_fecha( 'fin', __( 'Fin (DDMMAAAA)', 'mu' ), $name . '[fechas][' . $code . '][fin]', $b['fechas'][ $code ]['fin'] ?? '', $b['fin'] );
-                                ?>
-                            </span>
-                            <label class="mu-hero-banner-anual-field">
-                                <input type="hidden" name="<?php echo esc_attr( $name ); ?>[fechas][<?php echo esc_attr( $code ); ?>][anual]" value="0">
-                                <input type="checkbox" name="<?php echo esc_attr( $name ); ?>[fechas][<?php echo esc_attr( $code ); ?>][anual]" value="1" data-role="anual" <?php checked( mu_hero_banner_anual_efectivo( $b, $code ) ); ?>>
-                                <strong><?php esc_html_e( 'Se repite cada año', 'mu' ); ?></strong>
-                                <span class="mu-lang-hint"><?php esc_html_e( 'Tildado en la fila de Global, heredar este país también repite; destildalo acá para que este país use la ventana una sola vez.', 'mu' ); ?></span>
-                            </label>
-                            <span class="mu-lang-hint">
-                                <?php
-                                printf(
-                                    /* translators: %s: nombre del país. */
-                                    esc_html__( '%s: lo que dejes vacío (o igual a las fechas generales) usa las fechas generales; si dejás ambas vacías, el banner se muestra siempre en este país.', 'mu' ),
-                                    esc_html( $c['name'] )
-                                );
-                                ?>
-                            </span>
-                            <span class="mu-lang-hint">
-                                <?php
-                                // [M6] Ventana efectiva con lo GUARDADO, en el huso del país: la
-                                // pregunta "¿medianoche de dónde?" queda respondida a la vista.
-                                // [012] Con la repetición anual, el año que se muestra es el de la
-                                // instancia que corresponde a hoy (o al próximo si ya pasó).
-                                $tz_pais   = mu_hero_banner_pais_tz( $code );
-                                $ventana_e = mu_hero_banner_ventana_instantes( $b, $code );
-                                $nota      = mu_hero_banner_anual_efectivo( $b, $code )
-                                    ? ' ' . __( 'Se repite cada año: el año de las fechas se ignora.', 'mu' )
-                                    : '';
+                    <?php
+                    // VIGENCIA (feature 013): todos los ámbitos a la vez, en una tabla. Antes
+                    // había que elegir una píldora por país para ver cada ventana; ahora se ven
+                    // juntas y la columna «Se ve» dice qué resulta con lo guardado, en el huso
+                    // del ámbito (la pregunta «¿medianoche de dónde?», respondida a la vista).
+                    $render_fila_vigencia = function ( $ambito ) use ( $render_fecha, $b, $name, $countries_data ) {
+                        $es_global = ( '' === $ambito );
+                        $c         = $es_global ? [ 'name' => '' ] : ( $countries_data[ $ambito ] ?? [ 'name' => '' ] );
+                        $tildado   = $es_global || in_array( $ambito, $b['paises'], true );
 
+                        $campo_ini = $es_global ? $name . '[inicio]' : $name . '[fechas][' . $ambito . '][inicio]';
+                        $campo_fin = $es_global ? $name . '[fin]' : $name . '[fechas][' . $ambito . '][fin]';
+                        $campo_anu = $es_global ? $name . '[anual]' : $name . '[fechas][' . $ambito . '][anual]';
+
+                        $ini = $es_global ? (string) $b['inicio'] : (string) ( $b['fechas'][ $ambito ]['inicio'] ?? '' );
+                        $fin = $es_global ? (string) $b['fin'] : (string) ( $b['fechas'][ $ambito ]['fin'] ?? '' );
+
+                        // Las generales quedan como placeholder de cada país: se VE la herencia.
+                        $ph_ini = ( '' !== (string) $b['inicio'] ) ? (string) $b['inicio'] : '01012026';
+                        $ph_fin = ( '' !== (string) $b['fin'] ) ? (string) $b['fin'] : '31122026';
+
+                        $tz        = mu_hero_banner_pais_tz( $ambito );
+                        $ventana_e = mu_hero_banner_ventana_instantes( $b, $ambito );
+                        $nota      = mu_hero_banner_anual_efectivo( $b, $ambito ) ? ' · ' . __( 'cada año', 'mu' ) : '';
+                        ?>
+                        <tr class="mu-hero-banner-fechas-block<?php echo $tildado ? '' : ' is-inactivo'; ?>"
+                            data-pais="<?php echo esc_attr( $ambito ); ?>"
+                            data-tildado="<?php echo $tildado ? '1' : '0'; ?>">
+                            <th scope="row">
+                                <?php if ( $es_global ) : ?>
+                                    <strong><?php esc_html_e( 'Global', 'mu' ); ?></strong>
+                                <?php else : ?>
+                                    <strong><?php echo esc_html( $ambito ); ?></strong>
+                                    <span class="mu-lang-hint"><?php echo esc_html( $c['name'] ); ?></span>
+                                <?php endif; ?>
+                            </th>
+                            <td><?php $render_fecha( 'inicio', __( 'Inicio', 'mu' ), $campo_ini, $ini, $ph_ini ); ?></td>
+                            <td><?php $render_fecha( 'fin', __( 'Fin', 'mu' ), $campo_fin, $fin, $ph_fin ); ?></td>
+                            <td>
+                                <label class="mu-hero-banner-anual-field">
+                                    <input type="hidden" name="<?php echo esc_attr( $campo_anu ); ?>" value="0">
+                                    <input type="checkbox" name="<?php echo esc_attr( $campo_anu ); ?>" value="1" data-role="anual" <?php checked( mu_hero_banner_anual_efectivo( $b, $ambito ) ); ?>>
+                                    <span class="screen-reader-text"><?php esc_html_e( 'Se repite cada año', 'mu' ); ?></span>
+                                </label>
+                            </td>
+                            <td class="mu-hero-banner-vigencia-ver">
+                                <?php
                                 if ( null === $ventana_e ) {
-                                    echo esc_html( sprintf(
-                                        /* translators: %s: huso horario del país. */
-                                        __( 'Sin límite de fecha con lo guardado: se muestra siempre (huso del país: %s).', 'mu' ),
-                                        $tz_pais->getName()
-                                    ) . $nota );
+                                    esc_html_e( 'Siempre', 'mu' );
                                 } else {
                                     echo esc_html( sprintf(
-                                        /* translators: 1: inicio, 2: fin, 3: huso horario del país. */
-                                        __( 'Con lo guardado se ve del %1$s al %2$s, en el huso del país (%3$s).', 'mu' ),
-                                        ( new DateTimeImmutable( '@' . $ventana_e[0] ) )->setTimezone( $tz_pais )->format( 'd/m/Y H:i' ),
-                                        ( new DateTimeImmutable( '@' . $ventana_e[1] ) )->setTimezone( $tz_pais )->format( 'd/m/Y H:i' ),
-                                        $tz_pais->getName()
-                                    ) . $nota );
+                                        '%1$s → %2$s (%3$s)%4$s',
+                                        ( new DateTimeImmutable( '@' . $ventana_e[0] ) )->setTimezone( $tz )->format( 'd/m/Y' ),
+                                        ( new DateTimeImmutable( '@' . $ventana_e[1] ) )->setTimezone( $tz )->format( 'd/m/Y' ),
+                                        $tz->getName(),
+                                        $nota
+                                    ) );
                                 }
                                 ?>
-                            </span>
-                            <span class="mu-lang-hint mu-hero-banner-fechas-warning" data-role="fechas-warning" hidden></span>
+                                <span class="mu-lang-hint mu-hero-banner-fechas-warning" data-role="fechas-warning" hidden></span>
+                            </td>
+                            <td>
+                                <button type="button" class="mu-hero-banner-vigencia-limpiar" data-role="limpiar-ventana" title="<?php esc_attr_e( 'Borrar las fechas de este ámbito', 'mu' ); ?>">&times;</button>
+                            </td>
+                        </tr>
+                        <?php
+                    };
+                    ?>
+
+                    <div class="mu-hero-banner-vigencia mu-hero-banner-row__full">
+                        <p class="mu-hero-banner-globals-title">
+                            <strong><?php esc_html_e( 'Vigencia (fechas DDMMAAAA)', 'mu' ); ?></strong>
+                            <span class="mu-lang-hint"><?php esc_html_e( 'Medianoche LOCAL de cada país. Lo que dejés vacío (o igual a Global) hereda de Global; con los dos campos vacíos el banner se muestra siempre en ese ámbito.', 'mu' ); ?></span>
                         </p>
-                        <?php endforeach; ?>
+                        <table class="mu-hero-banner-tabla">
+                            <thead>
+                                <tr>
+                                    <th scope="col"><?php esc_html_e( 'Ámbito', 'mu' ); ?></th>
+                                    <th scope="col"><?php esc_html_e( 'Inicio', 'mu' ); ?></th>
+                                    <th scope="col"><?php esc_html_e( 'Fin', 'mu' ); ?></th>
+                                    <th scope="col"><?php esc_html_e( 'Cada año', 'mu' ); ?></th>
+                                    <th scope="col"><?php esc_html_e( 'Se ve', 'mu' ); ?></th>
+                                    <th scope="col"><span class="screen-reader-text"><?php esc_html_e( 'Limpiar', 'mu' ); ?></span></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php
+                                $render_fila_vigencia( '' );
+
+                                foreach ( array_keys( $countries_data ) as $code ) {
+                                    $render_fila_vigencia( (string) $code );
+                                }
+                                ?>
+                            </tbody>
+                        </table>
+                    </div>
                     </div>
                 </div>
             </div>

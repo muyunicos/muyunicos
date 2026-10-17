@@ -28,7 +28,21 @@ function same(label, esperado, obtenido) {
 global.window = global;
 global.document = { addEventListener() {}, getElementById() { return null; }, querySelectorAll() { return []; } };
 
-function fakeJQuery() {
+function fakeJQuery(sel) {
+    // `$('<div></div>')`: implementa html()/text() para poder probar textoPlanoDeNodo().
+    if (typeof sel === 'string' && sel.charAt(0) === '<') {
+        let inner = '';
+        const nodo = {
+            html(v) { if (v === undefined) { return inner; } inner = String(v); return nodo; },
+            text() {
+                return inner
+                    .replace(/<[^>]*>/g, '')
+                    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+            }
+        };
+        return nodo;
+    }
+
     const stub = {
         length: 0,
         on() { return stub; }, off() { return stub; }, find() { return stub; },
@@ -70,6 +84,16 @@ same('ancho inválido no rompe (usa 1)', 1, MU.escalaCanvas(1000, 0));
 same('disponible inválido no rompe (usa 1)', 1, MU.escalaCanvas(0, 1280));
 same('entradas como texto se convierten', 0.5, MU.escalaCanvas('640', '1280'));
 same('nunca baja del piso de legibilidad', 0.05, MU.escalaCanvas(10, 1280));
+
+console.log('\n--- 3. Texto plano de un nodo editable (N2) ---');
+same('texto simple', 'Cotizador Online', MU.textoPlanoDeNodo('Cotizador Online'));
+same('los <br> vuelven a ser saltos de línea', 'uno\ndos', MU.textoPlanoDeNodo('uno<br>dos'));
+same('<br/> también', 'uno\ndos', MU.textoPlanoDeNodo('uno<br/>dos'));
+same('los <div> de Chrome son saltos', 'uno\ndos', MU.textoPlanoDeNodo('uno<div>dos</div>'));
+same('el salto final no se arrastra', 'uno', MU.textoPlanoDeNodo('uno<br>'));
+same('cierra las entidades (el HTML no se cuela al textarea)', 'a <b> & c', MU.textoPlanoDeNodo('a &lt;b&gt; &amp; c'));
+same('vacío', '', MU.textoPlanoDeNodo(''));
+same('null no rompe', '', MU.textoPlanoDeNodo(null));
 
 console.log('\n== ' + ok + ' OK / ' + fail + ' FAIL ==');
 process.exit(fail > 0 ? 1 : 0);

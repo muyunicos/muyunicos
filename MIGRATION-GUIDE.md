@@ -1000,17 +1000,29 @@ RENDER COMPARTIDO DEL HERO + LIENZO DEL PANEL (2026-10-17, feature 013-panel-her
 - [ ] Verificación manual en producción (Fase B del quickstart de 013): hero de
   muyunicos.com + 2 subdominios idéntico al fixture y 'hero-promo.css' servido. Sin eso, la
   Fase 0 se marca NO VERIFICADA.
-- [x] Fase 1 (jerarquía de la fila, en parte): fila-resumen siempre visible con ESTADO calculado
+- [x] Fase 1 (jerarquía de la fila, COMPLETA): fila-resumen siempre visible con ESTADO calculado
   (mu_hero_banner_estado(): dónde se ve, quién quedó fuera de ventana y cuándo cambia, en el huso
   del país), miniatura, plegado por fila, Duplicar (renumera los name="mu_banner[N]" del clon),
-  Orden ▲▼ (el orden del DOM es el orden de los slides) y Eliminar con deshacer. Desviaciones
-  declaradas: las píldoras de idioma/Traducir se quedan en la barra de la fila (gobiernan el idioma
-  del lienzo y no deben esconderse al plegar) y las filas nacen desplegadas (plegar por defecto
-  escondería el lienzo). PENDIENTE de la Fase 1: chips de país unificados (retirar el dropdown
-  «Países») y la vigencia como tabla comparable.
-- [x] Fase 3 · N1: clic en cualquier nodo del lienzo → foco y scroll al campo real, con resaltado;
-  los CTA no navegan desde el editor. PENDIENTE: N2 (contenteditable="plaintext-only" en eyebrow,
-  descripción, CTAs y badge) y N2-bis (título con «resaltar selección»).
+  Orden ▲▼ (el orden del DOM es el orden de los slides) y Eliminar con deshacer. **Chips de país
+  unificados**: el checkbox de paises[] ES el chip (un solo control para activar; el punto marca los
+  países con ventana propia) y el dropdown «Países» se retiró. **Vigencia como TABLA**: una fila por
+  ámbito (Global + cada país) con Inicio, Fin, «Cada año», la columna «Se ve» (ventana efectiva en el
+  huso del ámbito, con el aviso por fila) y un × para limpiar esa ventana; los países sin tildar
+  quedan atenuados y su ventana se conserva (M7). Antes había una píldora = pestaña por país, así que
+  no se podían comparar dos ventanas.
+- [x] Fase 3 · N1: clic en cualquier nodo del lienzo → foco y scroll al campo real, con resaltado.
+  **N2 (COMPLETA)**: contenteditable="plaintext-only" en eyebrow, descripción, textos de CTA y texto
+  del badge, con dos vías con el formulario (textoPlanoDeNodo() normaliza los <br>/<div> que inserta
+  el navegador a saltos de línea para el textarea). El TÍTULO queda fuera a propósito: admite HTML
+  (<span class="mu-highlight">) y editarlo en texto plano rompería el marcado.
+- Desviaciones declaradas de la Fase 1: las píldoras de idioma y «Traducir» se quedan en la barra de
+  la fila (gobiernan el idioma del lienzo y no deben esconderse al plegar) y las filas nacen
+  desplegadas (plegar por defecto escondería el lienzo). Pendiente menor (T011b): borrar el código
+  muerto de posicionarDropdown() y el CSS del dropdown/píldoras.
+- Verificación automática de 013: arnés PHP 97 OK (Fase 0 + lienzo + resumen + chips + tabla) y JS
+  17 OK (escalaCanvas + textoPlanoDeNodo). El arnés 010 se ajustó en 5 aserciones (medían las
+  píldoras y los paneles alternados, que ya no existen: ahora miden chips y filas de la tabla) y el
+  012 en 2 (la nota «cada año» y el conteo de filas).
 - [x] Fase 2 (LIENZO VIVO, misma fecha): el banner REAL dentro de la fila del panel. El
   renderer compartido acepta 'mu' => true, que marca los 10 nodos con data-mu y emite siempre
   eyebrow/CTA secundario/badge (para poder editarlos); el JS los repinta desde el formulario en

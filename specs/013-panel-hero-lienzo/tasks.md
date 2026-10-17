@@ -41,9 +41,10 @@
 - [X] T013 Plegado por fila (`is-folded` + `aria-expanded`) y las acciones de la fila: **Duplicar** (renumera todos los `name="mu_banner[N]"` del clon), **Ordenar ▲▼** (el orden del DOM es el orden de los slides) y **Eliminar con deshacer** (el mismo botón vuelve atrás y deja los valores intactos).
 - [X] T014 Arnés de marcado del resumen + 19 aserciones nuevas del estado (total 013 PHP: **82 OK**).
 - [X] T011 **Chips de país unificados (primer tramo)**: el checkbox de `paises[]` es el chip del resumen, así que activar el país y elegir el ámbito son el mismo control; se retiró el botón/dropdown «Países» y sus handlers. **PENDIENTE**: retirar las píldoras de ámbito reemplazándolas por la tabla de vigencia (T012).
-- [ ] T012 **Vigencia como tabla** comparable (Global + países a la vez, subiendo al primer lugar): PENDIENTE. Es el tramo que falta para que las píldoras de ámbito dejen de existir.
-- [ ] T011b Limpieza: al retirar las píldoras, borrar `posicionarDropdown()` y el CSS del dropdown (hoy código muerto, inofensivo).
-- [ ] T020 N2: `contenteditable="plaintext-only"` en eyebrow, descripción, textos de CTA y badge del lienzo.
+- [X] T012 **Vigencia como tabla** comparable: las píldoras de ámbito y los paneles que se alternaban por país se retiraron; ahora hay **una fila por ámbito** (Global + cada país del sitio) con Inicio, Fin, «Cada año», la columna **«Se ve»** (ventana efectiva con el huso del ámbito, con el aviso por fila) y un botón **×** para limpiar esa ventana. Los países sin tildar quedan atenuados (su ventana se conserva, M7).
+- [X] T020 **N2**: edición directa en el lienzo con `contenteditable="plaintext-only"` en eyebrow, descripción, textos de CTA y texto del badge (dos vías con el formulario: `textoPlanoDeNodo()` normaliza los `<br>`/`<div>` del navegador a `\n`). El **título** queda fuera a propósito (admite HTML): su clic sigue llevando al campo.
+- [ ] T011b Limpieza pendiente (código muerto, inofensivo): `posicionarDropdown()` en el JS y el CSS de `.mu-hero-banner-paises-btn/-dropdown/-pill`.
+- [ ] T021 N2-bis (opcional): título editable en el lienzo con «resaltar selección».
 
 ### Desviaciones declaradas de la Fase 1
 

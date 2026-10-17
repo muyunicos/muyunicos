@@ -76,11 +76,13 @@ POST**, que use el mismo SVG del front, y que el front siga sin marcas `data-mu`
 | 1 | **Fila-resumen siempre visible** con **estado calculado** (`mu_hero_banner_estado()`: dónde se ve, dónde quedó fuera de ventana y cuándo cambia, con el huso del país), miniatura del banner y las acciones de la fila. | ✅ |
 | 2 | **Plegado** por fila (`is-folded` + `aria-expanded`); el lienzo se reencaja al desplegar. | ✅ |
 | 3 | **Duplicar** (renumera todos los `name="mu_banner[N]"` del clon: sin eso, el duplicado pelearía por el mismo índice), **Ordenar ▲▼** (el orden del DOM es el orden de los slides: era lo único imposible de administrar) y **Eliminar con deshacer** (el mismo botón vuelve atrás, valores intactos). | ✅ |
-| 4 | **Chips de país unificados** (un solo control para activar y para elegir ámbito, retirando el dropdown «Países») y **vigencia como tabla** comparable (Global + países a la vez, en primer lugar). | ⬜ pendiente |
+| 4 | **Chips de país unificados** (el checkbox ES el chip: un solo control para activar) y **vigencia como tabla** comparable (Global + cada país con la columna «Se ve» y limpiar por fila). | ✅ |
+| 5 | **N2**: edición directa en el lienzo (`contenteditable="plaintext-only"`) en eyebrow, descripción, CTAs y badge; el título queda por el formulario (admite HTML). | ✅ |
 
 Desviaciones declaradas: las píldoras de idioma y el botón «Traducir» se quedan en la barra de la
 fila (gobiernan también el idioma del lienzo y no deben esconderse al plegar), y las filas nacen
 **desplegadas** (plegar por defecto escondería el lienzo, que es el objetivo de la feature).
+Pendiente menor: T011b (borrar `posicionarDropdown()` y el CSS del dropdown/píldoras, código muerto).
 
 ## Fase 3 — Interacción (N1 implementada)
 

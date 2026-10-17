@@ -398,7 +398,16 @@ check( 'El chip lleva el checkbox de países del POST', (bool) preg_match( '/cla
 check( 'Y el nombre del país en el title', false !== strpos( $fila, 'title="Argentina"' ) );
 same( 'El dropdown «Países» se retiró', 0, substr_count( $fila, 'mu-hero-banner-paises-dropdown' ) );
 same( 'El botón «Países» se retiró', 0, substr_count( $fila, 'mu-hero-banner-paises-btn' ) );
-same( 'Las píldoras de ámbito siguen (eligen de qué país se editan las fechas)', 1, substr_count( $fila, 'mu-hero-banner-paises-pills' ) );
+
+echo "\n--- 9. Tabla de vigencia: todos los ámbitos a la vez ---\n";
+same( 'Las píldoras de ámbito se retiraron', 0, substr_count( $fila, 'mu-hero-banner-paises-pills' ) );
+same( 'Una fila por ámbito (Global + los 2 países del arnés)', 3, substr_count( $fila, '<tr class="mu-hero-banner-fechas-block' ) );
+same( 'La fila de Global va primero', 1, substr_count( $fila, 'data-pais=""' ) );
+same( 'Cada fila tiene su botón de limpiar', 3, substr_count( $fila, 'data-role="limpiar-ventana"' ) );
+same( 'Cada fila declara si el país está tildado', 3, substr_count( $fila, 'data-tildado="' ) );
+check( 'La columna «Se ve» muestra el huso del ámbito', false !== strpos( $fila, 'America/Argentina/Buenos_Aires' ) );
+check( 'Y la columna tiene su aviso por fila', false !== strpos( $fila, 'mu-hero-banner-fechas-warning' ) );
+same( 'Cada ámbito conserva sus 2 campos de fecha', 6, substr_count( $fila, 'data-fecha="' ) );
 
 echo "\n== {$GLOBALS['mu_ok']} OK / {$GLOBALS['mu_fail']} FAIL ==\n";
 exit( $GLOBALS['mu_fail'] > 0 ? 1 : 0 );

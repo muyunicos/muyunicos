@@ -409,6 +409,19 @@
     border-radius: 4px;
 }
 
+/* N2 (feature 013): los nodos de texto plano se editan EN el lienzo. El título no
+   (admite HTML): su clic sigue llevando al campo del formulario. */
+.mu-hero-banner-canvas [data-mu][contenteditable] { cursor: text; }
+.mu-hero-banner-canvas [data-mu][contenteditable]:focus {
+    outline: 2px solid #2B9FCF;
+    outline-offset: 3px;
+}
+.mu-hero-banner-canvas [data-mu][contenteditable]:empty::before {
+    content: attr(data-mu);
+    opacity: 0.35;
+    font-style: italic;
+}
+
 /* ============================================================
    RESUMEN DE LA FILA (feature 013)
    Siempre visible: estado calculado, miniatura y acciones.
@@ -462,6 +475,60 @@
     gap: var(--mu-space-sm, 10px);
 }
 .mu-hero-banner-row__accion { font-size: 12px !important; }
+
+/* ============================================================
+   TABLA DE VIGENCIA (feature 013)
+   Todos los ámbitos a la vez: Global + cada país del sitio.
+   ============================================================ */
+.mu-hero-banner-vigencia { margin-top: var(--mu-space-sm, 10px); }
+
+.mu-hero-banner-tabla {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.mu-hero-banner-tabla th,
+.mu-hero-banner-tabla td {
+    padding: 6px 8px;
+    text-align: left;
+    vertical-align: middle;
+    border-bottom: 1px solid #f0f0f1;
+}
+
+.mu-hero-banner-tabla thead th {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #646970;
+    border-bottom: 1px solid #dcdcde;
+}
+
+/* Fila de un país sin tildar: su ventana se conserva (M7) pero el front no la mira. */
+.mu-hero-banner-fechas-block.is-inactivo { opacity: 0.55; }
+
+.mu-hero-banner-tabla .mu-hero-banner-anual-field {
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+/* La etiqueta de cada campo la da el encabezado de la columna. */
+.mu-hero-banner-tabla .mu-hero-banner-fechas-field label { display: none; }
+.mu-hero-banner-tabla .mu-hero-banner-fechas-field input { width: 100%; max-width: 110px; }
+
+.mu-hero-banner-vigencia-ver { color: #646970; font-size: 12px; }
+
+.mu-hero-banner-vigencia-limpiar {
+    background: none;
+    border: 0;
+    color: #b32d2e;
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    padding: 0 4px;
+}
+.mu-hero-banner-vigencia-limpiar:hover { color: #d63638; }
 
 /* --- Chips de país (feature 013): el checkbox es el chip -------------------- */
 .mu-hero-banner-chips {
