@@ -40,8 +40,10 @@
 - [X] T010 Fila-resumen con **estado calculado**: `mu_hero_banner_estado()` (pura, con arnés) resume en una frase dónde se ve, dónde quedó fuera de ventana y cuándo cambia; más miniatura del banner.
 - [X] T013 Plegado por fila (`is-folded` + `aria-expanded`) y las acciones de la fila: **Duplicar** (renumera todos los `name="mu_banner[N]"` del clon), **Ordenar ▲▼** (el orden del DOM es el orden de los slides) y **Eliminar con deshacer** (el mismo botón vuelve atrás y deja los valores intactos).
 - [X] T014 Arnés de marcado del resumen + 19 aserciones nuevas del estado (total 013 PHP: **82 OK**).
-- [ ] T011 **Chips de país unificados** (activar + elegir ámbito con el mismo control, retirando el dropdown «Países»): PENDIENTE.
-- [ ] T012 **Vigencia como tabla** comparable (Global + países a la vez, subiendo al primer lugar): PENDIENTE.
+- [X] T011 **Chips de país unificados (primer tramo)**: el checkbox de `paises[]` es el chip del resumen, así que activar el país y elegir el ámbito son el mismo control; se retiró el botón/dropdown «Países» y sus handlers. **PENDIENTE**: retirar las píldoras de ámbito reemplazándolas por la tabla de vigencia (T012).
+- [ ] T012 **Vigencia como tabla** comparable (Global + países a la vez, subiendo al primer lugar): PENDIENTE. Es el tramo que falta para que las píldoras de ámbito dejen de existir.
+- [ ] T011b Limpieza: al retirar las píldoras, borrar `posicionarDropdown()` y el CSS del dropdown (hoy código muerto, inofensivo).
+- [ ] T020 N2: `contenteditable="plaintext-only"` en eyebrow, descripción, textos de CTA y badge del lienzo.
 
 ### Desviaciones declaradas de la Fase 1
 

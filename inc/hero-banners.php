@@ -1611,6 +1611,11 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
             'free_badge_url_en'      => '',
         ] );
         $name = 'mu_banner[' . esc_attr( $index ) . ']';
+
+        // Datos de país e idioma activo: los necesita el resumen (chips) y el cuerpo.
+        $countries_data   = function_exists( 'muyu_get_countries_data' ) ? muyu_get_countries_data() : [];
+        $idioma_activo_lc = $b['idioma_activo'];              // es | en | pt (píldora activa)
+
         $estado_banner = mu_hero_banner_estado( $b );
         $titulo_resumen = $b['titulo'] ? wp_kses_post( $b['titulo'] ) : esc_html__( 'Nuevo banner', 'mu' );
         $mini_resumen   = (string) ( $b['imagen'] ?? '' );
@@ -1630,6 +1635,31 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                 <h2 class="mu-hero-banner-row__title"><?php echo $titulo_resumen; ?></h2>
                 <span class="mu-hero-banner-row__estado <?php echo esc_attr( $estado_banner['clase'] ); ?>" role="status"><?php echo esc_html( $estado_banner['texto'] ); ?></span>
 
+                <?php
+                // Chips de país (feature 013): el checkbox ES el chip, así que activar un país
+                // y elegir el ámbito de sus fechas son el MISMO control. El punto (data-has-fechas)
+                // marca los países con ventana propia, como antes.
+                ?>
+                <span class="mu-hero-banner-chips" role="group" aria-label="<?php esc_attr_e( 'Países donde se muestra el banner', 'mu' ); ?>">
+                    <?php
+                    foreach ( $countries_data as $code => $c ) :
+                        $chip_activo  = in_array( $code, $b['paises'], true );
+                        $ini_propio   = (string) ( $b['fechas'][ $code ]['inicio'] ?? '' );
+                        $fin_propio   = (string) ( $b['fechas'][ $code ]['fin'] ?? '' );
+                        $anual_propio = (string) ( $b['fechas'][ $code ]['anual'] ?? '' );
+                        $con_ventana  = ( '' !== $ini_propio || '' !== $fin_propio || '' !== $anual_propio );
+                        $chip_titulo  = $c['name'] . ( $con_ventana ? __( ' · tiene ventana propia', 'mu' ) : '' );
+                        ?>
+                        <label class="mu-hero-banner-chip<?php echo $chip_activo ? ' is-active' : ''; ?>"
+                               data-pais="<?php echo esc_attr( $code ); ?>"
+                               data-has-fechas="<?php echo $con_ventana ? '1' : '0'; ?>"
+                               title="<?php echo esc_attr( $chip_titulo ); ?>">
+                            <input type="checkbox" name="<?php echo esc_attr( $name ); ?>[paises][]" value="<?php echo esc_attr( $code ); ?>"<?php checked( $chip_activo ); ?>>
+                            <span><?php echo esc_html( $code ); ?></span>
+                        </label>
+                    <?php endforeach; ?>
+                </span>
+
                 <span class="mu-hero-banner-row__acciones">
                     <button type="button" class="button-link mu-hero-banner-row__accion" data-role="duplicar"><?php esc_html_e( 'Duplicar', 'mu' ); ?></button>
                     <button type="button" class="button-link mu-hero-banner-row__accion" data-role="subir" title="<?php esc_attr_e( 'Subir', 'mu' ); ?>">▲</button>
@@ -1642,24 +1672,10 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
             <div class="mu-hero-banner-row__body">
             <div class="mu-hero-banner-row__head">
                 <?php
-                $countries_data   = function_exists( 'muyu_get_countries_data' ) ? muyu_get_countries_data() : [];
-                $idioma_activo_lc = $b['idioma_activo'];              // es | en | pt (píldora activa)
-                ?>
-
-                <!-- Selector de países -->
-                <button type="button" class="button mu-hero-banner-paises-btn"><?php esc_html_e( 'Países', 'mu' ); ?></button>
-                <div class="mu-hero-banner-paises-dropdown">
-                    <?php foreach ( $countries_data as $code => $c ) : ?>
-                    <label style="display:block; font-size:12px; padding:2px 8px; cursor:pointer;">
-                        <input type="checkbox" name="<?php echo esc_attr( $name ); ?>[paises][]" value="<?php echo esc_attr( $code ); ?>"<?php checked( in_array( $code, $b['paises'], true ) ); ?>>
-                        <?php echo esc_html( $c['name'] ); ?> (<?php echo esc_html( $code ); ?>)
-                    </label>
-                    <?php endforeach; ?>
-                </div>
-                <?php
-                // Las píldoras de país se mudaron al bloque de ajustes generales, donde
-                // además eligen DE QUÉ país se editan las fechas (píldora = pestaña).
-                // Acá queda sólo la selección de países activos (checkbox del dropdown).
+                // Países e idioma activo ya vienen del resumen: acá queda sólo la barra de
+                // herramientas de fila (píldoras de idioma, IA, variantes). Los países se
+                // eligen con los chips del resumen (feature 013): el dropdown «Países» y
+                // las píldoras de ámbito se retiraron.
                 ?>
 
                 <!-- Selector de idioma (pestaña activa del editor) -->

@@ -462,3 +462,41 @@
     gap: var(--mu-space-sm, 10px);
 }
 .mu-hero-banner-row__accion { font-size: 12px !important; }
+
+/* --- Chips de país (feature 013): el checkbox es el chip -------------------- */
+.mu-hero-banner-chips {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+}
+
+.mu-hero-banner-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.5;
+    padding: 1px 8px;
+    border: 1px solid #c3c4c7;
+    border-radius: 10px;
+    background: #f6f7f7;
+    color: #646970;
+    cursor: pointer;
+}
+
+.mu-hero-banner-chip input { margin: 0 0 0 -2px; }
+.mu-hero-banner-chip.is-active { background: #e8f4ff; border-color: #0066cc; color: #0066cc; }
+
+/* Punto: el país tiene ventana propia (mismo lenguaje que las píldoras de idioma). */
+.mu-hero-banner-chip[data-has-fechas="1"] span::after {
+    content: '';
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    margin-left: 4px;
+    border-radius: 50%;
+    background: #d63638;
+    vertical-align: middle;
+}

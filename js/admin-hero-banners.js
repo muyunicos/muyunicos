@@ -517,8 +517,14 @@
     function sincronizarPillsPais($row) {
         var tildados = [];
 
-        $row.find('.mu-hero-banner-paises-dropdown input[type="checkbox"]:checked').each(function () {
-            tildados.push(String($(this).val()));
+        // Los países se tildan con los CHIPS del resumen (feature 013): el checkbox es el
+        // chip. Se marca el chip como activo para que se vea el estado.
+        $row.find('.mu-hero-banner-chip input[type="checkbox"]').each(function () {
+            var $check = $(this);
+            var activo = !!$check.prop('checked');
+
+            if (activo) { tildados.push(String($check.val())); }
+            $check.closest('.mu-hero-banner-chip').toggleClass('is-active', activo);
         });
 
         $row.find('.mu-hero-banner-paises-pills .mu-hero-banner-pill').each(function () {
@@ -862,34 +868,13 @@
         });
 
         // ---------------------------------------------------------------
-        // Selector de países
+        // Chips de país (feature 013): el checkbox del chip activa el país
         // ---------------------------------------------------------------
-        $list.on('click', '.mu-hero-banner-paises-btn', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-
+        $list.on('change', '.mu-hero-banner-chip input[type="checkbox"]', function () {
             var $row = $(this).closest('.mu-hero-banner-row');
-            var $dd  = $row.find('.mu-hero-banner-paises-dropdown');
-            var visible = $dd.is(':visible');
 
-            $list.find('.mu-hero-banner-paises-dropdown').hide();
-            if (!visible) {
-                posicionarDropdown($(this), $dd);
-                $dd.show();
-            }
-        });
-
-        // Al marcar/desmarcar un país se muestran u ocultan sus píldoras y su panel de
-        // fechas (el marcado se genera en PHP; acá sólo se alterna la visibilidad).
-        $list.on('change', '.mu-hero-banner-paises-dropdown input[type="checkbox"]', function () {
-            var $row = $(this).closest('.mu-hero-banner-row');
             sincronizarPillsPais($row);
             aplicarPlaceholdersFechas($row);
-        });
-
-        // Evitar que el clic dentro del dropdown de países lo cierre
-        $list.on('click', '.mu-hero-banner-paises-dropdown', function (e) {
-            e.stopPropagation();
         });
 
         // ---------------------------------------------------------------

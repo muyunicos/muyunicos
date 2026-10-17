@@ -390,6 +390,16 @@ same( 'Acciones de orden', 2, substr_count( $fila, 'data-role="subir"' ) + subst
 same( 'El botón Eliminar vive en el resumen (no quedó duplicado)', 1, substr_count( $fila, 'mu-hero-banner-row__remove' ) );
 same( 'Y hay un solo flag de borrado', 1, substr_count( $fila, 'mu-hero-banner-row__delete-flag' ) );
 
+echo "\n--- 8. Chips de país (el checkbox ES el chip) ---\n";
+same( 'Un solo contenedor de chips', 1, substr_count( $fila, 'class="mu-hero-banner-chips"' ) );
+same( 'Un chip por país del sitio', 2, substr_count( $fila, '<label class="mu-hero-banner-chip' ) );
+same( 'El país tildado sale activo', 1, substr_count( $fila, 'class="mu-hero-banner-chip is-active"' ) );
+check( 'El chip lleva el checkbox de países del POST', (bool) preg_match( '/class="mu-hero-banner-chip[^"]*"[^>]*>\s*<input type="checkbox" name="mu_banner\[0\]\[paises\]\[\]"/', $fila ) );
+check( 'Y el nombre del país en el title', false !== strpos( $fila, 'title="Argentina"' ) );
+same( 'El dropdown «Países» se retiró', 0, substr_count( $fila, 'mu-hero-banner-paises-dropdown' ) );
+same( 'El botón «Países» se retiró', 0, substr_count( $fila, 'mu-hero-banner-paises-btn' ) );
+same( 'Las píldoras de ámbito siguen (eligen de qué país se editan las fechas)', 1, substr_count( $fila, 'mu-hero-banner-paises-pills' ) );
+
 echo "\n== {$GLOBALS['mu_ok']} OK / {$GLOBALS['mu_fail']} FAIL ==\n";
 exit( $GLOBALS['mu_fail'] > 0 ? 1 : 0 );
 
