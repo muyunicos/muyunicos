@@ -42,17 +42,20 @@
     }
 
     /**
-     * Muestra el bloque del idioma elegido y sincroniza píldoras, input oculto y
-     * botón de IA. Cada .mu-hero-banner-lang-block trae su propio juego de campos:
-     * 'es' es el idioma base y 'pt' / 'en' son las traducciones (réplica).
+     * Muestra la variante del idioma elegido y sincroniza píldoras, input oculto y botón de IA.
+     *
+     * [017] Hay UN solo .mu-hero-banner-lang-block: cada campo lleva sus tres variantes
+     * (.mu-hero-banner-variante con data-lang) y acá se muestra la del idioma activo. Se
+     * oculta con `hidden` y nunca con `disabled`: un campo deshabilitado no viaja en el POST
+     * y se perderían las traducciones al guardar.
      */
     function setLang($row, idioma) {
         var lang = String(idioma || 'es').toLowerCase();
         if (IDIOMAS.indexOf(lang) === -1) { lang = 'es'; }
 
-        $row.find('.mu-hero-banner-lang-block').each(function () {
-            var $block = $(this);
-            $block.css('display', $block.attr('data-lang') === lang ? 'block' : 'none');
+        $row.find('.mu-hero-banner-variante').each(function () {
+            var $variante = $(this);
+            $variante.prop('hidden', String($variante.attr('data-lang') || '') !== lang);
         });
 
         $row.find('.mu-lang-pill').each(function () {
@@ -102,10 +105,10 @@
         var $pills = $row.find('.mu-lang-pill[data-lang="' + lang + '"]');
         if (!$pills.length) return;
 
-        var $origen = $row.find('.mu-hero-banner-lang-block[data-lang="es"]');
+        var $origen = $row.find('.mu-hero-banner-variante[data-lang="es"]');
         var tiene   = false;
 
-        $row.find('.mu-hero-banner-lang-block[data-lang="' + lang + '"] [data-field]').each(function () {
+        $row.find('.mu-hero-banner-variante[data-lang="' + lang + '"] [data-field]').each(function () {
             var $campo = $(this);
             var $base  = $origen.find('[data-field="' + String($campo.attr('data-field') || '') + '"]');
             if (!$base.length) return;
@@ -167,11 +170,11 @@
 
     /** Valor de un campo en el idioma pedido, con el respaldo al español (como el front). */
     function valorCampo($row, lang, campo) {
-        var $bloque = $row.find('.mu-hero-banner-lang-block[data-lang="' + lang + '"]');
+        var $bloque = $row.find('.mu-hero-banner-variante[data-lang="' + lang + '"]');
         var valor   = $bloque.length ? String($bloque.find('[data-field="' + campo + '"]').val() || '') : '';
 
         if (valor === '' && lang !== 'es') {
-            valor = String($row.find('.mu-hero-banner-lang-block[data-lang="es"] [data-field="' + campo + '"]').val() || '');
+            valor = String($row.find('.mu-hero-banner-variante[data-lang="es"] [data-field="' + campo + '"]').val() || '');
         }
 
         return valor;
@@ -266,7 +269,7 @@
     /** N1: lleva el foco (con scroll) al campo del formulario que corresponde al nodo. */
     function irAlCampo($row, marca) {
         var campo   = MU_A_CAMPO[marca] || marca;
-        var $bloque = $row.find('.mu-hero-banner-lang-block[data-lang="' + idiomaActivo($row) + '"]');
+        var $bloque = $row.find('.mu-hero-banner-variante[data-lang="' + idiomaActivo($row) + '"]');
         var $campo  = $bloque.find('[data-field="' + campo + '"]');
 
         if (!$campo.length) { return; }
@@ -341,10 +344,10 @@
      * hacía imposible distinguir una traducción real de una copia.)
      */
     function aplicarPlaceholders($row) {
-        var $origen = $row.find('.mu-hero-banner-lang-block[data-lang="es"]');
+        var $origen = $row.find('.mu-hero-banner-variante[data-lang="es"]');
 
         ['pt', 'en'].forEach(function (lang) {
-            $row.find('.mu-hero-banner-lang-block[data-lang="' + lang + '"] [data-field]').each(function () {
+            $row.find('.mu-hero-banner-variante[data-lang="' + lang + '"] [data-field]').each(function () {
                 var $campo = $(this);
                 var $base  = $origen.find('[data-field="' + String($campo.attr('data-field') || '') + '"]');
                 if (!$base.length) return;
@@ -807,7 +810,7 @@
         var res = variantesDeFila(batch.items, indice, batch.campos);
 
         Object.keys(res.aplicar).forEach(function (field) {
-            $row.find('.mu-hero-banner-lang-block[data-lang="' + batch.lang + '"] [data-field="' + field + '"]')
+            $row.find('.mu-hero-banner-variante[data-lang="' + batch.lang + '"] [data-field="' + field + '"]')
                 .val(res.aplicar[field]);
         });
 
@@ -866,8 +869,8 @@
             e.preventDefault();
             if (typeof wp === 'undefined' || !wp.media) return;
 
-            // Acotado al bloque de imagen de ESTE idioma: la fila tiene uno por idioma.
-            var $wrap = $(this).closest('.mu-hero-banner-row__image');
+            // Acotado a la variante de ESTE idioma: el campo de imagen tiene una por idioma.
+            var $wrap = $(this).closest('.mu-hero-banner-variante');
             var $url  = $wrap.find('.mu-hero-banner-row__image-url');
             var $img  = $wrap.find('.mu-hero-banner-row__image-preview');
 
@@ -1012,7 +1015,7 @@
         $list.on('input change', '.mu-hero-banner-row [data-field]', function () {
             var $campo = $(this);
             var $row   = $campo.closest('.mu-hero-banner-row');
-            var lang   = String($campo.closest('.mu-hero-banner-lang-block').attr('data-lang') || 'es').toLowerCase();
+            var lang   = String($campo.closest('.mu-hero-banner-variante').attr('data-lang') || 'es').toLowerCase();
 
             // [013] El lienzo se repinta siempre (es vista, no guarda nada).
             pintarLienzo($row);
@@ -1047,7 +1050,7 @@
             if (lang === 'es') { return; }
 
             // Solo los campos que el ámbito declara (textos; URLs e imagen no se traducen).
-            var $origen = $row.find('.mu-hero-banner-lang-block[data-lang="es"]');
+            var $origen = $row.find('.mu-hero-banner-variante[data-lang="es"]');
             var payload = {};
 
             String($btn.attr('data-fields') || '').split(',').forEach(function (field) {
@@ -1097,7 +1100,7 @@
                                                             var res = clasificarCampos(campos, d.items || {});
 
                     Object.keys(res.aplicar).forEach(function (field) {
-                        $row.find('.mu-hero-banner-lang-block[data-lang="' + lang + '"] [data-field="' + field + '"]')
+                        $row.find('.mu-hero-banner-variante[data-lang="' + lang + '"] [data-field="' + field + '"]')
                             .val(res.aplicar[field]);
                     });
 
@@ -1201,7 +1204,7 @@
             var $row  = $nodo.closest('.mu-hero-banner-row');
             var lang  = idiomaActivo($row);
             var campo = MU_A_CAMPO[String($nodo.attr('data-mu') || '')] || '';
-            var $in   = $row.find('.mu-hero-banner-lang-block[data-lang="' + lang + '"] [data-field="' + campo + '"]');
+            var $in   = $row.find('.mu-hero-banner-variante[data-lang="' + lang + '"] [data-field="' + campo + '"]');
 
             if (!$in.length) { return; }
 
@@ -1216,7 +1219,7 @@
             var $nodo = $(this);
             var $row  = $nodo.closest('.mu-hero-banner-row');
             var campo = MU_A_CAMPO[String($nodo.attr('data-mu') || '')] || '';
-            var $in   = $row.find('.mu-hero-banner-lang-block[data-lang="' + idiomaActivo($row) + '"] [data-field="' + campo + '"]');
+            var $in   = $row.find('.mu-hero-banner-variante[data-lang="' + idiomaActivo($row) + '"] [data-field="' + campo + '"]');
 
             if ($in.length) { $in.val(textoPlanoDeNodo($nodo.html())); }
 

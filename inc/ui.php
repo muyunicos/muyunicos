@@ -877,16 +877,17 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
                             </span>
                         </div>
 
-                        <div class="mu-review-lang-block" data-lang="es">
-                            <textarea id="mu-review-text" name="text" required style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;min-height:100px;"></textarea>
-                        </div>
-
-                        <div class="mu-review-lang-block" data-lang="pt" style="display:none;">
-                            <textarea id="mu-review-text-pt" name="text_pt" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;min-height:100px;"></textarea>
-                        </div>
-
-                        <div class="mu-review-lang-block" data-lang="en" style="display:none;">
-                            <textarea id="mu-review-text-en" name="text_en" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;min-height:100px;"></textarea>
+                        <?php
+                        // [017] UN solo bloque: los tres idiomas son variantes del mismo campo
+                        // (data-lang + hidden) y sólo la activa es visible. Los `name` no cambian
+                        // y el ES conserva `required`, pero setLang lo activa sólo cuando el
+                        // español está a la vista: un `required` oculto hace que el navegador
+                        // bloquee el envío con un campo que no puede enfocar («not focusable»).
+                        ?>
+                        <div class="mu-review-lang-block">
+                            <textarea id="mu-review-text" name="text" data-lang="es" required style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;min-height:100px;"></textarea>
+                            <textarea id="mu-review-text-pt" name="text_pt" data-lang="pt" hidden style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;min-height:100px;"></textarea>
+                            <textarea id="mu-review-text-en" name="text_en" data-lang="en" hidden style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;min-height:100px;"></textarea>
                         </div>
                     </div>
 

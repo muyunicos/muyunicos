@@ -22,15 +22,20 @@
     background: #fafafa;
 }
 
+/* [017] Toolbar de idioma: píldoras ES|PT|EN, variantes de IA y «Traducir». Vive en la
+   línea del primer grupo de campos (dentro del bloque único de idioma), así que ya no tiene
+   barra propia ni borde: comparte la línea con el rótulo del grupo. No hereda su tipografía
+   (11px en mayúsculas) porque es un control, no un rótulo. */
 .mu-hero-banner-row__head {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
+    flex-wrap: wrap;
     gap: var(--mu-space-sm, 10px);
-    margin-bottom: var(--mu-space-sm, 10px);
-    border-bottom: 1px solid #f0f0f1;
-    padding-bottom: var(--mu-space-sm, 10px);
-    position: relative;
+    font-size: 12px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: normal;
 }
 
 .mu-hero-banner-row__title {
@@ -496,6 +501,10 @@
    Contenido a la izquierda; el lienzo, pegajoso, a la derecha.
    ============================================================ */
 .mu-hero-banner-group-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--mu-space-sm, 10px);
     margin: var(--mu-space-md, 20px) 0 4px;
     padding-bottom: 2px;
     font-size: 11px;
@@ -506,6 +515,13 @@
     border-bottom: 1px solid #f0f0f1;
 }
 .mu-hero-banner-lang-block > .mu-hero-banner-group-title:first-child { margin-top: 0; }
+
+/* [017] Variantes de idioma de un campo: el bloque de idioma es UNO y cada campo lleva sus
+   tres versiones. Sólo la activa es visible; el resto va con el atributo `hidden` de HTML
+   (que ya implica display:none). Por eso la regla de visible usa :not([hidden]): un
+   `display: block` a secas anularía el atributo y se verían las tres. */
+.mu-hero-banner-campo { margin: 0; }
+.mu-hero-banner-variante:not([hidden]) { display: block; }
 
 @media (min-width: 1100px) {
     /* [016] Dos filas EXPLÍCITAS. Antes el lienzo se colocaba en «1 / span 30», lo que creaba

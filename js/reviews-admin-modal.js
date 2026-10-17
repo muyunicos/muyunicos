@@ -138,11 +138,16 @@
                 document.querySelectorAll('.mu-lang-pill').forEach(function (pill) {
                     pill.classList.toggle('is-active', pill.getAttribute('data-lang') === lang);
                 });
-                document.querySelectorAll('.mu-review-lang-block').forEach(function (block) {
-                    block.style.display = (block.getAttribute('data-lang') === lang) ? 'block' : 'none';
+                document.querySelectorAll('.mu-review-lang-block [data-lang]').forEach(function (variante) {
+                    variante.hidden = (variante.getAttribute('data-lang') !== lang);
                 });
 
                 // El botón de IA traduce del español al idioma activo: en ES no aplica.
+                // [017] El required viaja con la visibilidad: un campo requerido y OCULTO hace
+                // que el navegador bloquee el submit con un mensaje invisible (not focusable).
+                var esTexto = byId('mu-review-text');
+                if (esTexto) { esTexto.required = ('es' === lang); }
+
                 var btn = byId('mu-review-translate');
                 if (btn) { btn.disabled = ('es' === lang); }
 

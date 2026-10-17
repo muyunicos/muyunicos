@@ -1947,56 +1947,15 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
             </div>
 
             <div class="mu-hero-banner-row__body">
-            <div class="mu-hero-banner-row__head">
-                <?php
-                // Países e idioma activo ya vienen del resumen: acá queda sólo la barra de
-                // herramientas de fila (píldoras de idioma, IA, variantes). Los países se
-                // eligen con los chips del resumen (feature 013): el dropdown «Países» y
-                // las píldoras de ámbito se retiraron.
-                ?>
+            <?php
+            // [017] El toolbar de idioma (píldoras, variantes de IA y «Traducir») ya NO tiene
+            // barra propia: vive en la línea del primer grupo de campos, dentro del bloque
+            // único de idioma. Antes, con un bloque por idioma, cualquier cosa dentro de un
+            // bloque se ocultaba al cambiar de idioma: por eso el toolbar tenía que estar
+            // afuera. Acá queda sólo el idioma activo (lo lee el JS desde la fila).
+            ?>
+            <input type="hidden" name="<?php echo esc_attr( $name ); ?>[idioma_activo]" value="<?php echo esc_attr( $idioma_activo_lc ); ?>" class="mu-hero-banner-idioma-valor">
 
-                <!-- Selector de idioma (pestaña activa del editor) -->
-                <?php
-                // Píldoras de idioma (mismo componente que el editor de reseñas):
-                // eligen qué bloque se edita y el punto marca, automáticamente, los
-                // idiomas con contenido propio. Ya no hay casilla "Traducir".
-                ?>
-                <span class="mu-lang-pills" role="group" aria-label="<?php esc_attr_e( 'Idioma del banner', 'mu' ); ?>">
-                    <?php
-                    foreach ( [ 'es' => 'Español', 'pt' => 'Portugués (Brasil)', 'en' => 'Inglés' ] as $code => $label ) :
-                        $tiene = 'es' !== $code && mu_hero_banner_lang_has_translation( $b, $code );
-                        ?>
-                        <button type="button"
-                                class="mu-lang-pill<?php echo $idioma_activo_lc === $code ? ' is-active' : ''; ?>"
-                                data-lang="<?php echo esc_attr( $code ); ?>"
-                                data-has-translation="<?php echo $tiene ? '1' : '0'; ?>"
-                                title="<?php echo esc_attr( $label ); ?>"><?php echo esc_html( strtoupper( $code ) ); ?></button>
-                    <?php endforeach; ?>
-                </span>
-                <input type="hidden" name="<?php echo esc_attr( $name ); ?>[idioma_activo]" value="<?php echo esc_attr( $idioma_activo_lc ); ?>" class="mu-hero-banner-idioma-valor">
-
-                <?php
-                // Variantes (una versión por persona): los botones numerados los llena el
-                // JS cuando la respuesta del servicio trae más de una versión. Mismo
-                // componente que el editor de reseñas.
-                ?>
-                <span class="mu-ai-variants" data-role="ai-variants" role="group" aria-label="<?php esc_attr_e( 'Variantes de la traducción', 'mu' ); ?>"></span>
-
-                <?php // Traduce del español al idioma activo; nunca guarda. ?>
-                <span class="mu-hero-banner-ai">
-                    <span class="mu-ai-inline-status" data-role="ai-status"></span>
-                    <button type="button"
-                            class="mu-ai-inline-btn mu-hero-banner-ai-btn"
-                            data-role="ai-btn"
-                            data-fields="<?php echo esc_attr( implode( ',', mu_hero_banner_lang_fields() ) ); ?>"
-                            data-source-lang="es"
-                            title="<?php esc_attr_e( 'Traduce los textos del banner del español al idioma activo', 'mu' ); ?>"
-                            <?php echo 'es' === $idioma_activo_lc ? 'disabled' : ''; ?>>
-                        <?php esc_html_e( 'Traducir', 'mu' ); ?>
-                    </button>
-                </span>
-
-            </div>
 
             <?php
             // [M4] Avisos de fecha visibles en la lista, sin abrir el panel: una fecha
@@ -2110,80 +2069,127 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                     __( 'Imagen', 'mu' )  => [ 'imagen' ],
                 ];
 
-                // Renderiza un campo del bloque de idioma. El sufijo es '' para
-                // español, '_pt' o '_en' para las traducciones.
-                $render_lang_field = function ( $field, $suffix ) use ( $name, $b, $lang_fields, $full_fields ) {
-                    $key   = $field . $suffix;
-                    $value = isset( $b[ $key ] ) ? $b[ $key ] : '';
-                    $input = $name . '[' . $key . ']';
-                    $full  = in_array( $field, $full_fields, true ) ? ' mu-hero-banner-row__full' : '';
+                // [017] UN solo bloque de idioma: cada campo trae sus TRES variantes (es, pt, en)
+                // dentro de un .mu-hero-banner-variante y sólo la activa es visible. Se oculta con
+                // `hidden` y NUNCA con `disabled`: un campo deshabilitado no viaja en el POST y se
+                // perderían las traducciones al guardar. Los `name` no cambian (…[titulo],
+                // …[titulo_pt], …[titulo_en]): el contrato con el guardado queda intacto.
+                $variantes = [ '' => 'es', '_pt' => 'pt', '_en' => 'en' ];
+
+                // Toolbar de idioma: píldoras ES|PT|EN, variantes de IA y «Traducir». Vive en la
+                // línea del primer grupo de campos: no necesita barra propia y, al estar dentro
+                // del bloque único, no puede quedar oculto por el cambio de idioma.
+                $render_toolbar_idioma = function () use ( $b, $idioma_activo_lc ) {
+                    ?>
+                    <span class="mu-hero-banner-row__head">
+                        <span class="mu-lang-pills" role="group" aria-label="<?php esc_attr_e( 'Idioma del banner', 'mu' ); ?>">
+                            <?php
+                            foreach ( [ 'es' => 'Español', 'pt' => 'Portugués (Brasil)', 'en' => 'Inglés' ] as $code => $label ) :
+                                $tiene = 'es' !== $code && mu_hero_banner_lang_has_translation( $b, $code );
+                                ?>
+                                <button type="button"
+                                        class="mu-lang-pill<?php echo $idioma_activo_lc === $code ? ' is-active' : ''; ?>"
+                                        data-lang="<?php echo esc_attr( $code ); ?>"
+                                        data-has-translation="<?php echo $tiene ? '1' : '0'; ?>"
+                                        title="<?php echo esc_attr( $label ); ?>"><?php echo esc_html( strtoupper( $code ) ); ?></button>
+                            <?php endforeach; ?>
+                        </span>
+
+                        <?php
+                        // Variantes (una versión por persona): los botones numerados los llena el
+                        // JS cuando la respuesta del servicio trae más de una versión. Mismo
+                        // componente que el editor de reseñas.
+                        ?>
+                        <span class="mu-ai-variants" data-role="ai-variants" role="group" aria-label="<?php esc_attr_e( 'Variantes de la traducción', 'mu' ); ?>"></span>
+
+                        <?php // Traduce del español al idioma activo; nunca guarda. ?>
+                        <span class="mu-hero-banner-ai">
+                            <span class="mu-ai-inline-status" data-role="ai-status"></span>
+                            <button type="button"
+                                    class="mu-ai-inline-btn mu-hero-banner-ai-btn"
+                                    data-role="ai-btn"
+                                    data-fields="<?php echo esc_attr( implode( ',', mu_hero_banner_lang_fields() ) ); ?>"
+                                    data-source-lang="es"
+                                    title="<?php esc_attr_e( 'Traduce los textos del banner del español al idioma activo', 'mu' ); ?>"
+                                    <?php echo 'es' === $idioma_activo_lc ? 'disabled' : ''; ?>>
+                                <?php esc_html_e( 'Traducir', 'mu' ); ?>
+                            </button>
+                        </span>
+                    </span>
+                    <?php
+                };
+
+                // Renderiza un campo con sus tres variantes de idioma. El `name` de cada una es el
+                // de siempre ('' para ES, '_pt' y '_en' para las traducciones).
+                $render_campo = function ( $field ) use ( $name, $b, $lang_fields, $full_fields, $variantes, $idioma_activo_lc ) {
                     $type  = $lang_fields[ $field ]['type'];
                     $label = $lang_fields[ $field ]['label'];
-                    $data  = ' data-field="' . esc_attr( $field ) . '"';
-
-                    if ( 'image' === $type ) {
-                        ?>
-                        <p class="mu-hero-banner-row__full mu-hero-banner-row__image">
-                            <label><strong><?php echo esc_html( $label ); ?></strong></label>
-                            <span class="mu-hero-banner-row__image-controls">
-                                <input type="text" name="<?php echo esc_attr( $input ); ?>" value="<?php echo esc_attr( $value ); ?>"<?php echo $data; ?> class="large-text mu-hero-banner-row__image-url" placeholder="/wp-content/uploads/...">
-                                <button type="button" class="button mu-hero-banner-row__image-pick"><?php esc_html_e( 'Elegir imagen', 'mu' ); ?></button>
-                            </span>
-                            <img src="<?php echo esc_url( $value ); ?>" alt="" class="mu-hero-banner-row__image-preview"<?php echo $value ? '' : ' style="display:none;"'; ?>>
-                        </p>
-                        <?php
-                        return;
-                    }
-
-                    if ( 'textarea' === $type ) {
-                        ?>
-                        <p class="<?php echo esc_attr( trim( $full ) ); ?>">
-                            <label><strong><?php echo esc_html( $label ); ?></strong></label>
-                            <textarea name="<?php echo esc_attr( $input ); ?>" rows="2"<?php echo $data; ?> class="large-text"><?php echo esc_textarea( $value ); ?></textarea>
-                        </p>
-                        <?php
-                        return;
-                    }
+                    $full  = in_array( $field, $full_fields, true ) ? ' mu-hero-banner-row__full' : '';
+                    $clase = trim( 'mu-hero-banner-campo' . $full . ( 'image' === $type ? ' mu-hero-banner-row__image' : '' ) );
                     ?>
-                    <p class="<?php echo esc_attr( trim( $full ) ); ?>">
+                    <p class="<?php echo esc_attr( $clase ); ?>">
                         <label><strong><?php echo esc_html( $label ); ?></strong></label>
-                        <input type="text" name="<?php echo esc_attr( $input ); ?>" value="<?php echo esc_attr( $value ); ?>"<?php echo $data; ?> class="large-text">
+                        <?php
+                        foreach ( $variantes as $suffix => $idioma ) :
+                            $key    = $field . $suffix;
+                            $value  = isset( $b[ $key ] ) ? (string) $b[ $key ] : '';
+                            $input  = $name . '[' . $key . ']';
+                            $data   = ' data-field="' . esc_attr( $field ) . '"';
+                            $activo = ( $idioma_activo_lc === $idioma );
+                            ?>
+                            <span class="mu-hero-banner-variante" data-lang="<?php echo esc_attr( $idioma ); ?>"<?php echo $activo ? '' : ' hidden'; ?>>
+                                <?php if ( 'image' === $type ) : ?>
+                                    <span class="mu-hero-banner-row__image-controls">
+                                        <input type="text" name="<?php echo esc_attr( $input ); ?>" value="<?php echo esc_attr( $value ); ?>"<?php echo $data; ?> class="large-text mu-hero-banner-row__image-url" placeholder="/wp-content/uploads/...">
+                                        <button type="button" class="button mu-hero-banner-row__image-pick"><?php esc_html_e( 'Elegir imagen', 'mu' ); ?></button>
+                                    </span>
+                                    <img src="<?php echo esc_url( $value ); ?>" alt="" class="mu-hero-banner-row__image-preview"<?php echo $value ? '' : ' style="display:none;"'; ?>>
+                                <?php elseif ( 'textarea' === $type ) : ?>
+                                    <textarea name="<?php echo esc_attr( $input ); ?>" rows="2"<?php echo $data; ?> class="large-text"><?php echo esc_textarea( $value ); ?></textarea>
+                                <?php else : ?>
+                                    <input type="text" name="<?php echo esc_attr( $input ); ?>" value="<?php echo esc_attr( $value ); ?>"<?php echo $data; ?> class="large-text">
+                                <?php endif; ?>
+                            </span>
+                        <?php endforeach; ?>
                     </p>
                     <?php
                 };
                 ?>
 
-                <!-- Bloque de español (idioma base) -->
-                <div class="mu-hero-banner-lang-block" data-lang="es" style="display:<?php echo 'es' === $idioma_activo_lc ? 'block' : 'none'; ?>;">
-                    <?php foreach ( $grupos_campos as $titulo_grupo => $campos_grupo ) : ?>
-                        <p class="mu-hero-banner-group-title"><?php echo esc_html( $titulo_grupo ); ?></p>
-                        <div class="mu-hero-banner-fields-grid">
-                            <?php foreach ( $campos_grupo as $field ) { $render_lang_field( $field, '' ); } ?>
-                        </div>
+                <!-- [017] Bloque ÚNICO de idioma: los tres idiomas viven acá dentro, como variantes
+                     de cada campo. El toolbar (píldoras + variantes de IA + «Traducir») va en la
+                     línea del primer grupo: no necesita barra propia y no puede quedar oculto al
+                     cambiar de idioma. Un campo vacío o igual al español no se guarda, y el front
+                     muestra el español: el punto de la píldora sale de ese contenido guardado. -->
+                <div class="mu-hero-banner-lang-block">
+                    <?php // Avisos del idioma que se está editando (cada uno viaja con su idioma). ?>
+                    <?php foreach ( [ 'pt', 'en' ] as $lang ) : ?>
+                        <?php if ( mu_hero_banner_lang_is_stale( $b, $lang ) ) : ?>
+                            <p class="mu-lang-hint mu-hero-banner-stale" data-lang="<?php echo esc_attr( $lang ); ?>"<?php echo $idioma_activo_lc === $lang ? '' : ' hidden'; ?> role="status">
+                                <?php esc_html_e( 'El texto en español cambió después de esta traducción: conviene revisarla (o volver a traducirla con IA).', 'mu' ); ?>
+                            </p>
+                        <?php endif; ?>
                     <?php endforeach; ?>
-                </div>
 
-                <!-- Réplicas por idioma: siempre editables (no hay casilla que las habilite).
-                     Un campo vacío o igual al español no se guarda, y el front muestra
-                     el español: el punto de la píldora sale de ese contenido guardado. -->
-                <?php foreach ( [ 'pt', 'en' ] as $lang ) : ?>
-                <div class="mu-hero-banner-lang-block" data-lang="<?php echo esc_attr( $lang ); ?>" style="display:<?php echo $idioma_activo_lc === $lang ? 'block' : 'none'; ?>;">
-                    <?php if ( mu_hero_banner_lang_is_stale( $b, $lang ) ) : ?>
-                        <p class="mu-lang-hint mu-hero-banner-stale" role="status">
-                            <?php esc_html_e( 'El texto en español cambió después de esta traducción: conviene revisarla (o volver a traducirla con IA).', 'mu' ); ?>
-                        </p>
-                    <?php endif; ?>
+                    <?php $primer_grupo = true; ?>
                     <?php foreach ( $grupos_campos as $titulo_grupo => $campos_grupo ) : ?>
-                        <p class="mu-hero-banner-group-title"><?php echo esc_html( $titulo_grupo ); ?></p>
+                        <p class="mu-hero-banner-group-title">
+                            <span class="mu-hero-banner-group-title__texto"><?php echo esc_html( $titulo_grupo ); ?></span>
+                            <?php if ( $primer_grupo ) { $render_toolbar_idioma(); } ?>
+                        </p>
                         <div class="mu-hero-banner-fields-grid">
-                            <?php foreach ( $campos_grupo as $field ) { $render_lang_field( $field, '_' . $lang ); } ?>
+                            <?php foreach ( $campos_grupo as $field ) { $render_campo( $field ); } ?>
                         </div>
+                        <?php $primer_grupo = false; ?>
                     <?php endforeach; ?>
-                    <p class="mu-lang-hint">
-                        <?php esc_html_e( 'Lo que dejes vacío (o igual al español) muestra el español en el sitio.', 'mu' ); ?>
-                    </p>
+
+                    <?php // Recordatorio del idioma activo. ?>
+                    <?php foreach ( [ 'pt', 'en' ] as $lang ) : ?>
+                        <p class="mu-lang-hint" data-lang="<?php echo esc_attr( $lang ); ?>"<?php echo $idioma_activo_lc === $lang ? '' : ' hidden'; ?>>
+                            <?php esc_html_e( 'Lo que dejes vacío (o igual al español) muestra el español en el sitio.', 'mu' ); ?>
+                        </p>
+                    <?php endforeach; ?>
                 </div>
-                <?php endforeach; ?>
 
                 <!-- Bloque global: no cambia por idioma -->
                 <div class="mu-hero-banner-globals-block">

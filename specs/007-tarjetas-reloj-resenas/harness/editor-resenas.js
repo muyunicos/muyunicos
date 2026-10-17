@@ -65,6 +65,12 @@ const wait = () => new Promise( r => realSetTimeout( () => { flushTimers(); r();
     window.muReviewModal.openEdit(3);
     await wait();
     pills.find(p => p.lang==='pt').fire('click');
+    // [017] El cambio de idioma oculta VARIANTES (atributo hidden), no el bloque entero, y el
+    // `required` del español viaja con la visibilidad: un required oculto hace que el
+    // navegador bloquee el submit con un mensaje invisible.
+    check('C la variante PT queda visible', false === blocks.find(b => b.lang==='pt').hidden);
+    check('C y la de ES oculta', true === blocks.find(b => b.lang==='es').hidden);
+    check('C con PT a la vista el textarea ES deja de ser obligatorio', !els['mu-review-text'].required);
     check('C boton habilitado en PT', false === els['mu-review-translate'].disabled);
     els['mu-review-text'].value = 'Texto en espanol para traducir';
     translateRes = { success:true, data:{ items:{ text:{ translation:'Texto em portugues', unchanged:false, cached:false } } } };
@@ -76,6 +82,8 @@ const wait = () => new Promise( r => realSetTimeout( () => { flushTimers(); r();
     check('C punto en la pill PT', '1' === pills.find(p => p.lang==='pt').has);
 
     pills.find(p => p.lang==='es').fire('click');
+    check('D la variante ES vuelve a verse', false === blocks.find(b => b.lang==='es').hidden);
+    check('D y vuelve a ser obligatoria', true === els['mu-review-text'].required);
     check('D boton deshabilitado en ES', true === els['mu-review-translate'].disabled);
 
     pills.find(p => p.lang==='en').fire('click');

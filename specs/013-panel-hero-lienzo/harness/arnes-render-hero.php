@@ -438,10 +438,36 @@ check( 'Dentro de «Texto» el eyebrow va antes que el título',
 check( 'Y el título antes que la descripción',
     strpos( $fila, 'data-field="titulo"' ) < strpos( $fila, 'data-field="descripcion"' ) );
 check( 'La imagen quedó en su propio grupo', false !== strpos( $fila, '>Imagen<' ) );
-same( 'Tres grupos por idioma × 3 idiomas', 9, substr_count( $fila, 'mu-hero-banner-group-title' ) );
+same( 'Tres grupos de contenido (un solo bloque, no 9)', 3, substr_count( $fila, 'class="mu-hero-banner-group-title"' ) );
 check( 'La fila de Global dice «huso del sitio» en vez de un offset', false !== strpos( $fila, 'huso del sitio' ) );
 same( 'Y ya no muestra el offset crudo', 0, substr_count( $fila, '(-03:00)' ) );
 check( 'Los ajustes de la fila apuntan al grupo Botones', false !== strpos( $fila, 'en el grupo «Botones»' ) );
+
+echo "\n--- 11. Un solo bloque de idioma con variantes (017) ---\n";
+same( 'Un solo bloque de idioma', 1, substr_count( $fila, 'class="mu-hero-banner-lang-block"' ) );
+same( 'Tres variantes por cada uno de los 10 campos', 30, substr_count( $fila, 'class="mu-hero-banner-variante"' ) );
+check(
+    'El toolbar de idioma vive en la línea del primer grupo (Texto)',
+    (bool) preg_match(
+        '/mu-hero-banner-group-title">\s*<span class="mu-hero-banner-group-title__texto">Texto<\/span>\s*<span class="mu-hero-banner-row__head">/s',
+        $fila
+    )
+);
+same( 'Y trae las píldoras ES|PT|EN', 1, substr_count( $fila, 'class="mu-lang-pills"' ) );
+check( 'El id del idioma activo sigue en la fila', false !== strpos( $fila, 'mu-hero-banner-idioma-valor' ) );
+
+// El contrato con el guardado: los `name` NO cambian ('' para ES, _pt y _en).
+check( 'Los name del campo y sus dos traducciones son los de siempre', false !== strpos( $fila, '[titulo]' )
+    && false !== strpos( $fila, '[titulo_pt]' ) && false !== strpos( $fila, '[titulo_en]' ) );
+check( 'Y los del badge también', false !== strpos( $fila, '[free_badge_text_pt]' ) && false !== strpos( $fila, '[free_badge_text_en]' ) );
+// La trampa que rompería el guardado en silencio: `disabled` saca el campo del POST.
+same( 'Ningún campo deshabilitado (no viajaría en el POST)', 0, preg_match_all( '/<(?:input|textarea)[^>]*\bdisabled\b/', $fila ) );
+
+// Visibilidad: sólo la variante del idioma activo. Se usa `hidden`, nunca `display:none` a mano.
+same( 'La variante de español nace visible', 10, preg_match_all( '/class="mu-hero-banner-variante" data-lang="es">/', $fila ) );
+same( 'Las de PT y EN nacen ocultas', 10, preg_match_all( '/class="mu-hero-banner-variante" data-lang="pt" hidden>/', $fila ) );
+same( 'EN ídem', 10, preg_match_all( '/class="mu-hero-banner-variante" data-lang="en" hidden>/', $fila ) );
+check( 'El bloque de idioma NO se oculta (el toolbar nunca desaparece)', false === strpos( $fila, 'mu-hero-banner-lang-block" data-lang=' ) );
 
 echo "\n== {$GLOBALS['mu_ok']} OK / {$GLOBALS['mu_fail']} FAIL ==\n";
 exit( $GLOBALS['mu_fail'] > 0 ? 1 : 0 );

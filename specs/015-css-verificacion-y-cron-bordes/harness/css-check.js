@@ -169,6 +169,22 @@ check(
         && !panelCss.includes('.mu-hero-banner-lang-block[data-lang="pt"],\n.mu-hero-banner-lang-block[data-lang="en"] {')
 );
 
+console.log('\n--- 3c. Un solo bloque de idioma (017) ---');
+check(
+    'Las variantes se ocultan con `hidden`, no con display (un display:block a secas anularía el atributo)',
+    panelCss.includes('.mu-hero-banner-variante:not([hidden]) { display: block; }')
+        && !/\.mu-hero-banner-variante\s*\{[^}]*display:/.test(panelCss)
+);
+check(
+    'La línea del grupo es flex: rótulo a la izquierda, toolbar a la derecha',
+    /\.mu-hero-banner-group-title\s*\{[^}]*justify-content: space-between/.test(panelCss)
+);
+check(
+    'El toolbar ya NO es una barra con borde propio (vive en la línea del grupo)',
+    !/\.mu-hero-banner-row__head\s*\{[^}]*border-bottom/.test(panelCss)
+        && /\.mu-hero-banner-row__head\s*\{[^}]*text-transform: none/.test(panelCss)
+);
+
 console.log('\n--- 4. Reglas clave del panel (invariantes de 013/014) ---');
 
 check(
