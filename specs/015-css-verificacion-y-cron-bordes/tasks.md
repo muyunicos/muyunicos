@@ -19,11 +19,11 @@
 
 ## Tramo B · Cron de bordes
 
-- [ ] T010 `mu_hero_banner_revisar_bordes()`: evento diario que purga **sólo si el borde cambió** (compara con `mu_hero_banner_ultimo_borde`) y **rearma** el evento único si falta o está vencido
-- [ ] T011 Enganche del evento diario con guard (`wp_next_scheduled`) + reprogramación al guardar
-- [ ] T012 `mu_hero_banner_ultima_purga` (opción: `ts`, `hosts`, `modo`, `borde`) y la fila de estado en el panel (rojo si hay un borde pasado sin purgar)
-- [ ] T013 Rastro a **archivo plano** (patrón `mu_bot404_record_hit()`) además de `error_log`
-- [ ] T014 `modo: url|all` explícito cuando se cae a `litespeed_purge_all` (visible en el panel)
-- [ ] T015 Arnés: el diario se agenda una sola vez; no purga sin cambio de borde; purga con cambio; rearma el único; la opción registra hosts y modo
-- [ ] T016 `MIGRATION-GUIDE.md` §2 (cron del hosting `*/5` y el `>/dev/null`) y §8 (deuda del borde → implementado + auto-sanado + visible)
+- [X] T010 `mu_hero_banner_revisar_bordes()`: evento diario que purga **sólo si el borde esperado quedó atrás y no hay evento pendiente** y **rearma** el evento único si falta o está viejo
+- [X] T011 Enganche del evento diario con guard (`wp_next_scheduled`) en `init` + `mu_hero_banner_borde_esperado` recordado al programar y limpiado al reprogramar
+- [X] T012 `mu_hero_banner_ultima_purga` (opción: `ts`, `hosts`, `modo`) y el renglón de estado en el panel (rojo si hay un borde pasado sin purgar)
+- [X] T013 Rastro a **archivo plano** (`wp-content/uploads/mu-logs/hero-borde.log`, patrón `mu_bot404_record_hit()`) además de `error_log`
+- [X] T014 `modo: url|all` explícito, con el respaldo visible en el panel
+- [X] T015 Arnés: 15 aserciones nuevas en 012 (sección 11) — el arnés queda en **102 OK**
+- [X] T016 `MIGRATION-GUIDE.md` §2 (comando real del cron `*/5` y el `>/dev/null`) y §8 (estado de 015)
 - [ ] T017 Fase B manual: los países que heredan no se ven y «ver todos» los muestra; los dos eventos agendados; «Última purga por borde» actualizándose sin leer logs

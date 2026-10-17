@@ -1,7 +1,6 @@
 # 015 — Verificación de CSS + cron de bordes
 
-**Estado**: Tramo A implementado y desplegado (2026-10-17); Tramo B pendiente.
-**Rama**: `fix/css-verificacion-y-cron-bordes` · **Riesgo**: bajo (un arreglo de CSS y un cron; el front no se toca salvo la purga).
+**Estado**: implementada y desplegada (2026-10-17). **Rama**: `fix/css-verificacion-y-cron-bordes`.
 
 ## Tramo A — El bug de «ver todos los países» y la verificación que faltaba
 
@@ -47,17 +46,24 @@ comprueba que la clase `is-hereda` **esté en el HTML** (estaba), no que el CSS 
 4. Los 8 casos sintéticos del detector (válido, cierre huérfano, sin cerrar, llaves de más/de
    menos, llaves dentro de comentarios) pasan.
 
-## Tramo B — Cron de bordes: auto-sanación y estado visible (pendiente)
+## Tramo B — Cron de bordes: implementado
 
-Ver `tasks.md`. Resumen del diseño aprobado:
+| # | Pieza | Detalle |
+|---|---|---|
+| 1 | **Borde recordado** | Al programar el evento único se guarda `mu_hero_banner_borde_esperado`. Es lo que permite distinguir «el cron todavía no llegó» (≤5 min) de «el evento se perdió» |
+| 2 | **Auto-sanación diaria** | `mu_hero_banner_revisar_bordes()` (evento `mu_hero_banner_revisar_bordes_hook`, agendado con guard en `init`): si el borde esperado ya pasó **y** no hay evento pendiente para él → purga **una vez**; después **rearma** el evento si falta o quedó en un borde viejo. En el caso normal **no hace nada** (cero purgas de más) |
+| 3 | **Estado visible** | `mu_hero_banner_ultima_purga` (ts, hosts, modo) + un renglón arriba de la lista: *«Última purga por borde de fecha: … · N host(s) · por URL»*, y en rojo si hay un borde pasado sin purgar |
+| 4 | **Rastro a prueba del `>/dev/null`** | `mu_hero_banner_log_borde()` escribe en `wp-content/uploads/mu-logs/hero-borde.log` (mismo directorio que los contadores de bot404), **además** de `error_log()`. Medido: en CLI `error_log()` va a stderr y el cron del hosting lo descarta |
+| 5 | **Modo declarado** | `modo: url|all` en la opción y en el panel: si el plugin no expone `litespeed_purge_url`, se ve que se está purgando todo el sitio |
+| 6 | **Arnés** | 15 aserciones nuevas en el arnés de 012 (sección 11): caso normal sin purga, borde perdido que purga y rearma, evento viejo que se rearma sin purgar, los dos modos de purga y los enganches |
+| 7 | **Guide** | §2 con el comando real del cron, el retraso de hasta 5 min y dónde vive el rastro; §8 con el estado |
 
-- **Evento único por borde** (ya existe, feature 012): con el cron del hosting (`*/5`, medido), se
-  ejecuta **≤5 min** después del borde. Aceptable con caché de páginas de 24 h; se declara.
-- **Auto-sanación diaria** (`mu_hero_banner_revisar_bordes`): purga **sólo si el borde cambió** y
-  **rearma** el evento único si falta o quedó viejo. Idempotente.
-- **Estado visible**: opción `mu_hero_banner_ultima_purga` + una fila en el panel
-  (*«Última purga por borde: … · N hosts · por URL»*, en rojo si hay un borde pasado sin purgar).
-- **Rastro a prueba de `>/dev/null`**: archivo plano (patrón `mu_bot404_record_hit()`), porque en
-  CLI `error_log()` va a stderr y el cron del hosting lo descarta.
-- **Respaldo declarado**: si no existe el hook de purga por URL, `litespeed_purge_all` queda
-  registrado como `modo: all` y visible en el panel.
+### Decisiones
+
+- **No se toca la configuración del hosting**: `*/5` es la forma correcta para `DISABLE_WP_CRON` y
+  alcanza (24 h de caché de páginas contra 5 min de retraso).
+- **La revisión diaria no adelanta la purga**: el mecanismo fino sigue siendo el evento único; la
+  revisión es red de seguridad y rearme. Por eso es idempotente y no purga sin un borde atrasado.
+- **El respaldo se mantiene** (purgar de más antes que servir un hero vencido), pero declarado:
+  el modo queda a la vista en el panel en lugar de esconderse en un log.
+

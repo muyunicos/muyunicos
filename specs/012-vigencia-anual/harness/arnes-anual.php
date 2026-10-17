@@ -72,6 +72,8 @@ function wp_parse_args( $a, $d ) { return array_merge( $d, (array) $a ); }
 function get_option( $k, $def = null ) {
     return array_key_exists( $k, (array) ( $GLOBALS['mu_option'] ?? [] ) ) ? $GLOBALS['mu_option'][ $k ] : $def;
 }
+/** [015] Necesario para las opciones del borde (borde esperado, última purga). */
+function update_option( $k, $v, $autoload = null ) { $GLOBALS['mu_option'][ $k ] = $v; return true; }
 function get_transient( $k ) {
     return array_key_exists( $k, (array) ( $GLOBALS['mu_transient'] ?? [] ) ) ? $GLOBALS['mu_transient'][ $k ] : false;
 }
@@ -424,6 +426,78 @@ $GLOBALS['mu_option'][ MU_HERO_BANNERS_OPTION ] = [
     [ 'id' => 'anual-lejos', 'titulo' => 'B', 'anual' => '1', 'paises' => [ 'AR' ], 'inicio' => date( 'dmY', time() + ( 200 * 86400 ) ), 'fin' => date( 'dmY', time() + ( 210 * 86400 ) ) ],
 ];
 same( 'El front ve sólo el banner anual de hoy', [ 'anual-hoy' ], array_column( mu_get_hero_banners(), 'id' ) );
+
+echo "\n--- 11. Red de seguridad diaria del borde (015) ---\n";
+
+// Escenario: un banner anual cuya ventana cierra mañana ⇒ hay un borde FUTURO.
+$GLOBALS['mu_transient']     = [];
+$GLOBALS['mu_transient_ttl'] = [];
+$GLOBALS['mu_option']        = [];
+$GLOBALS['mu_cron']          = [];
+$GLOBALS['mu_actions']       = [];
+$GLOBALS['mu_pais']          = 'AR';
+
+$GLOBALS['mu_option'][ MU_HERO_BANNERS_OPTION ] = [ [
+    'id'     => 'borde',
+    'titulo' => 'B',
+    'anual'  => '1',
+    'paises' => [ 'AR' ],
+    'inicio' => date( 'dmY', time() - 86400 ),
+    'fin'    => date( 'dmY', time() + 86400 ),
+] ];
+
+$borde_real = mu_hero_banner_proximo_borde_global();
+check( 'El escenario tiene un borde futuro', $borde_real > time() );
+
+// (a) Caso normal: el evento está agendado para ese borde y la opción lo recuerda.
+mu_hero_banner_programar_purga_borde();
+same( 'Al programar se recuerda el borde esperado', $borde_real, (int) ( $GLOBALS['mu_option']['mu_hero_banner_borde_esperado'] ?? 0 ) );
+
+$GLOBALS['mu_actions'] = [];
+mu_hero_banner_revisar_bordes();
+same( 'Caso normal: la revisión NO purga', [], $GLOBALS['mu_actions'] );
+same( 'Y deja el evento donde estaba', $borde_real, (int) ( $GLOBALS['mu_cron']['mu_hero_banner_purge_borde'] ?? 0 ) );
+
+// (b) Borde perdido: se esperaba un borde que ya pasó y no hay evento pendiente.
+$GLOBALS['mu_cron']    = [];
+$GLOBALS['mu_actions'] = [];
+$GLOBALS['mu_option']['mu_hero_banner_borde_esperado'] = time() - 3600;   // el evento se perdió
+
+mu_hero_banner_revisar_bordes();
+check( 'Borde perdido: la revisión purga como red de seguridad', $GLOBALS['mu_actions'] !== [] );
+same( 'Y rearma el evento en el próximo borde', $borde_real, (int) ( $GLOBALS['mu_cron']['mu_hero_banner_purge_borde'] ?? 0 ) );
+check( 'Y deja registrada la última purga (para el panel)', ! empty( $GLOBALS['mu_option']['mu_hero_banner_ultima_purga']['ts'] ) );
+same( 'Con su modo (por URL, que es como corre en producción)', 'url', $GLOBALS['mu_option']['mu_hero_banner_ultima_purga']['modo'] ?? '' );
+check( 'Y con la cantidad de hosts', (int) ( $GLOBALS['mu_option']['mu_hero_banner_ultima_purga']['hosts'] ?? 0 ) > 0 );
+
+// (b2) Sin el hook de purga por URL, el modo registrado es el respaldo (purga total).
+unset( $GLOBALS['mu_hooks']['litespeed_purge_url'] );
+$GLOBALS['mu_cron']    = [];
+$GLOBALS['mu_actions'] = [];
+$GLOBALS['mu_option']['mu_hero_banner_borde_esperado'] = time() - 3600;
+
+mu_hero_banner_revisar_bordes();
+same( 'Sin purga por URL, el modo registrado es el respaldo', 'all', $GLOBALS['mu_option']['mu_hero_banner_ultima_purga']['modo'] ?? '' );
+check( 'Y purga todo el sitio', in_array( 'litespeed_purge_all', (array) $GLOBALS['mu_actions'], true ) );
+
+// (c) Evento pendiente para un borde viejo: se rearma, pero no se purga (no hay borde atrasado).
+$GLOBALS['mu_cron']    = [ 'mu_hero_banner_purge_borde' => time() - 7200 ];
+$GLOBALS['mu_actions'] = [];
+$GLOBALS['mu_option']['mu_hero_banner_borde_esperado'] = time() + 100000;   // futuro
+
+mu_hero_banner_revisar_bordes();
+same( 'Con borde esperado futuro no purga', [], $GLOBALS['mu_actions'] );
+same( 'Pero el evento viejo queda rearmado en el borde real', $borde_real, (int) ( $GLOBALS['mu_cron']['mu_hero_banner_purge_borde'] ?? 0 ) );
+
+// (d) Enganches.
+check(
+    'El hook de la revisión diaria está enganchado',
+    in_array( 'mu_hero_banner_revisar_bordes', (array) ( $GLOBALS['mu_hooks']['mu_hero_banner_revisar_bordes_hook'] ?? [] ), true )
+);
+check(
+    'Y el init agenda el evento diario (con guard)',
+    in_array( 'closure', (array) ( $GLOBALS['mu_hooks']['init'] ?? [] ), true )
+);
 
 echo "\n== {$GLOBALS['mu_ok']} OK / {$GLOBALS['mu_fail']} FAIL ==\n";
 exit( $GLOBALS['mu_fail'] > 0 ? 1 : 0 );

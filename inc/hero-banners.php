@@ -1047,6 +1047,10 @@ if ( ! function_exists( 'mu_hero_banner_programar_purga_borde' ) ) {
 
         if ( $borde > time() ) {
             wp_schedule_single_event( $borde, 'mu_hero_banner_purge_borde' );
+
+            // [015] Se recuerda PARA CUÁNDO se esperaba el evento: es lo que le permite a la
+            // revisión diaria distinguir «todavía no corrió el cron» de «se perdió».
+            update_option( 'mu_hero_banner_borde_esperado', $borde, false );
         }
     }
 }
@@ -1062,6 +1066,10 @@ if ( ! function_exists( 'mu_hero_banner_reprogramar_purga_borde' ) ) {
         if ( function_exists( 'wp_clear_scheduled_hook' ) ) {
             wp_clear_scheduled_hook( 'mu_hero_banner_purge_borde' );
         }
+
+        // [015] El borde esperado viejo ya no vale: si no se limpia, la revisión diaria lo
+        // tomaría como «borde atrasado» y purgaría de más.
+        update_option( 'mu_hero_banner_borde_esperado', 0, false );
 
         mu_hero_banner_programar_purga_borde();
     }
@@ -1083,7 +1091,13 @@ if ( ! function_exists( 'mu_hero_banner_purge_borde_ejecutar' ) ) {
         $countries = function_exists( 'muyu_get_countries_data' ) ? muyu_get_countries_data() : [];
         $purgados  = 0;
 
-        if ( function_exists( 'has_action' ) && has_action( 'litespeed_purge_url' ) ) {
+        // [015] El modo queda registrado: 'url' (purgas la home de cada host) o 'all'
+        // (respaldo: purga todo el sitio). Se muestra en el panel, así el mantenedor sabe si
+        // está purgando de más sin tener que leer logs.
+        $por_url = function_exists( 'has_action' ) && has_action( 'litespeed_purge_url' );
+        $modo    = $por_url ? 'url' : 'all';
+
+        if ( $por_url ) {
             foreach ( $countries as $c ) {
                 $host = (string) ( $c['host'] ?? '' );
 
@@ -1103,13 +1117,113 @@ if ( ! function_exists( 'mu_hero_banner_purge_borde_ejecutar' ) ) {
         // escenario nuevo (si el borde era de entrada, el transient no tenía el banner).
         mu_hero_banners_purge_cache();
 
+        // [015] Estado visible en el panel (patrón «Última importación automática» de reseñas).
+        update_option( 'mu_hero_banner_ultima_purga', [
+            'ts'    => time(),
+            'hosts' => $purgados,
+            'modo'  => $modo,
+        ], false );
+
+        mu_hero_banner_log_borde( sprintf(
+            '[MU-HERO-BORDE] purga de la home por borde de fechas host(s)=%d modo=%s',
+            $purgados,
+            $modo
+        ) );
+
         error_log( sprintf(
-            '[MU-HERO-BORDE] purga de la home por borde de fechas host(s)=%d',
-            $purgados
+            '[MU-HERO-BORDE] purga de la home por borde de fechas host(s)=%d modo=%s',
+            $purgados,
+            $modo
         ) );
 
         if ( $programar_siguiente ) {
             mu_hero_banner_programar_purga_borde();
+        }
+    }
+}
+
+if ( ! function_exists( 'mu_hero_banner_log_borde' ) ) {
+    /**
+     * Rastro del borde en archivo plano (feature 015).
+     *
+     * Por qué no alcanza `error_log()`: el cron del hosting ejecuta wp-cron.php por CLI y
+     * descarta stdout+stderr (`> /dev/null 2>&1`), y en CLI `error_log()` escribe a stderr →
+     * se pierde salvo que `WP_DEBUG_LOG` (o el `error_log` del php.ini) apunten a un archivo.
+     * Se escribe un archivo propio en el mismo directorio que usan los contadores de
+     * mu_bot404_record_hit() (`wp-content/uploads/mu-logs/`), con LOCK_EX.
+     *
+     * @param string $mensaje Línea a registrar.
+     */
+    function mu_hero_banner_log_borde( $mensaje ) {
+        if ( ! function_exists( 'wp_upload_dir' ) ) {
+            return;
+        }
+
+        $upload = wp_upload_dir();
+        $base   = (string) ( $upload['basedir'] ?? '' );
+
+        if ( '' === $base ) {
+            return;
+        }
+
+        $dir = trailingslashit( $base ) . 'mu-logs';
+
+        if ( ! is_dir( $dir ) && function_exists( 'wp_mkdir_p' ) ) {
+            wp_mkdir_p( $dir );
+        }
+
+        @file_put_contents(
+            $dir . '/hero-borde.log',
+            gmdate( 'Y-m-d H:i:s' ) . ' ' . $mensaje . "\n",
+            FILE_APPEND | LOCK_EX
+        );
+    }
+}
+
+if ( ! function_exists( 'mu_hero_banner_revisar_bordes' ) ) {
+    /**
+     * Red de seguridad diaria del borde de fecha (feature 015).
+     *
+     * El evento único cubre el caso normal: el cron del hosting corre wp-cron.php cada 5
+     * minutos, así que la purga ocurre ≤5 min después del borde (aceptable con caché de
+     * páginas de 24 h). Esta revisión cubre lo que ese evento NO puede: que se haya perdido
+     * (un guardado que limpió la agenda, una importación de la base, el cron caído) o que los
+     * datos hayan cambiado sin agendar.
+     *
+     * Es IDEMPOTENTE y CONDICIONAL:
+     *   1. si el borde que se esperaba ya pasó y NO hay evento pendiente para él, purga una vez;
+     *   2. rearma el evento único si falta o si apunta a un borde que ya no es el próximo.
+     * En el caso normal (el evento corrió y reprogramó) no hace absolutamente nada.
+     *
+     * @param bool $programar_siguiente false = no reprogramar (lo usa el arnés).
+     */
+    function mu_hero_banner_revisar_bordes( $programar_siguiente = true ) {
+        $ahora    = time();
+        $esperado = (int) get_option( 'mu_hero_banner_borde_esperado', 0 );
+        $agendado = function_exists( 'wp_next_scheduled' ) ? (int) wp_next_scheduled( 'mu_hero_banner_purge_borde' ) : 0;
+
+        // 1) Borde esperado en el pasado y sin evento pendiente para él: se perdió. (Si el
+        //    evento todavía está agendado para ese instante, sólo es que el cron no llegó
+        //    —hasta 5 minutos— y no hay nada que hacer.)
+        if ( $esperado > 0 && $esperado <= $ahora && $agendado !== $esperado ) {
+            mu_hero_banner_purge_borde_ejecutar( false );
+            mu_hero_banner_log_borde( 'revisión diaria: borde atrasado; se purgó como red de seguridad' );
+        }
+
+        if ( ! $programar_siguiente ) {
+            return;
+        }
+
+        // 2) Rearmar el evento único si falta o si quedó en un borde viejo.
+        $proximo = mu_hero_banner_proximo_borde_global();
+
+        if ( $proximo > $ahora && $agendado !== $proximo ) {
+            if ( function_exists( 'wp_clear_scheduled_hook' ) ) {
+                wp_clear_scheduled_hook( 'mu_hero_banner_purge_borde' );
+            }
+
+            mu_hero_banner_programar_purga_borde();
+            mu_hero_banner_log_borde( sprintf( 'revisión diaria: evento rearmado para %s', gmdate( 'Y-m-d H:i:s', $proximo ) ) );
         }
     }
 }
@@ -1126,6 +1240,17 @@ add_action( 'add_option_' . MU_HERO_BANNERS_OPTION, 'mu_hero_banners_purge_cache
 add_action( 'mu_hero_banner_purge_borde', 'mu_hero_banner_purge_borde_ejecutar' );
 add_action( 'update_option_' . MU_HERO_BANNERS_OPTION, 'mu_hero_banner_reprogramar_purga_borde' );
 add_action( 'add_option_' . MU_HERO_BANNERS_OPTION, 'mu_hero_banner_reprogramar_purga_borde' );
+
+// [015] Red de seguridad: revisión DIARIA del borde (auto-sanación + rearme del evento único).
+// Se agenda una sola vez: wp_next_scheduled lee la opción 'cron' (autoloaded), así que el
+// guard es barato. Con el cron del hosting (wp-cron.php cada 5 min) la revisión corre a diario
+// y, en el caso normal, no hace absolutamente nada.
+add_action( 'mu_hero_banner_revisar_bordes_hook', 'mu_hero_banner_revisar_bordes' );
+add_action( 'init', function () {
+    if ( function_exists( 'wp_next_scheduled' ) && ! wp_next_scheduled( 'mu_hero_banner_revisar_bordes_hook' ) ) {
+        wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', 'mu_hero_banner_revisar_bordes_hook' );
+    }
+} );
 
 // ==========================================
 // 1.b RENDER DEL SLIDE — FUENTE ÚNICA (FRONT + PANEL)
@@ -1613,6 +1738,37 @@ if ( ! function_exists( 'mu_hero_banners_render_admin_page' ) ) {
             <h1><?php esc_html_e( 'Hero Banners — Portada', 'mu' ); ?></h1>
             <p class="description">
                 <?php esc_html_e( 'Gestioná los banners del slider principal de la home. Las fechas usan formato DDMMAAAA: si dejás ambas vacías, el banner se muestra siempre. Cada banner se muestra sólo en los países tildados. Las fechas generales (píldora "Global") valen para los países sin ventana propia: elegí la píldora de un país para darle fechas distintas y el punto marcará que tiene ventana propia. En los sitios en otro idioma se usa la versión traducida de cada campo cuando está cargada; los campos vacíos (o iguales al español) muestran el español. El punto en la píldora de idioma marca los idiomas que ya tienen contenido propio. Con «Se repite cada año» en un panel de fechas, esa ventana vuelve todos los años: se ignoran los años guardados y sólo cuentan el día y el mes.', 'mu' ); ?>
+            </p>
+
+            <?php
+            // [015] Estado de la purga por borde: la prueba de que el cron corrió, sin leer logs.
+            // En CLI (cron del hosting) error_log() va a stderr y el `2>&1 >/dev/null` lo
+            // descarta, así que este renglón es la verificación de verdad. El detalle completo
+            // queda en wp-content/uploads/mu-logs/hero-borde.log.
+            $purga    = get_option( 'mu_hero_banner_ultima_purga', [] );
+            $esperado = (int) get_option( 'mu_hero_banner_borde_esperado', 0 );
+            $atrasado = ( $esperado > 0 && $esperado <= time() && ! wp_next_scheduled( 'mu_hero_banner_purge_borde' ) );
+            ?>
+            <p class="description mu-hero-banners-purga<?php echo $atrasado ? ' is-alerta' : ''; ?>">
+                <?php
+                if ( is_array( $purga ) && ! empty( $purga['ts'] ) ) {
+                    printf(
+                        /* translators: 1: fecha y hora de la última purga, 2: cantidad de hosts, 3: modo de purga. */
+                        esc_html__( 'Última purga por borde de fecha: %1$s · %2$d host(s) · %3$s', 'mu' ),
+                        esc_html( ( new DateTimeImmutable( '@' . (int) $purga['ts'] ) )->setTimezone( wp_timezone() )->format( 'd/m/Y H:i' ) ),
+                        (int) ( $purga['hosts'] ?? 0 ),
+                        'all' === ( $purga['modo'] ?? '' )
+                            ? esc_html__( 'purga TOTAL (el plugin no expone la purga por URL)', 'mu' )
+                            : esc_html__( 'por URL, host por host', 'mu' )
+                    );
+                } else {
+                    esc_html_e( 'Todavía no hubo purgas por borde de fecha.', 'mu' );
+                }
+
+                if ( $atrasado ) {
+                    echo ' ' . esc_html__( '⚠ Hay un borde pasado sin purgar: revisá el cron del hosting (MIGRATION-GUIDE §2).', 'mu' );
+                }
+                ?>
             </p>
 
             <?php if ( $updated ) : ?>

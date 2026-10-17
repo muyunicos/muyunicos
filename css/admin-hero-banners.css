@@ -334,8 +334,10 @@
     border-radius: 4px;
 }
 
-/* N2 (feature 013): los nodos de texto plano se editan EN el lienzo. El título no
-   (admite HTML): su clic sigue llevando al campo del formulario. */
+/* [015] Estado de la purga por borde en la pantalla del panel. */
+.mu-hero-banners-purga { margin: 6px 0 0; }
+.mu-hero-banners-purga.is-alerta { color: #b32d2e; font-weight: 600; }
+/* N2 (feature 013): los nodos de texto plano se editan EN el lienzo. El título no (admite HTML): su clic sigue llevando al campo del formulario. */
 .mu-hero-banner-canvas [data-mu][contenteditable] { cursor: text; }
 .mu-hero-banner-canvas [data-mu][contenteditable]:focus {
     outline: 2px solid #2B9FCF;

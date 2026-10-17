@@ -139,6 +139,17 @@ Object Cache (LiteSpeed):
 
 Cronjobs:
 - DISABLE_WP_CRON está activo.
+- Comando del System Cron de Hostinger (verificado 2026-10-17):
+  `*/5 * * * * /usr/bin/php /home/u274449136/domains/muyunicos.com/public_html/wp-cron.php >/dev/null 2>&1`
+  ⇒ wp-cron.php corre **cada 5 minutos**, así que cualquier evento agendado se ejecuta con
+  **hasta 5 minutos de retraso**. Es aceptable para todo lo que hay hoy (la caché de páginas
+  dura 24 h); no hace falta un cron por minuto.
+- ⚠️ Ese `>/dev/null 2>&1` descarta stdout **y stderr**, y en CLI `error_log()` escribe a
+  stderr cuando el php.ini no define `error_log` (o `WP_DEBUG_LOG` no está activo): **un rastro
+  hecho sólo con error_log() desde el cron puede perderse**. Para el borde del hero (feature
+  015) se escribe además un archivo plano en `wp-content/uploads/mu-logs/hero-borde.log`
+  (mismo directorio que los contadores de `mu_bot404_record_hit()`), y el estado se ve en el
+  panel de banners («Última purga por borde de fecha: … · N host(s) · modo»).
 - Dependencia exclusiva del System Cron de Hostinger. 
   Las tareas pesadas (reindexado, transient clears) se ejecutan a nivel servidor para 
   evitar penalizar el rendimiento del frontend.
@@ -1053,6 +1064,35 @@ DENSIDAD DEL PANEL DE BANNERS (2026-10-17, feature 014-panel-densidad):
 - [ ] Verificación manual (Fase B del quickstart de 014): plegado, chips que se mueven entre el
   resumen y el selector, excepción creada y devuelta a la herencia, «ver todos», menú ⋯ y el estado
   rojo de «sin países».
+
+VERIFICACIÓN DE CSS + CRON DE BORDES (2026-10-17, feature 015):
+- Motivo (bug reportado): «ver todos los países» parecía no funcionar porque los 11 países se veían
+  siempre. Causa: una edición anterior usó como ancla la PRIMERA línea de un comentario de dos, así
+  que quedó su segunda línea suelta («   Global siempre; … */» sin su /*). El navegador descarta
+  entonces la regla siguiente (.is-hereda { display: none }) y nada se ocultaba. Ningún arnés de
+  PHP/JS podía verlo: el marcado estaba bien y el CSS no se ejecuta en el arnés.
+- Arreglo (commit d6db174, desplegado solo porque era un bug visible) + ARNÉS DE CSS nuevo
+  (specs/015-…/harness/css-check.js, node sin dependencias): comentarios balanceados (dice la línea
+  del cierre huérfano), llaves balanceadas por archivo ignorando comentarios, y las reglas clave del
+  panel. Se validó EN ORDEN (con el bug falla; después pasa, 68 OK) y volvió a cazar el MISMO error
+  minutos después, en otra edición mía → de ahora en más, cualquier edición de CSS se verifica con
+  este arnés antes de commitear. ⚠️ Lección de proceso: NO usar como ancla la primera línea de un
+  comentario multilínea.
+- CRON (mismo feature): el comando real del hosting es `*/5 * * * * /usr/bin/php …/wp-cron.php
+  >/dev/null 2>&1` (documentado en §2) ⇒ los eventos corren con hasta 5 min de retraso, aceptable
+  contra la caché de páginas de 24 h. Verificado además que ese `2>&1 >/dev/null` PUEDE descartar el
+  rastro de error_log() en CLI, así que el borde escribe también un archivo plano
+  (wp-content/uploads/mu-logs/hero-borde.log) y su estado se ve en el panel.
+- Implementado: mu_hero_banner_borde_esperado (al programar), mu_hero_banner_revisar_bordes() como
+  red de seguridad DIARIA (purga una vez si el borde esperado quedó atrás sin evento pendiente, y
+  rearma el evento único si falta o está viejo; en el caso normal no hace nada),
+  mu_hero_banner_ultima_purga + renglón «Última purga por borde de fecha: … · N host(s) · modo» en
+  el panel (rojo si hay un borde pasado sin purgar) y modo url|all declarado.
+- Verificación: arnés de CSS 68 OK; arnés 012 PHP 102 OK (15 aserciones nuevas en la sección 11,
+  incluidos los dos modos de purga) y JS 18 OK; 013 (118 + 17), 010 (99 + 28), 011 (18), 008
+  (30 + 17) y 006 (54) sin cambios.
+- [ ] Verificación manual (Fase B del quickstart de 015): «ver todos» alternando de verdad, los dos
+  eventos agendados, «Última purga por borde» actualizándose sin leer logs, y el archivo plano.
 - [x] Fase 2 (LIENZO VIVO, misma fecha): el banner REAL dentro de la fila del panel. El
   renderer compartido acepta 'mu' => true, que marca los 10 nodos con data-mu y emite siempre
   eyebrow/CTA secundario/badge (para poder editarlos); el JS los repinta desde el formulario en
