@@ -45,13 +45,27 @@
             return review.text || '';
         }
 
-        /* --- Icono SVG de recarga --- */
-        var refreshIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/></svg>';
-
         /* --- Sistema de memoria para evitar duplicados --- */
         var shownReviews = []; // IDs de reseñas ya mostradas
-        var autoRefreshInterval = null;
-        var AUTO_REFRESH_TIME = 120000; // 2 minutos (optimizado para reducir carga)
+
+        // Recorte por palabras del comentario: red de seguridad para textos
+        // desmesurados. El recorte que se ve lo hace el CSS (-webkit-line-clamp),
+        // que es lo que mantiene el alto parejo entre las tarjetas.
+        var WORD_LIMIT = 45;
+
+        /* --- Reloj del botón de rotación --------------------------------------
+           La duración NO la lleva el JS: vive en el CSS (--mu-ring-duration del
+           botón), el navegador anima el anillo y acá solo se escucha el final de
+           cada vuelta. Pausar el anillo (clase .is-paused) pausa también la
+           carga: el reloj y la carga no se pueden desincronizar.
+           -------------------------------------------------------------------- */
+        var rotateBtn    = document.getElementById('mu-btn-rotate');
+        var ringArc      = rotateBtn ? rotateBtn.querySelector('.mu-refresh-ring-arc') : null;
+        var rotatePaused = false;
+        var rotateTimer  = null;   // Solo en el modo sin animación (reduced motion).
+        var RING_MS_FALLBACK = 10000;
+        var reduceMotion = !!(window.matchMedia
+            && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
         function fisherYatesShuffle(arr) {
             var a = arr.slice();
@@ -158,34 +172,84 @@
             return review.relative_time_description || '';
         }
 
-        function startAutoRefresh() {
-            if (autoRefreshInterval) {
-                clearInterval(autoRefreshInterval);
-            }
-            
-            autoRefreshInterval = setInterval(function() {
-                if (container && container.offsetParent !== null) {
-                    container.style.opacity = '0.5';
-                    setTimeout(function() {
-                        container.style.opacity = '1';
-                        renderReviews();
-                    }, 400);
-                }
-            }, AUTO_REFRESH_TIME);
+        /** Duración del ciclo en ms: se lee del CSS (única fuente de verdad). */
+        function ringDurationMs() {
+            if (!rotateBtn) return RING_MS_FALLBACK;
+
+            var raw = window.getComputedStyle(rotateBtn).getPropertyValue('--mu-ring-duration').trim();
+            var match = /^([\d.]+)(ms|s)$/.exec(raw);
+            if (!match) return RING_MS_FALLBACK;
+
+            var value = parseFloat(match[1]);
+            return 'ms' === match[2] ? value : value * 1000;
         }
 
-        function stopAutoRefresh() {
-            if (autoRefreshInterval) {
-                clearInterval(autoRefreshInterval);
-                autoRefreshInterval = null;
-            }
+        /** Vuelve el anillo a cero: la vuelta empieza de nuevo (clic manual, o al
+            volver de una pestaña en segundo plano). */
+        function restartRing() {
+            if (!ringArc) return;
+
+            ringArc.style.animation = 'none';
+            void ringArc.offsetWidth; // fuerza reflow: sin esto el reinicio no se aplica
+            ringArc.style.animation = '';
+        }
+
+        /** Carga otras opiniones: gira el icono, atenúa la grilla y repinta. */
+        function rotateReviews() {
+            if (rotateBtn) { rotateBtn.classList.add('is-spinning'); }
+            container.classList.add('is-loading');
+
+            setTimeout(function () {
+                renderReviews();
+                container.classList.remove('is-loading');
+                if (rotateBtn) { rotateBtn.classList.remove('is-spinning'); }
+            }, 200);
+        }
+
+        /* --- Pausa / reanudación ---------------------------------------------
+           El reloj se detiene (y no se cargan reseñas) mientras el cursor está
+           sobre el botón o sobre alguna reseña, cuando la sección no se ve y
+           cuando la pestaña queda en segundo plano. Al reanudar sigue donde iba.
+           -------------------------------------------------------------------- */
+
+        /** Sin anillo animado (reduced motion o marcado viejo) rota un temporizador. */
+        function needsFallbackTimer() {
+            return reduceMotion || !ringArc;
+        }
+
+        function startFallbackTimer() {
+            if (!needsFallbackTimer() || rotateTimer || rotatePaused) return;
+            rotateTimer = setInterval(rotateReviews, ringDurationMs());
+        }
+
+        function stopFallbackTimer() {
+            if (!rotateTimer) return;
+            clearInterval(rotateTimer);
+            rotateTimer = null;
+        }
+
+        function pauseRotation() {
+            if (rotatePaused) return;
+            rotatePaused = true;
+            if (rotateBtn) { rotateBtn.classList.add('is-paused'); }
+            stopFallbackTimer();
+        }
+
+        function resumeRotation() {
+            if (!rotatePaused) return;
+            rotatePaused = false;
+            if (rotateBtn) { rotateBtn.classList.remove('is-paused'); }
+            startFallbackTimer();
         }
 
         function renderReviews() {
             if (!allReviews.length) {
                 container.innerHTML = '<p style="text-align:center;width:100%;color:#666;">' + t('loading', 'Cargando opiniones…') + '</p>';
+                if (rotateBtn) { rotateBtn.style.display = 'none'; } // sin reseñas no hay nada que rotar
                 return;
             }
+
+            if (rotateBtn) { rotateBtn.style.display = ''; }
 
             var selection = getRandomReviews(3);
             var html = '';
@@ -193,25 +257,21 @@
 
             for (var i = 0; i < selection.length; i++) {
                 var review   = selection[i];
-                var isLast   = (i === selection.length - 1);
                 var photoUrl = review.profile_photo_url || defaultAvatar;
                 var delay    = i * 100;
                 var reviewIndex = allReviews.indexOf(review);
 
-                var rotateLabel  = t('rotateTitle', 'Ver otras opiniones');
-                var satelliteBtn = isLast
-                    ? '<button class="mu-nav-btn refresh" id="mu-btn-rotate" type="button" title="' + rotateLabel + '" aria-label="' + rotateLabel + '">' + refreshIcon + '</button>'
-                    : '';
-
+                // Miniatura de la compra: va a la izquierda del comentario
+                // (.mu-review-body, en css/testimonials.css).
                 var purchasePhotoHtml = '';
                 if (review.purchase_photo_url) {
-                    purchasePhotoHtml = '<div class="mu-purchase-photo" style="margin-top:10px;"><img src="' + review.purchase_photo_url + '" alt="' + t('purchasePhotoAlt', 'Foto de la compra') + '" style="max-width:100%;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1);"></div>';
+                    purchasePhotoHtml = '<div class="mu-purchase-photo"><img src="' + review.purchase_photo_url + '" alt="' + t('purchasePhotoAlt', 'Foto de la compra') + '" loading="lazy"></div>';
                 }
 
                 // El índice viaja en data-* (no concatenado en el onclick) y lo
                 // resuelve el listener delegado que se registra más abajo.
                 var editBtn = isAdmin 
-                    ? '<button type="button" class="mu-review-edit-btn" data-review-index="' + reviewIndex + '" style="font-size:11px;padding:6px 12px;margin-left:10px;background:#0073aa;color:white;border:none;border-radius:4px;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,0.1);transition:background 0.2s;z-index:10;position:relative;">Editar</button>'
+                    ? '<button type="button" class="mu-review-edit-btn" data-review-index="' + reviewIndex + '">Editar</button>'
                     : '';
 
                 // Tiempo relativo en el idioma de la página (fallback: Google).
@@ -227,50 +287,28 @@
                                     '<div class="mu-stars" aria-label="' + review.rating + ' estrellas">' + getStars(review.rating) + '</div>' +
                                 '</div>' +
                             '</div>' +
-                            '<p class="mu-review-text">“' + truncate(reviewText(review), 20) + '”</p>' +
-                            purchasePhotoHtml +
-                            '<small style="margin-top:auto;color:#999;font-size:0.75rem;padding-top:10px;display:block;">' + timeDisplay + '</small>' +
+                            '<div class="mu-review-body">' +
+                                purchasePhotoHtml +
+                                '<p class="mu-review-text">“' + truncate(reviewText(review), WORD_LIMIT) + '”</p>' +
+                            '</div>' +
+                            '<small class="mu-review-time">' + timeDisplay + '</small>' +
                         '</a>' +
-                        satelliteBtn +
                     '</div>';
             }
 
+            // El botón de rotación no forma parte de este HTML: vive en el marcado
+            // de la página (.mu-reviews-shell) y lo maneja el reloj, así el
+            // repintado no lo destruye ni hay que re-enganchar el clic.
             container.innerHTML = html;
-
-            var btn = document.getElementById('mu-btn-rotate');
-            if (btn) {
-                // Remover listeners anteriores para evitar duplicados
-                var newBtn = btn.cloneNode(true);
-                btn.parentNode.replaceChild(newBtn, btn);
-                
-                newBtn.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    newBtn.style.transform = 'scale(0.95)';
-                    newBtn.style.opacity = '0.8';
-                    container.style.opacity = '0.5';
-
-                    setTimeout(function () {
-                        newBtn.style.transform = 'scale(1)';
-                        newBtn.style.opacity = '1';
-                        container.style.opacity = '1';
-                        renderReviews();
-                    }, 400);
-                });
-            }
-            
-            // Iniciar auto-refresh
-            startAutoRefresh();
         }
 
-        // Detener auto-refresh cuando el elemento no es visible
+        // El reloj se detiene cuando la sección no está a la vista (y sigue al volver)
         var observer = new IntersectionObserver(function(entries) {
             entries.forEach(function(entry) {
                 if (entry.isIntersecting) {
-                    startAutoRefresh();
+                    resumeRotation();
                 } else {
-                    stopAutoRefresh();
+                    pauseRotation();
                 }
             });
         });
@@ -294,6 +332,52 @@
             }
         });
 
+        /* --- Reloj: enganche único (el botón ya no se recrea en cada render) --- */
+        function initRotationClock() {
+            if (!rotateBtn) return;
+
+            restartRing();
+
+            rotateBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                rotateReviews();
+                restartRing();   // con el clic, la próxima vuelta empieza ahora
+            });
+
+            // Con reduced motion el anillo no se dibuja (su animación no corre), así
+            // que el ciclo lo lleva el temporizador y no se escucha el anillo: un
+            // único origen por modo, sin vueltas contadas dos veces.
+            if (ringArc && !reduceMotion) {
+                // Cada vuelta completa del reloj carga otras reseñas.
+                ringArc.addEventListener('animationiteration', function () {
+                    if (!rotatePaused) { rotateReviews(); }
+                });
+            }
+
+            // Cursor sobre el botón o sobre alguna reseña: el reloj se detiene
+            // (mouseenter/mouseleave no burbujean, así que no hay falsos positivos)
+            rotateBtn.addEventListener('mouseenter', pauseRotation);
+            rotateBtn.addEventListener('mouseleave', resumeRotation);
+            container.addEventListener('mouseenter', pauseRotation);
+            container.addEventListener('mouseleave', resumeRotation);
+
+            // Pestaña en segundo plano: se pausa; al volver el reloj arranca de
+            // cero (red de seguridad por si el navegador congeló la animación).
+            document.addEventListener('visibilitychange', function () {
+                if (document.hidden) {
+                    pauseRotation();
+                } else {
+                    restartRing();
+                    resumeRotation();
+                }
+            });
+
+            startFallbackTimer();
+        }
+
+        initRotationClock();
         renderReviews();
     });
     

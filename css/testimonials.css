@@ -19,9 +19,24 @@
 .mu-grid-reviews {
     display: grid;
     grid-template-columns: 1fr;
+    grid-auto-rows: 1fr;          /* todas las filas con el mismo alto */
     gap: var(--mu-space-lg, 40px);
-    margin-bottom: var(--mu-space-lg, 40px);
+    margin-bottom: 0;             /* el espacio de abajo lo lleva .mu-reviews-shell */
     position: relative;
+    transition: opacity 0.2s ease;
+}
+
+/* Mientras se cargan otras reseñas el contenedor se atenúa (clase puesta por JS) */
+.mu-grid-reviews.is-loading {
+    opacity: 0.5;
+}
+
+/* Envoltorio de la sección: contiene la grilla y el botón de rotación.
+   El botón vive acá (y no dentro de #mu-reviews-container, que el JS reescribe
+   en cada rotación): por eso antes desaparecía al cargar otras reseñas. */
+.mu-reviews-shell {
+    position: relative;
+    margin-bottom: var(--mu-space-lg, 40px);
 }
 
 @media (min-width: 900px) {
@@ -55,6 +70,9 @@
     transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
     border: 1px solid transparent;
     height: 100%;
+    /* Alto uniforme: con grid-auto-rows:1fr todas las tarjetas coinciden; el
+       mínimo evita que una grilla de reseñas cortas quede aplastada. */
+    min-height: 280px;
     position: relative;
     z-index: 1;
 }
@@ -76,7 +94,6 @@
     height: 45px;
     margin-right: 12px;
     object-fit: cover;
-    border-radius: 50%;
     flex-shrink: 0;
 }
 
@@ -92,13 +109,72 @@
     letter-spacing: 1px;
 }
 
+/* Cuerpo: miniatura de la compra a la izquierda + comentario a la derecha */
+.mu-review-body {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    flex-grow: 1;
+}
+
+.mu-purchase-photo {
+    flex: 0 0 64px;
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.mu-purchase-photo img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
 .mu-review-text {
     font-size: 0.95rem;
     color: #555;
     line-height: 1.6;
     font-style: italic;
     margin: 0;
-    flex-grow: 1;
+    min-width: 0;
+    /* El recorte del comentario es por líneas (alto uniforme entre tarjetas);
+       el recorte por palabras del JS queda como red de seguridad. */
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Fecha: siempre al pie de la tarjeta */
+.mu-review-time {
+    display: block;
+    margin-top: auto;
+    padding-top: 10px;
+    color: #999;
+    font-size: 0.75rem;
+}
+
+/* Botón "Editar" (solo administradores) */
+.mu-review-edit-btn {
+    position: relative;
+    z-index: 10;
+    margin-left: 10px;
+    padding: 6px 12px;
+    font-size: 11px;
+    color: #fff;
+    background: #0073aa;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: background 0.2s ease;
+}
+
+.mu-review-edit-btn:hover {
+    background: #005a87;
 }
 
 /* ============================================
@@ -108,6 +184,68 @@
 
 .mu-nav-btn.refresh {
     z-index: 10;
+    /* Duración del reloj: única fuente de verdad (el JS la lee del CSS). */
+    --mu-ring-duration: 10s;
+    border-color: transparent;   /* el aro del botón pasa a ser el anillo-reloj */
+}
+
+/* ---------------------------------------------------------------
+   RELOJ — anillo SVG que se completa en --mu-ring-duration.
+   La animación la lleva el navegador (CSS) y el JS solo escucha el
+   final de cada vuelta: pausar la animación pausa también la carga.
+   --------------------------------------------------------------- */
+
+.mu-nav-btn .mu-refresh-ring {
+    position: absolute;
+    inset: -3px;                 /* cubre el borde del botón */
+    width: 44px;
+    height: 44px;
+    pointer-events: none;
+}
+
+.mu-nav-btn .mu-refresh-ring svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    fill: none;
+    stroke: none;
+    transform: rotate(-90deg);   /* arranca a las 12 */
+    transition: none;
+    will-change: auto;
+}
+
+.mu-refresh-ring-track {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.45);
+    stroke-width: 3;
+}
+
+.mu-refresh-ring-arc {
+    fill: none;
+    stroke: #fbbc05;             /* mismo dorado de las estrellas */
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-dasharray: 125.66;    /* 2πr con r = 20 */
+    stroke-dashoffset: 125.66;
+    animation: mu-ring-fill var(--mu-ring-duration, 10s) linear infinite;
+}
+
+@keyframes mu-ring-fill {
+    from { stroke-dashoffset: 125.66; }
+    to   { stroke-dashoffset: 0; }
+}
+
+/* Cursor sobre el botón o sobre una reseña: el reloj se detiene
+   (y con él la carga; ver is-paused en js/testimonials.js) */
+.mu-nav-btn.refresh.is-paused .mu-refresh-ring-arc {
+    animation-play-state: paused;
+}
+
+/* Sin animaciones: no se dibuja el reloj (el JS rota con un temporizador) */
+@media (prefers-reduced-motion: reduce) {
+    .mu-refresh-ring {
+        display: none;
+    }
 }
 
 /* Desktop (≥ 900px): flota sobre el borde derecho de la última tarjeta */
@@ -141,7 +279,8 @@
     to   { transform: rotate(360deg); }
 }
 
-.mu-nav-btn.refresh.is-spinning svg {
+/* Solo el icono gira: el anillo es el reloj y no participa del giro */
+.mu-nav-btn.refresh.is-spinning > svg {
     animation: mu-spin-once 0.4s ease forwards;
 }
 

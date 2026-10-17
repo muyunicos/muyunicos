@@ -570,7 +570,28 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
         <section class="mu-testimonials mu-section">
             <div class="mu-container">
                 <h2 class="mu-section-title"><?php echo esc_html( $i18n['sectionTitle'] ); ?></h2>
-                <div id="mu-reviews-container" class="mu-grid-reviews"></div>
+                <?php
+                // Botón de rotación en el marcado estático de la página (antes lo generaba
+                // js/testimonials.js dentro del HTML que reescribe en cada rotación, y por
+                // eso se destruía al cargar otras reseñas). El anillo que lo rodea es el
+                // reloj: la duración vive en --mu-ring-duration (css/testimonials.css) y el
+                // JS solo escucha el final de cada vuelta. Va fuera de
+                // #mu-reviews-container justamente para que el repintado no lo toque.
+                ?>
+                <div class="mu-reviews-shell">
+                    <div id="mu-reviews-container" class="mu-grid-reviews"></div>
+                    <button class="mu-nav-btn refresh" id="mu-btn-rotate" type="button"
+                            title="<?php echo esc_attr( $i18n['rotateTitle'] ); ?>"
+                            aria-label="<?php echo esc_attr( $i18n['rotateTitle'] ); ?>">
+                        <span class="mu-refresh-ring" aria-hidden="true">
+                            <svg viewBox="0 0 44 44" focusable="false">
+                                <circle class="mu-refresh-ring-track" cx="22" cy="22" r="20"></circle>
+                                <circle class="mu-refresh-ring-arc" cx="22" cy="22" r="20"></circle>
+                            </svg>
+                        </span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/></svg>
+                    </button>
+                </div>
                 <div class="mu-bottom-actions">
                     <a href="https://search.google.com/local/writereview?placeid=<?php echo esc_attr( $place_id ); ?>"
                        target="_blank" rel="noopener noreferrer" class="mu-btn mu-btn-secondary">
@@ -608,7 +629,7 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
                 <p id="mu-review-modal-loading" class="mu-review-modal-loading" style="display:none;"></p>
                 <div id="mu-review-modal-error" class="mu-review-modal-error" role="alert" style="display:none;">
                     <p id="mu-review-modal-error-text" style="margin:0 0 10px;"></p>
-                    <button type="button" onclick="window.muReviewModal.close()" style="padding:6px 14px;border:1px solid #ddd;background:white;border-radius:4px;cursor:pointer;">Cerrar</button>
+                    <button type="button" onclick="window.muReviewModal.close()" style="padding:6px 14px;border:1px solid #ddd;border-radius:4px;cursor:pointer;">Cerrar</button>
                 </div>
                 <form id="mu-review-form">
                     <input type="hidden" id="mu-review-index" name="review_index" value="">
