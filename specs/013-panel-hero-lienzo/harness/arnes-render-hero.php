@@ -377,10 +377,31 @@ check( 'Y dice cuándo entra', false !== strpos( $futuro['texto'], 'Entra el 01/
 // Ventana pasada (fija): no se ve ni va a verse.
 $pasado = mu_hero_banner_estado( [ 'titulo' => 'Pasado', 'paises' => [ 'AR' ], 'inicio' => '01012026', 'fin' => '31012026' ], $junio );
 same( 'Con la ventana vencida: inactivo', 'is-inactivo', $pasado['clase'] );
-same( 'Sin países tildados: inactivo', 'is-inactivo', mu_hero_banner_estado( [ 'titulo' => 'X', 'paises' => [] ], $junio )['clase'] );
+same( 'Sin países tildados ya no cae en "inactivo": tiene su propio estado (014)', 'is-sin-paises', mu_hero_banner_estado( [ 'titulo' => 'X', 'paises' => [] ], $junio )['clase'] );
 check( 'Banner no-array no rompe', is_array( mu_hero_banner_estado( 'x', $junio ) ) );
 
-echo "\n--- 7. El resumen en el marcado de la fila ---\n";
+echo "\n--- 7. Excepciones de vigencia y estado «sin países» (014) ---\n";
+same( 'Sin excepciones: lista vacía', [], mu_hero_banner_excepciones( [ 'id' => 'x', 'paises' => [ 'AR' ] ] ) );
+same( 'Una excepción', [ 'BR' ], mu_hero_banner_excepciones( [ 'fechas' => [ 'BR' => [ 'inicio' => '01062026', 'fin' => '' ] ] ] ) );
+same( 'Varias, en el orden canónico de los países', [ 'AR', 'BR' ], mu_hero_banner_excepciones( [ 'fechas' => [ 'BR' => [ 'inicio' => '01062026' ], 'AR' => [ 'fin' => '30062026' ] ] ] ) );
+same( 'Sólo el flag anual también es excepción', [ 'BR' ], mu_hero_banner_excepciones( [ 'fechas' => [ 'BR' => [ 'anual' => '1' ] ] ] ) );
+same( 'País inexistente se ignora', [], mu_hero_banner_excepciones( [ 'fechas' => [ 'XX' => [ 'inicio' => '01062026' ] ] ] ) );
+same( 'Entrada vacía no es excepción', [], mu_hero_banner_excepciones( [ 'fechas' => [ 'BR' => [ 'inicio' => '', 'fin' => '' ] ] ] ) );
+same( "'fechas' corrupto no rompe", [], mu_hero_banner_excepciones( [ 'fechas' => 'x' ] ) );
+check( 'Banner no-array no rompe', is_array( mu_hero_banner_excepciones( 'x' ) ) );
+check( 'pais_es_excepcion(): sí', true === mu_hero_banner_pais_es_excepcion( [ 'fechas' => [ 'BR' => [ 'inicio' => '01062026' ] ] ], 'BR' ) );
+check( 'pais_es_excepcion(): no', false === mu_hero_banner_pais_es_excepcion( [ 'fechas' => [ 'BR' => [ 'inicio' => '01062026' ] ] ], 'MX' ) );
+
+$sin_paises = mu_hero_banner_estado( [ 'titulo' => 'X', 'paises' => [] ], $junio );
+same( 'Sin países tildados: estado propio', 'is-sin-paises', $sin_paises['clase'] );
+check( 'Y el texto explica el motivo', false !== strpos( $sin_paises['texto'], 'no se verá en el sitio' ) );
+same(
+    'Un país tildado + ventana vencida sigue siendo "inactivo" (no "sin países")',
+    'is-inactivo',
+    mu_hero_banner_estado( [ 'paises' => [ 'AR' ], 'inicio' => '01012026', 'fin' => '31012026' ], $junio )['clase']
+);
+
+echo "\n--- 8. El resumen en el marcado de la fila ---\n";
 same( 'La fila trae el resumen', 1, substr_count( $fila, 'mu-hero-banner-row__summary' ) );
 same( 'Y el cuerpo plegable', 1, substr_count( $fila, '<div class="mu-hero-banner-row__body"' ) );
 same( 'Con el botón de plegar', 1, substr_count( $fila, 'data-role="plegar"' ) );

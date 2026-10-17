@@ -1148,6 +1148,76 @@ if ( ! function_exists( 'mu_hero_badge_defaults' ) ) {
     }
 }
 
+if ( ! function_exists( 'mu_hero_banner_excepciones' ) ) {
+    /**
+     * Países con ventana PROPIA (excepciones a las fechas generales).
+     *
+     * El saneado guarda 'fechas[PAIS]' SÓLO cuando difiere de la general (sobrescritura
+     * dispersa), así que acá alcanza con leer las claves: es un espejo del guardado, no una
+     * regla nueva. Se descartan los códigos que ya no son países válidos y las entradas
+     * vacías (datos viejos), y se devuelven en el orden canónico de los países.
+     *
+     * Existe para que el panel muestre Global + EXCEPCIONES en lugar de una tabla con todos
+     * los ámbitos: con 11 países y la misma ventana para todos, la tabla era puro ruido.
+     *
+     * Función pura: la verifica el arnés de la feature 013.
+     *
+     * @param array $promo Banner.
+     * @return string[] Códigos con ventana propia.
+     */
+    function mu_hero_banner_excepciones( $promo ) {
+        $promo  = is_array( $promo ) ? $promo : [];
+        $fechas = ( isset( $promo['fechas'] ) && is_array( $promo['fechas'] ) ) ? $promo['fechas'] : [];
+        $validos = function_exists( 'muyu_get_countries_data' ) ? array_keys( muyu_get_countries_data() ) : [];
+        $out     = [];
+
+        foreach ( $fechas as $code => $v ) {
+            $code = (string) $code;
+
+            if ( ! is_array( $v ) ) {
+                continue;
+            }
+
+            if ( $validos && ! in_array( $code, $validos, true ) ) {
+                continue;
+            }
+
+            // Entrada sin ningún dato propio: no es una excepción (dato viejo o corrupto).
+            $ini = (string) ( $v['inicio'] ?? '' );
+            $fin = (string) ( $v['fin'] ?? '' );
+            $anu = (string) ( $v['anual'] ?? '' );
+
+            if ( '' === $ini && '' === $fin && '' === $anu ) {
+                continue;
+            }
+
+            $out[] = $code;
+        }
+
+        // Orden canónico (el de muyu_get_countries_data), para que la UI sea estable.
+        if ( $validos ) {
+            $out = array_values( array_intersect( $validos, $out ) );
+        }
+
+        return $out;
+    }
+}
+
+if ( ! function_exists( 'mu_hero_banner_pais_es_excepcion' ) ) {
+    /**
+     * ¿Ese país tiene decisión propia (ventana distinta de la general)?
+     *
+     * Función pura: la verifica el arnés de la feature 013.
+     *
+     * @param array  $promo Banner.
+     * @param string $pais  Código ISO.
+     * @return bool
+     */
+    function mu_hero_banner_pais_es_excepcion( $promo, $pais ) {
+        return in_array( (string) $pais, mu_hero_banner_excepciones( $promo ), true );
+    }
+}
+
 if ( ! function_exists( 'mu_hero_banner_estado' ) ) {
     /**
      * Estado de un banner para el resumen de la fila: ¿se ve ahora, dónde y cuándo cambia?
@@ -1164,6 +1234,16 @@ if ( ! function_exists( 'mu_hero_banner_estado' ) ) {
         $now    = ( null === $now ) ? time() : (int) $now;
         $promo  = is_array( $promo ) ? $promo : [];
         $paises = isset( $promo['paises'] ) && is_array( $promo['paises'] ) ? array_values( $promo['paises'] ) : [ 'AR' ];
+
+        // [014] Sin ningún país tildado el banner no se ve en NINGÚN lado. Es un dato, no una
+        // fecha, y hasta ahora caía en "No se ve en ningún país" (que suena a ventana vencida
+        // y manda a revisar fechas). Merece decirse con todas las letras.
+        if ( empty( $paises ) ) {
+            return [
+                'clase' => 'is-sin-paises',
+                'texto' => __( 'No está tildado en ningún país: no se verá en el sitio', 'mu' ),
+            ];
+        }
 
         // Primer país del banner: da el huso para escribir la fecha del próximo cambio.
         $tz = mu_hero_banner_pais_tz( (string) ( $paises[0] ?? 'AR' ) );
@@ -1544,7 +1624,7 @@ if ( ! function_exists( 'mu_hero_banners_render_admin_page' ) ) {
 
                 <div id="mu-hero-banners-list" class="mu-hero-banners-list">
                     <?php foreach ( $banners as $i => $b ) : ?>
-                        <?php mu_hero_banners_render_row( $i, $b ); ?>
+                        <?php mu_hero_banners_render_row( $i, $b, count( $banners ) > 1 ); ?>
                     <?php endforeach; ?>
                 </div>
 
@@ -1564,7 +1644,7 @@ if ( ! function_exists( 'mu_hero_banners_render_admin_page' ) ) {
 }
 
 if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
-    function mu_hero_banners_render_row( $index, $b ) {
+    function mu_hero_banners_render_row( $index, $b, $colapsada = false ) {
         $b = wp_parse_args( $b, [
             // Globales (no cambian por idioma)
             'id'              => '',
@@ -1620,13 +1700,14 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
         $titulo_resumen = $b['titulo'] ? wp_kses_post( $b['titulo'] ) : esc_html__( 'Nuevo banner', 'mu' );
         $mini_resumen   = (string) ( $b['imagen'] ?? '' );
         ?>
-        <div class="mu-hero-banner-row" data-index="<?php echo esc_attr( $index ); ?>">
+        <div class="mu-hero-banner-row<?php echo $colapsada ? ' is-folded' : ''; ?>" data-index="<?php echo esc_attr( $index ); ?>">
             <?php
-            // Resumen siempre visible (feature 013): estado, miniatura y las acciones de la
-            // fila. El resto (píldoras, campos, lienzo) vive en __body, que se pliega.
+            // Resumen siempre visible (features 013/014): estado, miniatura, países tildados
+            // y acciones. El resto (contenido, vigencia, lienzo) vive en __body, que se pliega
+            // —y nace PLEGADO cuando hay más de un banner, para que la lista se pueda leer—.
             ?>
             <div class="mu-hero-banner-row__summary">
-                <button type="button" class="mu-hero-banner-row__fold" data-role="plegar" aria-expanded="true" title="<?php esc_attr_e( 'Plegar o desplegar', 'mu' ); ?>"><span aria-hidden="true">▾</span></button>
+                <button type="button" class="mu-hero-banner-row__fold" data-role="plegar" aria-expanded="<?php echo $colapsada ? 'false' : 'true'; ?>" title="<?php esc_attr_e( 'Plegar o desplegar', 'mu' ); ?>"><span aria-hidden="true">▾</span></button>
 
                 <?php if ( '' !== $mini_resumen ) : ?>
                     <img class="mu-hero-banner-row__mini" src="<?php echo esc_url( $mini_resumen ); ?>" alt="">
@@ -1640,31 +1721,58 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                 // y elegir el ámbito de sus fechas son el MISMO control. El punto (data-has-fechas)
                 // marca los países con ventana propia, como antes.
                 ?>
-                <span class="mu-hero-banner-chips" role="group" aria-label="<?php esc_attr_e( 'Países donde se muestra el banner', 'mu' ); ?>">
+                <?php
+                // Chips de país (014): SÓLO los tildados, que son los que importan de un
+                // vistazo. Los que quedan libres viven en el selector "+N" (mismo checkbox,
+                // así el POST no cambia: cada país aparece una sola vez, en un lugar o en el
+                // otro). El punto (data-has-fechas) marca los que tienen ventana propia.
+                $chip_markup = function ( $code, $c, $activo ) use ( $b, $name ) {
+                    $ini  = (string) ( $b['fechas'][ $code ]['inicio'] ?? '' );
+                    $fin  = (string) ( $b['fechas'][ $code ]['fin'] ?? '' );
+                    $anu  = (string) ( $b['fechas'][ $code ]['anual'] ?? '' );
+                    $pro  = ( '' !== $ini || '' !== $fin || '' !== $anu );
+                    $titu = $c['name'] . ( $pro ? __( ' · tiene ventana propia', 'mu' ) : '' );
+                    ?>
+                    <label class="mu-hero-banner-chip<?php echo $activo ? ' is-active' : ''; ?>"
+                           data-pais="<?php echo esc_attr( $code ); ?>"
+                           data-has-fechas="<?php echo $pro ? '1' : '0'; ?>"
+                           title="<?php echo esc_attr( $titu ); ?>">
+                        <input type="checkbox" name="<?php echo esc_attr( $name ); ?>[paises][]" value="<?php echo esc_attr( $code ); ?>"<?php checked( $activo ); ?>>
+                        <span><?php echo esc_html( $code ); ?></span>
+                    </label>
                     <?php
-                    foreach ( $countries_data as $code => $c ) :
-                        $chip_activo  = in_array( $code, $b['paises'], true );
-                        $ini_propio   = (string) ( $b['fechas'][ $code ]['inicio'] ?? '' );
-                        $fin_propio   = (string) ( $b['fechas'][ $code ]['fin'] ?? '' );
-                        $anual_propio = (string) ( $b['fechas'][ $code ]['anual'] ?? '' );
-                        $con_ventana  = ( '' !== $ini_propio || '' !== $fin_propio || '' !== $anual_propio );
-                        $chip_titulo  = $c['name'] . ( $con_ventana ? __( ' · tiene ventana propia', 'mu' ) : '' );
-                        ?>
-                        <label class="mu-hero-banner-chip<?php echo $chip_activo ? ' is-active' : ''; ?>"
-                               data-pais="<?php echo esc_attr( $code ); ?>"
-                               data-has-fechas="<?php echo $con_ventana ? '1' : '0'; ?>"
-                               title="<?php echo esc_attr( $chip_titulo ); ?>">
-                            <input type="checkbox" name="<?php echo esc_attr( $name ); ?>[paises][]" value="<?php echo esc_attr( $code ); ?>"<?php checked( $chip_activo ); ?>>
-                            <span><?php echo esc_html( $code ); ?></span>
-                        </label>
-                    <?php endforeach; ?>
+                };
+
+                $chips_on   = [];
+                $chips_off  = [];
+                foreach ( $countries_data as $code => $c ) {
+                    if ( in_array( $code, $b['paises'], true ) ) {
+                        $chips_on[ $code ] = $c;
+                    } else {
+                        $chips_off[ $code ] = $c;
+                    }
+                }
+                ?>
+                <span class="mu-hero-banner-chips" role="group" aria-label="<?php esc_attr_e( 'Países donde se muestra el banner', 'mu' ); ?>">
+                    <?php foreach ( $chips_on as $code => $c ) { $chip_markup( $code, $c, true ); } ?>
+                    <details class="mu-hero-banner-chips-mas"<?php echo $chips_off ? '' : ' hidden'; ?>>
+                        <summary title="<?php esc_attr_e( 'Agregar países', 'mu' ); ?>">+<span data-role="chips-libres"><?php echo (int) count( $chips_off ); ?></span></summary>
+                        <div class="mu-hero-banner-chips-lista">
+                            <?php foreach ( $chips_off as $code => $c ) { $chip_markup( $code, $c, false ); } ?>
+                        </div>
+                    </details>
                 </span>
 
                 <span class="mu-hero-banner-row__acciones">
                     <button type="button" class="button-link mu-hero-banner-row__accion" data-role="duplicar"><?php esc_html_e( 'Duplicar', 'mu' ); ?></button>
-                    <button type="button" class="button-link mu-hero-banner-row__accion" data-role="subir" title="<?php esc_attr_e( 'Subir', 'mu' ); ?>">▲</button>
-                    <button type="button" class="button-link mu-hero-banner-row__accion" data-role="bajar" title="<?php esc_attr_e( 'Bajar', 'mu' ); ?>">▼</button>
-                    <button type="button" class="button-link-delete mu-hero-banner-row__remove"><?php esc_html_e( 'Eliminar', 'mu' ); ?></button>
+                    <details class="mu-hero-banner-row__menu">
+                        <summary title="<?php esc_attr_e( 'Más acciones', 'mu' ); ?>">⋯</summary>
+                        <div class="mu-hero-banner-row__menu-lista">
+                            <button type="button" class="button-link" data-role="subir">▲ <?php esc_html_e( 'Subir', 'mu' ); ?></button>
+                            <button type="button" class="button-link" data-role="bajar">▼ <?php esc_html_e( 'Bajar', 'mu' ); ?></button>
+                            <button type="button" class="button-link-delete mu-hero-banner-row__remove"><?php esc_html_e( 'Eliminar', 'mu' ); ?></button>
+                        </div>
+                    </details>
                 </span>
                 <input type="hidden" name="<?php echo esc_attr( $name ); ?>[_delete]" value="0" class="mu-hero-banner-row__delete-flag">
             </div>
@@ -1957,10 +2065,18 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                         $tz        = mu_hero_banner_pais_tz( $ambito );
                         $ventana_e = mu_hero_banner_ventana_instantes( $b, $ambito );
                         $nota      = mu_hero_banner_anual_efectivo( $b, $ambito ) ? ' · ' . __( 'cada año', 'mu' ) : '';
+
+                        // [014] ¿Este ámbito tiene ventana propia? Las que no, se ocultan: la
+                        // tabla muestra Global + excepciones (con "ver todos" se ven igual).
+                        $es_exc = ! $es_global && mu_hero_banner_pais_es_excepcion( $b, $ambito );
+                        $clase  = 'mu-hero-banner-fechas-block'
+                            . ( $tildado ? '' : ' is-inactivo' )
+                            . ( $es_global ? '' : ( $es_exc ? ' is-excepcion' : ' is-hereda' ) );
                         ?>
-                        <tr class="mu-hero-banner-fechas-block<?php echo $tildado ? '' : ' is-inactivo'; ?>"
+                        <tr class="<?php echo esc_attr( $clase ); ?>"
                             data-pais="<?php echo esc_attr( $ambito ); ?>"
-                            data-tildado="<?php echo $tildado ? '1' : '0'; ?>">
+                            data-tildado="<?php echo $tildado ? '1' : '0'; ?>"
+                            data-es-excepcion="<?php echo $es_exc ? '1' : '0'; ?>">
                             <th scope="row">
                                 <?php if ( $es_global ) : ?>
                                     <strong><?php esc_html_e( 'Global', 'mu' ); ?></strong>
@@ -2022,6 +2138,42 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                                 <?php
                                 $render_fila_vigencia( '' );
 
+                                $n_exc = count( mu_hero_banner_excepciones( $b ) );
+                                ?>
+                                <tr class="mu-hero-banner-vigencia-acciones">
+                                    <td colspan="6">
+                                        <span class="mu-lang-hint">
+                                            <?php
+                                            printf(
+                                                /* translators: 1: países que heredan, 2: total de países. */
+                                                esc_html__( 'La ventana general la usan %1$d de %2$d países.', 'mu' ),
+                                                count( $countries_data ) - $n_exc,
+                                                count( $countries_data )
+                                            );
+                                            ?>
+                                        </span>
+                                        <span class="mu-hero-banner-vigencia-controles">
+                                            <label class="mu-lang-hint">
+                                                <input type="checkbox" data-role="ver-todos">
+                                                <?php esc_html_e( 'ver todos los países', 'mu' ); ?>
+                                            </label>
+                                            <details class="mu-hero-banner-excepcion-add">
+                                                <summary><?php esc_html_e( '+ excepción por país', 'mu' ); ?></summary>
+                                                <div class="mu-hero-banner-chips-lista">
+                                                    <?php
+                                                    foreach ( $countries_data as $code => $c ) :
+                                                        if ( mu_hero_banner_pais_es_excepcion( $b, $code ) ) {
+                                                            continue;   // ya tiene ventana propia
+                                                        }
+                                                        ?>
+                                                        <button type="button" class="mu-hero-banner-chip" data-role="nueva-excepcion" data-pais="<?php echo esc_attr( $code ); ?>" title="<?php echo esc_attr( $c['name'] ); ?>"><?php echo esc_html( $code ); ?></button>
+                                                    <?php endforeach; ?>
+                                                </div>
+                                            </details>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <?php
                                 foreach ( array_keys( $countries_data ) as $code ) {
                                     $render_fila_vigencia( (string) $code );
                                 }

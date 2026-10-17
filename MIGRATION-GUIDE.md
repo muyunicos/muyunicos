@@ -1023,6 +1023,33 @@ RENDER COMPARTIDO DEL HERO + LIENZO DEL PANEL (2026-10-17, feature 013-panel-her
   17 OK (escalaCanvas + textoPlanoDeNodo). El arnés 010 se ajustó en 5 aserciones (medían las
   píldoras y los paneles alternados, que ya no existen: ahora miden chips y filas de la tabla) y el
   012 en 2 (la nota «cada año» y el conteo de filas).
+
+DENSIDAD DEL PANEL DE BANNERS (2026-10-17, feature 014-panel-densidad):
+- Motivo medido con el editor en uso y 11 países: la tabla de vigencia mostraba 11 filas × 6
+  columnas (96 controles) repitiendo la MISMA ventana heredada, los 10 chips estaban siempre
+  visibles y cada fila arrancaba desplegada (~600 px). El caso típico (todos heredan) gastaba la
+  pantalla en decir que 11 países son iguales.
+- Implementado: (1) VIGENCIA POR EXCEPCIÓN —mu_hero_banner_excepciones() es un espejo del saneado
+  (fechas[PAIS] existe sólo si difiere), así que la tabla muestra Global + las excepciones, con
+  + excepción por país, × para devolver a la herencia y «ver todos los países» para la tabla
+  completa (que NO se elimina)—; (2) filas PLEGADAS por defecto cuando hay 2+ banners (se mantiene
+  el botón de plegado y no <details>: el resumen es interactivo); (3) chips de SÓLO los tildados +
+  selector +N (el JS mueve el mismo nodo: cada país aparece una vez en el POST); (4) estado
+  is-sin-paises: «no está tildado en ningún país» se distingue de «la ventana cerró» (en rojo,
+  porque es un dato y rompe el banner en el sitio); (5) acciones de la fila en un menú ⋯.
+- Cero cambios de datos y de contrato del POST: mismos nombres de campo, mismo saneado. Los países
+  que heredan siguen renderizados (ocultos con is-hereda) justamente para no cambiar el POST.
+- Pendiente (mismo spec): agrupar el contenido en Texto/Botones/Imagen en el orden del banner, el
+  badge en un solo lugar, el lienzo pegajoso en dos columnas y el huso del sitio legible
+  («-03:00» → «huso del sitio»).
+- Verificación: arnés 013 PHP 110 OK (14 aserciones nuevas de excepciones/estado) y JS 17 OK;
+  010 migró 2 aserciones (una regex de clase y una nueva de «Global nunca se oculta») y quedó en
+  99 OK + 28; 012 (87 + 18), 011 (18), 008 (30 + 17) y 006 (54) sin cambios.
+- ⚠️ Bug detectado y corregido en la implementación: la fila de Global recibía is-hereda y el CSS
+  la habría ocultado (Global nunca se oculta). Lo cazó el arnés de 010.
+- [ ] Verificación manual (Fase B del quickstart de 014): plegado, chips que se mueven entre el
+  resumen y el selector, excepción creada y devuelta a la herencia, «ver todos», menú ⋯ y el estado
+  rojo de «sin países».
 - [x] Fase 2 (LIENZO VIVO, misma fecha): el banner REAL dentro de la fila del panel. El
   renderer compartido acepta 'mu' => true, que marca los 10 nodos con data-mu y emite siempre
   eyebrow/CTA secundario/badge (para poder editarlos); el JS los repinta desde el formulario en

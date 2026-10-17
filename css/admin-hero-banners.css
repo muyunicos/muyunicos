@@ -392,6 +392,8 @@
 .mu-hero-banner-row__estado.is-activo { background: #edfaef; border-color: #b8e6c0; color: #1a7f37; }
 .mu-hero-banner-row__estado.is-programado { background: #fdf6e3; border-color: #f0d9a0; color: #7a4b00; }
 .mu-hero-banner-row__estado.is-inactivo { background: #f6f7f7; border-color: #dcdcde; color: #646970; }
+/* [014] Sin país tildado: no es una fecha, es un dato que rompe el banner en el sitio. */
+.mu-hero-banner-row__estado.is-sin-paises { background: #fcf0f1; border-color: #e6b8bd; color: #b32d2e; }
 
 .mu-hero-banner-row__acciones {
     margin-left: auto;
@@ -455,7 +457,53 @@
 }
 .mu-hero-banner-vigencia-limpiar:hover { color: #d63638; }
 
-/* --- Chips de país (feature 013): el checkbox es el chip -------------------- */
+/* --- Tabla de vigencia por EXCEPCIÓN (014) ---------------------------------
+   Global siempre; cada país sólo si difiere de la general (o con "ver todos"). */
+.mu-hero-banner-fechas-block.is-hereda { display: none; }
+.mu-hero-banner-tabla.is-ver-todos .mu-hero-banner-fechas-block.is-hereda { display: table-row; }
+
+.mu-hero-banner-vigencia-acciones td {
+    background: #f6f7f7;
+    font-size: 12px;
+}
+
+.mu-hero-banner-vigencia-controles {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: 10px;
+}
+
+.mu-hero-banner-excepcion-add { position: relative; display: inline-block; }
+.mu-hero-banner-excepcion-add > summary { cursor: pointer; font-size: 12px; }
+.mu-hero-banner-excepcion-add > summary::marker { font-size: 10px; }
+
+/* Lista de países del selector "+ excepción" y del "+N" de chips */
+.mu-hero-banner-excepcion-add .mu-hero-banner-chips-lista,
+.mu-hero-banner-chips-mas .mu-hero-banner-chips-lista {
+    position: absolute;
+    z-index: 60;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: 220px;
+    padding: 6px;
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.mu-hero-banner-chips-mas { position: relative; display: inline-block; }
+.mu-hero-banner-chips-mas > summary {
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 1px 8px;
+    border: 1px dashed #c3c4c7;
+    border-radius: 10px;
+    color: #646970;
+}
 .mu-hero-banner-chips {
     display: inline-flex;
     flex-wrap: wrap;

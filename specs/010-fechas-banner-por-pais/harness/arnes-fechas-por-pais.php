@@ -197,7 +197,8 @@ same( 'Las píldoras de país se retiraron (feature 013: los chips son el contro
 same( 'Hay un chip por país del sitio', 6, substr_count( $html, '<label class="mu-hero-banner-chip' ) );
 check( 'La tabla arranca con la fila de Global', (bool) preg_match( '/<tr class="mu-hero-banner-fechas-block"[^>]*data-pais=""/', $html ) );
 check( 'El chip del país tildado sale activo', (bool) preg_match( '/class="mu-hero-banner-chip is-active"[^>]*data-pais="AR"/', $html ) );
-check( 'La fila del país NO tildado queda marcada como inactiva', (bool) preg_match( '/<tr class="mu-hero-banner-fechas-block is-inactivo"[^>]*data-pais="MX"/', $html ) );
+check( 'La fila del país NO tildado queda marcada como inactiva', (bool) preg_match( '/<tr class="mu-hero-banner-fechas-block[^"]*"[^>]*data-pais="MX"[^>]*data-tildado="0"/', $html ) );
+check( 'La fila de Global nunca se oculta (014)', (bool) preg_match( '/<tr class="mu-hero-banner-fechas-block"[^>]*data-pais=""/', $html ) );
 check( 'El país con ventana propia sale con el punto encendido', (bool) preg_match( '/data-pais="BR"[^>]*data-has-fechas="1"/', $html ) );
 check( 'El país sin ventana propia no lleva punto', (bool) preg_match( '/data-pais="AR"[^>]*data-has-fechas="0"/', $html ) );
 same( 'El inicio general conserva el nombre de campo de siempre', 1, substr_count( $html, 'name="mu_banner[0][inicio]"' ) );

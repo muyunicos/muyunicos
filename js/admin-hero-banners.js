@@ -509,16 +509,55 @@
      * conserva (M7) pero el front no la mira hasta activar el país.
      */
     function sincronizarChips($row) {
-        $row.find('.mu-hero-banner-chip input[type="checkbox"]').each(function () {
+        var $chips = $row.find('.mu-hero-banner-chips');
+        var $lista = $chips.find('.mu-hero-banner-chips-lista');
+        var $mas   = $chips.find('.mu-hero-banner-chips-mas');
+        var libres = 0;
+
+        $chips.find('.mu-hero-banner-chip input[type="checkbox"]').each(function () {
             var $check = $(this);
+            var $chip  = $check.closest('.mu-hero-banner-chip');
             var activo = !!$check.prop('checked');
             var code   = String($check.val() || '');
 
-            $check.closest('.mu-hero-banner-chip').toggleClass('is-active', activo);
+            $chip.toggleClass('is-active', activo);
+
+            // [014] El chip vive donde corresponde: tildado = resumen; libre = selector "+N".
+            // Es el MISMO nodo (con su checkbox), así que el POST no cambia.
+            if (activo && !$chip.parent().is($chips)) {
+                $chip.insertBefore($mas);
+            } else if (!activo && !$chip.parent().is($lista)) {
+                $chip.appendTo($lista);
+            }
+
+            if (!activo) { libres++; }
+
             $row.find('.mu-hero-banner-fechas-block[data-pais="' + code + '"]')
                 .toggleClass('is-inactivo', !activo)
                 .attr('data-tildado', activo ? '1' : '0');
         });
+
+        $mas.prop('hidden', libres === 0);
+        $mas.find('[data-role="chips-libres"]').text(libres);
+    }
+
+    /**
+     * [014] Vigencia por excepción: la tabla muestra Global + los países que DIFIEREN de la
+     * general. Los que heredan están en el HTML (para que el POST no cambie) pero ocultos,
+     * salvo con "ver todos" tildado.
+     */
+    function mostrarExcepcion($row, code) {
+        $row.find('.mu-hero-banner-fechas-block[data-pais="' + code + '"]')
+            .removeClass('is-hereda')
+            .addClass('is-excepcion')
+            .attr('data-es-excepcion', '1');
+    }
+
+    function ocultarExcepcion($row, code) {
+        $row.find('.mu-hero-banner-fechas-block[data-pais="' + code + '"]')
+            .removeClass('is-excepcion')
+            .addClass('is-hereda')
+            .attr('data-es-excepcion', '0');
     }
 
     /** El valor general como placeholder de los campos de cada país (ayuda visual). */
@@ -871,6 +910,30 @@
             }
 
             avisarFechas($row, ambito);
+
+            // [014] Un país que vuelve a heredar deja de ser excepción: vuelve a ocultarse.
+            if (ambito !== '') { ocultarExcepcion($row, ambito); }
+        });
+
+        // [014] «ver todos»: muestra también los países que heredan (la tabla completa).
+        $list.on('change', '[data-role="ver-todos"]', function () {
+            $(this).closest('.mu-hero-banner-row')
+                .find('.mu-hero-banner-tabla')
+                .toggleClass('is-ver-todos', !!$(this).prop('checked'));
+        });
+
+        // [014] «+ excepción por país»: promueve la fila de ese país y lleva el foco a Inicio.
+        $list.on('click', '[data-role="nueva-excepcion"]', function (e) {
+            e.preventDefault();
+
+            var $btn = $(this);
+            var $row = $btn.closest('.mu-hero-banner-row');
+            var code = String($btn.attr('data-pais') || '');
+
+            mostrarExcepcion($row, code);
+            $btn.remove();
+
+            $row.find('.mu-hero-banner-fechas-block[data-pais="' + code + '"] [data-fecha="inicio"]').trigger('focus');
         });
 
         // Fechas: el punto del país se recalcula al escribir. Mover las GENERALES
