@@ -11,15 +11,13 @@ node --check js/reviews-admin-modal.js
 node --check js/testimonials.js
 
 # Arnés PHP del módulo real de banners (WordPress simulado, sin red)
-Copy-Item 'inc\hero-banners.php' "$env:TEMP\mu007\hero-banners.php" -Force
-php "$env:TEMP\mu007\arnes-banners.php"     # esperado: 30 OK / 0 FAIL
+php specs\008-banners-pildoras-ia\harness\arnes-banners.php     # esperado: 30 OK / 0 FAIL
+node specs\008-banners-pildoras-ia\harness\banners-js.js     # esperado: 17 OK / 0 FAIL
 
 # Arneses del editor de reseñas (componente compartido + arreglo de la marca)
-Copy-Item 'js\testimonials.js' "$env:TEMP\mu006\testimonials.js" -Force
-Copy-Item 'js\reviews-admin-modal.js' "$env:TEMP\mu006\modal.js" -Force
-node "$env:TEMP\mu006\test-ring.js"      # 37 OK / 0 FAIL
-node "$env:TEMP\mu006\test-ui.js"        # 21 OK / 0 FAIL
-node "$env:TEMP\mu006\test-oldmarkup.js" #  3 OK / 0 FAIL
+node specs\007-tarjetas-reloj-resenas\harness\seccion-resenas.js      # 37 OK / 0 FAIL
+node specs\007-tarjetas-reloj-resenas\harness\editor-resenas.js        # 36 OK / 0 FAIL
+node specs\007-tarjetas-reloj-resenas\harness\editor-marcado-viejo.js #  3 OK / 0 FAIL
 
 # Invariantes: no quedan restos del checkbox/dropdown viejo
 Select-String -Path js\*.js,css\*.css,css\components\*.css,inc\*.php -Pattern `

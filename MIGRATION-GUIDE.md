@@ -321,6 +321,11 @@ muyunicos/ (generatepress-child)
 │   ├── hero-banners.php    # Hero Banners Manager (UI Admin y render).
 │   ├── ui.php              # Header icons, Cart badge, WhatsApp, shortcodes, bestsellers,
 │   │                        # testimonios Google Places, hero promos, popcat.
+│   ├── ai-translate.php     # Servicio de traducción con IA (Gemini): API interna
+│   │                        # mu_ai_translate() + caché + contador de uso. Único
+│   │                        # envío saliente con contenido del sitio (ver §7).
+│   ├── ai-translate-admin.php # Pantalla del servicio (WC → Marketing → Traducciones IA).
+│   ├── reviews-identity.php # Identidad de reseñas: deduplicación por enlace/nombre (puro).
 │   ├── orders-files.php    # Gestor de archivos de pedido: Admin + Email + Mi Cuenta
 │   ├── orders-workflow.php # Estado 'wc-production', emails inteligentes, Admin UI
 │   ├── downloads-bonus.php # Bonus & Guías: inyección tabla descargas + emails.
@@ -412,6 +417,21 @@ echo mu_get_icon('name'); // NUNCA inline SVG directo (excepto en templates stan
 6. CONVENCIONES DE CÓDIGO
 ════════════════════════════════════════════════════════════════
 
+SERVICIO DE TRADUCCIÓN CON IA (API INTERNA)
+- Módulo: inc/ai-translate.php. Pantalla: inc/ai-translate-admin.php (WC → Marketing).
+- Único punto de salida: mu_ai_translate( $items, $lang, $ambito, $opts ) → array con items,
+  variants, missing y usage. Nunca lanza: siempre devuelve estado.
+- Ámbitos en mu_ai_ambitos(): reviews (el comentario) y hero_banner (6 textos).
+- Perfil por ámbito (ajustes → contexts[ámbito]): role, tone, glossary, exclude, personas,
+  variants (1..5), temperature, max_chars, allow_html.
+- Firma de instrucciones: mu_ai_glossary_version() incluye TODOS los campos del perfil; si se
+  edita cualquiera, la caché anterior deja de reutilizarse (es lo buscado).
+- Caché: opción _mu_ai_cache (500 entradas, 180 días). Guarda la tanda completa de variantes en
+  JSON y al leer acepta también las entradas viejas de texto plano.
+- Contador propio: _mu_ai_usage (solicitudes, caracteres y variantes del día y del mes).
+- Consumidores: el editor de reseñas (js/reviews-admin-modal.js) y el de banners
+  (js/admin-hero-banners.js). Ninguno llama al proveedor por su cuenta.
+- Verificación: specs/006-ai-translate-core/harness/arnes.php (módulo real, WordPress simulado).
 BASE DE DATOS Y HPOS (High-Performance Order Storage)
 - WooCommerce tiene activo HPOS (OrdersTableDataStore) por defecto.
 - PROHIBIDO interactuar con la tabla `wp_posts` o `wp_postmeta` para leer/guardar pedidos.
@@ -517,6 +537,21 @@ PREFIJO DE IDIOMA DE LA PETICIÓN (API REUTILIZABLE — inc/compat-wplingua.php)
 
 Antes de diagnosticar cualquier fallo, verificar el entorno (§9): shell activo
 (pwsh 7), directorio actual, PATH y disponibilidad de la herramienta.
+ENVÍO EXTERNO DECLARADO — TRADUCCIÓN CON IA (Google Gemini)
+- Qué se envía: SOLO los textos que el mantenedor decide traducir (comentarios de reseñas o
+  textos de banner) más las instrucciones del ámbito. Nunca datos de clientes: si el módulo
+  detecta un correo, teléfono o número de pedido, rechaza el lote entero sin enviarlo
+  (mu_ai_looks_personal()).
+- A dónde: https://generativelanguage.googleapis.com (v1beta).
+- Cuándo: sólo al pulsar «Traducir» en un editor del panel. Nunca en el request de un
+  visitante.
+- Clave: MU_GEMINI_API_KEY en la configuración del servidor (tiene prioridad) o la opción
+  _mu_ai_key (sin carga automática, enmascarada en la pantalla). Viaja en la cabecera
+  x-goog-api-key: no queda en el repo, ni en la base, ni en la URL.
+- Verificación: WC → Marketing → Traducciones IA → «Probar conexión» (devuelve el modelo y la
+  latencia) + el contador de consumo del día.
+- Reversión: revertir el commit y borrar las opciones _mu_ai_settings, _mu_ai_key, _mu_ai_cache
+  y _mu_ai_usage. Sin clave el servicio queda inerte y el sitio se ve idéntico.
 
 ERRORES "Commands out of sync" (MySQL)
 - Causa: Plugins de terceros (Jetpack, Action Scheduler, Rank Math, Facebook Pixel,
@@ -889,6 +924,8 @@ HUECOS Y DECISIONES ABIERTAS (2026-10-16, feature 004-country-scope):
 - [ ] digital-restriction.php: N+1 en display_digital_price_in_catalog — evaluar get_post_meta() directo.
 - [ ] coming-soon.css: archivo deprecado pero presente. Eliminar tras confirmar inactividad.
 - [x] ui.php: mu_testimonios_section() — el wp_remote_get a Google Places salió del request de admin: la importación vive en mu_reviews_import_from_google() y corre por tarea programada semanal (mu_reviews_weekly_import) además del enlace manual ?force_reviews=1. (2026-10-16)
+- [ ] Arnés de la feature 005 (login/redirect por idioma): NO está versionado (vivía en %TEMP% y se perdió con la limpieza del temporal). Reconstruirlo con el patrón vigente —módulo real + entorno simulado, versionado en `specs/005-login-language-redirect/harness/`— y actualizar su quickstart, que hoy lo declara como deuda.
+- [ ] js/admin-hero-banners.js: el arnés (specs/008-banners-pildoras-ia/harness/banners-js.js) cubre las funciones puras (clasificarCampos/mensajeTraduccion); el manejo de jQuery (píldoras, puntos, guardado, botón Traducir) sigue siendo verificación manual. Extraer más lógica a funciones puras si vuelve a fallar algo de esa capa.
 - [ ] navigation-chips.php: mu_navchips_build_product_index() — evaluar si el índice puede crecer demasiado en wp_options con muchos productos.
 - [ ] WAF en el edge: configurar un challenge para requests con `product_tag=` multi-tag provenientes de bots no verificados. Criterio: "que no intenten ninguna combinación de etiquetas en el borde". Implementar en el WAF de la CDN de Hostinger; el edge hoy no lo soporta. OJO: verificar antes que no bloquee a Google (que rastrea combinaciones de etiquetas).
 - [ ] Excepción en el WAF para `meta-webindexer` (crawler de previews de Facebook/WhatsApp) si se desea preservar las preview cards compartidas. Criterio: las previews de enlaces en redes deben seguir renderizando la imagen.

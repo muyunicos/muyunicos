@@ -8,12 +8,11 @@ php -l inc/ui.php
 node --check js/testimonials.js
 
 # Arnés de la sección (DOM simulado, sin navegador): tarjetas, reloj y pausas
-Copy-Item 'js\testimonials.js' "$env:TEMP\mu006\testimonials.js" -Force
-node "$env:TEMP\mu006\test-ring.js"        # esperado: 37 OK / 0 FAIL
+node specs\007-tarjetas-reloj-resenas\harness\seccion-resenas.js        # esperado: 37 OK / 0 FAIL
 
 # El editor de reseñas, sin regresiones
-node "$env:TEMP\mu006\test-ui.js"          # esperado: 21 OK / 0 FAIL
-node "$env:TEMP\mu006\test-oldmarkup.js"   # esperado: 3 OK / 0 FAIL
+node specs\007-tarjetas-reloj-resenas\harness\editor-resenas.js          # esperado: 36 OK / 0 FAIL
+node specs\007-tarjetas-reloj-resenas\harness\editor-marcado-viejo.js   # esperado: 3 OK / 0 FAIL
 
 # Alcance: el tema padre no se toca
 git diff --name-only                       # nada bajo Tema-GeneratePress/

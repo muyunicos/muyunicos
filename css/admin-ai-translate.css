@@ -81,3 +81,14 @@
 .mu-ai-wrap .mu-ai-result.is-bad {
     color: #8a1f11;
 }
+
+/* Probador por ámbito: cada variante devuelta por el servicio */
+.mu-ai-probar-var {
+    margin: 6px 0 0;
+    padding: 8px 10px;
+    font-size: 13px;
+    line-height: 1.45;
+    background: #f6f7f7;
+    border: 1px solid #dcdcde;
+    border-radius: 6px;
+}

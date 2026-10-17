@@ -16,19 +16,13 @@ php -l inc\compat-wplingua.php; php -l inc\auth-modal.php; php -l inc\login.php;
 
 ### A.2 Harness de la lógica pura (stubs, sin WordPress)
 
-El harness no se versiona: vive en `%TEMP%`. Define `ABSPATH`, los stubs mínimos
-(`wp_unslash`, `wp_parse_url`, `add_filter`) y la lógica real de `geo.php` que el módulo
-consume (`muyu_clean_uri`, `muyu_country_language_prefix`, `muyu_get_countries_data`), e
-incluye el módulo real `inc/compat-wplingua.php` (ruta absoluta). La URI pedida entra por
-`MU_TEST_URI`, así que cada escenario corre en su propio proceso.
-
-```powershell
-$h = "$env:TEMP\mu005-harness.php"   # escrito con here-string (ver PR / historial de la sesión)
-foreach ($u in @('/pt/tienda/?orderby=popularity','/tienda/','/entrega/','/en/tienda/')) {
-    $env:MU_TEST_URI = $u; php $h; "   exit=$LASTEXITCODE"
-}
-# esperado: 18 aserciones OK y exit=0 en las cuatro corridas
-```
+**El harness de esta feature NO está versionado** (vivía en `%TEMP%` y se perdió con la limpieza
+el temporal): es deuda declarada. Definía `ABSPATH`, los stubs mínimos (`wp_unslash`,
+`wp_parse_url`, `add_filter`) y la lógica real de `geo.php` que el módulo consume
+(`muyu_clean_uri`, `muyu_country_language_prefix`, `muyu_get_countries_data`), e incluía el
+módulo real `inc/compat-wplingua.php`. Para volver a correrlo hay que reconstruirlo con el
+patrón vigente: arnés **versionado** que ejecuta el módulo real (ver
+`specs/007-tarjetas-reloj-resenas/harness/README.md` y `specs/006-ai-translate-core/harness/`).
 
 Cobertura del harness:
 

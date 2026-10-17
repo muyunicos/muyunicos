@@ -259,6 +259,31 @@ unset( $GLOBALS['mu_respuesta'] );
 
 ok( 'Se informa sin cambios', ! empty( $r['items']['text']['unchanged'] ) );
 
+echo "\n--- 10. Diagnostico: unchanged, traducidos y faltantes ---\n";
+$GLOBALS['mu_respuesta'] = [
+    'code' => 200,
+    'body' => wp_json_encode( [
+        'candidates' => [ [ 'content' => [ 'parts' => [ [ 'text' => wp_json_encode( [ 'items' => [
+            [ 'key' => 'titulo', 'translation' => '', 'unchanged' => true ],
+            [ 'key' => 'descripcion', 'translation' => 'New description' ],
+        ] ] ) ] ] ] ] ],
+    ] ),
+];
+
+$r = mu_ai_translate(
+    [
+        [ 'key' => 'titulo', 'text' => 'Titulo que el modelo considera ya traducido' ],
+        [ 'key' => 'descripcion', 'text' => 'Descripcion distinta para esta prueba' ],
+        [ 'key' => 'eyebrow', 'text' => 'Eyebrow distinto para esta prueba' ],
+    ],
+    'en',
+    'hero_banner'
+);
+unset( $GLOBALS['mu_respuesta'] );
+
+ok( 'El campo unchanged se informa como tal', ! empty( $r['items']['titulo']['unchanged'] ) );
+ok( 'El campo traducido llega con su texto', 'New description' === ( $r['items']['descripcion']['translation'] ?? '' ), var_export( $r['items']['descripcion'] ?? [], true ) );
+ok( 'El campo que el modelo omitio queda en missing (no como unchanged)', in_array( 'eyebrow', (array) ( $r['missing'] ?? [] ), true ), var_export( $r['missing'] ?? [], true ) );
 echo "\n== {$GLOBALS['mu_ok']} OK / {$GLOBALS['mu_fail']} FAIL ==\n";
 exit( $GLOBALS['mu_fail'] > 0 ? 1 : 0 );
 

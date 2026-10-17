@@ -149,6 +149,73 @@
         });
     }
 
+    /**
+     * Clasifica la respuesta del servicio para los campos pedidos. Función PURA: no
+     * toca el DOM ni jQuery, así que se puede verificar con un arnés
+     * (specs/008-banners-pildoras-ia/harness/banners-js.js).
+     *
+     * Tres situaciones que antes se mezclaban en un solo mensaje:
+     *   - traducido: el servicio devolvió texto nuevo;
+     *   - iguales: el servicio considera que ya está en el idioma destino;
+     *   - faltantes: no llegó nada para ese campo.
+     *
+     * @param {string[]} campos
+     * @param {object}   items Respuesta del servicio, por clave de campo.
+     * @return {{aplicar: object, traducidos: number, iguales: string[], faltantes: string[]}}
+     */
+    function clasificarCampos( campos, items ) {
+        var res = { aplicar: {}, traducidos: 0, iguales: [], faltantes: [] };
+
+        ( campos || [] ).forEach( function ( field ) {
+            var item = ( items || {} )[ field ];
+
+            // Sin item: no llegó nada para ese campo.
+            if ( ! item ) {
+                res.faltantes.push( field );
+                return;
+            }
+
+            // El servicio dice que ya está en el idioma, o no trajo texto: nada que aplicar.
+            if ( item.unchanged || '' === String( item.translation || '' ).trim() ) {
+                res.iguales.push( field );
+                return;
+            }
+
+            res.aplicar[ field ] = String( item.translation );
+            res.traducidos++;
+        } );
+
+        return res;
+    }
+
+    /**
+     * Mensaje de estado para el resultado de una traducción de banner. Función PURA.
+     *
+     * @param {object} res  Resultado de clasificarCampos().
+     * @param {string} lang Idioma destino ('en' | 'pt').
+     * @return {{texto: string, ok: boolean}}
+     */
+    function mensajeTraduccion( res, lang ) {
+        var iguales   = ( res.iguales || [] ).join( ', ' );
+        var faltantes = ( res.faltantes || [] ).join( ', ' );
+
+        if ( res.traducidos ) {
+            return {
+                texto: 'Listo: ' + res.traducidos + ' campo' + ( 1 === res.traducidos ? '' : 's' ) + ' traducido' + ( 1 === res.traducidos ? '' : 's' ) + '. Revisá y guardá.'
+                    + ( res.iguales.length ? ' (Sin cambios según el servicio: ' + iguales + ')' : '' ),
+                ok: true
+            };
+        }
+
+        if ( res.faltantes.length ) {
+            return { texto: 'El servicio no devolvió traducción para: ' + faltantes + '. Probá de nuevo.', ok: false };
+        }
+
+        return {
+            texto: 'El servicio considera que ya están en ' + String( lang || '' ).toUpperCase() + ': ' + iguales + '. Si no es así, ajustá el tono o el glosario del ámbito, y probá de nuevo.',
+            ok: false
+        };
+    }
     function ready() {
         var $list = $('#mu-hero-banners-list');
         var $tpl  = $('#mu-hero-banner-template');
@@ -332,30 +399,17 @@
                         return;
                     }
 
-                    var items      = d.items || {};
-                    var traducidos = 0;
+                                                            var res = clasificarCampos(campos, d.items || {});
 
-                    campos.forEach(function (field) {
-                        var item = items[field];
-                        if (!item || item.unchanged || !item.translation) return; // ya estaba en ese idioma
-
+                    Object.keys(res.aplicar).forEach(function (field) {
                         $row.find('.mu-hero-banner-lang-block[data-lang="' + lang + '"] [data-field="' + field + '"]')
-                            .val(item.translation);
-                        traducidos++;
+                            .val(res.aplicar[field]);
                     });
 
                     refrescarFila($row);
 
-                    if (!traducidos) {
-                        setAiStatus($estado, 'Los textos ya estaban en ese idioma.', false);
-                        return;
-                    }
-
-                    setAiStatus(
-                        $estado,
-                        'Listo: ' + traducidos + ' campo' + (1 === traducidos ? '' : 's') + ' traducido' + (1 === traducidos ? '' : 's') + '. Revisá y guardá.',
-                        true
-                    );
+                    var aviso = mensajeTraduccion(res, lang);
+                    setAiStatus($estado, aviso.texto, aviso.ok);
                 })
                 .catch(function () {
                     $btn.prop('disabled', false);
@@ -375,6 +429,9 @@
             refrescarFila($(this));
         });
     }
+
+    // Funciones puras expuestas para el arnés (specs/008-banners-pildoras-ia/harness/banners-js.js).
+    window.muHeroBanners = { clasificarCampos: clasificarCampos, mensajeTraduccion: mensajeTraduccion };
 
     $(ready);
 })(jQuery);

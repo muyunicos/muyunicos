@@ -62,8 +62,7 @@ relevantes), así que la importación vuelve siempre sobre las mismas.
 php -l inc/reviews-identity.php ; php -l inc/ui.php
 node --check js/testimonials.js ; node --check js/reviews-admin-modal.js
 
-Copy-Item 'inc\reviews-identity.php' "$env:TEMP\mu009\reviews-identity.php" -Force
-php "$env:TEMP\mu009\arnes-resenas.php"   # esperado: 26 OK / 0 FAIL
+php specs\009-resenas-sin-duplicados\harness\arnes-resenas.php   # esperado: 47 OK / 0 FAIL
 ```
 
 El arnés ejecuta el módulo real con lo mínimo de WordPress simulado y cubre: mismo autor con

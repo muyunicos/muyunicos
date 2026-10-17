@@ -247,6 +247,23 @@ if ( ! function_exists( 'mu_ai_render_admin_page' ) ) {
                         <input type="number" min="60" max="5000" id="mu-ai-max-<?php echo esc_attr( $ambito ); ?>" name="contexts[<?php echo esc_attr( $ambito ); ?>][max_chars]" value="<?php echo esc_attr( (int) ( $ctx['max_chars'] ?? 700 ) ); ?>">
                         <span class="mu-ai-hint"><?php esc_html_e( 'Cualquier cambio de estas instrucciones (rol, tono, glosario, personas, variantes o temperatura) invalida la caché de traducciones de ese ámbito: la próxima traducción se pide de nuevo.', 'mu' ); ?></span>
                     </p>
+                    <?php
+                    // Probador del ámbito: manda un texto de ejemplo con la configuración
+                    // GUARDADA y muestra las variantes (una por persona). Cada prueba es una
+                    // solicitud real y consume cuota del día.
+                    ?>
+                    <h3><?php esc_html_e( 'Probar este ámbito', 'mu' ); ?></h3>
+                    <textarea rows="3" class="mu-ai-probar-texto" data-ambito="<?php echo esc_attr( $ambito ); ?>" placeholder="<?php esc_attr_e( 'Pegá un texto de ejemplo para traducir…', 'mu' ); ?>"></textarea>
+                    <p>
+                        <select class="mu-ai-probar-lang" data-ambito="<?php echo esc_attr( $ambito ); ?>">
+                            <option value="pt">Portugués</option>
+                            <option value="en">Inglés</option>
+                        </select>
+                        <button type="button" class="button mu-ai-probar" data-ambito="<?php echo esc_attr( $ambito ); ?>"><?php esc_html_e( 'Probar traducción', 'mu' ); ?></button>
+                        <span class="mu-ai-result mu-ai-probar-resultado" data-ambito="<?php echo esc_attr( $ambito ); ?>"></span>
+                    </p>
+                    <div class="mu-ai-probar-variantes" data-ambito="<?php echo esc_attr( $ambito ); ?>"></div>
+                    <p class="mu-ai-hint"><?php esc_html_e( 'Se prueba con la configuración guardada (guardá antes de probar).', 'mu' ); ?></p>
                 </div>
                 <?php endforeach; ?>
 

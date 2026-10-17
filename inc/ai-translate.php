@@ -191,7 +191,7 @@ if ( ! function_exists( 'mu_ai_settings_defaults' ) ) {
                     'role'        => 'Traducís textos de portada de una tienda online argentina de stickers y papelería personalizada.',
                     'tone'        => 'Breve, claro y vendedor, sin exagerar. Conservá las mayúsculas de marca.',
                     'glossary'    => "envío digital → envio digital (pt) / digital shipping (en)\n¡Gratis! → Grátis! (pt) / Free! (en)",
-                    'exclude'     => 'Conservá el marcado <span class="mu-highlight">…</span> tal cual. No traduzcas URLs, rutas ni nombres de archivo.',
+                    'exclude'     => 'Conservá el marcado <span class="mu-highlight">…</span> tal cual. No traduzcas URLs, rutas ni nombres de archivo. No marques unchanged en botones, etiquetas ni títulos cortos: traducilos siempre, aunque el texto sea un nombre de producto (los nombres también se traducen).',
                     'personas'    => '',
                     'variants'    => 1,
                     'temperature' => 0.2,
@@ -908,7 +908,7 @@ if ( ! function_exists( 'mu_ai_build_payload' ) ) {
             $system .= 'Devolvé JSON válido con esta forma: {"items":[{"key":"…","translation":"…","unchanged":false}]}';
         }
 
-        $system .= "\nMarcá unchanged=true solo si el texto ya estaba en el idioma destino.";
+        $system .= "\nMarcá unchanged=true solo si el texto ya está escrito en el idioma destino. Si dudás, traducí: es preferible una versión para revisar antes que dejar el texto sin traducir.";
 
         $lote = [];
         foreach ( $items as $item ) {
