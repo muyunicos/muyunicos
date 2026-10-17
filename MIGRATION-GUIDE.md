@@ -1151,6 +1151,32 @@ UN SOLO BLOQUE DE IDIOMA POR EDITOR (2026-10-17, feature 017, idea del mantenedo
   (99 + 38) · 011 18 · 008 (30 + 17) · 006 54; php -l y node --check limpios.
 - [ ] Verificación manual (Fase B del quickstart de 017): guardar ESTANDO EN PT y recargar (las tres
   versiones persisten: es la prueba del `disabled`) y el toolbar que no se mueve al alternar idiomas.
+
+DENSIDAD DEL PANEL Y ESTADO DE LA IA (2026-10-17, feature 018):
+- Sobrante al lienzo: la grilla de 016 usaba tres columnas (420 / 400 / 1fr) y la tercera existía
+  sólo para que la fila de ajustes llegara al ancho completo con «1 / -1». Medido: a 1440px quedaban
+  ~380px VACÍOS a la derecha de la vista previa y a 1600px ~540px, con el lienzo congelado en 400px
+  (escala 0,31). Ahora son dos columnas (minmax(320px, 420px) minmax(400px, 1fr)): la preview crece
+  con el panel (escala ~0,64 a 1440px) y los ajustes siguen a ancho completo. No hubo que tocar el
+  JS: escalarLienzo() ya usa el ancho real del lienzo. El arnés de CSS falla si alguien vuelve a la
+  tercera columna vacía.
+- Estado de la IA: el mensaje de ÉXITO ya no ocupa la fila; va al title del botón «Traducir» (se lee
+  al pasar el mouse) y el renglón queda limpio. Los avisos que importan (no se pudo traducir, el
+  servicio cree que ya está en el idioma) siguen visibles en rojo y cortos; el max-width del estado
+  bajó de 320px a 200px porque desde 017 el toolbar vive en una columna de 420px. Los textos de los
+  mensajes no cambiaron, así que los arneses de 008/011 siguen verdes sin tocarlos.
+- Las variantes por idioma NO se pierden al cambiar (lo reportado: «aprieto ES para ver el original
+  y pierdo las traducciones de PT/EN»). Causa exacta: setLang() llamaba a limpiarVariantes() en CADA
+  cambio de idioma y esa función descartaba la tanda (los TEXTOS nunca se perdían: están en inputs
+  con hidden y viajan en el POST; lo que se descartaba eran las opciones 1·2·3 ya generadas). Ahora
+  las tandas se guardan por idioma ($row.data('aiBatches'), con tandaDeIdioma() pura y verificada),
+  al cambiar se repintan las del idioma activo, aplicarVariante() usa la del idioma activo y
+  recuerda qué número quedó puesto en cada uno. limpiarVariantes() se retiró.
+- Verificación: CSS 86 OK (+1) · 011 28 OK (+10) · 013 (130 + 17) · 012 (102 + 18) · 010 (99 + 38) ·
+  008 (30 + 17) · 007 41 · 006 54; php -l y node --check limpios.
+- [ ] Verificación manual (Fase B del quickstart de 018): preview más grande y sin espacio muerto ·
+  sin mensaje verde permanente (y aviso rojo cuando algo falla) · las variantes que sobreviven a ir
+  y volver de ES, cada idioma con las suyas.
 - [x] Fase 2 (LIENZO VIVO, misma fecha): el banner REAL dentro de la fila del panel. El
   renderer compartido acepta 'mu' => true, que marca los 10 nodos con data-mu y emite siempre
   eyebrow/CTA secundario/badge (para poder editarlos); el JS los repinta desde el formulario en
