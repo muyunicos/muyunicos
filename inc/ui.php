@@ -844,7 +844,7 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
                 <p id="mu-review-modal-loading" class="mu-review-modal-loading" style="display:none;"></p>
                 <div id="mu-review-modal-error" class="mu-review-modal-error" role="alert" style="display:none;">
                     <p id="mu-review-modal-error-text" style="margin:0 0 10px;"></p>
-                    <button type="button" onclick="window.muReviewModal.close()" style="padding:6px 14px;border:1px solid #ddd;border-radius:4px;cursor:pointer;">Cerrar</button>
+                    <button type="button" onclick="window.muReviewModal.close()" style="padding:6px 14px;border:1px solid #e0a500;border-radius:4px;cursor:pointer;">Cerrar</button>
                 </div>
                 <form id="mu-review-form">
                     <input type="hidden" id="mu-review-index" name="review_index" value="">
@@ -924,7 +924,7 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
                     
                     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
                         <button type="button" id="mu-delete-review-btn" onclick="window.muReviewModal.deleteReview()" style="padding:10px 20px;background:#dc3232;color:white;border:none;border-radius:4px;cursor:pointer;display:none;">Eliminar</button>
-                        <button type="button" onclick="window.muReviewModal.close()" style="padding:10px 20px;border:1px solid #ddd;background:white;border-radius:4px;cursor:pointer;">Cancelar</button>
+                        <button type="button" onclick="window.muReviewModal.close()" style="padding:10px 20px;border:1px solid #ffc400;background:white;border-radius:4px;cursor:pointer;">Cancelar</button>
                         <button type="submit" style="padding:10px 20px;background:#0073aa;color:white;border:none;border-radius:4px;cursor:pointer;">Guardar</button>
                     </div>
                 </form>
