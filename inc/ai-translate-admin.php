@@ -223,10 +223,29 @@ if ( ! function_exists( 'mu_ai_render_admin_page' ) ) {
                         <h3><?php echo esc_html( $label ); ?></h3>
                         <textarea rows="3" name="contexts[<?php echo esc_attr( $ambito ); ?>][<?php echo esc_attr( $field ); ?>]"><?php echo esc_textarea( (string) ( $ctx[ $field ] ?? '' ) ); ?></textarea>
                     <?php endforeach; ?>
+
+                    <h3><?php esc_html_e( 'Personas (una por línea)', 'mu' ); ?></h3>
+                    <textarea rows="5" name="contexts[<?php echo esc_attr( $ambito ); ?>][personas]"><?php echo esc_textarea( (string) ( $ctx['personas'] ?? '' ) ); ?></textarea>
+                    <p class="mu-ai-hint">
+                        <?php esc_html_e( 'Cada variante de una traducción manual se escribe como una de estas personas: la elige el servicio, no la IA (así el estilo cambia de verdad y se puede repetir). Si lo dejás vacío, la acción manual devuelve una sola traducción estándar: es la ruta automática.', 'mu' ); ?>
+                    </p>
+
+                    <p>
+                        <label for="mu-ai-variants-<?php echo esc_attr( $ambito ); ?>"><strong><?php esc_html_e( 'Variantes por traducción manual (1 a 5)', 'mu' ); ?></strong></label><br>
+                        <input type="number" min="1" max="5" id="mu-ai-variants-<?php echo esc_attr( $ambito ); ?>" name="contexts[<?php echo esc_attr( $ambito ); ?>][variants]" value="<?php echo esc_attr( max( 1, min( 5, (int) ( $ctx['variants'] ?? 1 ) ) ) ); ?>">
+                        <span class="mu-ai-hint"><?php esc_html_e( 'Cuántas versiones distintas (una por persona) devuelve el botón «Traducir». Se acota solo a la cantidad de personas cargadas.', 'mu' ); ?></span>
+                    </p>
+
+                    <p>
+                        <label for="mu-ai-temp-<?php echo esc_attr( $ambito ); ?>"><strong><?php esc_html_e( 'Temperatura', 'mu' ); ?></strong></label><br>
+                        <input type="number" min="0" max="1.5" step="0.1" id="mu-ai-temp-<?php echo esc_attr( $ambito ); ?>" name="contexts[<?php echo esc_attr( $ambito ); ?>][temperature]" value="<?php echo esc_attr( (float) ( $ctx['temperature'] ?? 0.2 ) ); ?>">
+                        <span class="mu-ai-hint"><?php esc_html_e( 'Más alta = más variedad de redacción; más baja = más fiel y repetible. Sugerido: 0.9 en reseñas (con personas) y 0.2 en textos de portada.', 'mu' ); ?></span>
+                    </p>
+
                     <p>
                         <label for="mu-ai-max-<?php echo esc_attr( $ambito ); ?>"><strong><?php esc_html_e( 'Largo máximo (caracteres)', 'mu' ); ?></strong></label><br>
                         <input type="number" min="60" max="5000" id="mu-ai-max-<?php echo esc_attr( $ambito ); ?>" name="contexts[<?php echo esc_attr( $ambito ); ?>][max_chars]" value="<?php echo esc_attr( (int) ( $ctx['max_chars'] ?? 700 ) ); ?>">
-                        <span class="mu-ai-hint"><?php esc_html_e( 'Cambiar el glosario o el tono invalida la caché de traducciones de ese ámbito.', 'mu' ); ?></span>
+                        <span class="mu-ai-hint"><?php esc_html_e( 'Cualquier cambio de estas instrucciones (rol, tono, glosario, personas, variantes o temperatura) invalida la caché de traducciones de ese ámbito: la próxima traducción se pide de nuevo.', 'mu' ); ?></span>
                     </p>
                 </div>
                 <?php endforeach; ?>
@@ -237,8 +256,8 @@ if ( ! function_exists( 'mu_ai_render_admin_page' ) ) {
             <div class="mu-ai-card">
                 <h2><?php esc_html_e( 'Consumo', 'mu' ); ?></h2>
                 <div class="mu-ai-usage">
-                    <span><?php echo esc_html( sprintf( __( 'Hoy (%s): %d solicitudes, %d caracteres', 'mu' ), (string) $usage['day'], (int) $usage['day_requests'], (int) $usage['day_chars'] ) ); ?></span>
-                    <span><?php echo esc_html( sprintf( __( 'Mes (%s): %d solicitudes', 'mu' ), (string) $usage['month'], (int) $usage['month_requests'] ) ); ?></span>
+                    <span><?php echo esc_html( sprintf( __( 'Hoy (%1$s): %2$d solicitudes, %3$d caracteres enviados, %4$d variantes', 'mu' ), (string) $usage['day'], (int) $usage['day_requests'], (int) $usage['day_chars'], (int) ( $usage['day_variants'] ?? 0 ) ) ); ?></span>
+                    <span><?php echo esc_html( sprintf( __( 'Mes (%1$s): %2$d solicitudes, %3$d variantes', 'mu' ), (string) $usage['month'], (int) $usage['month_requests'], (int) ( $usage['month_variants'] ?? 0 ) ) ); ?></span>
                     <?php if ( ! empty( $usage['last_model'] ) ) : ?>
                         <span><?php echo esc_html( sprintf( __( 'Modelo en uso: %s', 'mu' ), (string) $usage['last_model'] ) ); ?></span>
                     <?php endif; ?>

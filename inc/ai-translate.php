@@ -677,9 +677,11 @@ if ( ! function_exists( 'mu_ai_usage' ) ) {
             'day'            => '',
             'day_requests'   => 0,
             'day_chars'      => 0,
+            'day_variants'   => 0,
             'month'          => '',
             'month_requests' => 0,
             'month_chars'    => 0,
+            'month_variants' => 0,
             'last_model'     => '',
             'last_error'     => [],
         ];
@@ -688,15 +690,17 @@ if ( ! function_exists( 'mu_ai_usage' ) ) {
         $month = current_time( 'Y-m' );
 
         if ( $usage['day'] !== $today ) {
-            $usage['day']          = $today;
-            $usage['day_requests'] = 0;
-            $usage['day_chars']    = 0;
+            $usage['day']           = $today;
+            $usage['day_requests']  = 0;
+            $usage['day_chars']     = 0;
+            $usage['day_variants']  = 0;
         }
 
         if ( $usage['month'] !== $month ) {
             $usage['month']          = $month;
             $usage['month_requests'] = 0;
             $usage['month_chars']    = 0;
+            $usage['month_variants'] = 0;
         }
 
         return $usage;
@@ -707,17 +711,25 @@ if ( ! function_exists( 'mu_ai_usage_bump' ) ) {
     /**
      * Suma UNA solicitud efectivamente enviada y persiste el contador.
      *
-     * @param int $chars Caracteres enviados (solo para el registro).
+     * `$variants` registra cuántas versiones se pidieron en esa solicitud: una tanda
+     * manual de 5 variantes es **una** solicitud, pero gasta bastante más salida que
+     * una traducción estándar. Sin este dato el panel diría que salió barata.
+     *
+     * @param int $chars    Caracteres enviados (solo para el registro).
+     * @param int $variants Variantes pedidas en esa solicitud (1 = estándar).
      * @return array Contador actualizado.
      */
-    function mu_ai_usage_bump( $chars ) {
-        $usage = mu_ai_usage();
-        $chars = max( 0, (int) $chars );
+    function mu_ai_usage_bump( $chars, $variants = 1 ) {
+        $usage    = mu_ai_usage();
+        $chars    = max( 0, (int) $chars );
+        $variants = max( 1, (int) $variants );
 
         $usage['day_requests']   = (int) $usage['day_requests'] + 1;
         $usage['day_chars']      = (int) $usage['day_chars'] + $chars;
+        $usage['day_variants']   = (int) $usage['day_variants'] + $variants;
         $usage['month_requests'] = (int) $usage['month_requests'] + 1;
         $usage['month_chars']    = (int) $usage['month_chars'] + $chars;
+        $usage['month_variants'] = (int) $usage['month_variants'] + $variants;
 
         update_option( MU_AI_USAGE_OPTION, $usage, false );
 
@@ -736,8 +748,10 @@ if ( ! function_exists( 'mu_ai_usage_reset' ) ) {
 
         $usage['day_requests']   = 0;
         $usage['day_chars']      = 0;
+        $usage['day_variants']   = 0;
         $usage['month_requests'] = 0;
         $usage['month_chars']    = 0;
+        $usage['month_variants'] = 0;
 
         update_option( MU_AI_USAGE_OPTION, $usage, false );
 
@@ -951,7 +965,7 @@ if ( ! function_exists( 'mu_ai_provider_request' ) ) {
         );
 
         // Se contabiliza desde que la solicitud sale, incluso si el proveedor falla.
-        mu_ai_usage_bump( $chars );
+        mu_ai_usage_bump( $chars, $variants );
 
         if ( is_wp_error( $response ) ) {
             return [

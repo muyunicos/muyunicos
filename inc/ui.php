@@ -870,7 +870,7 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
                             <label style="display:block;font-weight:bold;">Comentario:</label>
                             <span style="display:inline-flex;align-items:center;gap:8px;">
                                 <span id="mu-review-translate-status" class="mu-ai-inline-status"></span>
-                                <button type="button" id="mu-review-original-toggle" class="mu-ai-eye" hidden title="Ver el original en español">👁</button>
+                                <button type="button" id="mu-review-original-toggle" class="mu-ai-eye" hidden aria-expanded="false" aria-controls="mu-review-original" title="Ver el original en español">👁</button>
                                 <?php // Botones numerados (1..5) que llena el JS cuando la traducción trae variantes. ?>
                                 <span id="mu-review-variants" class="mu-ai-variants" role="group" aria-label="Variantes de la traducción"></span>
                                 <button type="button" id="mu-review-translate" class="mu-ai-inline-btn" disabled title="Traduce el comentario en español al idioma activo">Traducir</button>

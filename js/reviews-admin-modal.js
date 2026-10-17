@@ -76,10 +76,14 @@
 
             if (!panel || !ojo) { return; }
 
-            var ver = ('boolean' === typeof mostrar) ? mostrar : !panel.hidden;
+            // `panel.hidden` es el estado ACTUAL: si está oculto, hay que mostrarlo.
+            // (Antes estaba negado, así que el primer clic lo dejaba oculto y el
+            // comparador no abría nunca.)
+            var ver = ('boolean' === typeof mostrar) ? mostrar : panel.hidden;
 
             panel.hidden = !ver;
             ojo.classList.toggle('is-active', ver);
+            ojo.setAttribute('aria-expanded', ver ? 'true' : 'false');
 
             if (ver) {
                 panel.textContent = byId('mu-review-text').value || '(sin texto en español)';

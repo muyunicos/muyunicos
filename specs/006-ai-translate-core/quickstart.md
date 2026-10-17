@@ -45,7 +45,10 @@ Escenarios que el arnés debe cubrir y su resultado esperado:
 | Glosario cambiado | La caché anterior no se reutiliza (la clave incluye la versión del glosario) |
 
 ```powershell
-php "$env:TEMP\mu006-arnes.php"
+php specs\006-ai-translate-core\harness\arnes.php
+# Esperado: 42 OK / 0 FAIL. El arnés está VERSIONADO en el repo (reemplaza a los viejos
+# %TEMP%\mu006\{stubs,tests}.php, que se perdían con la limpieza del temporal): trae
+# WordPress simulado y captura las solicitudes salientes.
 # esperado: todas las aserciones OK y exit=0
 ```
 
