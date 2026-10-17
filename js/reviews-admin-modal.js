@@ -570,7 +570,10 @@
                     renderVariants(lang, variantes, data.personas || []);
 
                     if (variantes.length > 1) {
-                        setStatus('Listo: ' + variantes.length + ' variantes. Elegí con los números y guardá.', true);
+                        // Los números ya dicen cuántas variantes hay: sin aviso. Se limpia
+                        // además cualquier mensaje anterior (por ejemplo, el de traducción
+                        // desactualizada), que ya no aplica.
+                        setStatus('', false);
                     } else {
                         setStatus('Listo. Revisá la traducción y guardá.', true);
                     }
