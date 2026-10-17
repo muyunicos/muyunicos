@@ -1747,7 +1747,8 @@ if ( ! function_exists( 'mu_hero_banners_render_admin_page' ) ) {
             // queda en wp-content/uploads/mu-logs/hero-borde.log.
             $purga    = get_option( 'mu_hero_banner_ultima_purga', [] );
             $esperado = (int) get_option( 'mu_hero_banner_borde_esperado', 0 );
-            $atrasado = ( $esperado > 0 && $esperado <= time() && ! wp_next_scheduled( 'mu_hero_banner_purge_borde' ) );
+            $agendado = ( function_exists( 'wp_next_scheduled' ) ) ? (int) wp_next_scheduled( 'mu_hero_banner_purge_borde' ) : 0;
+            $atrasado = ( $esperado > 0 && $esperado <= time() && ! $agendado );
             ?>
             <p class="description mu-hero-banners-purga<?php echo $atrasado ? ' is-alerta' : ''; ?>">
                 <?php
@@ -1763,6 +1764,18 @@ if ( ! function_exists( 'mu_hero_banners_render_admin_page' ) ) {
                     );
                 } else {
                     esc_html_e( 'Todavía no hubo purgas por borde de fecha.', 'mu' );
+                }
+
+                // [016] El evento agendado: la prueba de que el cron está armado, sin esperar
+                // a que pase un borde ni leer logs.
+                if ( $agendado > 0 ) {
+                    printf(
+                        /* translators: %s: fecha y hora del próximo borde de fecha. */
+                        esc_html__( ' · Próximo borde: %s', 'mu' ),
+                        esc_html( ( new DateTimeImmutable( '@' . $agendado ) )->setTimezone( wp_timezone() )->format( 'd/m/Y H:i' ) )
+                    );
+                } else {
+                    echo ' ' . esc_html__( '· Sin borde agendado (ninguna ventana de fecha tiene fin).', 'mu' );
                 }
 
                 if ( $atrasado ) {
@@ -2298,6 +2311,7 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                             <strong><?php esc_html_e( 'Vigencia (fechas DDMMAAAA)', 'mu' ); ?></strong>
                             <span class="mu-lang-hint"><?php esc_html_e( 'Medianoche LOCAL de cada país. Lo que dejés vacío (o igual a Global) hereda de Global; con los dos campos vacíos el banner se muestra siempre en ese ámbito.', 'mu' ); ?></span>
                         </p>
+                        <div class="mu-hero-banner-tabla-scroll">
                         <table class="mu-hero-banner-tabla">
                             <thead>
                                 <tr>
@@ -2355,6 +2369,7 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                                 ?>
                             </tbody>
                         </table>
+                        </div>
                     </div>
                     </div>
                 </div>

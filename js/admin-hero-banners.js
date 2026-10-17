@@ -75,8 +75,26 @@
     }
 
     /**
+     * ¿Ese campo tiene contenido propio (distinto del español)? Función PURA: la verifica
+     * el arnés JS de 010.
+     *
+     * Un campo VACÍO no es contenido propio: por diseño (sobrescritura dispersa) el
+     * guardado persiste vacío lo idéntico al español, así que vacío significa «muestra el
+     * español» (el formulario lo refleja con el placeholder). Comparar sin exigir
+     * contenido marcaba la píldora en TODOS los banners, incluso sin traducciones.
+     */
+    function tieneContenidoPropio(valor, base) {
+        // Espacios en blanco no son contenido (el guardado sanea y recorta, así que el
+        // JS tiene que mirar lo mismo que va a persistirse).
+        var v = String(valor === undefined || valor === null ? '' : valor).trim();
+        var b = String(base === undefined || base === null ? '' : base).trim();
+
+        return '' !== v && v !== b;
+    }
+
+    /**
      * Punto de la píldora [automático]: ese idioma guarda algún valor propio, es
-     * decir distinto del español (lo idéntico al español no se persiste).
+     * decir no vacío y distinto del español.
      */
     function actualizarPunto($row, lang) {
         if (lang === 'es') return;
@@ -92,7 +110,7 @@
             var $base  = $origen.find('[data-field="' + String($campo.attr('data-field') || '') + '"]');
             if (!$base.length) return;
 
-            if (String($campo.val() || '') !== String($base.val() || '')) {
+            if (tieneContenidoPropio($campo.val(), $base.val())) {
                 tiene = true;
                 return false; // corta el each: alcanza con un campo propio
             }
@@ -1225,6 +1243,7 @@
     window.muHeroBanners = {
         clasificarCampos: clasificarCampos,
         mensajeTraduccion: mensajeTraduccion,
+        tieneContenidoPropio: tieneContenidoPropio,
         parseDdmmaaaa: parseDdmmaaaa,
         rangoInvertido: rangoInvertido,
         fechaMalFormada: fechaMalFormada,

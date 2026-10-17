@@ -89,5 +89,22 @@ same('día 00 no existe', true, MU.fechaMalFormada('00012026'));
 same('30 de abril existe', false, MU.fechaMalFormada('30042026'));
 same('31 de abril no existe', true, MU.fechaMalFormada('31042026'));
 
+console.log('\n--- 4. Contenido propio de una traducción (016) ---');
+check('expone tieneContenidoPropio', !!MU && 'function' === typeof MU.tieneContenidoPropio);
+
+if (MU && 'function' === typeof MU.tieneContenidoPropio) {
+    const T = MU.tieneContenidoPropio;
+
+    same('vacío NO es contenido propio (era el bug: la píldora siempre marcada)', false, T('', 'Promo de verano'));
+    same('igual al español NO es contenido propio', false, T('Promo de verano', 'Promo de verano'));
+    same('distinto del español SÍ es contenido propio', true, T('Promo de verão', 'Promo de verano'));
+    same('con el español vacío, un texto propio SÍ cuenta', true, T('Texto PT', ''));
+    same('los dos vacíos NO', false, T('', ''));
+    same('undefined y null se tratan como vacío', false, T(undefined, 'x'));
+    same('y con base null tampoco marcan', false, T(null, null));
+    same('espacios en blanco NO son contenido propio', false, T('   ', 'Promo de verano'));
+    same('espacios alrededor no cuentan como diferencia', false, T('  Promo de verano  ', 'Promo de verano'));
+}
+
 console.log('\n== ' + ok + ' OK / ' + fail + ' FAIL ==');
 process.exit(fail > 0 ? 1 : 0);

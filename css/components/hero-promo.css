@@ -14,14 +14,6 @@
    El JS vive en js/hero.js (IIFE, sin globals).
    ============================================ */
 
-/* Variables locales del hero (scope: solo este bloque) */
-.mu-hero-promo {
-    --mu-hero-h-desktop:   580px;
-    --mu-hero-transition:  0.8s;
-    /* #f14085: color de eyebrow promo (rosa vivo, sin variable global equivalente) */
-    --mu-hero-eyebrow-bg:  #f14085;
-}
-
 /* Layout */
 .mu-hero-promo {
     padding: 0;
@@ -35,8 +27,18 @@
     position: relative;
 }
 
-/* Slider — Grid Stack (todos los slides superpuestos en la misma celda) */
+/* Slider — Grid Stack (todos los slides superpuestos en la misma celda).
+   [016] Las variables locales del hero se declaran acá y NO en .mu-hero-promo (la
+   sección) porque el lienzo del panel no incluye la sección: entra directo en el slider.
+   Antes, en la vista previa el eyebrow salía sin su rosa, el slider sin altura mínima y el
+   slide con la transición por defecto. Verificado: el propio slider y sus descendientes
+   son los únicos consumidores (.mu-hero-promo-dots no las usa) ⇒ el front no cambia. */
 .mu-hero-promo-slider {
+    --mu-hero-h-desktop:   580px;
+    --mu-hero-transition:  0.8s;
+    /* #f14085: color de eyebrow promo (rosa vivo, sin variable global equivalente) */
+    --mu-hero-eyebrow-bg:  #f14085;
+
     position: relative;
     border-radius: var(--mu-radius-lg, 16px);
     overflow: hidden;

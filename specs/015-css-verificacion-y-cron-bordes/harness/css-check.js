@@ -109,10 +109,67 @@ todos.forEach((f) => {
     check(rel + ': llaves balanceadas', llavesBalanceadas(css));
 });
 
-console.log('\n--- 3. Reglas clave del panel (invariantes de 013/014) ---');
 const panelCss = fs.readFileSync(path.join(RAIZ, 'css', 'admin-hero-banners.css'), 'utf8');
 const heroCss  = fs.readFileSync(path.join(RAIZ, 'css', 'components', 'hero-promo.css'), 'utf8');
 const homeCss  = fs.readFileSync(path.join(RAIZ, 'css', 'home.css'), 'utf8');
+const styleCss = fs.readFileSync(path.join(RAIZ, 'style.css'), 'utf8');   // [016] tokens mu-base
+
+console.log('\n--- 3b. Fidelidad del lienzo (016): el componente del front se ve igual en el panel ---');
+
+/** Cuerpo de la PRIMERA regla cuyo selector sea exactamente el pedido. */
+function bloqueDe(css, selector) {
+    const i = css.indexOf(selector + ' {');
+    if (i === -1) { return ''; }
+    const j = css.indexOf('\n}', i);
+    return j === -1 ? '' : css.slice(i, j);
+}
+
+const varsUsadas   = Array.from(new Set(Array.from(heroCss.matchAll(/var\((--[a-z0-9-]+)/g), (m) => m[1])));
+const varsDeclaradas = new Set([
+    ...Array.from(heroCss.matchAll(/(--[a-z0-9-]+)\s*:/g), (m) => m[1]),
+    ...Array.from(bloqueDe(panelCss, '.mu-hero-banner-canvas').matchAll(/(--[a-z0-9-]+)\s*:/g), (m) => m[1]),
+    ...Array.from(styleCss.matchAll(/(--[a-z0-9-]+)\s*:/g), (m) => m[1])
+]);
+const varsHuerfanas = varsUsadas.filter((v) => !varsDeclaradas.has(v));
+
+check(
+    'Todas las variables que usa el componente están declaradas (componente, lienzo o style.css)' +
+        (varsHuerfanas.length ? ' → faltan: ' + varsHuerfanas.join(', ') : ''),
+    varsHuerfanas.length === 0
+);
+
+const slider = bloqueDe(heroCss, '.mu-hero-promo-slider');
+check(
+    'Las variables locales del hero viven en el slider (raíz que el lienzo SÍ incluye, no .mu-hero-promo)',
+    ['--mu-hero-h-desktop', '--mu-hero-transition', '--mu-hero-eyebrow-bg'].every((v) => slider.includes(v + ':'))
+);
+check(
+    'El slider declara también su altura mínima con esa variable (si no, el lienzo queda sin ella)',
+    slider.includes('min-height: var(--mu-hero-h-desktop')
+);
+
+const mediasComponente = (heroCss.match(/@media \(max-width: 968px\)/g) || []).length;
+check('El componente tiene su bloque móvil por @media (ventana): ' + mediasComponente, mediasComponente === 1);
+check('El lienzo replica el móvil con @container', panelCss.includes('@container (max-width: 968px)'));
+check(
+    'Y agrega el ESPEJO de escritorio por @container (si la ventana del admin es angosta, la preview no se vuelve móvil)',
+    panelCss.includes('@container (min-width: 969px)')
+);
+
+['.mu-btn', '.mu-btn-primary', '.mu-btn-outline'].forEach((sel) => {
+    check('El lienzo tiene ' + sel, panelCss.includes('.mu-hero-banner-canvas ' + sel + ' {'));
+});
+['.mu-btn-primary:hover', '.mu-btn-outline:hover'].forEach((sel) => {
+    check('El lienzo tiene ' + sel + ' (los CTA reaccionan como en la home)', panelCss.includes('.mu-hero-banner-canvas ' + sel));
+});
+
+check(
+    'La caja del bloque de idioma aplica a los TRES idiomas (no sólo PT/EN)',
+    /\.mu-hero-banner-lang-block\s*\{[^}]*border:/.test(panelCss)
+        && !panelCss.includes('.mu-hero-banner-lang-block[data-lang="pt"],\n.mu-hero-banner-lang-block[data-lang="en"] {')
+);
+
+console.log('\n--- 4. Reglas clave del panel (invariantes de 013/014) ---');
 
 check(
     'Los países que heredan NO se ven (el bug de «ver todos» era esta regla)',
@@ -125,7 +182,23 @@ check(
 check('La fila plegada oculta su cuerpo', panelCss.includes('.mu-hero-banner-row.is-folded .mu-hero-banner-row__body { display: none; }'));
 check('El estado «sin países» tiene su estilo', panelCss.includes('.mu-hero-banner-row__estado.is-sin-paises'));
 check('El modo móvil del lienzo responde al ancho del LIENZO', panelCss.includes('@container (max-width: 968px)'));
-check('El lienzo es pegajoso en dos columnas', panelCss.includes('@media (min-width: 1100px)') && panelCss.includes('position: sticky'));
+check(
+    'El lienzo va al LADO del bloque de idioma con filas explícitas y sin filas infinitas (016)' +
+        ' (nada de grid-row «span 30»: era el hueco de abajo)',
+    panelCss.includes('@media (min-width: 1100px)')
+        && panelCss.includes('grid-template-columns: minmax(320px, 420px) minmax(320px, 400px)')
+        && !panelCss.includes('grid-row: 1 / span 30')
+        && !panelCss.includes('position: sticky')
+);
+check(
+    'La fila de ajustes/vigencia ocupa el ancho completo (es la que necesita ≥720px)',
+    panelCss.includes('.mu-hero-banner-row__grid > .mu-hero-banner-globals-block {')
+        && panelCss.includes('grid-column: 1 / -1')
+);
+check(
+    'La tabla de vigencia se desplaza en horizontal si el panel es angosto',
+    panelCss.includes('.mu-hero-banner-tabla-scroll { overflow-x: auto; }')
+);
 check('El componente del hero sigue siendo el del front (su bloque móvil)', heroCss.includes('@media (max-width: 968px)'));
 check('Y conserva la animación del badge', heroCss.includes('@keyframes mu-hero-float'));
 check('home.css ya NO tiene reglas del hero (se movieron al componente)', 0 === (homeCss.match(/\.mu-hero-promo/g) || []).length);

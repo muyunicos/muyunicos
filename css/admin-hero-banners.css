@@ -158,9 +158,9 @@
 .mu-hero-banner-fields-grid input,
 .mu-hero-banner-fields-grid textarea { margin-top: 4px; }
 
-/* Separador visual de los bloques traducidos (PT y EN) */
-.mu-hero-banner-lang-block[data-lang="pt"],
-.mu-hero-banner-lang-block[data-lang="en"] {
+/* Separador visual de CADA bloque de idioma (ES, PT y EN): el de español es el idioma
+   base, pero visualmente es el mismo grupo que los otros dos (016). */
+.mu-hero-banner-lang-block {
     border: 1px solid #ddd;
     border-radius: var(--mu-radius-sm, 6px);
     padding: 10px;
@@ -273,6 +273,18 @@
 .mu-hero-banner-canvas .mu-btn-outline {
     background: #ffffff99; color: var(--primario); border-color: var(--primario);
 }
+/* [016] Estados que faltaban: sin ellos, en la vista previa los CTA no reaccionaban como
+   en la home (style.css:102/108/112). Misma deuda declarada: si cambian allá, cambian acá. */
+.mu-hero-banner-canvas .mu-btn:focus-visible {
+    outline: 3px solid var(--primario); outline-offset: 4px;
+}
+.mu-hero-banner-canvas .mu-btn-primary:hover {
+    background: var(--resaltado); border-color: var(--resaltado);
+    transform: translateY(-3px); box-shadow: var(--mu-shadow-lg);
+}
+.mu-hero-banner-canvas .mu-btn-outline:hover {
+    background: var(--primario); color: var(--blanco) !important;
+}
 
 /* Tipografía fluida: en el front es 4vw (ancho de la VENTANA); en el lienzo tiene que
    medir el ancho del LIENZO, así que se usa la unidad de container query. Mismo clamp. */
@@ -293,6 +305,26 @@
     .mu-hero-promo-desc { width: 100%; max-width: 100%; background: transparent; backdrop-filter: none; padding: 0; margin-bottom: 20px; }
     .mu-hero-promo-actions { justify-content: center; width: 100%; gap: 10px; }
     .mu-hero-promo-free-badge { position: static; margin-top: 10px; width: 100%; justify-content: center; animation: none; box-shadow: none; border: 1px solid var(--secundario, #FFD77A); background: var(--blanco, #fff); transform: none !important; }
+}
+
+/* Espejo de ESCRITORIO (016): el componente trae un @media (max-width: 968px) que en el
+   panel responde al ancho de la VENTANA, no del lienzo. Sin esto, con la ventana del admin
+   angosta y «Escritorio» elegido la vista previa mostraba la disposición móvil. Los valores
+   son los de escritorio del componente (hero-promo.css), la fuente de verdad. */
+@container (min-width: 969px) {
+    .mu-hero-promo-slider { min-height: var(--mu-hero-h-desktop, 580px); aspect-ratio: 1280 / 580; border: 0; }
+    .mu-hero-promo-slide { flex-direction: row; }
+    .mu-hero-promo-bg { position: absolute; inset: 0; height: auto; width: auto; }
+    .mu-hero-promo-content { padding: var(--mu-space-lg, 40px); text-align: left; }
+    .mu-hero-promo-eyebrow { position: static; top: auto; left: auto; z-index: auto; font-size: 0.85rem; }
+    .mu-hero-promo-title { font-size: clamp(2rem, 4cqw, 3.2rem); max-width: 550px; margin: 0 0 16px; }
+    .mu-hero-promo-desc { width: auto; max-width: 480px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(4px); padding: 10px; margin-bottom: 28px; }
+    .mu-hero-promo-actions { justify-content: flex-start; width: auto; gap: 12px; }
+    /* El badge vuelve a su esquina y a flotar. Ojo: el bloque móvil fija
+       «transform: none !important», que en la cascada gana sobre las animaciones, así que
+       con la VENTANA < 968px el badge queda quieto (deuda declarada, no tiene arreglo desde
+       una regla normal). */
+    .mu-hero-promo-free-badge { position: absolute; bottom: 30px; right: 30px; margin-top: 0; width: auto; justify-content: flex-start; box-shadow: 0 8px 20px rgba(253, 203, 110, 0.4); border: 2px solid var(--blanco, #fff); background: linear-gradient(135deg, var(--secundario, #FFD77A) 0%, #ffa500 100%); animation: mu-hero-float 3s ease-in-out infinite; }
 }
 
 .mu-hero-banner-canvas-head {
@@ -476,27 +508,40 @@
 .mu-hero-banner-lang-block > .mu-hero-banner-group-title:first-child { margin-top: 0; }
 
 @media (min-width: 1100px) {
+    /* [016] Dos filas EXPLÍCITAS. Antes el lienzo se colocaba en «1 / span 30», lo que creaba
+       30 filas implícitas y dejaba un hueco vacío debajo del contenido (al desactivarlo, el
+       contenido «subía»). Reparto acordado: fila 1 = bloque de idioma (hasta 420px) + lienzo
+       (hasta 400px); fila 2 = ajustes y vigencia a TODO el ancho, que es la fila que necesita
+       ≥720px. El lienzo ya no es pegajoso: va arriba, junto a los campos. */
     .mu-hero-banner-row__grid {
-        grid-template-columns: minmax(0, 1fr) 400px;
+        /* minmax: los topes 420/400 se respetan cuando hay lugar y las columnas encogen (hasta
+           320px) en vez de desbordar cerca de los 1100px. La tercera columna se queda con el
+           sobrante para que la fila de ajustes pueda ser la más ancha. */
+        grid-template-columns: minmax(320px, 420px) minmax(320px, 400px) minmax(0, 1fr);
         align-items: start;
         gap: var(--mu-space-md, 20px);
     }
 
-    /* Todo el contenido va a la columna 1... */
-    .mu-hero-banner-row__grid > .mu-hero-banner-lang-block,
-    .mu-hero-banner-row__grid > .mu-hero-banner-globals-block {
+    .mu-hero-banner-row__grid > .mu-hero-banner-lang-block {
         grid-column: 1 / 2;
+        grid-row: 1 / 2;
     }
 
-    /* ...y el lienzo ocupa la columna 2, pegajoso mientras se edita. */
     .mu-hero-banner-row__grid > .mu-hero-banner-canvas-block {
         grid-column: 2 / 3;
-        grid-row: 1 / span 30;
-        position: sticky;
-        top: 48px;              /* debajo de la barra de admin */
+        grid-row: 1 / 2;
         margin-bottom: 0;
     }
+
+    .mu-hero-banner-row__grid > .mu-hero-banner-globals-block {
+        grid-column: 1 / -1;
+        grid-row: 2 / 3;
+    }
 }
+
+/* [016] La tabla de vigencia es la que necesita ancho: si el panel es angosto se desplaza en
+   horizontal en lugar de romper el diseño. */
+.mu-hero-banner-tabla-scroll { overflow-x: auto; }
 /* --- Vigencia por excepción (014): Global siempre visible; cada país sólo si difiere de la general, o con «ver todos los países». --- */
 .mu-hero-banner-fechas-block.is-hereda { display: none; }
 .mu-hero-banner-tabla.is-ver-todos .mu-hero-banner-fechas-block.is-hereda { display: table-row; }
