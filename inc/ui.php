@@ -870,9 +870,10 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
                             <label style="display:block;font-weight:bold;">Comentario:</label>
                             <span style="display:inline-flex;align-items:center;gap:8px;">
                                 <span id="mu-review-translate-status" class="mu-ai-inline-status"></span>
+                                <button type="button" id="mu-review-original-toggle" class="mu-ai-eye" hidden title="Ver el original en español">👁</button>
                                 <?php // Botones numerados (1..5) que llena el JS cuando la traducción trae variantes. ?>
                                 <span id="mu-review-variants" class="mu-ai-variants" role="group" aria-label="Variantes de la traducción"></span>
-                                <button type="button" id="mu-review-translate" class="mu-ai-inline-btn" disabled title="Traduce el comentario en español al idioma activo">Traducir con IA</button>
+                                <button type="button" id="mu-review-translate" class="mu-ai-inline-btn" disabled title="Traduce el comentario en español al idioma activo">Traducir</button>
                             </span>
                         </div>
 
@@ -882,15 +883,16 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
 
                         <div class="mu-review-lang-block" data-lang="pt" style="display:none;">
                             <textarea id="mu-review-text-pt" name="text_pt" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;min-height:100px;"></textarea>
-                            <p class="mu-lang-hint">Si lo dejás igual al español (o vacío), no se guarda: en portugués se muestra el texto en español.</p>
                         </div>
 
                         <div class="mu-review-lang-block" data-lang="en" style="display:none;">
                             <textarea id="mu-review-text-en" name="text_en" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;min-height:100px;"></textarea>
-                            <p class="mu-lang-hint">Si lo dejás igual al español (o vacío), no se guarda: en inglés se muestra el texto en español.</p>
                         </div>
                     </div>
-                    
+
+                    <?php // Comparador: el ojo del encabezado muestra u oculta el original en español. ?>
+                    <div id="mu-review-original" class="mu-ai-original" hidden></div>
+
                     <div style="margin-bottom:15px;">
                         <label style="display:block;margin-bottom:5px;font-weight:bold;">Fecha (opcional):</label>
                         <input type="date" id="mu-review-date" name="time" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;">

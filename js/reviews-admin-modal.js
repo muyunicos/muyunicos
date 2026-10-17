@@ -16,10 +16,16 @@
 
             /** Objeto inerte que se devuelve cuando un elemento no está en el HTML. */
             var INERT_ELEMENT = {
-                value: '', checked: false, disabled: false, textContent: '', innerHTML: '',
-                className: '', placeholder: '', files: [], style: {},
+                value: '', checked: false, disabled: false, hidden: false,
+                textContent: '', innerHTML: '', className: '', placeholder: '', files: [], style: {},
+                classList: {
+                    add: function () {}, remove: function () {},
+                    toggle: function () {}, contains: function () { return false; }
+                },
                 addEventListener: function () {}, reset: function () {},
-                querySelector: function () { return null; }
+                setAttribute: function () {}, getAttribute: function () { return null; },
+                querySelector: function () { return null; },
+                querySelectorAll: function () { return []; }
             };
 
             /** Ids ausentes ya avisados (para no repetir el aviso en consola). */
@@ -63,7 +69,24 @@
                 return (typeof muTestimonials !== 'undefined' && muTestimonials.reviews) ? muTestimonials.reviews : [];
             }
 
-            // --- Variantes de la última traducción (botones 1..5) ---
+            /** Comparador: muestra u oculta el original en español (botón del ojo). */
+        function toggleOriginal(mostrar) {
+            var panel = byId('mu-review-original');
+            var ojo   = byId('mu-review-original-toggle');
+
+            if (!panel || !ojo) { return; }
+
+            var ver = ('boolean' === typeof mostrar) ? mostrar : !panel.hidden;
+
+            panel.hidden = !ver;
+            ojo.classList.toggle('is-active', ver);
+
+            if (ver) {
+                panel.textContent = byId('mu-review-text').value || '(sin texto en español)';
+            }
+        }
+
+        // --- Variantes de la última traducción (botones 1..5) ---
         // La persona la elige el servicio (una por variante); acá solo se muestran.
         var variantBatch = { lang: '', variants: [], personas: [] };
 
@@ -97,8 +120,7 @@
                     var otros = box.querySelectorAll('.mu-ai-variant-btn');
                     Array.prototype.forEach.call(otros, function (otro) { otro.classList.remove('is-active'); });
                     btn.classList.add('is-active');
-
-                    setStatus('Variante ' + (indice + 1) + ' aplicada. Revisá y guardá.', true);
+                    // Sin aviso: el número activo ya dice cuál quedó puesta.
                 });
 
                 box.appendChild(btn);
@@ -124,6 +146,12 @@
 
                 // Las variantes son de un idioma concreto: al cambiar, se descartan.
                 clearVariants();
+
+                // El comparador solo tiene sentido fuera del español.
+                var ojo = byId('mu-review-original-toggle');
+                if (ojo) { ojo.hidden = ('es' === lang); }
+
+                toggleOriginal(false);
             }
 
             /**
@@ -460,7 +488,18 @@
         });
 
         // El comentario en español alimenta el placeholder de PT/EN (solo visual).
-        on('mu-review-text', 'input', syncPlaceholders);
+        // El comentario en español alimenta el placeholder de PT/EN (solo visual) y,
+        // si el comparador está abierto, se refresca con el español actual.
+        on('mu-review-text', 'input', function () {
+            syncPlaceholders();
+
+            if (!byId('mu-review-original').hidden) { toggleOriginal(true); }
+        });
+
+        // Ojo: ver el original para comparar la traducción.
+        on('mu-review-original-toggle', 'click', function () {
+            toggleOriginal();
+        });
 
         // Si la validación falla en el comentario base (que puede estar oculto
         // porque se está viendo PT/EN), volver a ES: el navegador no puede

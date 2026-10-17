@@ -775,7 +775,7 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                             data-source-lang="es"
                             title="<?php esc_attr_e( 'Traduce los textos del banner del español al idioma activo', 'mu' ); ?>"
                             <?php echo 'es' === $idioma_activo_lc ? 'disabled' : ''; ?>>
-                        <?php esc_html_e( 'Traducir con IA', 'mu' ); ?>
+                        <?php esc_html_e( 'Traducir', 'mu' ); ?>
                     </button>
                 </span>
 

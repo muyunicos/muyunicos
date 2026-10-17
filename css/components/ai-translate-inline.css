@@ -115,6 +115,49 @@
     line-height: 1.4;
 }
 
+/* Ojo: muestra el original en español para comparar (a la izquierda de los números).
+   Mismo aspecto discreto que los botones de variante. */
+.mu-ai-eye {
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    font-size: 0.7rem;
+    line-height: 1;
+    color: #666;
+    background: #fff;
+    border: 1px solid #dcdcde;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.mu-ai-eye:hover,
+.mu-ai-eye.is-active {
+    border-color: var(--primario, #2B9FCF);
+    background: #f0f8fc;
+}
+
+.mu-ai-eye[hidden] {
+    display: none;
+}
+
+/* Caja del original (solo lectura) que abre el ojo */
+.mu-ai-original {
+    margin: 10px 0 0;
+    padding: 10px 12px;
+    font-size: 0.85rem;
+    font-style: italic;
+    color: #555;
+    white-space: pre-wrap;
+    background: #f6f7f7;
+    border: 1px dashed #dcdcde;
+    border-radius: 6px;
+}
+
+.mu-ai-original[hidden] {
+    display: none;
+}
+
 /* ============================================
    VARIANTES DE TRADUCCIÓN (1 · 2 · 3 · 4 · 5)
    Botones discretos, a la izquierda del botón de IA. Solo aparecen cuando la
