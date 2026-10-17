@@ -157,6 +157,69 @@
     font-size: 0.75rem;
 }
 
+/* Etiqueta de posible duplicado (solo la ve el mantenedor) */
+.mu-review-dup-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 7px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    color: #7a4b00;
+    background: #fdf6e3;
+    border: 1px solid #f0d9a0;
+    border-radius: 999px;
+    vertical-align: middle;
+}
+
+/* Aviso de posibles duplicados a revisar (solo mantenedor) */
+.mu-dups {
+    margin: 0 0 var(--mu-space-md, 20px);
+    padding: 14px 16px;
+    background: #fdf6e3;
+    border: 1px solid #f0d9a0;
+    border-radius: var(--mu-radius-md, 10px);
+}
+
+.mu-dups__title {
+    margin: 0 0 10px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #7a4b00;
+}
+
+.mu-dups__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.mu-dups__list li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-top: 1px solid #f0d9a0;
+    font-size: 0.8rem;
+    color: #555;
+}
+
+.mu-dups__list li:first-child {
+    border-top: 0;
+}
+
+.mu-dups__info {
+    flex: 1 1 260px;
+    min-width: 0;
+}
+
+.mu-dups__keep,
+.mu-dups__delete {
+    flex-shrink: 0;
+}
+
 /* Botón "Editar" (solo administradores) */
 .mu-review-edit-btn {
     position: relative;

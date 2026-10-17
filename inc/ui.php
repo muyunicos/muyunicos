@@ -520,6 +520,190 @@ if ( ! function_exists( 'mu_testimonios_enqueue' ) ) {
     add_action( 'wp_enqueue_scripts', 'mu_testimonios_enqueue' );
 }
 
+if ( ! function_exists( 'mu_reviews_blocked_keys' ) ) {
+    /**
+     * Claves de las reseñas eliminadas a mano, para que la importación no las
+     * reviva (Google devuelve siempre las mismas reseñas).
+     *
+     * @return array
+     */
+    function mu_reviews_blocked_keys() {
+        $keys = get_option( 'mu_reviews_blocked', [] );
+
+        return is_array( $keys ) ? $keys : [];
+    }
+}
+
+if ( ! function_exists( 'mu_reviews_block_reimport' ) ) {
+    /**
+     * Recuerda una reseña eliminada a mano (huella y enlace de perfil).
+     *
+     * @param array $review
+     */
+    function mu_reviews_block_reimport( $review ) {
+        $keys = mu_reviews_blocked_keys();
+
+        foreach ( [ mu_review_link_key( $review ), mu_review_identity_key( $review ) ] as $key ) {
+            if ( '' !== (string) $key ) {
+                $keys[ (string) $key ] = time();
+            }
+        }
+
+        // Se conservan las últimas 100 marcas (la base guarda hasta 200 reseñas).
+        arsort( $keys );
+
+        update_option( 'mu_reviews_blocked', array_slice( $keys, 0, 100, true ), false );
+    }
+}
+
+if ( ! function_exists( 'mu_reviews_import_from_google' ) ) {
+    /**
+     * Importa las reseñas del lugar desde Google Places y aplica el merge.
+     *
+     * Única ruta de import: la usan el enlace manual (?force_reviews=1) y la tarea
+     * programada semanal. Devuelve el resultado del merge, o null si no se pudo
+     * consultar (sin clave, error de red o respuesta vacía).
+     *
+     * @return array|null
+     */
+    function mu_reviews_import_from_google() {
+        $api_key  = defined( 'MU_GOOGLE_PLACES_API_KEY' ) ? MU_GOOGLE_PLACES_API_KEY : '';
+        $place_id = 'ChIJ18LlLQPchJURqIDwiZM7t_E';
+
+        if ( ! $api_key ) {
+            return null;
+        }
+
+        $url = add_query_arg(
+            [ 'placeid' => $place_id, 'fields' => 'reviews', 'key' => $api_key, 'language' => 'es' ],
+            'https://maps.googleapis.com/maps/api/place/details/json'
+        );
+
+        $response = wp_remote_get( $url, [ 'timeout' => 10 ] );
+
+        if ( is_wp_error( $response ) ) {
+            return null;
+        }
+
+        $data  = json_decode( wp_remote_retrieve_body( $response ), true );
+        $batch = $data['result']['reviews'] ?? [];
+
+        if ( ! is_array( $batch ) || ! $batch ) {
+            return null;
+        }
+
+        $option = 'mu_reviews_master_db';
+        $merge  = mu_reviews_import_merge( get_option( $option, [] ), $batch, 200, mu_reviews_blocked_keys() );
+
+        if ( $merge['added'] > 0 || $merge['deleted'] > 0 ) {
+            update_option( $option, $merge['db'] );
+
+            // El set de reseñas viaja embebido en el HTML cacheado: sin purga el
+            // front sigue sirviendo el JSON viejo. Solo tras un cambio real.
+            do_action( 'litespeed_purge_all' );
+        }
+
+        // Rastro para el panel: así se ve que el cron corrió y qué hizo.
+        update_option( 'mu_reviews_last_import', [
+            'time'    => time(),
+            'added'   => (int) $merge['added'],
+            'existed' => (int) $merge['existed'],
+            'deleted' => (int) $merge['deleted'],
+            'skipped' => (int) $merge['skipped'],
+        ], false );
+
+        return $merge;
+    }
+}
+
+if ( ! function_exists( 'mu_reviews_schedule_import' ) ) {
+    /**
+     * Programa la importación semanal de reseñas (WP-Cron).
+     *
+     * WP-Cron corre "cuando alguien visita" el sitio; con el tráfico de una tienda
+     * alcanza. Para hora exacta hace falta un cron real del hosting pegándole a
+     * wp-cron.php, que se configura fuera del tema.
+     */
+    function mu_reviews_schedule_import() {
+        if ( ! wp_next_scheduled( 'mu_reviews_weekly_import' ) ) {
+            wp_schedule_event( time() + HOUR_IN_SECONDS, 'weekly', 'mu_reviews_weekly_import' );
+        }
+    }
+
+    add_action( 'init', 'mu_reviews_schedule_import' );
+    add_action( 'mu_reviews_weekly_import', 'mu_reviews_import_from_google' );
+}
+
+if ( ! function_exists( 'mu_reviews_import_notice' ) ) {
+    /**
+     * Aviso del import de reseñas: cuántas entraron, cuántas ya estaban y cuáles
+     * quedaron marcadas como posible duplicado (con el nombre, para ubicarlas).
+     *
+     * @param array $merge Resultado de mu_reviews_import_merge().
+     * @return string HTML del aviso ('' si no pasó nada relevante).
+     */
+    function mu_reviews_import_notice( $merge ) {
+        $added    = (int) ( $merge['added'] ?? 0 );
+        $existed  = (int) ( $merge['existed'] ?? 0 );
+        $absorbed = (int) ( $merge['deleted'] ?? 0 );
+        $skipped  = (int) ( $merge['skipped'] ?? 0 );
+        $flagged  = (array) ( $merge['flagged'] ?? [] );
+
+        if ( ! $added && ! $flagged && ! $absorbed && ! $skipped ) {
+            return '';
+        }
+
+        $partes = [];
+
+        if ( $added ) {
+            $partes[] = sprintf( '%d agregada%s', $added, 1 === $added ? '' : 's' );
+        }
+
+        if ( $absorbed ) {
+            $partes[] = sprintf( '%d manual absorbida y eliminada (enlace coincidente)', $absorbed );
+        }
+
+        if ( $existed ) {
+            $partes[] = sprintf( '%d ya estaba%s', $existed, 1 === $existed ? '' : 'n' );
+        }
+
+        if ( $skipped ) {
+            $partes[] = sprintf( '%d excluida%s por haberse borrado a mano', $skipped, 1 === $skipped ? '' : 's' );
+        }
+
+        $html = '<div style="background:#d4edda;color:#155724;padding:10px;text-align:center;border-radius:12px;margin-bottom:20px;font-size:0.9rem;">'
+            . ( $added ? '✅ ' : 'ℹ ' ) . esc_html( implode( ' · ', $partes ) ) . '</div>';
+
+        if ( $flagged ) {
+            $nombres = [];
+
+            foreach ( $flagged as $item ) {
+                $nombre = trim( (string) ( $item['name'] ?? '' ) );
+                if ( '' !== $nombre ) {
+                    $nombres[] = $nombre;
+                }
+            }
+
+            $detalle = $nombres ? ' (' . implode( ', ', $nombres ) . ')' : '';
+
+            $html .= '<div style="background:#fdf6e3;color:#7a4b00;padding:10px;text-align:center;border-radius:12px;margin-bottom:20px;font-size:0.9rem;">'
+                . '⚠ ' . esc_html( sprintf(
+                    _n(
+                        'Se importó %d reseña con el mismo nombre que una existente: la vieja quedó marcada como posible duplicado%s.',
+                        'Se importaron %d reseñas con el mismo nombre que otras existentes: las viejas quedaron marcadas como posible duplicado%s.',
+                        count( $flagged ),
+                        'mu'
+                    ),
+                    count( $flagged ),
+                    $detalle
+                ) )
+                . '</div>';
+        }
+
+        return $html;
+    }
+}
+
 if ( ! function_exists( 'mu_testimonios_section' ) ) {
     function mu_testimonios_section() {
         $api_key        = defined( 'MU_GOOGLE_PLACES_API_KEY' ) ? MU_GOOGLE_PLACES_API_KEY : '';
@@ -529,43 +713,10 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
         $msg_update     = '';
 
         if ( $api_key && mu_can_manage_reviews() && isset( $_GET['force_reviews'] ) ) {
-            $url      = add_query_arg(
-                [ 'placeid' => $place_id, 'fields' => 'reviews', 'key' => $api_key, 'language' => 'es' ],
-                'https://maps.googleapis.com/maps/api/place/details/json'
-            );
-            $response = wp_remote_get( $url, [ 'timeout' => 10 ] );
+            // Una sola ruta de import (la comparte la tarea programada semanal).
+            $merge = mu_reviews_import_from_google();
 
-            if ( ! is_wp_error( $response ) ) {
-                $data       = json_decode( wp_remote_retrieve_body( $response ), true );
-                $new_batch  = $data['result']['reviews'] ?? [];
-                $current_db = get_option( $db_option_name, [] );
-                $added      = 0;
-
-                foreach ( $new_batch as $item ) {
-                    if ( intval( $item['rating'] ) < 5 ) continue;
-                    $exists = false;
-                    foreach ( $current_db as $stored ) {
-                        if ( $stored['time'] == $item['time'] && $stored['author_name'] === $item['author_name'] ) { $exists = true; break; }
-                    }
-                    if ( ! $exists ) { $current_db[] = $item; $added++; }
-                }
-
-                if ( $added > 0 ) {
-                    // [Fix #4] Mantener solo las últimas $max_reviews reseñas para limitar el tamaño de wp_options.
-                    $current_db = array_slice( $current_db, -$max_reviews );
-                    update_option( $db_option_name, $current_db );
-
-                    // El set de reseñas viaja embebido en el HTML cacheado: sin
-                    // purga, el front sigue sirviendo el JSON viejo. Solo tras un
-                    // cambio real (Hash Gate, MIGRATION-GUIDE §7).
-                    do_action( 'litespeed_purge_all' );
-
-                    $msg_update = sprintf(
-                        '<div style="background:#d4edda;color:#155724;padding:10px;text-align:center;border-radius:12px;margin-bottom:20px;font-size:0.9rem;">✅ Se agregaron %d reseñas nuevas.</div>',
-                        $added
-                    );
-                }
-            }
+            $msg_update = is_array( $merge ) ? mu_reviews_import_notice( $merge ) : '';
         }
 
         // Cadenas de la sección en el idioma de la URL (fallback: español).
@@ -577,6 +728,43 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
         <section class="mu-testimonials mu-section">
             <div class="mu-container">
                 <h2 class="mu-section-title"><?php echo esc_html( $i18n['sectionTitle'] ); ?></h2>
+                <?php
+                // Resolución de posibles duplicados: solo para quien gestiona. La
+                // importación agrega la reseña de Google (fuente de verdad) y marca
+                // la copia vieja; acá se decide si se restaura o se elimina. Los
+                // visitantes no ven las marcadas (js/testimonials.js).
+                $mu_dups = [];
+
+                if ( mu_can_manage_reviews() ) {
+                    foreach ( (array) get_option( $db_option_name, [] ) as $mu_i => $mu_r ) {
+                        if ( mu_review_is_flagged_duplicate( $mu_r ) ) {
+                            $mu_dups[] = [ 'index' => $mu_i, 'review' => $mu_r ];
+                        }
+                    }
+                }
+                ?>
+                <?php if ( $mu_dups ) : ?>
+                    <div class="mu-dups" data-mu-dups>
+                        <p class="mu-dups__title">
+                            ⚠ <?php echo esc_html( sprintf( 'Posibles duplicados a revisar: %d', count( $mu_dups ) ) ); ?>
+                        </p>
+                        <ul class="mu-dups__list">
+                            <?php foreach ( $mu_dups as $mu_dup ) : ?>
+                                <li data-review-index="<?php echo esc_attr( $mu_dup['index'] ); ?>">
+                                    <span class="mu-dups__info">
+                                        <strong><?php echo esc_html( (string) ( $mu_dup['review']['author_name'] ?? '' ) ); ?></strong>
+                                        <?php if ( ! empty( $mu_dup['review']['time'] ) ) : ?>
+                                            <?php echo esc_html( ' · ' . date_i18n( 'd/m/Y', (int) $mu_dup['review']['time'] ) ); ?>
+                                        <?php endif; ?>
+                                        <?php echo esc_html( ' — ' . wp_html_excerpt( (string) ( $mu_dup['review']['text'] ?? '' ), 90, '…' ) ); ?>
+                                    </span>
+                                    <button type="button" class="button mu-dups__keep" data-accion="restaurar"><?php esc_html_e( 'No es duplicada', 'mu' ); ?></button>
+                                    <button type="button" class="button mu-dups__delete" data-accion="eliminar"><?php esc_html_e( 'Eliminar', 'mu' ); ?></button>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                <?php endif; ?>
                 <?php
                 // Botón de rotación en el marcado estático de la página (antes lo generaba
                 // js/testimonials.js dentro del HTML que reescribe en cada rotación, y por
@@ -611,6 +799,26 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
                         <span style="margin:0 8px;">|</span>
                         <a href="#" onclick="openReviewModal();return false;" style="color:inherit;">✎ Manual</a>
                     </div>
+                    <?php
+                    // Rastro de la importación automática (semanal): es la forma de
+                    // ver desde el panel que el cron corrió y qué hizo.
+                    $mu_last = get_option( 'mu_reviews_last_import', [] );
+
+                    if ( is_array( $mu_last ) && ! empty( $mu_last['time'] ) ) :
+                        ?>
+                        <p style="text-align:center;margin-top:8px;font-size:12px;opacity:0.6;">
+                            <?php
+                            echo esc_html( sprintf(
+                                'Última importación automática: %s · %d agregadas · %d absorbidas · %d ya estaban · %d excluidas',
+                                date_i18n( 'd/m/Y H:i', (int) $mu_last['time'] ),
+                                (int) ( $mu_last['added'] ?? 0 ),
+                                (int) ( $mu_last['deleted'] ?? 0 ),
+                                (int) ( $mu_last['existed'] ?? 0 ),
+                                (int) ( $mu_last['skipped'] ?? 0 )
+                            ) );
+                            ?>
+                        </p>
+                    <?php endif; ?>
                 <?php endif; ?>
             </div>
         </section>
@@ -662,6 +870,8 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
                             <label style="display:block;font-weight:bold;">Comentario:</label>
                             <span style="display:inline-flex;align-items:center;gap:8px;">
                                 <span id="mu-review-translate-status" class="mu-ai-inline-status"></span>
+                                <?php // Botones numerados (1..5) que llena el JS cuando la traducción trae variantes. ?>
+                                <span id="mu-review-variants" class="mu-ai-variants" role="group" aria-label="Variantes de la traducción"></span>
                                 <button type="button" id="mu-review-translate" class="mu-ai-inline-btn" disabled title="Traduce el comentario en español al idioma activo">Traducir con IA</button>
                             </span>
                         </div>
@@ -825,6 +1035,30 @@ if ( ! function_exists( 'mu_ajax_save_review' ) ) {
             // Editar reseña existente
             $current_db[ $review_index ] = $review;
         } else {
+            // [Duplicados] Al crear a mano, si ya hay una reseña del mismo autor no
+            // se crea otra sin confirmación: el front no vuelve a verse duplicado y
+            // tampoco hay que esperar a la próxima importación para descubrirlo.
+            // El editor ofrece "Guardar igual" (es otra persona), que reenvía con
+            // forzar_duplicado=1.
+            if ( empty( $_POST['forzar_duplicado'] ) ) {
+                $parecidas = mu_reviews_find_same_author( $current_db, $review );
+
+                if ( $parecidas ) {
+                    $primera = (array) $current_db[ $parecidas[0] ];
+                    $cuando  = ! empty( $primera['time'] ) ? date_i18n( 'd/m/Y', (int) $primera['time'] ) : '';
+
+                    wp_send_json_error( [
+                        'code'    => 'duplicado_probable',
+                        'index'   => $parecidas[0],
+                        'message' => sprintf(
+                            'Ya hay una reseña de %s%s. Si es la misma persona, editá la existente; si es otra con el mismo nombre, guardá igual.',
+                            (string) ( $primera['author_name'] ?? '' ),
+                            '' !== $cuando ? ' (' . $cuando . ')' : ''
+                        ),
+                    ] );
+                }
+            }
+
             // Nueva reseña
             $current_db[] = $review;
             // Mantener límite de reseñas
@@ -863,6 +1097,10 @@ if ( ! function_exists( 'mu_ajax_delete_review' ) ) {
         $review_index = isset( $_POST['review_index'] ) ? intval( wp_unslash( $_POST['review_index'] ) ) : -1;
         
         if ( isset( $current_db[ $review_index ] ) ) {
+            // Lo borrado a mano no se reimporta: Google devuelve siempre las mismas
+            // reseñas y la tarea semanal las traería de vuelta.
+            mu_reviews_block_reimport( (array) $current_db[ $review_index ] );
+
             unset( $current_db[ $review_index ] );
             // Reindexar array para mantener continuidad
             $current_db = array_values( $current_db );
@@ -882,6 +1120,45 @@ if ( ! function_exists( 'mu_ajax_delete_review' ) ) {
 // ============================================
 // AJAX HANDLER: TRAER UNA RESEÑA PARA EL EDITOR
 // ============================================
+
+if ( ! function_exists( 'mu_ajax_resolve_duplicate' ) ) {
+    /**
+     * Resuelve una reseña marcada como posible duplicado:
+     *   restaurar → no era duplicada: se le saca la marca y vuelve a mostrarse
+     *               (no toca `hidden`, que es una decisión aparte del mantenedor);
+     *   eliminar  → se borra de la base.
+     */
+    function mu_ajax_resolve_duplicate() {
+        check_ajax_referer( 'mu_review_nonce', 'nonce' );
+
+        if ( ! mu_can_manage_reviews() ) {
+            wp_send_json_error( 'Sin permisos.' );
+        }
+
+        $db_option_name = 'mu_reviews_master_db';
+        $current_db     = get_option( $db_option_name, [] );
+        $index          = isset( $_POST['review_index'] ) ? sanitize_text_field( wp_unslash( $_POST['review_index'] ) ) : '';
+        $accion         = isset( $_POST['accion'] ) ? sanitize_text_field( wp_unslash( $_POST['accion'] ) ) : 'restaurar';
+
+        if ( '' === $index || ! isset( $current_db[ $index ] ) ) {
+            wp_send_json_error( 'Reseña no encontrada. Recargá la página e intentá de nuevo.' );
+        }
+
+        if ( 'eliminar' === $accion ) {
+            array_splice( $current_db, (int) $index, 1 );
+        } else {
+            $current_db[ $index ]['posible_duplicado'] = false;
+        }
+
+        update_option( $db_option_name, array_values( $current_db ) );
+
+        // El listado viaja en el HTML cacheado: sin purga el front sigue igual.
+        do_action( 'litespeed_purge_all' );
+
+        wp_send_json_success( 'ok' );
+    }
+    add_action( 'wp_ajax_mu_resolve_review_duplicate', 'mu_ajax_resolve_duplicate' );
+}
 
 if ( ! function_exists( 'mu_ajax_get_review' ) ) {
     /**

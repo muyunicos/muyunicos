@@ -377,6 +377,7 @@ mu_load_module( 'flexible-price' );      // Sistema de Precio Flexible v4.0 — 
 mu_load_module( 'ai-translate' );        // Servicio de traducción con IA (feature 006): único envío saliente de escritura del tema. Debe ir ANTES de hero-banners y de ui.php, que consumen su API (mu_ai_translate); depende de geo.php (muyu_get_current_language) y de la clave definida en la configuración del servidor
 mu_load_module( 'ai-translate-admin' );  // Pantalla del servicio de traducción (WC → Marketing): depende de ai-translate
 mu_load_module( 'hero-banners' );        // Hero Banners Manager (admin submenu bajo WC Marketing) — debe ir antes de ui.php para que mu_get_hero_banners() esté disponible al renderizar [mu_hero_section]
+mu_load_module( 'reviews-identity' );    // Identidad de reseñas y deduplicación (funciones puras) — debe ir antes de ui.php, que las usa
 mu_load_module( 'ui' );                  // UI components (header, footer, search, wplng body class)
 mu_load_module( 'orders-files' );        // Order File Manager (Admin/Frontend)
 mu_load_module( 'orders-workflow' );     // Order Workflow (Status, Email, WhatsApp)

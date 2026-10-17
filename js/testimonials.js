@@ -82,11 +82,13 @@
         function getRandomReviews(count) {
             if (!allReviews.length) return [];
             
-            // Filtrar reseñas ocultas (solo visible para admin)
+            // Filtrar reseñas ocultas y marcadas como posible duplicado (la
+            // importación marca la copia vieja). El mantenedor ve todo, para poder
+            // resolverlas desde el aviso de la sección.
             var visibleReviews = isAdmin 
                 ? allReviews 
                 : allReviews.filter(function(review) {
-                    return !review.hidden;
+                    return !review.hidden && !review.posible_duplicado;
                 });
             
             // Filtrar reseñas no mostradas
@@ -293,13 +295,19 @@
                 // Tiempo relativo en el idioma de la página (fallback: Google).
                 var timeDisplay = getRelativeTime(review);
 
+                // Etiqueta solo para el mantenedor: esta reseña quedó marcada al
+                // importar otra con el mismo nombre (los visitantes no la ven).
+                var dupBadge = (isAdmin && review.posible_duplicado)
+                    ? '<span class="mu-review-dup-badge" title="Se importó otra reseña con el mismo nombre">posible duplicado</span>'
+                    : '';
+
                 html +=
                     '<div class="mu-review-wrapper mu-review-fade" style="animation-delay:' + delay + 'ms">' +
                         '<a href="' + (review.author_url || review.profile_url || '#') + '" target="_blank" rel="noopener noreferrer" class="mu-review-card" title="Ver en Google">' +
                             '<div class="mu-review-meta">' +
                                 '<img src="' + photoUrl + '" alt="Foto de ' + review.author_name + '" width="45" height="45" loading="lazy" onerror="this.src=\'' + defaultAvatar + '\';">' +
                                 '<div>' +
-                                    '<div class="mu-author-name">' + review.author_name + editBtn + '</div>' +
+                                    '<div class="mu-author-name">' + review.author_name + editBtn + dupBadge + '</div>' +
                                     '<div class="mu-stars" aria-label="' + review.rating + ' estrellas">' + getStars(review.rating) + '</div>' +
                                 '</div>' +
                             '</div>' +

@@ -63,7 +63,49 @@
                 return (typeof muTestimonials !== 'undefined' && muTestimonials.reviews) ? muTestimonials.reviews : [];
             }
 
-            /** Muestra el bloque del idioma elegido (solo cambia el comentario). */
+            // --- Variantes de la última traducción (botones 1..5) ---
+        // La persona la elige el servicio (una por variante); acá solo se muestran.
+        var variantBatch = { lang: '', variants: [], personas: [] };
+
+        /** Vacía los botones: se usan al cambiar de idioma o de reseña. */
+        function clearVariants() {
+            variantBatch = { lang: '', variants: [], personas: [] };
+
+            var box = byId('mu-review-variants');
+            if (box) { box.innerHTML = ''; }
+        }
+
+        /** Pinta un botón por variante y aplica la primera (la que ya quedó en el campo). */
+        function renderVariants(lang, variants, personas) {
+            variantBatch = { lang: lang, variants: variants || [], personas: personas || [] };
+
+            var box = byId('mu-review-variants');
+            if (box) { box.innerHTML = ''; }
+
+            if (!box || variantBatch.variants.length < 2) { return; }
+
+            variantBatch.variants.forEach(function (texto, indice) {
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'mu-ai-variant-btn' + (0 === indice ? ' is-active' : '');
+                btn.textContent = String(indice + 1);
+                btn.title = (variantBatch.personas[indice] ? variantBatch.personas[indice] : 'Variante ' + (indice + 1)) + ' · ' + texto.length + ' caracteres';
+
+                btn.addEventListener('click', function () {
+                    byId('mu-review-text-' + lang).value = texto;
+
+                    var otros = box.querySelectorAll('.mu-ai-variant-btn');
+                    Array.prototype.forEach.call(otros, function (otro) { otro.classList.remove('is-active'); });
+                    btn.classList.add('is-active');
+
+                    setStatus('Variante ' + (indice + 1) + ' aplicada. Revisá y guardá.', true);
+                });
+
+                box.appendChild(btn);
+            });
+        }
+
+        /** Muestra el bloque del idioma elegido (solo cambia el comentario). */
             function setLang(lang) {
                 currentLang = lang;
 
@@ -79,6 +121,9 @@
                 if (btn) { btn.disabled = ('es' === lang); }
 
                 if ('es' === lang) { setStatus('', false); }
+
+                // Las variantes son de un idioma concreto: al cambiar, se descartan.
+                clearVariants();
             }
 
             /**
@@ -328,11 +373,59 @@
             }
         });
         
+        /**
+         * Error al guardar. Si el servidor detectó un posible duplicado (misma
+         * persona ya cargada), además del aviso se ofrece "Guardar igual", que
+         * reenvía el mismo formulario con forzar_duplicado=1.
+         */
+        function handleSaveError(error, form, formData) {
+            var payload = (error && 'object' === typeof error) ? error : {};
+            var mensaje = payload.message || ('string' === typeof error ? error : 'No se pudo guardar la reseña.');
+            var box     = byId('mu-review-modal-error');
+
+            byId('mu-review-modal-error-text').textContent = mensaje;
+            box.style.display = 'block';
+
+            var previo = box.querySelector ? box.querySelector('.mu-dup-force') : null;
+            if (previo) { previo.remove(); }
+
+            if ('duplicado_probable' !== payload.code) { return; }
+
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'button mu-dup-force';
+            btn.textContent = 'Guardar igual (es otra persona)';
+
+            btn.addEventListener('click', function () {
+                formData.set('forzar_duplicado', '1');
+                btn.disabled = true;
+                btn.textContent = 'Guardando…';
+
+                fetch(muTestimonials.ajaxUrl, { method: 'POST', body: formData })
+                    .then(function (response) { return response.json(); })
+                    .then(function (res) {
+                        if (res && res.success) { location.reload(); return; }
+
+                        btn.disabled = false;
+                        btn.textContent = 'Guardar igual (es otra persona)';
+                        handleSaveError(res ? res.data : null, form, formData);
+                    })
+                    .catch(function () {
+                        btn.disabled = false;
+                        btn.textContent = 'Guardar igual (es otra persona)';
+                        byId('mu-review-modal-error-text').textContent = 'No se pudo guardar. Revisá la conexión e intentá de nuevo.';
+                    });
+            });
+
+            box.appendChild(btn);
+        }
+
         // Submit del formulario
         on('mu-review-form', 'submit', function(e) {
             e.preventDefault();
             
-            var formData = new FormData(this);
+            var form     = this;
+            var formData = new FormData(form);
             formData.append('action', 'mu_save_review');
             formData.append('nonce', muTestimonials.nonce);
             
@@ -350,11 +443,12 @@
                 if (data.success) {
                     location.reload();
                 } else {
-                    alert('Error: ' + data.data);
+                    handleSaveError(data.data, form, formData);
                 }
             })
             .catch(function(error) {
-                alert('Error al guardar la reseña');
+                byId('mu-review-modal-error-text').textContent = 'No se pudo guardar la reseña. Revisá la conexión e intentá de nuevo.';
+                byId('mu-review-modal-error').style.display = 'block';
             });
         });
 
@@ -395,6 +489,11 @@
             fd.append('ambito', 'reviews');
             fd.append('lang', lang);
             fd.append('fields', JSON.stringify({ text: source }));
+            // Manual: se piden varias versiones (el servicio acota a la cantidad de
+            // personas del ámbito y devuelve una por persona).
+            fd.append('variants', '5');
+            // Si ya hay una tanda para este texto, el clic siguiente pide otra.
+            fd.append('force', variantBatch.variants.length ? '1' : '0');
 
             button.disabled = true;
             setStatus('Traduciendo…', false);
@@ -420,13 +519,71 @@
 
                     byId('mu-review-text-' + lang).value = item.translation;
                     markTranslated(lang, true);
-                    setStatus('Listo. Revisá la traducción y guardá.', true);
+                    // La respuesta manual trae una versión por persona: se pinta la
+                    // primera y se ofrecen las demás en los botones numerados.
+                    var variantes = (item.variants && item.variants.length) ? item.variants : [item.translation];
+
+                    byId('mu-review-text-' + lang).value = variantes[0];
+                    renderVariants(lang, variantes, data.personas || []);
+
+                    if (variantes.length > 1) {
+                        setStatus('Listo: ' + variantes.length + ' variantes. Elegí con los números y guardá.', true);
+                    } else {
+                        setStatus('Listo. Revisá la traducción y guardá.', true);
+                    }
                 })
                 .catch(function () {
                     button.disabled = false;
                     setStatus('No se pudo traducir. Revisá la conexión e intentá de nuevo.', false);
                 });
         });
+
+        // --- Posibles duplicados del import: restaurar o eliminar ---
+        (function initDuplicateNotice() {
+            var box = document.querySelector('[data-mu-dups]');
+            if (!box) { return; }
+
+            box.addEventListener('click', function (e) {
+                var btn = e.target && e.target.closest ? e.target.closest('button[data-accion]') : null;
+                if (!btn) { return; }
+
+                var item   = btn.closest('li');
+                var index  = item ? item.getAttribute('data-review-index') : '';
+                var accion = btn.getAttribute('data-accion') || '';
+
+                if ('' === index || '' === accion) { return; }
+
+                if ('eliminar' === accion && !window.confirm('¿Eliminar esta reseña? No se puede deshacer.')) {
+                    return;
+                }
+
+                var fd = new FormData();
+                fd.append('action', 'mu_resolve_review_duplicate');
+                fd.append('nonce', muTestimonials.nonce);
+                fd.append('review_index', index);
+                fd.append('accion', accion);
+
+                btn.disabled = true;
+
+                fetch(muTestimonials.ajaxUrl, { method: 'POST', body: fd })
+                    .then(function (response) { return response.json(); })
+                    .then(function (res) {
+                        if (!res || !res.success) {
+                            btn.disabled = false;
+                            window.alert((res && res.data) ? res.data : 'No se pudo resolver. Intentá de nuevo.');
+                            return;
+                        }
+
+                        // El listado de la sección viene impreso en la página, así que
+                        // una recarga deja todo coherente (grilla y aviso).
+                        window.location.reload();
+                    })
+                    .catch(function () {
+                        btn.disabled = false;
+                        window.alert('No se pudo resolver. Revisá la conexión e intentá de nuevo.');
+                    });
+            });
+        }());
 
         // Un clic en el fondo oscuro cierra el modal (salida rápida tras un aviso).
         on('mu-review-modal', 'click', function (e) {

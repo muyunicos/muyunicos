@@ -176,20 +176,27 @@ if ( ! function_exists( 'mu_ai_settings_defaults' ) ) {
             ],
             'contexts' => [
                 'reviews'     => [
-                    'role'       => 'Traducís la opinión pública de un cliente de una tienda online argentina de stickers y papelería personalizada.',
-                    'tone'       => 'Cercano y natural, como habla un cliente real en Brasil o Estados Unidos. Sin lenguaje publicitario.',
-                    'glossary'   => "stickers → adesivos (pt) / stickers (en)\netiquetas imprimibles → etiquetas imprimibles (pt) / printable labels (en)\nMuy Únicos (marca: no traducir)",
-                    'exclude'    => 'No traduzcas nombres propios ni la marca. No cambies el sentido, el sarcasmo ni los elogios. No agregues ni quites información.',
-                    'max_chars'  => 700,
-                    'allow_html' => false,
+                    'role'        => 'Traducís la opinión pública de un cliente de una tienda online argentina de stickers y papelería personalizada.',
+                    'tone'        => 'Cercano y natural, como habla un cliente real en Brasil o Estados Unidos. Sin lenguaje publicitario: un poco de entusiasmo, creíble, nunca exagerado. Si el texto es largo, poné lo más interesante primero. Se permite recortar redundancia para productos digitales; está prohibido inventar datos.',
+                    'glossary'    => "stickers → adesivos (pt) / stickers (en)\netiquetas imprimibles → etiquetas imprimibles (pt) / printable labels (en)\nMuy Únicos (marca: no traducir)",
+                    'exclude'     => 'No traduzcas nombres propios ni la marca. No cambies el sentido, el sarcasmo ni los elogios. No agregues datos que no estén (fechas, productos, nombres).',
+                    // Una persona por línea: cada variante se escribe como una de ellas.
+                    'personas'    => "El Escritor Rápido\nLa Mamá Práctica\nEl Gente de Campo\nEl Sofisticado\nEl Cliente Escéptico",
+                    'variants'    => 5,
+                    'temperature' => 0.9,
+                    'max_chars'   => 700,
+                    'allow_html'  => false,
                 ],
                 'hero_banner' => [
-                    'role'       => 'Traducís textos de portada de una tienda online argentina de stickers y papelería personalizada.',
-                    'tone'       => 'Breve, claro y vendedor, sin exagerar. Conservá las mayúsculas de marca.',
-                    'glossary'   => "envío digital → envio digital (pt) / digital shipping (en)\n¡Gratis! → Grátis! (pt) / Free! (en)",
-                    'exclude'    => 'Conservá el marcado <span class="mu-highlight">…</span> tal cual. No traduzcas URLs, rutas ni nombres de archivo.',
-                    'max_chars'  => 1200,
-                    'allow_html' => true,
+                    'role'        => 'Traducís textos de portada de una tienda online argentina de stickers y papelería personalizada.',
+                    'tone'        => 'Breve, claro y vendedor, sin exagerar. Conservá las mayúsculas de marca.',
+                    'glossary'    => "envío digital → envio digital (pt) / digital shipping (en)\n¡Gratis! → Grátis! (pt) / Free! (en)",
+                    'exclude'     => 'Conservá el marcado <span class="mu-highlight">…</span> tal cual. No traduzcas URLs, rutas ni nombres de archivo.',
+                    'personas'    => '',
+                    'variants'    => 1,
+                    'temperature' => 0.2,
+                    'max_chars'   => 1200,
+                    'allow_html'  => true,
                 ],
             ],
         ];
@@ -273,13 +280,19 @@ if ( ! function_exists( 'mu_ai_save_settings' ) ) {
                 if ( ! isset( $defaults['contexts'][ $ambito ] ) || ! is_array( $values ) ) {
                     continue;
                 }
-                foreach ( [ 'role', 'tone', 'glossary', 'exclude' ] as $field ) {
+                foreach ( [ 'role', 'tone', 'glossary', 'exclude', 'personas' ] as $field ) {
                     if ( isset( $values[ $field ] ) ) {
                         $contexts[ $ambito ][ $field ] = sanitize_textarea_field( (string) $values[ $field ] );
                     }
                 }
                 if ( isset( $values['max_chars'] ) ) {
                     $contexts[ $ambito ]['max_chars'] = max( 60, min( 5000, intval( $values['max_chars'] ) ) );
+                }
+                if ( isset( $values['variants'] ) ) {
+                    $contexts[ $ambito ]['variants'] = max( 1, min( 5, intval( $values['variants'] ) ) );
+                }
+                if ( isset( $values['temperature'] ) ) {
+                    $contexts[ $ambito ]['temperature'] = max( 0, min( 1.5, (float) $values['temperature'] ) );
                 }
             }
         }
@@ -364,7 +377,64 @@ if ( ! function_exists( 'mu_ai_glossary_version' ) ) {
      */
     function mu_ai_glossary_version( $ambito ) {
         $profile = mu_ai_context_profile( $ambito );
-        return substr( md5( (string) ( $profile['glossary'] ?? '' ) . '|' . (string) ( $profile['tone'] ?? '' ) ), 0, 8 );
+
+        // Firma de TODAS las instrucciones: si se edita cualquiera (rol, tono,
+        // glosario, exclusiones, personas, variantes o temperatura), la caché
+        // anterior deja de reutilizarse. Antes sólo miraba glosario y tono, así que
+        // cambiar el rol o las reglas seguía devolviendo traducciones viejas.
+        $firma = '';
+
+        foreach ( [ 'role', 'tone', 'glossary', 'exclude', 'personas', 'variants', 'temperature' ] as $campo ) {
+            $firma .= '|' . (string) ( $profile[ $campo ] ?? '' );
+        }
+
+        return substr( md5( $firma ), 0, 8 );
+    }
+}
+
+if ( ! function_exists( 'mu_ai_personas' ) ) {
+    /**
+     * Personas del ámbito, una por línea (cada variante se escribe como una de ellas).
+     *
+     * @param string $ambito
+     * @return string[]
+     */
+    function mu_ai_personas( $ambito ) {
+        $profile = mu_ai_context_profile( $ambito );
+        $out     = [];
+
+        foreach ( preg_split( '/\r\n|\r|\n/', (string) ( $profile['personas'] ?? '' ) ) as $linea ) {
+            $linea = trim( (string) $linea );
+
+            if ( '' !== $linea ) {
+                $out[] = $linea;
+            }
+        }
+
+        return $out;
+    }
+}
+
+if ( ! function_exists( 'mu_ai_variants' ) ) {
+    /**
+     * Cuántas variantes pide una acción manual en este ámbito.
+     *
+     * Sin personas no hay variantes (una única traducción estándar: es la ruta
+     * automática). Con personas, se acota a la cantidad de personas disponibles,
+     * porque cada variante usa una.
+     *
+     * @param string $ambito
+     * @return int 1..5
+     */
+    function mu_ai_variants( $ambito ) {
+        $profile  = mu_ai_context_profile( $ambito );
+        $personas = mu_ai_personas( $ambito );
+
+        if ( ! $personas ) {
+            return 1;
+        }
+
+        return max( 1, min( count( $personas ), min( 5, (int) ( $profile['variants'] ?? 1 ) ) ) );
     }
 }
 
@@ -791,20 +861,40 @@ if ( ! function_exists( 'mu_ai_build_payload' ) ) {
      * @param string $ambito
      * @return array
      */
-    function mu_ai_build_payload( $items, $lang, $ambito ) {
+    function mu_ai_build_payload( $items, $lang, $ambito, $variants = 1, $personas = [] ) {
         $profile = mu_ai_context_profile( $ambito );
         $label   = (string) ( mu_ai_ambito( $ambito )['label'] ?? $ambito );
         $idioma  = ( 'pt' === $lang ) ? 'portugués de Brasil (pt-BR)' : 'inglés (en-US)';
+
+        $personas = is_array( $personas ) ? array_values( array_filter( array_map( 'trim', $personas ) ) ) : [];
+        $multiple = ( $variants > 1 && $personas );
 
         $system = 'Traducís al ' . $idioma . " para una tienda online.\n"
             . 'Ámbito: ' . $label . ".\n"
             . 'Rol: ' . (string) ( $profile['role'] ?? '' ) . "\n"
             . 'Tono: ' . (string) ( $profile['tone'] ?? '' ) . "\n"
             . "Glosario (respetalo):\n" . (string) ( $profile['glossary'] ?? '' ) . "\n"
-            . 'Reglas: ' . (string) ( $profile['exclude'] ?? '' ) . "\n"
-            . "No agregues comentarios, notas ni marcas de traducción.\n"
-            . 'Devolvé JSON válido con esta forma: {"items":[{"key":"…","translation":"…","unchanged":false}]}.' . "\n"
-            . 'Marcá unchanged=true solo si el texto ya estaba en el idioma destino.';
+            . 'Reglas: ' . (string) ( $profile['exclude'] ?? '' ) . "\n";
+
+        if ( $multiple ) {
+            $system .= "Devolvé " . count( $personas ) . " versiones del mismo texto, cada una escrita como una persona distinta, en este orden:\n";
+
+            foreach ( $personas as $i => $persona ) {
+                $system .= ( $i + 1 ) . '. ' . $persona . "\n";
+            }
+
+            $system .= "Cada versión debe sonar como esa persona (vocabulario, ritmo, largo) sin inventar datos ni cambiar el sentido del original. No mezcles personas entre versiones.\n";
+        }
+
+        $system .= "No agregues comentarios, notas ni marcas de traducción.\n";
+
+        if ( $multiple ) {
+            $system .= 'Devolvé JSON válido con esta forma: {"items":[{"key":"…","variants":["versión 1","versión 2"],"unchanged":false}]}';
+        } else {
+            $system .= 'Devolvé JSON válido con esta forma: {"items":[{"key":"…","translation":"…","unchanged":false}]}';
+        }
+
+        $system .= "\nMarcá unchanged=true solo si el texto ya estaba en el idioma destino.";
 
         $lote = [];
         foreach ( $items as $item ) {
@@ -819,7 +909,10 @@ if ( ! function_exists( 'mu_ai_build_payload' ) ) {
             // Modo JSON: la forma se declara en la instrucción y se valida en C-1. No se
             // envía responseSchema porque el enum de tipos varía entre versiones de la
             // API; la validación local es la autoridad.
-            'generationConfig'  => [ 'temperature' => 0.2, 'responseMimeType' => 'application/json' ],
+            'generationConfig'  => [
+                'temperature'      => (float) ( $profile['temperature'] ?? 0.2 ),
+                'responseMimeType' => 'application/json',
+            ],
         ];
     }
 }
@@ -833,7 +926,7 @@ if ( ! function_exists( 'mu_ai_provider_request' ) ) {
      * @param string $ambito
      * @return array [ 'ok' => bool, 'code' => string, 'error' => string, 'items' => array ]
      */
-    function mu_ai_provider_request( $items, $lang, $ambito ) {
+    function mu_ai_provider_request( $items, $lang, $ambito, $variants = 1, $personas = [] ) {
         $settings = mu_ai_settings();
         $chars    = 0;
 
@@ -841,15 +934,19 @@ if ( ! function_exists( 'mu_ai_provider_request' ) ) {
             $chars += strlen( (string) $item['text'] );
         }
 
+        // Varias variantes en una sola respuesta tardan más: el tope se estira sólo
+        // en esa ruta manual.
+        $timeout = ( $variants > 1 ) ? max( MU_AI_TIMEOUT, 30 ) : MU_AI_TIMEOUT;
+
         $response = wp_remote_post(
             MU_AI_ENDPOINT . '/models/' . rawurlencode( (string) $settings['model'] ) . ':generateContent',
             [
-                'timeout' => MU_AI_TIMEOUT,
+                'timeout' => $timeout,
                 'headers' => [
                     'Content-Type'   => 'application/json',
                     'x-goog-api-key' => mu_ai_api_key(),
                 ],
-                'body'    => (string) wp_json_encode( mu_ai_build_payload( $items, $lang, $ambito ) ),
+                'body'    => (string) wp_json_encode( mu_ai_build_payload( $items, $lang, $ambito, $variants, $personas ) ),
             ]
         );
 
@@ -934,9 +1031,29 @@ if ( ! function_exists( 'mu_ai_provider_request' ) ) {
             }
 
             $translation = isset( $row['translation'] ) ? (string) $row['translation'] : '';
+            $variantes   = [];
+
+            // El modo manual devuelve una lista (una por persona) y el automático un
+            // único `translation`: se aceptan las dos formas.
+            if ( isset( $row['variants'] ) && is_array( $row['variants'] ) ) {
+                foreach ( $row['variants'] as $variante ) {
+                    if ( is_string( $variante ) && '' !== trim( $variante ) ) {
+                        $variantes[] = (string) $variante;
+                    }
+                }
+            }
+
+            if ( ! $variantes && '' !== trim( $translation ) ) {
+                $variantes[] = $translation;
+            }
+
+            if ( '' === trim( $translation ) && $variantes ) {
+                $translation = $variantes[0];
+            }
 
             $out[ $key ] = [
                 'translation' => $translation,
+                'variants'    => $variantes,
                 'unchanged'   => ! empty( $row['unchanged'] ) || ( '' === trim( $translation ) ),
             ];
         }
@@ -961,6 +1078,43 @@ if ( ! function_exists( 'mu_ai_strlen' ) ) {
     }
 }
 
+if ( ! function_exists( 'mu_ai_cache_decode' ) ) {
+    /**
+     * Convierte una entrada de caché en la lista de variantes.
+     *
+     * Las entradas anteriores a las variantes guardaban texto plano: se devuelven
+     * como lista de una, así la caché vieja sigue siendo válida.
+     *
+     * @param string $cached
+     * @return string[]
+     */
+    function mu_ai_cache_decode( $cached ) {
+        $cached = (string) $cached;
+
+        if ( '' === trim( $cached ) ) {
+            return [];
+        }
+
+        if ( '[' === substr( ltrim( $cached ), 0, 1 ) ) {
+            $lista = json_decode( $cached, true );
+
+            if ( is_array( $lista ) ) {
+                $out = [];
+
+                foreach ( $lista as $item ) {
+                    if ( is_string( $item ) && '' !== trim( $item ) ) {
+                        $out[] = $item;
+                    }
+                }
+
+                return $out;
+            }
+        }
+
+        return [ $cached ];
+    }
+}
+
 if ( ! function_exists( 'mu_ai_translate' ) ) {
     /**
      * Traduce un lote de textos y devuelve la propuesta al editor. NO escribe contenido.
@@ -974,7 +1128,15 @@ if ( ! function_exists( 'mu_ai_translate' ) ) {
      * @param string $ambito Ámbito declarado ('reviews', 'hero_banner', …)
      * @return array
      */
-    function mu_ai_translate( $items, $lang, $ambito ) {
+    function mu_ai_translate( $items, $lang, $ambito, $opts = [] ) {
+        $opts     = is_array( $opts ) ? $opts : [];
+        $personas = mu_ai_personas( $ambito );
+        $variants = isset( $opts['variants'] ) ? max( 1, min( 5, (int) $opts['variants'] ) ) : mu_ai_variants( $ambito );
+        $force    = ! empty( $opts['force'] );
+
+        // Cada variante usa una persona: sin personas hay una única traducción
+        // estándar (es la ruta automática, predecible y cacheable al 100%).
+        $variants = $personas ? min( $variants, count( $personas ) ) : 1;
         $result = [
             'ok'        => false,
             'code'      => '',
@@ -1049,18 +1211,26 @@ if ( ! function_exists( 'mu_ai_translate' ) ) {
 
         foreach ( $clean_items as $key => $text ) {
             $cache_key = mu_ai_cache_key( $text, $lang, $ambito );
-            $cached    = mu_ai_cache_get( $cache_key );
+            $cached    = $force ? '' : mu_ai_cache_get( $cache_key );
+            $lista     = mu_ai_cache_decode( $cached );
 
-            if ( '' !== $cached ) {
-                $from_cache[ $key ] = [ 'translation' => $cached, 'unchanged' => false, 'cached' => true ];
+            if ( $lista ) {
+                $from_cache[ $key ] = [
+                    'translation' => $lista[0],
+                    'variants'    => $lista,
+                    'unchanged'   => false,
+                    'cached'      => true,
+                ];
             } else {
                 $pending[ $key ] = [ 'key' => $key, 'text' => $text, 'cache_key' => $cache_key ];
             }
         }
 
         if ( empty( $pending ) ) {
-            $result['ok']    = true;
-            $result['items'] = $from_cache;
+            $result['ok']       = true;
+            $result['items']    = $from_cache;
+            $result['variants'] = $variants;
+            $result['personas'] = ( $variants > 1 ? $personas : [] );
             return $result;
         }
 
@@ -1089,7 +1259,7 @@ if ( ! function_exists( 'mu_ai_translate' ) ) {
 
         // 4) Una sola solicitud para todo el lote pendiente (R4).
         $batch   = array_values( $pending );
-        $request = mu_ai_provider_request( $batch, $lang, $ambito );
+        $request = mu_ai_provider_request( $batch, $lang, $ambito, $variants, ( $variants > 1 ? $personas : [] ) );
 
         $result['requested'] = 1;
         $result['usage']     = mu_ai_usage();
@@ -1113,13 +1283,45 @@ if ( ! function_exists( 'mu_ai_translate' ) ) {
                 continue;
             }
 
-            $translation = mu_ai_sanitize_for_field( $row['translation'], $ambito );
-            $unchanged   = ! empty( $row['unchanged'] ) || ( '' === trim( $translation ) );
+            // Se sanea cada variante y se descartan las que queden vacías.
+            $variantes = [];
 
-            $out[ $key ] = [ 'translation' => $translation, 'unchanged' => $unchanged, 'cached' => false ];
+            foreach ( (array) ( $row['variants'] ?? [] ) as $variante ) {
+                $limpia = mu_ai_sanitize_for_field( $variante, $ambito );
 
-            if ( ! $unchanged ) {
-                mu_ai_cache_set( $item['cache_key'], $translation, $lang, $ambito );
+                if ( '' !== trim( $limpia ) ) {
+                    $variantes[] = $limpia;
+                }
+            }
+
+            $translation = mu_ai_sanitize_for_field( (string) ( $row['translation'] ?? '' ), $ambito );
+
+            if ( ! $variantes && '' !== trim( $translation ) ) {
+                $variantes[] = $translation;
+            }
+
+            if ( '' === trim( $translation ) && $variantes ) {
+                $translation = $variantes[0];
+            }
+
+            $unchanged = ! empty( $row['unchanged'] ) || ( '' === trim( $translation ) );
+
+            $out[ $key ] = [
+                'translation' => $translation,
+                'variants'    => $variantes,
+                'unchanged'   => $unchanged,
+                'cached'      => false,
+            ];
+
+            if ( ! $unchanged && $variantes ) {
+                // Se cachea la tanda completa: el siguiente clic con la misma
+                // persona es gratis (para otra tanda se manda force=1).
+                mu_ai_cache_set(
+                    $item['cache_key'],
+                    ( count( $variantes ) > 1 ? (string) wp_json_encode( $variantes ) : $variantes[0] ),
+                    $lang,
+                    $ambito
+                );
             }
         }
 
@@ -1129,8 +1331,10 @@ if ( ! function_exists( 'mu_ai_translate' ) ) {
             return $result;
         }
 
-        $result['ok']    = true;
-        $result['items'] = $out;
+        $result['ok']       = true;
+        $result['items']    = $out;
+        $result['variants'] = $variants;
+        $result['personas'] = ( $variants > 1 ? $personas : [] );
 
         return $result;
     }
@@ -1248,7 +1452,12 @@ if ( ! function_exists( 'mu_ai_ajax_translate' ) ) {
             $items[] = [ 'key' => sanitize_text_field( (string) $key ), 'text' => $text ];
         }
 
-        $result           = mu_ai_translate( $items, $lang, $ambito );
+        // variants: la ruta manual pide una tanda (una versión por persona); sin el
+        // dato se usa lo que declara el ámbito (1 = traducción estándar automática).
+        $variants = isset( $_POST['variants'] ) ? max( 1, min( 5, intval( $_POST['variants'] ) ) ) : mu_ai_variants( $ambito );
+        $force    = ! empty( $_POST['force'] );
+
+        $result           = mu_ai_translate( $items, $lang, $ambito, [ 'variants' => $variants, 'force' => $force ] );
         $result['ambito'] = $ambito;
         $result['lang']   = $lang;
 

@@ -132,6 +132,10 @@ Cronjobs:
 - Dependencia exclusiva del System Cron de Hostinger. 
   Las tareas pesadas (reindexado, transient clears) se ejecutan a nivel servidor para 
   evitar penalizar el rendimiento del frontend.
+- Importación semanal de reseñas (evento `mu_reviews_weekly_import`): lo ejecuta el System
+  Cron igual que el resto de las tareas. Consulta a Google Places 1 vez por semana y no
+  escribe ni purga caché si no hay nada nuevo. Rastro visible en la sección de reseñas
+  ("Última importación automática: …").
 
 ════════════════════════════════════════════════════════════════
 3. CONFIGURACIÓN COMERCIAL Y LOGÍSTICA
@@ -519,8 +523,9 @@ ERRORES "Commands out of sync" (MySQL)
   WooCommerce Sessions) ejecutan consultas SQL durante el hook `shutdown` de WordPress,
   DESPUÉS de que la conexión a la BD ya se cerró.
 - El tema NO es responsable: No registra hooks de shutdown, no usa register_shutdown_function,
-  no hace wp_remote_post. El único wp_remote_get (testimonios Google Places) solo se ejecuta
-  con ?force_reviews=1 y solo para admins.
+  no hace wp_remote_post. El único wp_remote_get es el de testimonios (Google Places) y corre
+  en dos casos, ninguno en el request de un visitante: el enlace manual ?force_reviews=1 (solo
+  admins) y la tarea programada semanal `mu_reviews_weekly_import`.
 - Mitigaciones implementadas en el tema:
   · inc/geo.php — Fallback por dominio ante errores de DB en geolocalización.
   · inc/compat-litespeed.php — Evita cachear 404s causados por errores transitorios.
@@ -883,7 +888,7 @@ HUECOS Y DECISIONES ABIERTAS (2026-10-16, feature 004-country-scope):
 - [ ] orders-workflow.php: bulk actions Legacy → migrar definitivamente a hooks de HPOS (woocommerce_order_list_table_bulk_actions).
 - [ ] digital-restriction.php: N+1 en display_digital_price_in_catalog — evaluar get_post_meta() directo.
 - [ ] coming-soon.css: archivo deprecado pero presente. Eliminar tras confirmar inactividad.
-- [ ] ui.php: mu_testimonios_section() — el wp_remote_get a Google Places solo se ejecuta con ?force_reviews=1. Evaluar mover a cron para evitar timeouts en request de admin.
+- [x] ui.php: mu_testimonios_section() — el wp_remote_get a Google Places salió del request de admin: la importación vive en mu_reviews_import_from_google() y corre por tarea programada semanal (mu_reviews_weekly_import) además del enlace manual ?force_reviews=1. (2026-10-16)
 - [ ] navigation-chips.php: mu_navchips_build_product_index() — evaluar si el índice puede crecer demasiado en wp_options con muchos productos.
 - [ ] WAF en el edge: configurar un challenge para requests con `product_tag=` multi-tag provenientes de bots no verificados. Criterio: "que no intenten ninguna combinación de etiquetas en el borde". Implementar en el WAF de la CDN de Hostinger; el edge hoy no lo soporta. OJO: verificar antes que no bloquee a Google (que rastrea combinaciones de etiquetas).
 - [ ] Excepción en el WAF para `meta-webindexer` (crawler de previews de Facebook/WhatsApp) si se desea preservar las preview cards compartidas. Criterio: las previews de enlaces en redes deben seguir renderizando la imagen.

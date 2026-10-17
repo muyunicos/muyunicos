@@ -114,3 +114,45 @@
     color: #666;
     line-height: 1.4;
 }
+
+/* ============================================
+   VARIANTES DE TRADUCCIÓN (1 · 2 · 3 · 4 · 5)
+   Botones discretos, a la izquierda del botón de IA. Solo aparecen cuando la
+   respuesta trajo más de una versión (una por persona).
+   ============================================ */
+
+.mu-ai-variants {
+    display: inline-flex;
+    gap: 3px;
+    align-items: center;
+}
+
+.mu-ai-variants:empty {
+    display: none;
+}
+
+.mu-ai-variant-btn {
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 1;
+    color: #666;
+    background: #fff;
+    border: 1px solid #dcdcde;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.mu-ai-variant-btn:hover {
+    border-color: var(--primario, #2B9FCF);
+    color: var(--primario, #2B9FCF);
+}
+
+.mu-ai-variant-btn.is-active {
+    background: var(--primario, #2B9FCF);
+    border-color: var(--primario, #2B9FCF);
+    color: #fff;
+}
