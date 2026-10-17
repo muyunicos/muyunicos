@@ -86,7 +86,8 @@ if ( ! function_exists( 'mu_hero_banners_sanitize_one' ) ) {
         $paises       = array_values( array_intersect( $raw_paises, $valid_paises ) );
 
         // Idioma activo: solo controla la pestaña abierta en el admin (ES por defecto).
-        // El estado real de idiomas del banner vive en traducir_en / traducir_pt.
+        // El estado de cada idioma se DERIVA del contenido (ver traducir_pt / traducir_en
+        // más abajo): no hay casilla que lo habilite.
         $idioma_activo = strtolower( (string) ( $b['idioma_activo'] ?? '' ) );
         if ( ! in_array( $idioma_activo, [ 'es', 'en', 'pt' ], true ) ) {
             $idioma_activo = 'es';
@@ -133,11 +134,231 @@ if ( ! function_exists( 'mu_hero_banners_sanitize_one' ) ) {
                 'show_free_badge' => ! empty( $b['show_free_badge'] ),
                 'paises'          => $paises,
                 'idioma_activo'   => $idioma_activo,
-                'traducir_pt'     => ! empty( $b['traducir_pt'] ),
-                'traducir_en'     => ! empty( $b['traducir_en'] ),
+                // [Automático] Un idioma "tiene traducción" cuando guarda algún valor
+                // propio: como lo idéntico al español se guarda vacío, el contenido
+                // alcanza para saberlo. Se conserva por compatibilidad (la base
+                // describe su propio estado), pero el front ya no decide con esto:
+                // usa mu_hero_banner_field().
+                'traducir_pt'     => mu_hero_banner_lang_has_translation( $lang_values, 'pt' ),
+                'traducir_en'     => mu_hero_banner_lang_has_translation( $lang_values, 'en' ),
             ],
             $lang_values
         );
+    }
+}
+
+if ( ! function_exists( 'mu_hero_banner_lang_all_fields' ) ) {
+    /**
+     * Los 10 campos que existen por idioma (base ES + sufijos _pt / _en).
+     *
+     * @return string[]
+     */
+    function mu_hero_banner_lang_all_fields() {
+        return [
+            'titulo',
+            'descripcion',
+            'eyebrow',
+            'imagen',
+            'cta_texto',
+            'cta_url',
+            'cta_secundario_texto',
+            'cta_secundario_url',
+            'free_badge_text',
+            'free_badge_url',
+        ];
+    }
+}
+
+if ( ! function_exists( 'mu_hero_banner_lang_fields' ) ) {
+    /**
+     * Campos que la IA traduce en un banner. Los declara el servicio (ámbito
+     * hero_banner); si el módulo no está cargado queda la misma lista, para que el
+     * resto del banner no dependa de él.
+     *
+     * @return string[]
+     */
+    function mu_hero_banner_lang_fields() {
+        if ( function_exists( 'mu_ai_ambito' ) ) {
+            $def = mu_ai_ambito( 'hero_banner' );
+            if ( ! empty( $def['fields'] ) && is_array( $def['fields'] ) ) {
+                return array_values( $def['fields'] );
+            }
+        }
+
+        return [ 'titulo', 'descripcion', 'eyebrow', 'cta_texto', 'cta_secundario_texto', 'free_badge_text' ];
+    }
+}
+
+if ( ! function_exists( 'mu_hero_banner_lang_has_translation' ) ) {
+    /**
+     * ¿Ese idioma guarda algún valor propio (distinto del español)?
+     *
+     * [Automático] Al guardarse vacío lo idéntico al español (sobrescritura
+     * dispersa), tener contenido equivale a tener traducción real: no hace falta
+     * ninguna casilla que lo habilite.
+     *
+     * @param array  $b    Banner (guardado o saneado).
+     * @param string $lang Idioma a consultar (pt | en).
+     * @return bool
+     */
+    function mu_hero_banner_lang_has_translation( $b, $lang ) {
+        if ( 'es' === $lang || ! is_array( $b ) ) {
+            return false;
+        }
+
+        foreach ( mu_hero_banner_lang_all_fields() as $field ) {
+            if ( '' !== (string) ( $b[ $field . '_' . $lang ] ?? '' ) ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}
+
+if ( ! function_exists( 'mu_hero_banner_lang_values' ) ) {
+    /**
+     * Valores propios de un idioma, tal como se guardan (para detectar cambios).
+     *
+     * @param array  $b
+     * @param string $lang
+     * @return array<string,string>
+     */
+    function mu_hero_banner_lang_values( $b, $lang ) {
+        $out = [];
+
+        foreach ( mu_hero_banner_lang_all_fields() as $field ) {
+            $out[ $field ] = (string) ( $b[ $field . '_' . $lang ] ?? '' );
+        }
+
+        return $out;
+    }
+}
+
+if ( ! function_exists( 'mu_hero_banner_es_source' ) ) {
+    /**
+     * Español que sirve de origen a la traducción: solo los campos que traduce la
+     * IA (título, descripción, eyebrow, CTA, CTA secundario y badge). Las URLs y la
+     * imagen no se traducen, así que editarlas no invalida una traducción.
+     *
+     * @param array $b
+     * @return string
+     */
+    function mu_hero_banner_es_source( $b ) {
+        $parts = [];
+
+        foreach ( mu_hero_banner_lang_fields() as $field ) {
+            $parts[] = (string) ( $b[ $field ] ?? '' );
+        }
+
+        return implode( "\n", $parts );
+    }
+}
+
+if ( ! function_exists( 'mu_hero_banner_lang_hash' ) ) {
+    /**
+     * Marca de origen de la traducción de un banner: hash del español que la produjo.
+     *
+     * @param array $b
+     * @return string
+     */
+    function mu_hero_banner_lang_hash( $b ) {
+        return function_exists( 'mu_ai_hash' ) ? mu_ai_hash( mu_hero_banner_es_source( $b ) ) : '';
+    }
+}
+
+if ( ! function_exists( 'mu_hero_banner_lang_is_stale' ) ) {
+    /**
+     * ¿El español cambió desde que se guardó esa traducción?
+     *
+     * @param array  $b
+     * @param string $lang
+     * @return bool
+     */
+    function mu_hero_banner_lang_is_stale( $b, $lang ) {
+        if ( 'es' === $lang || ! function_exists( 'mu_ai_is_stale' ) || ! is_array( $b ) ) {
+            return false;
+        }
+
+        $hash = (string) ( $b[ 'traducir_' . $lang . '_hash' ] ?? '' );
+
+        // Cualquier valor propio sirve como "traducción" para la comparación: lo que
+        // se compara es el hash del español guardado contra la marca de origen.
+        $sample = '';
+        foreach ( mu_hero_banner_lang_all_fields() as $field ) {
+            $value = (string) ( $b[ $field . '_' . $lang ] ?? '' );
+            if ( '' !== $value ) {
+                $sample = $value;
+                break;
+            }
+        }
+
+        return mu_ai_is_stale( mu_hero_banner_es_source( $b ), $sample, $hash );
+    }
+}
+
+if ( ! function_exists( 'mu_hero_banner_field' ) ) {
+    /**
+     * Valor de un campo del banner en el idioma pedido.
+     *
+     * [Automático] Si el idioma tiene un valor propio se usa ese; si no (campo
+     * vacío o igual al español, que es cuando no se persiste), se usa el español.
+     * Antes se exigía además la casilla traducir_XX.
+     *
+     * @param array  $promo Banner.
+     * @param string $base  Nombre del campo sin sufijo (titulo, cta_url…).
+     * @param string $lang  Idioma actual (es | pt | en).
+     * @return string
+     */
+    function mu_hero_banner_field( $promo, $base, $lang ) {
+        if ( 'es' !== $lang && is_array( $promo ) ) {
+            $value = (string) ( $promo[ $base . '_' . $lang ] ?? '' );
+            if ( '' !== $value ) {
+                return $value;
+            }
+        }
+
+        return (string) ( $promo[ $base ] ?? '' );
+    }
+}
+
+if ( ! function_exists( 'mu_hero_banner_with_origin_marks' ) ) {
+    /**
+     * Marca de origen de cada traducción del banner (FR-013).
+     *
+     * Se recalcula SOLO si la traducción de ese idioma cambió respecto del banner
+     * guardado; si no cambió, se conserva la marca anterior. Si se recalculara
+     * siempre, quedaría idéntica al español recién guardado y el aviso de
+     * "traducción desactualizada" no aparecería nunca (defecto que tenía el editor
+     * de reseñas, corregido en la misma pasada).
+     *
+     * @param array      $clean    Banner ya saneado.
+     * @param array|null $previous Banner guardado antes de este guardado (null si es nuevo).
+     * @return array Banner con traducir_pt_hash / traducir_en_hash.
+     */
+    function mu_hero_banner_with_origin_marks( $clean, $previous ) {
+        foreach ( [ 'pt', 'en' ] as $lang ) {
+            $key = 'traducir_' . $lang . '_hash';
+
+            if ( ! mu_hero_banner_lang_has_translation( $clean, $lang ) ) {
+                $clean[ $key ] = '';
+                continue;
+            }
+
+            if ( ! is_array( $previous ) ) {
+                // Banner nuevo (o sin id): la traducción se está creando ahora.
+                $clean[ $key ] = mu_hero_banner_lang_hash( $clean );
+                continue;
+            }
+
+            $changed = ( mu_hero_banner_lang_values( $clean, $lang ) !== mu_hero_banner_lang_values( $previous, $lang ) );
+
+            $clean[ $key ] = $changed
+                ? mu_hero_banner_lang_hash( $clean )
+                : (string) ( $previous[ $key ] ?? '' );
+        }
+
+        return $clean;
     }
 }
 
@@ -302,6 +523,12 @@ if ( is_admin() ) {
         $css_ver  = file_exists( $css_file ) ? (string) filemtime( $css_file ) : $ver;
         $js_ver   = file_exists( $js_file ) ? (string) filemtime( $js_file ) : $ver;
 
+        // Componente compartido con el editor de reseñas (píldoras ES|PT|EN + botón
+        // "Traducir con IA"): una sola definición para los dos editores.
+        $pills_file = $dir . '/css/components/ai-translate-inline.css';
+        $pills_ver  = file_exists( $pills_file ) ? (string) filemtime( $pills_file ) : $ver;
+
+        wp_enqueue_style( 'mu-ai-translate-inline', $uri . '/css/components/ai-translate-inline.css', [], $pills_ver );
         wp_enqueue_style( 'mu-admin-hero-banners', $uri . '/css/admin-hero-banners.css', [], $css_ver );
         wp_enqueue_script( 'mu-admin-hero-banners-js', $uri . '/js/admin-hero-banners.js', [ 'jquery' ], $js_ver, true );
 
@@ -310,6 +537,9 @@ if ( is_admin() ) {
                 'mediaTitle'  => __( 'Seleccionar imagen del banner', 'mu' ),
                 'mediaButton' => __( 'Usar esta imagen', 'mu' ),
                 'removed'     => __( 'Eliminado (se descarta al guardar)', 'mu' ),
+                // Servicio de traducción con IA (botón "Traducir con IA").
+                'aiUrl'       => admin_url( 'admin-ajax.php' ),
+                'aiNonce'     => wp_create_nonce( 'mu_ai_nonce' ),
             ] );
         }
     } );
@@ -332,6 +562,19 @@ if ( ! function_exists( 'mu_hero_banners_handle_save' ) ) {
         $raw     = isset( $_POST['mu_banner'] ) && is_array( $_POST['mu_banner'] ) ? wp_unslash( $_POST['mu_banner'] ) : [];
         $cleaned = [];
 
+        // Lo almacenado se lee ANTES de limpiar: además del [Hash Gate] de más abajo,
+        // sirve para saber si la traducción de un idioma cambió en este guardado
+        // (marca de origen, ver el bucle).
+        $before = get_option( MU_HERO_BANNERS_OPTION, null );
+
+        // Banners guardados indexados por id (slug), para comparar traducciones.
+        $before_by_id = [];
+        foreach ( (array) $before as $old ) {
+            if ( is_array( $old ) && '' !== (string) ( $old['id'] ?? '' ) ) {
+                $before_by_id[ (string) $old['id'] ] = $old;
+            }
+        }
+
         foreach ( $raw as $b ) {
             // Saltar filas marcadas como eliminadas o totalmente vacías.
             if ( ! empty( $b['_delete'] ) ) {
@@ -340,14 +583,21 @@ if ( ! function_exists( 'mu_hero_banners_handle_save' ) ) {
             if ( empty( $b['titulo'] ) && empty( $b['imagen'] ) && empty( $b['cta_url'] ) ) {
                 continue;
             }
-            $cleaned[] = mu_hero_banners_sanitize_one( $b );
+
+            $clean = mu_hero_banners_sanitize_one( $b );
+
+            // [Marca de origen] Con qué español se tradujo cada idioma, para poder
+            // avisar "traducción desactualizada" cuando el banner base cambie.
+            $previous = ( '' !== (string) $clean['id'] && isset( $before_by_id[ (string) $clean['id'] ] ) )
+                ? $before_by_id[ (string) $clean['id'] ]
+                : null;
+
+            $cleaned[] = mu_hero_banner_with_origin_marks( $clean, $previous );
         }
 
         // [Hash Gate] Comparar lo nuevo contra lo almacenado con maybe_serialize()
         // y actuar solo si cambió realmente. Evita invalidar el object cache y
         // purgar la caché de página en guardados sin cambios reales.
-        $before = get_option( MU_HERO_BANNERS_OPTION, null );
-
         if ( maybe_serialize( $before ) === maybe_serialize( $cleaned ) ) {
             // Sin cambios: no se toca la opción, ni el cache, ni la caché de página.
             wp_safe_redirect( add_query_arg( [
@@ -389,7 +639,7 @@ if ( ! function_exists( 'mu_hero_banners_render_admin_page' ) ) {
         <div class="wrap mu-hero-banners-wrap">
             <h1><?php esc_html_e( 'Hero Banners — Portada', 'mu' ); ?></h1>
             <p class="description">
-                <?php esc_html_e( 'Gestioná los banners del slider principal de la home. Las fechas usan formato DDMMAAAA: si dejás ambas vacías, el banner se muestra siempre. Cada banner se muestra sólo en los países tildados. En los sitios en otro idioma se usa la traducción del banner si está marcada y cargada; si no, se muestra la versión en español.', 'mu' ); ?>
+                <?php esc_html_e( 'Gestioná los banners del slider principal de la home. Las fechas usan formato DDMMAAAA: si dejás ambas vacías, el banner se muestra siempre. Cada banner se muestra sólo en los países tildados. En los sitios en otro idioma se usa la versión traducida de cada campo cuando está cargada; los campos vacíos (o iguales al español) muestran el español. El punto en la píldora marca los idiomas que ya tienen contenido propio.', 'mu' ); ?>
             </p>
 
             <?php if ( $updated ) : ?>
@@ -476,8 +726,7 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
 
                 <?php
                 $countries_data   = function_exists( 'muyu_get_countries_data' ) ? muyu_get_countries_data() : [];
-                $idioma_activo_lc = $b['idioma_activo'];              // es | en | pt (pestaña del editor)
-                $idioma_activo    = strtoupper( $idioma_activo_lc );  // ES | EN | PT (etiqueta visible)
+                $idioma_activo_lc = $b['idioma_activo'];              // es | en | pt (píldora activa)
                 ?>
 
                 <!-- Selector de países -->
@@ -497,23 +746,38 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                 </span>
 
                 <!-- Selector de idioma (pestaña activa del editor) -->
-                <button type="button" class="button mu-hero-banner-idioma-btn" data-idioma="<?php echo esc_attr( $idioma_activo ); ?>">
-                    <span class="mu-hero-banner-idioma-code"><?php echo esc_html( $idioma_activo ); ?></span>
-                    <span class="mu-hero-banner-idioma-caret" aria-hidden="true"></span>
-                </button>
-                <input type="hidden" name="<?php echo esc_attr( $name ); ?>[idioma_activo]" value="<?php echo esc_attr( $idioma_activo_lc ); ?>" class="mu-hero-banner-idioma-valor">
-                <span class="mu-hero-banner-idiomas-pills">
-                    <?php foreach ( [ 'pt', 'en' ] as $lang_code ) : ?>
-                    <span class="mu-hero-banner-pill mu-hero-banner-pill--lang" data-lang="<?php echo esc_attr( $lang_code ); ?>"<?php echo ! empty( $b[ 'traducir_' . $lang_code ] ) ? '' : ' style="display:none;"'; ?>><?php echo esc_html( strtoupper( $lang_code ) ); ?></span>
+                <?php
+                // Píldoras de idioma (mismo componente que el editor de reseñas):
+                // eligen qué bloque se edita y el punto marca, automáticamente, los
+                // idiomas con contenido propio. Ya no hay casilla "Traducir".
+                ?>
+                <span class="mu-lang-pills" role="group" aria-label="<?php esc_attr_e( 'Idioma del banner', 'mu' ); ?>">
+                    <?php
+                    foreach ( [ 'es' => 'Español', 'pt' => 'Portugués (Brasil)', 'en' => 'Inglés' ] as $code => $label ) :
+                        $tiene = 'es' !== $code && mu_hero_banner_lang_has_translation( $b, $code );
+                        ?>
+                        <button type="button"
+                                class="mu-lang-pill<?php echo $idioma_activo_lc === $code ? ' is-active' : ''; ?>"
+                                data-lang="<?php echo esc_attr( $code ); ?>"
+                                data-has-translation="<?php echo $tiene ? '1' : '0'; ?>"
+                                title="<?php echo esc_attr( $label ); ?>"><?php echo esc_html( strtoupper( $code ) ); ?></button>
                     <?php endforeach; ?>
                 </span>
-                <div class="mu-hero-banner-idioma-dropdown">
-                    <?php foreach ( [ 'es' => 'ES', 'en' => 'EN', 'pt' => 'PT' ] as $code => $label ) : ?>
-                    <button type="button" class="mu-hero-banner-idioma-item" data-idioma="<?php echo esc_attr( $code ); ?>"<?php echo $idioma_activo_lc === $code ? ' style="display:none;"' : ''; ?>>
-                        <?php echo esc_html( $label ); ?>
+                <input type="hidden" name="<?php echo esc_attr( $name ); ?>[idioma_activo]" value="<?php echo esc_attr( $idioma_activo_lc ); ?>" class="mu-hero-banner-idioma-valor">
+
+                <?php // Traduce del español al idioma activo; nunca guarda. ?>
+                <span class="mu-hero-banner-ai">
+                    <span class="mu-ai-inline-status" data-role="ai-status"></span>
+                    <button type="button"
+                            class="mu-ai-inline-btn mu-hero-banner-ai-btn"
+                            data-role="ai-btn"
+                            data-fields="<?php echo esc_attr( implode( ',', mu_hero_banner_lang_fields() ) ); ?>"
+                            data-source-lang="es"
+                            title="<?php esc_attr_e( 'Traduce los textos del banner del español al idioma activo', 'mu' ); ?>"
+                            <?php echo 'es' === $idioma_activo_lc ? 'disabled' : ''; ?>>
+                        <?php esc_html_e( 'Traducir con IA', 'mu' ); ?>
                     </button>
-                    <?php endforeach; ?>
-                </div>
+                </span>
 
                 <button type="button" class="button-link-delete mu-hero-banner-row__remove">
                     <?php esc_html_e( 'Eliminar', 'mu' ); ?>
@@ -590,22 +854,22 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                     </div>
                 </div>
 
-                <!-- Réplicas por idioma -->
+                <!-- Réplicas por idioma: siempre editables (no hay casilla que las habilite).
+                     Un campo vacío o igual al español no se guarda, y el front muestra
+                     el español: el punto de la píldora sale de ese contenido guardado. -->
                 <?php foreach ( [ 'pt', 'en' ] as $lang ) : ?>
-                <?php $traducir_on = ! empty( $b[ 'traducir_' . $lang ] ); ?>
-                <div class="mu-hero-banner-lang-block mu-hero-banner-traducir-wrapper" data-lang="<?php echo esc_attr( $lang ); ?>" style="display:<?php echo $idioma_activo_lc === $lang ? 'block' : 'none'; ?>;">
-                    <p class="mu-hero-banner-traducir-toggle">
-                        <label>
-                            <input type="checkbox" name="<?php echo esc_attr( $name ); ?>[traducir_<?php echo esc_attr( $lang ); ?>]" value="1"<?php checked( $traducir_on ); ?> class="mu-hero-banner-traducir-checkbox" data-lang="<?php echo esc_attr( $lang ); ?>">
-                            <strong><?php esc_html_e( 'Traducir', 'mu' ); ?></strong>
-                        </label>
-                        <span class="mu-hero-banner-traducir-hint"<?php echo $traducir_on ? ' style="display:none;"' : ''; ?>>
-                            <?php esc_html_e( 'Sin traducir: se muestra la versión en español.', 'mu' ); ?>
-                        </span>
-                    </p>
-                    <div class="mu-hero-banner-fields-grid mu-hero-banner-traducir-fields mu-hero-banner-traducir-<?php echo esc_attr( $lang ); ?>" style="display:<?php echo $traducir_on ? 'grid' : 'none'; ?>;">
+                <div class="mu-hero-banner-lang-block" data-lang="<?php echo esc_attr( $lang ); ?>" style="display:<?php echo $idioma_activo_lc === $lang ? 'block' : 'none'; ?>;">
+                    <?php if ( mu_hero_banner_lang_is_stale( $b, $lang ) ) : ?>
+                        <p class="mu-lang-hint mu-hero-banner-stale" role="status">
+                            <?php esc_html_e( 'El texto en español cambió después de esta traducción: conviene revisarla (o volver a traducirla con IA).', 'mu' ); ?>
+                        </p>
+                    <?php endif; ?>
+                    <div class="mu-hero-banner-fields-grid">
                         <?php foreach ( array_keys( $lang_fields ) as $field ) { $render_lang_field( $field, '_' . $lang ); } ?>
                     </div>
+                    <p class="mu-lang-hint">
+                        <?php esc_html_e( 'Lo que dejes vacío (o igual al español) muestra el español en el sitio.', 'mu' ); ?>
+                    </p>
                 </div>
                 <?php endforeach; ?>
 

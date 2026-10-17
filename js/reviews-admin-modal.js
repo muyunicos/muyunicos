@@ -67,7 +67,7 @@
             function setLang(lang) {
                 currentLang = lang;
 
-                document.querySelectorAll('.mu-review-lang-pill').forEach(function (pill) {
+                document.querySelectorAll('.mu-lang-pill').forEach(function (pill) {
                     pill.classList.toggle('is-active', pill.getAttribute('data-lang') === lang);
                 });
                 document.querySelectorAll('.mu-review-lang-block').forEach(function (block) {
@@ -97,7 +97,7 @@
 
             /** Punto en la píldora: ese idioma ya tiene comentario propio guardado. */
             function markTranslated(lang, hasValue) {
-                var pill = document.querySelector('.mu-review-lang-pill[data-lang="' + lang + '"]');
+                var pill = document.querySelector('.mu-lang-pill[data-lang="' + lang + '"]');
                 if (pill) { pill.setAttribute('data-has-translation', hasValue ? '1' : '0'); }
             }
 
@@ -150,7 +150,7 @@
                 var box = byId('mu-review-translate-status');
                 if (!box) { return; }
                 box.textContent = text || '';
-                box.className = 'mu-review-translate-status' + (ok ? ' is-ok' : (text ? ' is-bad' : ''));
+                box.className = 'mu-ai-inline-status' + (ok ? ' is-ok' : (text ? ' is-bad' : ''));
             }
 
             /**
@@ -359,7 +359,7 @@
         });
 
         // --- Píldoras de idioma del editor (solo cambia el comentario) ---
-        document.querySelectorAll('.mu-review-lang-pill').forEach(function (pill) {
+        document.querySelectorAll('.mu-lang-pill').forEach(function (pill) {
             pill.addEventListener('click', function () {
                 setLang(pill.getAttribute('data-lang'));
             });

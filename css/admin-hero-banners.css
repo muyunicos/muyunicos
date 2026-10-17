@@ -128,76 +128,35 @@
     font-weight: 600;
 }
 
-.mu-hero-banner-idioma-btn {
-    background: #f7f7f7;
-    border: 1px solid #ccc;
-    color: #333;
-    font-size: 12px;
-    padding: 4px 10px;
-    border-radius: 4px;
-    cursor: pointer;
-}
-.mu-hero-banner-idioma-btn:hover { background: #eaeaea; }
-
-/* Caret del dropdown: sólo forma, sin texto (el botón muestra el código). */
-.mu-hero-banner-idioma-caret {
-    display: inline-block;
-    width: 0;
-    height: 0;
+/* Píldoras de idioma (ES | PT | EN): componente COMPARTIDO con el editor de
+   reseñas. Sus estilos (.mu-lang-pill, .mu-ai-inline-btn, .mu-ai-inline-status,
+   .mu-lang-hint) viven en css/components/ai-translate-inline.css: acá solo se
+   ajusta la disposición dentro de la cabecera de la fila. */
+.mu-lang-pills {
     margin-left: 6px;
-    vertical-align: middle;
-    border-left: 4px solid transparent;
-    border-right: 4px solid transparent;
-    border-top: 5px solid currentColor;
 }
 
-/* Píldoras de idiomas con traducción activa */
-.mu-hero-banner-idiomas-pills {
+/* Botón + estado de "Traducir con IA" en la cabecera de la fila */
+.mu-hero-banner-ai {
     display: inline-flex;
-    gap: 4px;
-    margin-left: 6px;
     align-items: center;
+    gap: 8px;
+    margin-left: 6px;
 }
-.mu-hero-banner-pill--lang {
-    background: #f0eaff;
-    color: #5b21b6;
-    border-color: #5b21b6;
-}
-
-.mu-hero-banner-idioma-dropdown {
-    display: none;
-    position: absolute;
-    top: 100%;
-    left: 0;
-    background: #fff;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    padding: 6px;
-    z-index: 100;
-    min-width: 60px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    margin-top: 4px;
+.mu-hero-banner-ai .mu-ai-inline-status {
+    max-width: 320px;
 }
 
-.mu-hero-banner-idioma-item {
-    width: 100%;
-    text-align: left;
-    background: none;
-    border: 0;
-    padding: 4px 8px;
+/* Aviso de traducción desactualizada (el español cambió desde la traducción) */
+.mu-hero-banner-stale {
+    margin: 0 0 var(--mu-space-sm, 10px);
+    padding: 8px 10px;
     font-size: 12px;
-    cursor: pointer;
-    color: #333;
+    color: #7a4b00;
+    background: #fdf6e3;
+    border: 1px solid #f0d9a0;
+    border-radius: var(--mu-radius-sm, 6px);
 }
-.mu-hero-banner-idioma-item:hover { background: #f0f0f1; }
-
-/* --- Campos traducidos --- */
-.mu-hero-banner-traducir-checkbox {
-    margin-right: 6px;
-}
-.mu-hero-banner-traducir-fields label { font-size: 13px; }
-.mu-hero-banner-traducir-fields input,
-.mu-hero-banner-traducir-fields textarea { margin-top: 4px; }
 
 /* --- Bloques por idioma: español (base) + réplicas EN / PT --- */
 .mu-hero-banner-lang-block {
@@ -211,20 +170,13 @@
     gap: var(--mu-space-sm, 10px) var(--mu-space-md, 20px);
 }
 .mu-hero-banner-fields-grid p { margin: 0; }
-.mu-hero-banner-fields-grid label { display: block; margin-bottom: 4px; }
+.mu-hero-banner-fields-grid label { display: block; margin-bottom: 4px; font-size: 13px; }
+.mu-hero-banner-fields-grid input,
+.mu-hero-banner-fields-grid textarea { margin-top: 4px; }
 
-/* Fila del checkbox "Traducir" + aviso de fallback */
-.mu-hero-banner-traducir-toggle { margin: 0 0 var(--mu-space-sm, 10px); }
-.mu-hero-banner-traducir-hint {
-    display: block;
-    margin-top: 4px;
-    font-size: 12px;
-    font-style: italic;
-    color: #646970;
-}
-
-/* Separador visual de la réplica de traducción */
-.mu-hero-banner-traducir-fields {
+/* Separador visual de los bloques traducidos (PT y EN) */
+.mu-hero-banner-lang-block[data-lang="pt"],
+.mu-hero-banner-lang-block[data-lang="en"] {
     border: 1px solid #ddd;
     border-radius: var(--mu-radius-sm, 6px);
     padding: 10px;

@@ -48,8 +48,8 @@ US4 (lote y automatización) queda **fuera** de esta entrega (decisión del mant
 
 **Independent Test**: traducir un banner a PT, guardar y verlo traducido en `/pt/` sin cambios en español.
 
-- [ ] T018 [US3] Botón "Traducir" en `js/admin-hero-banners.js` (por fila y por idioma activo) + estilo en `css/admin-hero-banners.css`.
-- [ ] T019 [US3] Marca de origen en el guardado de banners (`mu_hero_banners_sanitize_one`) y aviso de desactualización.
+- [X] T018 [US3] Botón "Traducir" en `js/admin-hero-banners.js` (por fila y por idioma activo) + estilo en `css/admin-hero-banners.css`.
+- [X] T019 [US3] Marca de origen en el guardado de banners (`mu_hero_banners_sanitize_one`) y aviso de desactualización.
 - [ ] T020 [US3] Verificación: `php -l`, prueba manual de §B.3 y caso de fallo de §B.4.
 
 ## Fase 5 — Documentación y cierre
@@ -70,5 +70,6 @@ US4 (lote y automatización) queda **fuera** de esta entrega (decisión del mant
 
 Lote de pendientes, disparo automático al importar reseñas y ejecución programada: se
 planifican después de medir calidad y consumo reales (spec, historia US4).
+
 
 

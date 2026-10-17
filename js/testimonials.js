@@ -63,6 +63,7 @@
         var ringArc      = rotateBtn ? rotateBtn.querySelector('.mu-refresh-ring-arc') : null;
         var rotatePaused = false;
         var rotateTimer  = null;   // Solo en el modo sin animación (reduced motion).
+        var lastManualRotation = 0; // Para descartar una vuelta rezagada tras el clic.
         var RING_MS_FALLBACK = 10000;
         var reduceMotion = !!(window.matchMedia
             && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -189,8 +190,23 @@
         function restartRing() {
             if (!ringArc) return;
 
+            // Web Animations: pone el contador exactamente en cero, también con el
+            // anillo en pausa (cursor encima). Es el camino de los navegadores
+            // actuales y el que garantiza que el reloj vuelva a empezar.
+            if (typeof ringArc.getAnimations === 'function') {
+                var animations = ringArc.getAnimations();
+                if (animations && animations.length) {
+                    for (var i = 0; i < animations.length; i++) {
+                        animations[i].currentTime = 0;
+                    }
+                    return;
+                }
+            }
+
+            // Respaldo (navegadores sin getAnimations): quitar la animación, forzar
+            // reflow y dejar que el CSS la vuelva a crear desde cero.
             ringArc.style.animation = 'none';
-            void ringArc.offsetWidth; // fuerza reflow: sin esto el reinicio no se aplica
+            void ringArc.offsetWidth;
             ringArc.style.animation = '';
         }
 
@@ -342,8 +358,9 @@
                 e.preventDefault();
                 e.stopPropagation();
 
+                lastManualRotation = Date.now();
                 rotateReviews();
-                restartRing();   // con el clic, la próxima vuelta empieza ahora
+                restartRing();   // con el clic, el contador vuelve a cero
             });
 
             // Con reduced motion el anillo no se dibuja (su animación no corre), así
@@ -352,7 +369,14 @@
             if (ringArc && !reduceMotion) {
                 // Cada vuelta completa del reloj carga otras reseñas.
                 ringArc.addEventListener('animationiteration', function () {
-                    if (!rotatePaused) { rotateReviews(); }
+                    if (rotatePaused) return;
+
+                    // La vuelta que estaba por terminar cuando se hizo clic no debe
+                    // sumar una carga extra (solo puede pasar si el reinicio del
+                    // contador no prendió en este navegador).
+                    if (Date.now() - lastManualRotation < 250) return;
+
+                    rotateReviews();
                 });
             }
 

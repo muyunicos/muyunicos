@@ -483,6 +483,13 @@ if ( ! function_exists( 'mu_testimonios_enqueue' ) ) {
         wp_enqueue_style( 'mu-testimonials', $uri . '/css/testimonials.css', [], $css_ver );
         wp_enqueue_script( 'mu-testimonials', $uri . '/js/testimonials.js', [], $js_ver, true );
 
+        // Componente compartido (píldoras ES|PT|EN + botón "Traducir con IA") que
+        // también usa el editor de hero banners: una sola definición para los dos.
+        $pills_file = $dir . '/css/components/ai-translate-inline.css';
+        $pills_ver  = file_exists( $pills_file ) ? (string) filemtime( $pills_file ) : $ver;
+
+        wp_enqueue_style( 'mu-ai-translate-inline', $uri . '/css/components/ai-translate-inline.css', [], $pills_ver );
+
         // Editor de reseñas: archivo físico (constitución II: nada de JS inline en el
         // HTML de salida), solo para quien puede gestionar reseñas y con dependencia
         // explícita de mu-testimonials, que es quien define muTestimonials.
@@ -620,10 +627,10 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
             <div style="background:white;padding:30px;border-radius:12px;max-width:500px;width:90%;max-height:90vh;overflow-y:auto;">
                 <div class="mu-review-modal-head">
                     <h3 id="mu-review-modal-title" style="margin:0;">Agregar Reseña</h3>
-                    <span class="mu-review-lang-pills" role="group" aria-label="Idioma del comentario">
-                        <button type="button" class="mu-review-lang-pill is-active" data-lang="es" title="Español">ES</button>
-                        <button type="button" class="mu-review-lang-pill" data-lang="pt" title="Portugués (Brasil)">PT</button>
-                        <button type="button" class="mu-review-lang-pill" data-lang="en" title="Inglés">EN</button>
+                    <span class="mu-lang-pills" role="group" aria-label="Idioma del comentario">
+                        <button type="button" class="mu-lang-pill is-active" data-lang="es" title="Español">ES</button>
+                        <button type="button" class="mu-lang-pill" data-lang="pt" title="Portugués (Brasil)">PT</button>
+                        <button type="button" class="mu-lang-pill" data-lang="en" title="Inglés">EN</button>
                     </span>
                 </div>
                 <p id="mu-review-modal-loading" class="mu-review-modal-loading" style="display:none;"></p>
@@ -654,8 +661,8 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
                         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
                             <label style="display:block;font-weight:bold;">Comentario:</label>
                             <span style="display:inline-flex;align-items:center;gap:8px;">
-                                <span id="mu-review-translate-status" class="mu-review-translate-status"></span>
-                                <button type="button" id="mu-review-translate" class="mu-review-translate-btn" disabled title="Traduce el comentario en español al idioma activo">Traducir con IA</button>
+                                <span id="mu-review-translate-status" class="mu-ai-inline-status"></span>
+                                <button type="button" id="mu-review-translate" class="mu-ai-inline-btn" disabled title="Traduce el comentario en español al idioma activo">Traducir con IA</button>
                             </span>
                         </div>
 
@@ -665,12 +672,12 @@ if ( ! function_exists( 'mu_testimonios_section' ) ) {
 
                         <div class="mu-review-lang-block" data-lang="pt" style="display:none;">
                             <textarea id="mu-review-text-pt" name="text_pt" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;min-height:100px;"></textarea>
-                            <p class="mu-review-lang-hint">Si lo dejás igual al español (o vacío), no se guarda: en portugués se muestra el texto en español.</p>
+                            <p class="mu-lang-hint">Si lo dejás igual al español (o vacío), no se guarda: en portugués se muestra el texto en español.</p>
                         </div>
 
                         <div class="mu-review-lang-block" data-lang="en" style="display:none;">
                             <textarea id="mu-review-text-en" name="text_en" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;min-height:100px;"></textarea>
-                            <p class="mu-review-lang-hint">Si lo dejás igual al español (o vacío), no se guarda: en inglés se muestra el texto en español.</p>
+                            <p class="mu-lang-hint">Si lo dejás igual al español (o vacío), no se guarda: en inglés se muestra el texto en español.</p>
                         </div>
                     </div>
                     
@@ -775,10 +782,29 @@ if ( ! function_exists( 'mu_ajax_save_review' ) ) {
 
         // Marca de origen por campo: guarda con qué español se tradujo, para poder
         // avisar "traducción desactualizada" cuando el comentario base cambia (FR-013).
+        // Se recalcula SOLO si la traducción cambió en este guardado; si no cambió, se
+        // conserva la marca anterior. Si se recalculara siempre, quedaría idéntica al
+        // español recién guardado y el aviso no aparecería nunca.
         foreach ( [ 'pt', 'en' ] as $lang ) {
-            $tiene = ( '' !== (string) $review[ 'text_' . $lang ] );
+            $key      = 'text_' . $lang . '_hash';
+            $has_text = ( '' !== (string) $review[ 'text_' . $lang ] );
 
-            $review[ 'text_' . $lang . '_hash' ] = ( $tiene && function_exists( 'mu_ai_hash' ) ) ? mu_ai_hash( $text ) : '';
+            if ( ! $has_text ) {
+                $review[ $key ] = '';
+                continue;
+            }
+
+            if ( ! $is_edit ) {
+                $review[ $key ] = function_exists( 'mu_ai_hash' ) ? mu_ai_hash( $text ) : '';
+                continue;
+            }
+
+            $prev_text = (string) ( $current_db[ $review_index ][ 'text_' . $lang ] ?? '' );
+            $changed   = ( $prev_text !== (string) $review[ 'text_' . $lang ] );
+
+            $review[ $key ] = $changed
+                ? ( function_exists( 'mu_ai_hash' ) ? mu_ai_hash( $text ) : '' )
+                : (string) ( $current_db[ $review_index ][ $key ] ?? '' );
         }
 
         if ( ! isset( $review['purchase_photo_url'] ) ) {
@@ -1156,17 +1182,14 @@ if ( ! function_exists( 'mu_hero_section' ) ) {
         // Idioma actual para mostrar versión traducida del banner
         $idioma_actual = function_exists( 'muyu_get_current_language' ) ? muyu_get_current_language() : 'es';
 
-        // Helper: si el idioma actual no es español y el banner tiene la
-        // traducción habilitada (traducir_XX) con contenido, usa el campo
-        // traducido; en cualquier otro caso devuelve el valor en español.
+        // Helper: campo del banner en el idioma actual. [Automático] Se usa el valor
+        // traducido cuando existe —un valor solo se guarda si difiere del español
+        // (sobrescritura dispersa)— y el español en cualquier otro caso. Ya no
+        // depende de la casilla traducir_XX: ver mu_hero_banner_field().
         $mu_hero_field = function( $promo, $base ) use ( $idioma_actual ) {
-            if ( 'es' !== $idioma_actual && ! empty( $promo[ 'traducir_' . $idioma_actual ] ) ) {
-                $value = isset( $promo[ $base . '_' . $idioma_actual ] ) ? $promo[ $base . '_' . $idioma_actual ] : '';
-                if ( '' !== $value ) {
-                    return $value;
-                }
-            }
-            return isset( $promo[ $base ] ) ? $promo[ $base ] : '';
+            return function_exists( 'mu_hero_banner_field' )
+                ? mu_hero_banner_field( $promo, $base, $idioma_actual )
+                : ( isset( $promo[ $base ] ) ? $promo[ $base ] : '' );
         };
 
         // --- DEFAULTS PARA BADGE ---

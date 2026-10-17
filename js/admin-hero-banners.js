@@ -4,8 +4,11 @@
  * - Add/remove rows (template clone)
  * - WP Media picker para imagen
  * - Selector de países (dropdown + píldoras)
- * - Selector de idioma (dropdown ES/EN/PT) con réplica de campos por idioma
- *   y checkbox "Traducir"
+ * - Píldoras de idioma ES | PT | EN (mismo componente que el editor de reseñas):
+ *   eligen qué bloque se edita. El punto marca los idiomas con contenido propio y
+ *   sale automático del contenido — ya no hay checkbox "Traducir".
+ * - Botón "Traducir con IA" (ámbito hero_banner): completa los campos del idioma
+ *   activo desde el español y NUNCA guarda (se revisa y se guarda a mano).
  *
  * Los listeners usan delegación sobre #mu-hero-banners-list para que también
  * funcionen en las filas creadas con "+ Agregar banner" (clon del template).
@@ -16,66 +19,122 @@
     var IDIOMAS = ['es', 'en', 'pt'];
 
     /**
-     * Muestra el bloque del idioma activo y oculta los demás.
-     * Cada .mu-hero-banner-lang-block trae su propio juego de campos:
+     * Idioma activo de una fila: la píldora marcada (o el input oculto).
+     */
+    function idiomaActivo($row) {
+        var lang = String($row.find('.mu-lang-pill.is-active').attr('data-lang') || '').toLowerCase();
+
+        if (IDIOMAS.indexOf(lang) === -1) {
+            lang = String($row.find('.mu-hero-banner-idioma-valor').val() || 'es').toLowerCase();
+        }
+
+        return IDIOMAS.indexOf(lang) === -1 ? 'es' : lang;
+    }
+
+    /**
+     * Muestra el bloque del idioma elegido y sincroniza píldoras, input oculto y
+     * botón de IA. Cada .mu-hero-banner-lang-block trae su propio juego de campos:
      * 'es' es el idioma base y 'pt' / 'en' son las traducciones (réplica).
      */
-    function actualizarTraducir($row, idioma) {
-        var lang = String(idioma || '').toLowerCase();
+    function setLang($row, idioma) {
+        var lang = String(idioma || 'es').toLowerCase();
+        if (IDIOMAS.indexOf(lang) === -1) { lang = 'es'; }
+
         $row.find('.mu-hero-banner-lang-block').each(function () {
             var $block = $(this);
             $block.css('display', $block.attr('data-lang') === lang ? 'block' : 'none');
         });
-    }
 
-    /**
-     * Sincroniza las píldoras de idiomas traducidos con los checkboxes.
-     */
-    function actualizarPillsIdiomas($row) {
-        $row.find('.mu-hero-banner-idiomas-pills .mu-hero-banner-pill--lang').each(function () {
-            var $pill   = $(this);
-            var lang    = $pill.attr('data-lang');
-            var activo  = $row.find('.mu-hero-banner-traducir-checkbox[data-lang="' + lang + '"]').is(':checked');
-            $pill.css('display', activo ? '' : 'none');
+        $row.find('.mu-lang-pill').each(function () {
+            var $pill  = $(this);
+            var activa = $pill.attr('data-lang') === lang;
+            $pill.toggleClass('is-active', activa);
+            $pill.attr('aria-pressed', activa ? 'true' : 'false');
         });
+
+        // El idioma abierto se recuerda al guardar (solo la pestaña del editor).
+        $row.find('.mu-hero-banner-idioma-valor').val(lang);
+
+        // La IA traduce del español a otro idioma: en ES no aplica.
+        $row.find('.mu-hero-banner-ai-btn').prop('disabled', lang === 'es');
     }
 
     /**
-     * Muestra u oculta el juego de campos de una traducción y su aviso.
+     * Punto de la píldora [automático]: ese idioma guarda algún valor propio, es
+     * decir distinto del español (lo idéntico al español no se persiste).
      */
-    function actualizarCamposTraduccion($row, lang, activo) {
-        $row.find('.mu-hero-banner-traducir-' + lang).css('display', activo ? 'grid' : 'none');
-        $row.find('.mu-hero-banner-traducir-wrapper[data-lang="' + lang + '"] .mu-hero-banner-traducir-hint')
-            .css('display', activo ? 'none' : '');
-    }
+    function actualizarPunto($row, lang) {
+        if (lang === 'es') return;
 
-    /**
-     * Copia los valores de español a los campos vacíos del idioma indicado.
-     * Es sólo ayuda visual: al guardar, los valores idénticos al español no se
-     * persisten (sobrescritura dispersa en mu_hero_banners_sanitize_one()).
-     */
-    function precargarDesdeEs($row, lang) {
-        var $destino = $row.find('.mu-hero-banner-traducir-wrapper[data-lang="' + lang + '"]');
-        var $origen  = $row.find('.mu-hero-banner-lang-block[data-lang="es"]');
-        if (!$destino.length || !$origen.length) return;
+        var $pills = $row.find('.mu-lang-pill[data-lang="' + lang + '"]');
+        if (!$pills.length) return;
 
-        $destino.find('[data-field]').each(function () {
-            var $input = $(this);
-            if ($input.val() !== '') return;
+        var $origen = $row.find('.mu-hero-banner-lang-block[data-lang="es"]');
+        var tiene   = false;
 
-            var field = $input.attr('data-field');
-            var $src  = $origen.find('[data-field="' + field + '"]');
-            if (!$src.length) return;
+        $row.find('.mu-hero-banner-lang-block[data-lang="' + lang + '"] [data-field]').each(function () {
+            var $campo = $(this);
+            var $base  = $origen.find('[data-field="' + String($campo.attr('data-field') || '') + '"]');
+            if (!$base.length) return;
 
-            var valor = $src.val();
-            $input.val(valor);
-
-            // Refrescar la previsualización de la imagen si corresponde.
-            var $preview = $input.closest('.mu-hero-banner-row__image').find('.mu-hero-banner-row__image-preview');
-            if ($preview.length) {
-                $preview.attr('src', valor).css('display', valor ? '' : 'none');
+            if (String($campo.val() || '') !== String($base.val() || '')) {
+                tiene = true;
+                return false; // corta el each: alcanza con un campo propio
             }
         });
+
+        $pills.attr('data-has-translation', tiene ? '1' : '0');
+    }
+
+    /** Punto de los dos idiomas traducibles (dependen del español y de sí mismos). */
+    function actualizarPuntos($row) {
+        ['pt', 'en'].forEach(function (lang) { actualizarPunto($row, lang); });
+    }
+
+    /** Valor de un campo sin marcado (el placeholder no interpreta HTML). */
+    function textoPlano(valor) {
+        return $('<div></div>').html(String(valor || '')).text().trim();
+    }
+
+    /**
+     * El español se muestra como placeholder en los campos vacíos de PT/EN: es
+     * ayuda visual y no se envía, así el punto sigue marcando solo lo que tiene
+     * valor propio. (Antes el checkbox copiaba los valores al marcarlo, lo que
+     * hacía imposible distinguir una traducción real de una copia.)
+     */
+    function aplicarPlaceholders($row) {
+        var $origen = $row.find('.mu-hero-banner-lang-block[data-lang="es"]');
+
+        ['pt', 'en'].forEach(function (lang) {
+            $row.find('.mu-hero-banner-lang-block[data-lang="' + lang + '"] [data-field]').each(function () {
+                var $campo = $(this);
+                var $base  = $origen.find('[data-field="' + String($campo.attr('data-field') || '') + '"]');
+                if (!$base.length) return;
+
+                var texto = textoPlano($base.val());
+                if (texto.length > 90) { texto = texto.slice(0, 90) + '…'; }
+
+                $campo.attr('placeholder', texto);
+            });
+        });
+    }
+
+    /**
+     * Estado completo de una fila: píldora activa, puntos y placeholders.
+     */
+    function refrescarFila($row) {
+        setLang($row, idiomaActivo($row));
+        aplicarPlaceholders($row);
+        actualizarPuntos($row);
+    }
+
+    /** Aviso del botón de IA (verde si salió bien). */
+    function setAiStatus($estado, texto, ok) {
+        if (!$estado || !$estado.length) return;
+
+        $estado.text(texto || '');
+        $estado.toggleClass('is-ok', !!ok);
+        $estado.toggleClass('is-bad', !ok && !!texto);
     }
 
     /**
@@ -104,7 +163,7 @@
             $list.append($row);
 
             // Normalizar la fila nueva (idioma base ES por defecto)
-            actualizarTraducir($row, $row.find('.mu-hero-banner-idioma-btn').attr('data-idioma'));
+            refrescarFila($row);
         });
 
         // Eliminar fila (marca _delete=1 y oculta visualmente; backend descarta)
@@ -187,90 +246,133 @@
         });
 
         // ---------------------------------------------------------------
-        // Selector de idioma
+        // Píldoras de idioma: eligen qué bloque se edita (ES | PT | EN)
         // ---------------------------------------------------------------
-        $list.on('click', '.mu-hero-banner-idioma-btn', function (e) {
+        $list.on('click', '.mu-lang-pill', function (e) {
             e.preventDefault();
             e.stopPropagation();
 
-            var $row = $(this).closest('.mu-hero-banner-row');
-            var $dd  = $row.find('.mu-hero-banner-idioma-dropdown');
-            var visible = $dd.is(':visible');
+            var $pill = $(this);
+            var lang  = String($pill.attr('data-lang') || '').toLowerCase();
+            if (IDIOMAS.indexOf(lang) === -1) return;
 
-            $list.find('.mu-hero-banner-idioma-dropdown').hide();
-            if (!visible) {
-                posicionarDropdown($(this), $dd);
-                $dd.show();
-            }
+            setLang($pill.closest('.mu-hero-banner-row'), lang);
         });
 
-        $list.on('click', '.mu-hero-banner-idioma-item', function (e) {
+        // Al escribir: refrescar el punto del idioma (¿tiene valor propio?). Si se
+        // tocó el español, se actualizan además placeholders y puntos de PT/EN,
+        // porque heredan de él.
+        $list.on('input change', '.mu-hero-banner-row [data-field]', function () {
+            var $campo = $(this);
+            var $row   = $campo.closest('.mu-hero-banner-row');
+            var lang   = String($campo.closest('.mu-hero-banner-lang-block').attr('data-lang') || 'es').toLowerCase();
+
+            if (lang === 'es') {
+                aplicarPlaceholders($row);
+                actualizarPuntos($row);
+                return;
+            }
+
+            actualizarPunto($row, lang);
+        });
+
+        // ---------------------------------------------------------------
+        // "Traducir con IA": del español al idioma activo. No guarda.
+        // ---------------------------------------------------------------
+        $list.on('click', '.mu-hero-banner-ai-btn', function (e) {
             e.preventDefault();
             e.stopPropagation();
 
-            var $item  = $(this);
-            var idioma = String($item.attr('data-idioma') || '').toLowerCase();
-            if (IDIOMAS.indexOf(idioma) === -1) return;
+            var $btn    = $(this);
+            var $row    = $btn.closest('.mu-hero-banner-row');
+            var $estado = $row.find('[data-role="ai-status"]');
+            var lang    = idiomaActivo($row);
 
-            var $row = $item.closest('.mu-hero-banner-row');
-            var $btn = $row.find('.mu-hero-banner-idioma-btn');
-            var label = idioma.toUpperCase();
+            if (lang === 'es') { return; }
 
-            $btn.attr('data-idioma', label);
-            $btn.find('.mu-hero-banner-idioma-code').text(label);
-            $row.find('.mu-hero-banner-idioma-valor').val(idioma);
+            // Solo los campos que el ámbito declara (textos; URLs e imagen no se traducen).
+            var $origen = $row.find('.mu-hero-banner-lang-block[data-lang="es"]');
+            var payload = {};
 
-            // El ítem elegido se oculta; el resto queda disponible
-            $row.find('.mu-hero-banner-idioma-item').show();
-            $item.hide();
+            String($btn.attr('data-fields') || '').split(',').forEach(function (field) {
+                field = String(field || '').trim();
+                if (!field) return;
 
-            $row.find('.mu-hero-banner-idioma-dropdown').hide();
+                var valor = String($origen.find('[data-field="' + field + '"]').val() || '');
+                if (valor !== '') { payload[field] = valor; }
+            });
 
-            actualizarTraducir($row, idioma);
-        });
-
-        // Evitar que el clic dentro del dropdown de idioma lo cierre
-        $list.on('click', '.mu-hero-banner-idioma-dropdown', function (e) {
-            e.stopPropagation();
-        });
-
-        // ---------------------------------------------------------------
-        // Checkbox "Traducir"
-        // ---------------------------------------------------------------
-        $list.on('change', '.mu-hero-banner-traducir-checkbox', function () {
-            var $cb    = $(this);
-            var lang   = String($cb.attr('data-lang') || '').toLowerCase();
-            var $row   = $cb.closest('.mu-hero-banner-row');
-            var activo = $cb.is(':checked');
-
-            if (activo) {
-                precargarDesdeEs($row, lang);
+            var campos = Object.keys(payload);
+            if (!campos.length) {
+                setAiStatus($estado, 'Escribí primero los textos en español.', false);
+                return;
             }
-            actualizarCamposTraduccion($row, lang, activo);
-            actualizarPillsIdiomas($row);
+
+            var data = new FormData();
+            data.append('action', 'mu_ai_translate');
+            data.append('nonce', (window.muHeroBannersData && window.muHeroBannersData.aiNonce) || '');
+            data.append('ambito', 'hero_banner');
+            data.append('lang', lang);
+            data.append('fields', JSON.stringify(payload));
+
+            $btn.prop('disabled', true);
+            setAiStatus($estado, 'Traduciendo…', false);
+
+            var url = (window.muHeroBannersData && window.muHeroBannersData.aiUrl) || '';
+
+            fetch(url, { method: 'POST', body: data, credentials: 'same-origin' })
+                .then(function (response) { return response.json(); })
+                .then(function (res) {
+                    $btn.prop('disabled', false);
+
+                    var d = (res && res.data) ? res.data : {};
+
+                    if (!res || !res.success) {
+                        setAiStatus($estado, d.error || 'No se pudo traducir.', false);
+                        return;
+                    }
+
+                    var items      = d.items || {};
+                    var traducidos = 0;
+
+                    campos.forEach(function (field) {
+                        var item = items[field];
+                        if (!item || item.unchanged || !item.translation) return; // ya estaba en ese idioma
+
+                        $row.find('.mu-hero-banner-lang-block[data-lang="' + lang + '"] [data-field="' + field + '"]')
+                            .val(item.translation);
+                        traducidos++;
+                    });
+
+                    refrescarFila($row);
+
+                    if (!traducidos) {
+                        setAiStatus($estado, 'Los textos ya estaban en ese idioma.', false);
+                        return;
+                    }
+
+                    setAiStatus(
+                        $estado,
+                        'Listo: ' + traducidos + ' campo' + (1 === traducidos ? '' : 's') + ' traducido' + (1 === traducidos ? '' : 's') + '. Revisá y guardá.',
+                        true
+                    );
+                })
+                .catch(function () {
+                    $btn.prop('disabled', false);
+                    setAiStatus($estado, 'No se pudo traducir. Revisá la conexión e intentá de nuevo.', false);
+                });
         });
 
         // ---------------------------------------------------------------
         // Cerrar dropdowns al hacer clic fuera
         // ---------------------------------------------------------------
         $(document).on('click', function () {
-            $list.find('.mu-hero-banner-idioma-dropdown, .mu-hero-banner-paises-dropdown').hide();
+            $list.find('.mu-hero-banner-paises-dropdown').hide();
         });
 
         // Estado inicial de cada fila ya renderizada
         $list.find('.mu-hero-banner-row').each(function () {
-            var $row = $(this);
-            actualizarTraducir($row, $row.find('.mu-hero-banner-idioma-btn').attr('data-idioma'));
-
-            // Idiomas activados: completar con el texto de español los campos
-            // vacíos (ayuda visual; al guardar no se persisten por ser idénticos).
-            $row.find('.mu-hero-banner-traducir-checkbox:checked').each(function () {
-                var lang = String($(this).attr('data-lang') || '').toLowerCase();
-                precargarDesdeEs($row, lang);
-                actualizarCamposTraduccion($row, lang, true);
-            });
-
-            actualizarPillsIdiomas($row);
+            refrescarFila($(this));
         });
     }
 

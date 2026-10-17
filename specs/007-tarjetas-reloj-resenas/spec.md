@@ -32,6 +32,11 @@ La sección de testimonios (`shortcode mu_testimonios_section`) mostraba tres s�
   de llevar un temporizador. Pausar el anillo (`animation-play-state: paused` vía
   `.is-paused`) pausa el reloj **y** la carga a la vez: no se pueden desincronizar.
 - **Ciclo de 10 s** (antes 120 s, sin señal visual).
+- **El clic vuelve el contador a cero**: se reinicia con la Web Animations API
+  (`getAnimations()` → `currentTime = 0`), que funciona también con el anillo en pausa (el
+  cursor está sobre el botón cuando se hace clic); en navegadores sin esa API queda el
+  respaldo de quitar y reponer la animación por estilos. Una vuelta rezagada que llegue en
+  los 250 ms siguientes al clic se descarta, así el clic nunca carga reseñas dos veces.
 - **Pausas**: cursor sobre el botón, cursor sobre alguna reseña (hover sobre la grilla, que
   es más robusto que listeners por tarjeta porque las tarjetas se recrean), sección fuera
   de pantalla (`IntersectionObserver`) y pestaña en segundo plano (`visibilitychange`, que

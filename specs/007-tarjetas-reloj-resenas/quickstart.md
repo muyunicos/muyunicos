@@ -9,7 +9,7 @@ node --check js/testimonials.js
 
 # Arnés de la sección (DOM simulado, sin navegador): tarjetas, reloj y pausas
 Copy-Item 'js\testimonials.js' "$env:TEMP\mu006\testimonials.js" -Force
-node "$env:TEMP\mu006\test-ring.js"        # esperado: 33 OK / 0 FAIL
+node "$env:TEMP\mu006\test-ring.js"        # esperado: 37 OK / 0 FAIL
 
 # El editor de reseñas, sin regresiones
 node "$env:TEMP\mu006\test-ui.js"          # esperado: 21 OK / 0 FAIL
@@ -44,7 +44,9 @@ anillo ahora viajan en el HTML de la página).
    cargan reseñas nuevas; al apartar el cursor, sigue desde donde estaba.
 6. **Pausa sobre una reseña**: apoyar el cursor sobre una tarjeta (sin entrar al botón). El
    reloj se congela; los enlaces siguen funcionando. Al salir, continúa.
-7. **Clic manual**: pulsar el botón. Rota en el acto y el reloj arranca de cero.
+7. **Clic manual**: pulsar el botón. Rota en el acto y el contador vuelve a cero. Como el
+   cursor está encima del botón el anillo queda en pausa (aro vacío) y arranca a correr al
+   apartar el cursor; **no** debe verse una segunda carga inmediata.
 8. **Fuera de pantalla / segunda pestaña**: bajar la sección fuera de vista y esperar: no
    debe rotar. Volver: arranca de cero. Igual si se cambia de pestaña y se vuelve.
 9. **Móvil**: en pantalla chica el botón va centrado abajo, el aro se ve completo y el
