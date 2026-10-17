@@ -408,3 +408,57 @@
     box-shadow: 0 0 0 2px rgba(43, 159, 207, 0.6);
     border-radius: 4px;
 }
+
+/* ============================================================
+   RESUMEN DE LA FILA (feature 013)
+   Siempre visible: estado calculado, miniatura y acciones.
+   El cuerpo (píldoras, campos, lienzo) se pliega.
+   ============================================================ */
+.mu-hero-banner-row__summary {
+    display: flex;
+    align-items: center;
+    gap: var(--mu-space-sm, 10px);
+    flex-wrap: wrap;
+    padding-bottom: var(--mu-space-sm, 10px);
+    margin-bottom: var(--mu-space-sm, 10px);
+    border-bottom: 1px solid #f0f0f1;
+}
+
+.mu-hero-banner-row__fold {
+    background: none;
+    border: 0;
+    color: #646970;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 2px 4px;
+}
+.mu-hero-banner-row__fold span { display: inline-block; transition: transform 0.15s ease; }
+.mu-hero-banner-row.is-folded .mu-hero-banner-row__fold span { transform: rotate(-90deg); }
+.mu-hero-banner-row.is-folded .mu-hero-banner-row__body { display: none; }
+
+.mu-hero-banner-row__mini {
+    width: 54px;
+    height: 26px;
+    object-fit: cover;
+    border: 1px solid #e0e0e0;
+    border-radius: 3px;
+}
+
+.mu-hero-banner-row__estado {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    border: 1px solid transparent;
+}
+.mu-hero-banner-row__estado.is-activo { background: #edfaef; border-color: #b8e6c0; color: #1a7f37; }
+.mu-hero-banner-row__estado.is-programado { background: #fdf6e3; border-color: #f0d9a0; color: #7a4b00; }
+.mu-hero-banner-row__estado.is-inactivo { background: #f6f7f7; border-color: #dcdcde; color: #646970; }
+
+.mu-hero-banner-row__acciones {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--mu-space-sm, 10px);
+}
+.mu-hero-banner-row__accion { font-size: 12px !important; }

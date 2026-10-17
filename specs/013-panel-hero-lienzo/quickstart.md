@@ -9,7 +9,7 @@ php -l inc\ui.php
 node --check js\admin-hero-banners.js
 
 # Arnés de la Fase 0 (igualdad con el fixture de producción) y del lienzo
-php specs\013-panel-hero-lienzo\harness\arnes-render-hero.php   # esperado: 63 OK / 0 FAIL
+php specs\013-panel-hero-lienzo\harness\arnes-render-hero.php   # esperado: 82 OK / 0 FAIL
 node specs\013-panel-hero-lienzo\harness\lienzo-js.js           # esperado: 9 OK / 0 FAIL
 
 # No-regresión de todo lo demás
@@ -96,8 +96,22 @@ Mirar además, a ojo, el hero en escritorio y en móvil en `muyunicos.com` y en 
 tamaño de tipografía, mismo fondo, mismos botones, mismos espacios. Es la única verificación del
 `@media` y del `@keyframes` que el arnés no cubre.
 
-**Fase 1 (jerarquía de la fila).** Pendiente: traerá su propia verificación manual (el manejo de
-jQuery no es automatizable) en este mismo quickstart.
+**Resumen de la fila (Fase 1).**
+
+1. **Estado**: cada fila muestra su estado en una píldora: verde *«Se ve en AR, BR»* (con *«fuera de
+   ventana: MX»* y *«próximo cambio: dd/mm/aaaa hh:mm»*), ámbar *«Entra el …»* o gris *«No se ve en
+   ningún país»*. Comparar con lo que dice el sitio.
+2. **Plegar**: el ▾ de cada fila pliega/despliega el cuerpo; al desplegar, el lienzo se reencaja.
+3. **Duplicar**: crea una copia completa (con sus traducciones y fechas) como última fila; guardar y
+   comprobar que aparecen **las dos** (si apareciera una sola, el `name="mu_banner[N]"` del clon no
+   se renumeró).
+4. **Ordenar**: ▲▼ mueven la fila; guardar y comprobar el orden de los slides en la home (la primera
+   fila es el slide que se ve al cargar; con un solo banner el orden no se nota: probar con 2).
+5. **Eliminar con deshacer**: «Eliminar» marca la fila (queda atenuada y sus campos deshabilitados);
+   el **mismo** botón dice ahora *«… clic para deshacer»* y devuelve la fila con sus valores.
+
+**Fase 1 pendiente.** Chips de país unificados y la vigencia como tabla comparable: traerán su
+verificación manual en este mismo quickstart al implementarse.
 
 ## C. Reversión
 

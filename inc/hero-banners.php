@@ -1148,6 +1148,89 @@ if ( ! function_exists( 'mu_hero_badge_defaults' ) ) {
     }
 }
 
+if ( ! function_exists( 'mu_hero_banner_estado' ) ) {
+    /**
+     * Estado de un banner para el resumen de la fila: ¿se ve ahora, dónde y cuándo cambia?
+     *
+     * Junta en una frase lo que hoy sólo se descubre abriendo cada panel de fecha. Función
+     * pura (recibe el instante): la verifica el arnés de la feature 013.
+     *
+     * @param array    $promo Banner.
+     * @param int|null $now   Timestamp de referencia (null = time()).
+     * @return array{clase:string,texto:string} Clase CSS (is-activo|is-programado|is-inactivo)
+     *                                          y frase para el resumen.
+     */
+    function mu_hero_banner_estado( $promo, $now = null ) {
+        $now    = ( null === $now ) ? time() : (int) $now;
+        $promo  = is_array( $promo ) ? $promo : [];
+        $paises = isset( $promo['paises'] ) && is_array( $promo['paises'] ) ? array_values( $promo['paises'] ) : [ 'AR' ];
+
+        // Primer país del banner: da el huso para escribir la fecha del próximo cambio.
+        $tz = mu_hero_banner_pais_tz( (string) ( $paises[0] ?? 'AR' ) );
+
+        $activos = [];
+        $proximo = 0;
+
+        foreach ( $paises as $code ) {
+            if ( mu_hero_banner_is_active_for_pais( $promo, (string) $code, $now ) ) {
+                $activos[] = (string) $code;
+            }
+
+            $borde = mu_hero_banner_proximo_borde( $promo, (string) $code, $now );
+
+            if ( $borde > 0 && ( 0 === $proximo || $borde < $proximo ) ) {
+                $proximo = $borde;
+            }
+        }
+
+        $cuando = $proximo > 0
+            ? ( new DateTimeImmutable( '@' . $proximo ) )->setTimezone( $tz )->format( 'd/m/Y H:i' )
+            : '';
+
+        if ( ! empty( $activos ) ) {
+            $texto = sprintf(
+                /* translators: %s: países separados por coma. */
+                __( 'Se ve en %s', 'mu' ),
+                implode( ', ', $activos )
+            );
+
+            $fuera = array_values( array_diff( $paises, $activos ) );
+            if ( $fuera ) {
+                $texto .= sprintf(
+                    /* translators: %s: países separados por coma. */
+                    __( ' · fuera de ventana: %s', 'mu' ),
+                    implode( ', ', $fuera )
+                );
+            }
+
+            if ( '' !== $cuando ) {
+                $texto .= sprintf(
+                    /* translators: %s: fecha y hora del próximo cambio. */
+                    __( ' · próximo cambio: %s', 'mu' ),
+                    $cuando
+                );
+            }
+
+            return [ 'clase' => 'is-activo', 'texto' => $texto ];
+        }
+
+        if ( '' !== $cuando ) {
+            return [
+                'clase' => 'is-programado',
+                'texto' => sprintf(
+                    /* translators: %s: fecha y hora en que entra. */
+                    __( 'Entra el %s', 'mu' ),
+                    $cuando
+                ),
+            ];
+        }
+
+        // Sin países o sin ventana futura: no hay nada que esperar (el "siempre" nunca
+        // llega acá porque, sin ventana, el banner está activo).
+        return [ 'clase' => 'is-inactivo', 'texto' => __( 'No se ve en ningún país', 'mu' ) ];
+    }
+}
+
 if ( ! function_exists( 'mu_hero_slide_render' ) ) {
     /**
      * Render de UN slide del hero.
@@ -1337,7 +1420,8 @@ if ( is_admin() ) {
             wp_localize_script( 'mu-admin-hero-banners-js', 'muHeroBannersData', [
                 'mediaTitle'  => __( 'Seleccionar imagen del banner', 'mu' ),
                 'mediaButton' => __( 'Usar esta imagen', 'mu' ),
-                'removed'     => __( 'Eliminado (se descarta al guardar)', 'mu' ),
+                'removed'     => __( 'Eliminado (se descarta al guardar) · clic para deshacer', 'mu' ),
+                'remove'      => __( 'Eliminar', 'mu' ),
                 // Servicio de traducción con IA (botón "Traducir con IA").
                 'aiUrl'       => admin_url( 'admin-ajax.php' ),
                 'aiNonce'     => wp_create_nonce( 'mu_ai_nonce' ),
@@ -1527,13 +1611,36 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
             'free_badge_url_en'      => '',
         ] );
         $name = 'mu_banner[' . esc_attr( $index ) . ']';
+        $estado_banner = mu_hero_banner_estado( $b );
+        $titulo_resumen = $b['titulo'] ? wp_kses_post( $b['titulo'] ) : esc_html__( 'Nuevo banner', 'mu' );
+        $mini_resumen   = (string) ( $b['imagen'] ?? '' );
         ?>
         <div class="mu-hero-banner-row" data-index="<?php echo esc_attr( $index ); ?>">
-            <div class="mu-hero-banner-row__head">
-                <h2 class="mu-hero-banner-row__title">
-                    <?php echo $b['titulo'] ? wp_kses_post( $b['titulo'] ) : esc_html__( 'Nuevo banner', 'mu' ); ?>
-                </h2>
+            <?php
+            // Resumen siempre visible (feature 013): estado, miniatura y las acciones de la
+            // fila. El resto (píldoras, campos, lienzo) vive en __body, que se pliega.
+            ?>
+            <div class="mu-hero-banner-row__summary">
+                <button type="button" class="mu-hero-banner-row__fold" data-role="plegar" aria-expanded="true" title="<?php esc_attr_e( 'Plegar o desplegar', 'mu' ); ?>"><span aria-hidden="true">▾</span></button>
 
+                <?php if ( '' !== $mini_resumen ) : ?>
+                    <img class="mu-hero-banner-row__mini" src="<?php echo esc_url( $mini_resumen ); ?>" alt="">
+                <?php endif; ?>
+
+                <h2 class="mu-hero-banner-row__title"><?php echo $titulo_resumen; ?></h2>
+                <span class="mu-hero-banner-row__estado <?php echo esc_attr( $estado_banner['clase'] ); ?>" role="status"><?php echo esc_html( $estado_banner['texto'] ); ?></span>
+
+                <span class="mu-hero-banner-row__acciones">
+                    <button type="button" class="button-link mu-hero-banner-row__accion" data-role="duplicar"><?php esc_html_e( 'Duplicar', 'mu' ); ?></button>
+                    <button type="button" class="button-link mu-hero-banner-row__accion" data-role="subir" title="<?php esc_attr_e( 'Subir', 'mu' ); ?>">▲</button>
+                    <button type="button" class="button-link mu-hero-banner-row__accion" data-role="bajar" title="<?php esc_attr_e( 'Bajar', 'mu' ); ?>">▼</button>
+                    <button type="button" class="button-link-delete mu-hero-banner-row__remove"><?php esc_html_e( 'Eliminar', 'mu' ); ?></button>
+                </span>
+                <input type="hidden" name="<?php echo esc_attr( $name ); ?>[_delete]" value="0" class="mu-hero-banner-row__delete-flag">
+            </div>
+
+            <div class="mu-hero-banner-row__body">
+            <div class="mu-hero-banner-row__head">
                 <?php
                 $countries_data   = function_exists( 'muyu_get_countries_data' ) ? muyu_get_countries_data() : [];
                 $idioma_activo_lc = $b['idioma_activo'];              // es | en | pt (píldora activa)
@@ -1596,10 +1703,6 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                     </button>
                 </span>
 
-                <button type="button" class="button-link-delete mu-hero-banner-row__remove">
-                    <?php esc_html_e( 'Eliminar', 'mu' ); ?>
-                </button>
-                <input type="hidden" name="<?php echo esc_attr( $name ); ?>[_delete]" value="0" class="mu-hero-banner-row__delete-flag">
             </div>
 
             <?php
@@ -1912,6 +2015,7 @@ if ( ! function_exists( 'mu_hero_banners_render_row' ) ) {
                     </div>
                 </div>
             </div>
+            </div><!-- /.mu-hero-banner-row__body -->
         </div>
         <?php
     }

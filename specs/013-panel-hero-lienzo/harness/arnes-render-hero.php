@@ -99,6 +99,13 @@ function esc_html_e( $t ) { echo $t; }
 function esc_attr_e( $t ) { echo $t; }
 function checked( $a, $b = true, $echo = true ) { return ''; }
 
+/** Instante de una fecha/hora local en un huso EXPLÍCITO (el huso por defecto no influye). */
+function ts( $iso, $tz ) {
+    return ( new DateTimeImmutable( $iso, new DateTimeZone( $tz ) ) )->getTimestamp();
+}
+
+$AR = 'America/Argentina/Buenos_Aires';
+
 // El repositorio REAL de iconos (array puro): el SVG del CTA debe ser el de producción.
 require __DIR__ . '/../../../inc/icons.php';
 
@@ -339,6 +346,49 @@ check( 'Declara el idioma activo', false !== strpos( $fila, 'data-idioma="es"' )
 check( 'El envoltorio es el slider del componente (para sus estilos)', false !== strpos( $fila, 'mu-hero-promo-slider' ) );
 same( 'El lienzo es sólo vista: no agrega campos al POST', 0, substr_count( $fila, 'name="mu_banner[0][canvas' ) );
 same( 'El CTA del lienzo usa el mismo SVG del front', 1, substr_count( $fila, '<svg class="mu-icon-svg muy-svg" viewBox="0 0 24 24">' ) );
+
+echo "\n--- 6. Estado del banner en el resumen ---\n";
+$junio = ts( '2026-06-15 12:00:00', $AR );
+
+// Ventana abierta y cerrada a la vez (dos países): estado, fuera de ventana y próximo cambio.
+$mixto = [
+    'titulo' => 'Mixto',
+    'paises' => [ 'AR', 'BR' ],
+    'inicio' => '01062026',
+    'fin'    => '30062026',
+    'fechas' => [ 'BR' => [ 'inicio' => '01072026', 'fin' => '31072026' ] ],
+];
+$estado_mixto = mu_hero_banner_estado( $mixto, $junio );
+same( 'Con un país dentro de su ventana el banner está activo', 'is-activo', $estado_mixto['clase'] );
+check( 'El resumen nombra los países en los que se ve', false !== strpos( $estado_mixto['texto'], 'Se ve en AR' ) );
+check( 'Y los que quedaron fuera de ventana', false !== strpos( $estado_mixto['texto'], 'fuera de ventana: BR' ) );
+check( 'Y cuándo cambia (el próximo borde)', false !== strpos( $estado_mixto['texto'], 'próximo cambio: 01/07/2026 00:00' ) );
+
+// Sin ninguna ventana: activo y sin bordes que anunciar.
+$siempre = mu_hero_banner_estado( [ 'titulo' => 'Siempre', 'paises' => [ 'AR' ] ], $junio );
+same( 'Sin ventana: activo', 'is-activo', $siempre['clase'] );
+same( 'Y sin próximo cambio que anunciar', 'Se ve en AR', $siempre['texto'] );
+
+// Ventana futura: programado.
+$futuro = mu_hero_banner_estado( [ 'titulo' => 'Futuro', 'paises' => [ 'AR' ], 'inicio' => '01082026', 'fin' => '31082026' ], $junio );
+same( 'Con la ventana por delante: programado', 'is-programado', $futuro['clase'] );
+check( 'Y dice cuándo entra', false !== strpos( $futuro['texto'], 'Entra el 01/08/2026 00:00' ) );
+
+// Ventana pasada (fija): no se ve ni va a verse.
+$pasado = mu_hero_banner_estado( [ 'titulo' => 'Pasado', 'paises' => [ 'AR' ], 'inicio' => '01012026', 'fin' => '31012026' ], $junio );
+same( 'Con la ventana vencida: inactivo', 'is-inactivo', $pasado['clase'] );
+same( 'Sin países tildados: inactivo', 'is-inactivo', mu_hero_banner_estado( [ 'titulo' => 'X', 'paises' => [] ], $junio )['clase'] );
+check( 'Banner no-array no rompe', is_array( mu_hero_banner_estado( 'x', $junio ) ) );
+
+echo "\n--- 7. El resumen en el marcado de la fila ---\n";
+same( 'La fila trae el resumen', 1, substr_count( $fila, 'mu-hero-banner-row__summary' ) );
+same( 'Y el cuerpo plegable', 1, substr_count( $fila, '<div class="mu-hero-banner-row__body"' ) );
+same( 'Con el botón de plegar', 1, substr_count( $fila, 'data-role="plegar"' ) );
+same( 'Y el estado calculado', 1, substr_count( $fila, 'mu-hero-banner-row__estado is-' ) );
+same( 'Acción Duplicar', 1, substr_count( $fila, 'data-role="duplicar"' ) );
+same( 'Acciones de orden', 2, substr_count( $fila, 'data-role="subir"' ) + substr_count( $fila, 'data-role="bajar"' ) );
+same( 'El botón Eliminar vive en el resumen (no quedó duplicado)', 1, substr_count( $fila, 'mu-hero-banner-row__remove' ) );
+same( 'Y hay un solo flag de borrado', 1, substr_count( $fila, 'mu-hero-banner-row__delete-flag' ) );
 
 echo "\n== {$GLOBALS['mu_ok']} OK / {$GLOBALS['mu_fail']} FAIL ==\n";
 exit( $GLOBALS['mu_fail'] > 0 ? 1 : 0 );

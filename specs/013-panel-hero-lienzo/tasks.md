@@ -35,13 +35,18 @@
 - [X] T019 **N1**: clic-para-foco con resaltado del campo y nombre del nodo al pasar el mouse; los CTA no navegan desde el editor
 - [ ] T019b Verificación manual del lienzo en el panel (alcance, tipografía, sincronización, móvil, clic-para-foco): Fase B del quickstart
 
-## Fase 1 — Jerarquía de la fila (pendiente)
+## Fase 1 — Jerarquía de la fila (implementada en parte)
 
-- [ ] T010 Fila-resumen: título + **estado calculado** (`mu_hero_banner_is_active_for_pais` + `mu_hero_banner_proximo_borde` en PHP) y miniatura
-- [ ] T011 Chips de país unificados: activar/desactivar y elegir ámbito con el mismo control; retirar el dropdown «Países» y `posicionarDropdown()`
-- [ ] T012 Secciones `Contenido` / `Vigencia` / `Identidad`; la vigencia pasa a una **tabla** (Global + países, `data-pais` + `data-fecha` conservados) y sube al primer lugar
-- [ ] T013 Plegado por fila (estado inicial según cantidad de banners) + Duplicar / Ordenar ▲▼ / Eliminar con deshacer
-- [ ] T014 Arnés de marcado nuevo (resumen, tabla de vigencia, chips) y actualización de los conteos exactos de 010/011/012
+- [X] T010 Fila-resumen con **estado calculado**: `mu_hero_banner_estado()` (pura, con arnés) resume en una frase dónde se ve, dónde quedó fuera de ventana y cuándo cambia; más miniatura del banner.
+- [X] T013 Plegado por fila (`is-folded` + `aria-expanded`) y las acciones de la fila: **Duplicar** (renumera todos los `name="mu_banner[N]"` del clon), **Ordenar ▲▼** (el orden del DOM es el orden de los slides) y **Eliminar con deshacer** (el mismo botón vuelve atrás y deja los valores intactos).
+- [X] T014 Arnés de marcado del resumen + 19 aserciones nuevas del estado (total 013 PHP: **82 OK**).
+- [ ] T011 **Chips de país unificados** (activar + elegir ámbito con el mismo control, retirando el dropdown «Países»): PENDIENTE.
+- [ ] T012 **Vigencia como tabla** comparable (Global + países a la vez, subiendo al primer lugar): PENDIENTE.
+
+### Desviaciones declaradas de la Fase 1
+
+- Las **píldoras de idioma** y el botón **Traducir** se quedan en la barra de la fila (no dentro de una sección «Contenido»): son herramientas de fila que también gobiernan el idioma del lienzo, y moverlas a una sección las escondería al plegar.
+- **Sin plegado automático**: las filas nacen desplegadas. El criterio de la spec («plegada por defecto si hay más de un banner») se descarta a propósito: plegar por defecto esconde justamente el lienzo, que es el objetivo de la feature. Se pliega lo que no se está usando.
 
 ## Fase 2 — Lienzo
 

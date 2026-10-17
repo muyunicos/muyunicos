@@ -1000,9 +1000,17 @@ RENDER COMPARTIDO DEL HERO + LIENZO DEL PANEL (2026-10-17, feature 013-panel-her
 - [ ] Verificación manual en producción (Fase B del quickstart de 013): hero de
   muyunicos.com + 2 subdominios idéntico al fixture y 'hero-promo.css' servido. Sin eso, la
   Fase 0 se marca NO VERIFICADA.
-- [ ] Fase 1 (jerarquía de la fila): PENDIENTE. Fila-resumen con estado calculado, chips de
-  país unificados (retirar el dropdown «Países»), secciones Contenido/Vigencia/Identidad con la
-  vigencia como tabla comparable, plegado por fila, Duplicar / Ordenar / Eliminar con deshacer.
+- [x] Fase 1 (jerarquía de la fila, en parte): fila-resumen siempre visible con ESTADO calculado
+  (mu_hero_banner_estado(): dónde se ve, quién quedó fuera de ventana y cuándo cambia, en el huso
+  del país), miniatura, plegado por fila, Duplicar (renumera los name="mu_banner[N]" del clon),
+  Orden ▲▼ (el orden del DOM es el orden de los slides) y Eliminar con deshacer. Desviaciones
+  declaradas: las píldoras de idioma/Traducir se quedan en la barra de la fila (gobiernan el idioma
+  del lienzo y no deben esconderse al plegar) y las filas nacen desplegadas (plegar por defecto
+  escondería el lienzo). PENDIENTE de la Fase 1: chips de país unificados (retirar el dropdown
+  «Países») y la vigencia como tabla comparable.
+- [x] Fase 3 · N1: clic en cualquier nodo del lienzo → foco y scroll al campo real, con resaltado;
+  los CTA no navegan desde el editor. PENDIENTE: N2 (contenteditable="plaintext-only" en eyebrow,
+  descripción, CTAs y badge) y N2-bis (título con «resaltar selección»).
 - [x] Fase 2 (LIENZO VIVO, misma fecha): el banner REAL dentro de la fila del panel. El
   renderer compartido acepta 'mu' => true, que marca los 10 nodos con data-mu y emite siempre
   eyebrow/CTA secundario/badge (para poder editarlos); el JS los repinta desde el formulario en

@@ -241,6 +241,57 @@
         window.setTimeout(function () { $campo.removeClass('is-target'); }, 1600);
     }
 
+    // ---------------------------------------------------------------
+    // Resumen de la fila (feature 013): plegar, duplicar, ordenar, deshacer
+    // ---------------------------------------------------------------
+
+    /** Texto de interfaz traducido (lo localiza el PHP en muHeroBannersData). */
+    function textoUI(clave, porDefecto) {
+        return (window.muHeroBannersData && window.muHeroBannersData[clave]) || porDefecto;
+    }
+
+    /**
+     * Duplica una fila: clona el DOM y renumera TODOS los nombres de campo al índice nuevo
+     * (si no, el duplicado y el original pelearían por el mismo `mu_banner[N]`).
+     */
+    function duplicarFila($row, indice) {
+        var $clon = $row.clone();
+
+        $clon.attr('data-index', String(indice));
+        $clon.removeClass('is-deleted is-folded');
+
+        $clon.find('[name]').each(function () {
+            var $campo = $(this);
+            $campo.attr(
+                'name',
+                String($campo.attr('name') || '').replace(/mu_banner\[\d+\]/, 'mu_banner[' + indice + ']')
+            );
+        });
+
+        $clon.find('.mu-hero-banner-row__delete-flag').val('0');
+        $clon.find('input, textarea, select, button').prop('disabled', false);
+        $clon.find('.mu-hero-banner-row__body').show();
+
+        return $clon;
+    }
+
+    /**
+     * Mueve una fila una posición en la lista. El orden de las filas ES el orden de los
+     * slides en la home: era lo único que no se podía administrar.
+     */
+    function moverFila($btn, delta) {
+        var $row = $btn.closest('.mu-hero-banner-row');
+
+        if (delta < 0) {
+            var $antes = $row.prev('.mu-hero-banner-row');
+            if ($antes.length) { $row.insertBefore($antes); }
+            return;
+        }
+
+        var $despues = $row.next('.mu-hero-banner-row');
+        if ($despues.length) { $row.insertAfter($despues); }
+    }
+
     /**
      * El español se muestra como placeholder en los campos vacíos de PT/EN: es
      * ayuda visual y no se envía, así el punto sigue marcando solo lo que tiene
@@ -753,15 +804,26 @@
             refrescarFila($row);
         });
 
-        // Eliminar fila (marca _delete=1 y oculta visualmente; backend descarta)
+        // Eliminar fila (marca _delete=1) con DESHACER: el mismo botón vuelve atrás y deja la
+        // fila con sus valores intactos (el backend descarta sólo lo marcado).
         $list.on('click', '.mu-hero-banner-row__remove', function () {
-            var $row = $(this).closest('.mu-hero-banner-row');
-            var $flag = $row.find('.mu-hero-banner-row__delete-flag');
+            var $btn    = $(this);
+            var $row    = $btn.closest('.mu-hero-banner-row');
+            var $flag   = $row.find('.mu-hero-banner-row__delete-flag');
+            var borrada = '1' === String($flag.val());
+
+            if (borrada) {
+                $flag.val('0');
+                $row.removeClass('is-deleted');
+                $row.find('input, textarea, select').not($flag).prop('disabled', false);
+                $btn.text(textoUI('remove', 'Eliminar'));
+                return;
+            }
+
             $flag.val('1');
             $row.addClass('is-deleted');
             $row.find('input, textarea, select').not($flag).prop('disabled', true);
-            $(this).text(window.muHeroBannersData && window.muHeroBannersData.removed ? window.muHeroBannersData.removed : 'Eliminado (se descarta al guardar)');
-            $(this).prop('disabled', true);
+            $btn.text(textoUI('removed', 'Eliminado (se descarta al guardar) · clic para deshacer'));
         });
 
         // WP Media picker
@@ -1012,6 +1074,41 @@
 
             var $b = $(this);
             aplicarVariante($b.closest('.mu-hero-banner-row'), parseInt($b.attr('data-variante'), 10) || 0);
+        });
+
+        // ---------------------------------------------------------------
+        // Resumen (feature 013): plegar, duplicar y ordenar
+        // ---------------------------------------------------------------
+        $list.on('click', '[data-role="plegar"]', function (e) {
+            e.preventDefault();
+
+            var $row    = $(this).closest('.mu-hero-banner-row');
+            var plegada = $row.toggleClass('is-folded').hasClass('is-folded');
+
+            $(this).attr('aria-expanded', plegada ? 'false' : 'true');
+
+            // El lienzo se mide cuando está visible: al desplegar hay que reencajarlo.
+            if (!plegada) { escalarLienzo($row); }
+        });
+
+        $list.on('click', '[data-role="duplicar"]', function (e) {
+            e.preventDefault();
+
+            var $row  = $(this).closest('.mu-hero-banner-row');
+            var $clon = duplicarFila($row, nextIndex++);
+
+            $list.append($clon);
+            refrescarFila($clon);
+        });
+
+        $list.on('click', '[data-role="subir"]', function (e) {
+            e.preventDefault();
+            moverFila($(this), -1);
+        });
+
+        $list.on('click', '[data-role="bajar"]', function (e) {
+            e.preventDefault();
+            moverFila($(this), 1);
         });
 
         // ---------------------------------------------------------------

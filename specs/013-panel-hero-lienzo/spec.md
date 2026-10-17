@@ -69,7 +69,26 @@ Criterios de aceptación (cumplidos): el arnés verifica los 10 nodos marcados, 
 esté dentro de la fila con el selector de ancho y el idioma activo, que **no agregue campos al
 POST**, que use el mismo SVG del front, y que el front siga sin marcas `data-mu`.
 
-## Fases 1 y 3 — Jerarquía e interacción (pendientes)
+## Fase 1 — Jerarquía de la fila (parcialmente implementada)
+
+| # | Cambio | Estado |
+|---|---|---|
+| 1 | **Fila-resumen siempre visible** con **estado calculado** (`mu_hero_banner_estado()`: dónde se ve, dónde quedó fuera de ventana y cuándo cambia, con el huso del país), miniatura del banner y las acciones de la fila. | ✅ |
+| 2 | **Plegado** por fila (`is-folded` + `aria-expanded`); el lienzo se reencaja al desplegar. | ✅ |
+| 3 | **Duplicar** (renumera todos los `name="mu_banner[N]"` del clon: sin eso, el duplicado pelearía por el mismo índice), **Ordenar ▲▼** (el orden del DOM es el orden de los slides: era lo único imposible de administrar) y **Eliminar con deshacer** (el mismo botón vuelve atrás, valores intactos). | ✅ |
+| 4 | **Chips de país unificados** (un solo control para activar y para elegir ámbito, retirando el dropdown «Países») y **vigencia como tabla** comparable (Global + países a la vez, en primer lugar). | ⬜ pendiente |
+
+Desviaciones declaradas: las píldoras de idioma y el botón «Traducir» se quedan en la barra de la
+fila (gobiernan también el idioma del lienzo y no deben esconderse al plegar), y las filas nacen
+**desplegadas** (plegar por defecto escondería el lienzo, que es el objetivo de la feature).
+
+## Fase 3 — Interacción (N1 implementada)
+
+- **N1 (hecho)**: clic en cualquier nodo del lienzo → foco + scroll al campo real del formulario,
+  con resaltado y el nombre del campo al pasar el mouse; los CTA no navegan desde el editor.
+- **N2 (pendiente)**: `contenteditable="plaintext-only"` en eyebrow, descripción, textos de CTA y
+  badge (dos vías con el input). **N2-bis (pendiente, opcional)**: título editable en el lienzo con
+  «resaltar selección» (nunca `contenteditable` a secas: el título admite HTML).
 
 Se descartó el iframe con `?mu_banner_preview`: para lograr fidelidad había que resolver flag
 público, nonce entre subdominios, admin bar, `nocache_headers`, caché por query y
