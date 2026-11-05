@@ -160,6 +160,95 @@ check('el extremo oculta la flecha (disabled)', /\.mu-nav-btn\[disabled\]/.test(
 check('el carrusel decide por desborde y extremo',
     /const desborda/.test(ui) && /const alInicio/.test(ui) && /const alFinal/.test(ui));
 
+/* ==================== 4d. Coleccion v2: aritmetica (enmienda 2026-11-05) ==================== */
+console.log('== Coleccion v2 ==');
+
+function checkCeldas(nombre, opciones, items, huecos, chip) {
+    const r = gal.puro.celdas(opciones);
+    check(nombre,
+        r.visiblesItems === items && r.huecos === huecos && r.chip === chip,
+        'items=' + r.visiblesItems + ' huecos=' + r.huecos + ' chip=' + r.chip);
+}
+
+// Caso del mantenedor: min 4, capacidad 8, tope 3.
+checkCeldas('min4/cap8/tope3 · 0 cargadas -> [+][+][+]',
+    { cargadas: 0, min: 4, capacidad: 8, tope: 3 }, 0, 3, 0);
+checkCeldas('min4/cap8/tope3 · 1 -> [O][+][+]',
+    { cargadas: 1, min: 4, capacidad: 8, tope: 3 }, 1, 2, 0);
+checkCeldas('min4/cap8/tope3 · 2 -> [O][O][+]',
+    { cargadas: 2, min: 4, capacidad: 8, tope: 3 }, 2, 1, 0);
+checkCeldas('min4/cap8/tope3 · 3 -> [O][O][O] (imagenes primero)',
+    { cargadas: 3, min: 4, capacidad: 8, tope: 3 }, 3, 0, 0);
+checkCeldas('min4/cap8/tope3 · 4 -> [O][O][+2]',
+    { cargadas: 4, min: 4, capacidad: 8, tope: 3 }, 2, 0, 2);
+checkCeldas('min4/cap8/tope3 · 7 -> [O][O][+5]',
+    { cargadas: 7, min: 4, capacidad: 8, tope: 3 }, 2, 0, 5);
+checkCeldas('min4/cap8/tope3 · 8 -> [O][O][+6] (el dibujo del mantenedor)',
+    { cargadas: 8, min: 4, capacidad: 8, tope: 3 }, 2, 0, 6);
+
+// Campo opcional (sin minimo): la invitacion rellena la celda libre.
+checkCeldas('min0/cap8/tope3 · 2 -> [O][O][+] (invitacion)',
+    { cargadas: 2, min: 0, capacidad: 8, tope: 3 }, 2, 1, 0);
+checkCeldas('min0/cap8/tope3 · 3 -> [O][O][O]',
+    { cargadas: 3, min: 0, capacidad: 8, tope: 3 }, 3, 0, 0);
+checkCeldas('min0/cap8/tope3 · 4 -> [O][O][+2]',
+    { cargadas: 4, min: 0, capacidad: 8, tope: 3 }, 2, 0, 2);
+
+// Galeria sin campo (catalogo): sin min ni capacidad no hay huecos.
+checkCeldas('catalogo (min0/cap0) · 3 -> [O][O][O]',
+    { cargadas: 3, min: 0, capacidad: 0, tope: 3 }, 3, 0, 0);
+checkCeldas('catalogo (min0/cap0) · 4 -> [O][O][+2]',
+    { cargadas: 4, min: 0, capacidad: 0, tope: 3 }, 2, 0, 2);
+
+// tope 0 = todos: nunca hay chip.
+checkCeldas('tope 0 · 8 items -> todos, sin chip',
+    { cargadas: 8, min: 4, capacidad: 8, tope: 0 }, 8, 0, 0);
+checkCeldas('tope 0 · 8 items de cap 0 -> 8 + invitacion',
+    { cargadas: 8, min: 4, capacidad: 0, tope: 0 }, 8, 1, 0);
+
+// Fila no deslizable: el tope sale de medir. 100 de espacio / celdas de 30.
+check('caben(100,30,0) = 3', gal.puro.caben(100, 30, 0) === 3, String(gal.puro.caben(100, 30, 0)));
+check('caben nunca baja de 1', gal.puro.caben(5, 30, 0) === 1);
+check('caben con gap', gal.puro.caben(100, 30, 5) === 3);
+checkCeldas('100px/30px con 10 items -> 2 items + chip 8',
+    { cargadas: 10, min: 0, capacidad: 0, tope: gal.puro.caben(100, 30, 0) }, 2, 0, 8);
+
+// Pie (reemplaza el chip para los huecos).
+check('pie sin cargas: "Carga 4 imagenes"',
+    gal.puro.pie({ cargadas: 0, min: 4, capacidad: 8, sustantivo: 'imagenes' })
+    === 'Carga 4 imagenes');
+check('pie singular: "Carga 1 imagen"',
+    gal.puro.pie({ cargadas: 3, min: 4, capacidad: 8,
+        sustantivo: 'imagenes', sustantivoSingular: 'imagen' }) === 'Carga 1 imagen');
+check('pie con lugar para mas',
+    gal.puro.pie({ cargadas: 4, min: 4, capacidad: 8, sustantivo: 'imagenes' })
+    === 'Puedes agregar 4 mas');
+check('pie maximo alcanzado',
+    gal.puro.pie({ cargadas: 8, min: 4, capacidad: 8, sustantivo: 'imagenes' })
+    === 'Maximo alcanzado');
+check('pie vacio sin min ni capacidad',
+    gal.puro.pie({ cargadas: 2, min: 0, capacidad: 0 }) === '');
+
+/* ==================== 4e. Coleccion v2: API y DOM ==================== */
+console.log('== Coleccion v2 (API) ==');
+
+const MU = globalThis.MU || {};
+check('MU.coleccion (ambito 1)', typeof MU.coleccion === 'function');
+check('MU.visor (ambito 2)', typeof MU.visor === 'function');
+check('MUGaleria.coleccion (alias)', typeof gal.coleccion === 'function');
+check('presets declarados', /var PRESETS = \{/.test(js) && /tarjeta:/.test(js));
+check('slots pisan al preset', /function resolverSlots/.test(js));
+check('la celda es un contenedor (sin boton anidado)',
+    /crear\(doc, 'div', 'mu-gal-celda'\)/.test(js) && !/crear\(doc, 'button', 'mu-gal-celda'\)/.test(js));
+check('el chip es una CELDA de la linea',
+    /mu-gal-celda--chip/.test(css) && /'mu-gal-celda mu-gal-celda--chip'/.test(js));
+check('el hueco es una celda', /mu-gal-celda--vacia/.test(css));
+check('el pie existe y es status', /mu-gal-pie/.test(css) && /'mu-gal-pie'/.test(js) && /'status'/.test(js));
+check('las flechas de la linea son del tema', /mu-gal-caja-linea \.mu-nav-btn/.test(css)
+    && /function flechasDeLinea/.test(js));
+check('el contrato nuevo existe',
+    fs.existsSync(path.join(RAIZ, 'specs/019-galeria-compartida/contracts/coleccion.md')));
+
 /* ==================== 5. Reglas del PHP ==================== */
 console.log('== Reglas del PHP ==');
 check('registra el estilo', /wp_register_style\(\s*'mu-galeria'/.test(php));

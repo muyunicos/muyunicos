@@ -304,6 +304,20 @@
     </div>
 </section>
 
+<section class="demo-seccion">
+    <h2>10. MU.coleccion (modelo v2: un item, slots, layout)</h2>
+    <p class="demo-nota">
+        El mismo componente, configurado. Arriba: catálogo (<code>preset:'tarjeta'</code>,
+        fila que no desliza, <code>tope: 4</code>). Abajo: campo con <code>min: 4</code>,
+        <code>capacidad: 8</code> y <code>tope: 3</code>: el pie dice lo que falta, los huecos
+        se llenan y el chip resume las imágenes ocultas.
+    </p>
+    <p class="demo-nota">Catálogo (fila, tope 4):</p>
+    <div id="demo-coleccion-catalogo"></div>
+    <p class="demo-nota">Campo (min 4 / capacidad 8 / tope 3):</p>
+    <div id="demo-coleccion-campo"></div>
+</section>
+
 <script src="../js/galeria.js"></script>
 <script>
 (function () {
@@ -578,6 +592,56 @@
     }
     llenarTrack('demo-track-largo', 12);
     llenarTrack('demo-track-corto', 2);
+
+    /* ---------- 10. MU.coleccion (ambito 1, modelo v2) ---------- */
+    var CATALOGO = [];
+    for (var c = 0; c < 9; c++) {
+        CATALOGO.push({
+            url: svg(c), thumb: svgMini(c),
+            titulo: 'Producto ' + (c + 1),
+            descripcion: 'Vinilo 3cm',
+            etiqueta: 'Oferta',
+            precio: { valor: 120 + c * 10, anterior: 180, promo: '33% OFF' }
+        });
+    }
+
+    window.MU.coleccion(document.getElementById('demo-coleccion-catalogo'), {
+        items: CATALOGO, preset: 'tarjeta', layout: 'fila',
+        deslizable: false, tope: 4, tamano: 'medio',
+        onAbrir: function (i) { avisar('Abrir el producto ' + (i + 1)); }
+    });
+
+    var CAMPO = [];
+    for (var f = 0; f < 4; f++) {
+        CAMPO.push({ url: svg(f), thumb: svgMini(f), titulo: 'Foto ' + (f + 1) });
+    }
+
+    function pintarCampo() {
+        window.MU.coleccion(document.getElementById('demo-coleccion-campo'), {
+            items: CAMPO, preset: 'mini', layout: 'fila',
+            deslizable: false, tope: 3, tamano: 'chico',
+            min: 4, capacidad: 8,
+            sustantivo: 'imagenes', sustantivoSingular: 'imagen',
+            confirmar: false,
+            onRanura: function () {
+                if (CAMPO.length >= 8) { return; }
+                CAMPO.push({
+                    url: svg(CAMPO.length + 3), thumb: svgMini(CAMPO.length + 3),
+                    titulo: 'Foto ' + (CAMPO.length + 1)
+                });
+                pintarCampo();
+                avisar('Cargada ' + CAMPO.length + ' de 8');
+            },
+            onEliminar: function (i) {
+                CAMPO.splice(i, 1);
+                pintarCampo();
+                avisar('Quedan ' + CAMPO.length + ' cargadas');
+            },
+            onChip: function (n) { avisar('El chip resume ' + n + ' imagenes ocultas'); },
+            onAbrir: function (i) { avisar('Abrir la foto ' + (i + 1)); }
+        });
+    }
+    pintarCampo();
 
     /* ---------- Atajos de QA: demo.html#visor / #oscuro / #woo ---------- */
     if (window.location.hash === '#visor') { abrirClaro(1); }

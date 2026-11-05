@@ -83,6 +83,111 @@
         }
     }
 
+    /* ==================== coleccion v2: aritmetica de celdas (pura) ==================== */
+
+    /**
+     * Cuantas celdas se pintan y cuanto resume el chip (contrato `coleccion.md`, C1).
+     *
+     * Reglas cerradas con el mantenedor (2026-11-05):
+     *   - Las IMAGENES van primero; los huecos rellenan lo que quede.
+     *   - El chip cuenta SOLO items ocultos (los huecos los cuenta el `pie`).
+     *   - Si no caben todos los items, el chip RESERVA una celda (`tope - 1`).
+     *   - Los huecos obligatorios (`min - n`) compiten por celda; la invitacion solo
+     *     rellena si sobra.
+     *
+     * @param {{cargadas:number, min:number, capacidad:number, tope:number}} opciones
+     * @returns {{visiblesItems:number, huecos:number, chip:number, reservaChip:boolean,
+     *            obligatorios:number, invitacion:number, celdas:number}}
+     */
+    function celdas(opciones) {
+        var o = opciones || {};
+        var n = Math.max(0, parseInt(o.cargadas, 10) || 0);
+        var min = Math.max(0, parseInt(o.min, 10) || 0);
+        var capacidad = Math.max(0, parseInt(o.capacidad, 10) || 0);
+        var tope = Math.max(0, parseInt(o.tope, 10) || 0);   // 0 = todos
+
+        // Huecos: los obligatorios mandan; la invitacion solo existe en un campo
+        // cargable (con `min` o `capacidad`) y mientras no se llego al maximo.
+        var obligatorios = Math.max(0, min - n);
+        var cargable = (min > 0 || capacidad > 0);
+        var invitacion = (cargable && n >= min && (capacidad === 0 || capacidad > n)) ? 1 : 0;
+
+        // El chip: solo si NO caben todos los items. Reserva una celda.
+        var reservaChip = (tope > 0 && n > tope);
+        var celdasItems;
+        if (tope === 0) {
+            celdasItems = n;
+        } else if (reservaChip) {
+            celdasItems = Math.max(0, tope - 1);
+        } else {
+            celdasItems = Math.min(tope, n);
+        }
+        var visiblesItems = Math.min(n, celdasItems);
+        var chip = reservaChip ? (n - visiblesItems) : 0;
+
+        // Lo que queda libre va a huecos (obligatorios primero).
+        var libres = (tope === 0)
+            ? (obligatorios + invitacion)
+            : Math.max(0, tope - visiblesItems - (reservaChip ? 1 : 0));
+        var huecos = Math.min(obligatorios + invitacion, libres);
+
+        return {
+            visiblesItems: visiblesItems,
+            huecos: huecos,
+            chip: chip,
+            reservaChip: reservaChip,
+            obligatorios: obligatorios,
+            invitacion: invitacion,
+            celdas: visiblesItems + huecos + (reservaChip ? 1 : 0)
+        };
+    }
+
+    /**
+     * Texto del pie (contrato C2). Es lo que reemplaza al chip para los huecos:
+     * "Carga 4 imagenes" en vez de un "+4" que no lleva a ninguna imagen.
+     *
+     * @param {{cargadas:number, min:number, capacidad:number, sustantivo:string,
+     *          sustantivoSingular:string}} opciones
+     * @returns {string} texto, o '' si el campo no tiene minimo ni maximo.
+     */
+    function pie(opciones) {
+        var o = opciones || {};
+        var n = Math.max(0, parseInt(o.cargadas, 10) || 0);
+        var min = Math.max(0, parseInt(o.min, 10) || 0);
+        var capacidad = Math.max(0, parseInt(o.capacidad, 10) || 0);
+        var que = String(o.sustantivo || 'imagenes');
+
+        if (min > 0 && n < min) {
+            var faltan = min - n;
+            var uno = String(o.sustantivoSingular || que);
+            return 'Carga ' + faltan + ' ' + (faltan === 1 ? uno : que);
+        }
+        if (capacidad > 0 && n < capacidad) {
+            var puede = capacidad - n;
+            return 'Puedes agregar ' + puede + ' mas';
+        }
+        if (capacidad > 0 && n >= capacidad) {
+            return 'Maximo alcanzado';
+        }
+        return '';
+    }
+
+    /**
+     * Cuantas celdas entran en un ancho dado (contrato C3, fila no deslizable).
+     * Con 100 px de espacio, celdas de 30 y sin gap -> 3 (2 items + el chip).
+     *
+     * @param {number} ancho  ancho disponible del contenedor, en px
+     * @param {number} celda  ancho de celda (incluye margin/padding), en px
+     * @param {number} gap    separacion entre celdas, en px
+     * @returns {number} celdas que entran (minimo 1)
+     */
+    function caben(ancho, celda, gap) {
+        var a = Math.max(0, parseInt(ancho, 10) || 0);
+        var c = Math.max(1, parseInt(celda, 10) || 1);
+        var g = Math.max(0, parseInt(gap, 10) || 0);
+        return Math.max(1, Math.floor((a + g) / (c + g)));
+    }
+
     /* ==================== helpers de DOM ==================== */
 
     /** Crea un elemento con clase y texto (nunca HTML: solo `textContent`). */
@@ -816,6 +921,357 @@
         return art;
     }
 
+    /* ==================== coleccion v2 (ambito 1) ==================== */
+
+    /** Lado de la celda por preset de tamano (px). */
+    var TAMANOS = { chico: 72, medio: 112, grande: 160 };
+
+    /** Presets de slots (contrato `coleccion.md`, C5). */
+    var PRESETS = {
+        mini: { imagen: 1, eliminar: 1 },
+        tarjeta: { imagen: 1, etiqueta: 1, favorito: 1, titulo: 1, descripcion: 1, precio: 1, acciones: 1 },
+        producto: { imagen: 1, etiqueta: 1, titulo: 1, precio: 1 },
+        opcion: { imagen: 1, titulo: 1, estado: 1 }
+    };
+
+    /** `tamano` en px: preset, numero o `{ancho, alto}`. */
+    function medidas(tamano) {
+        if (tamano && typeof tamano === 'object') {
+            var a = Math.max(24, parseInt(tamano.ancho, 10) || TAMANOS.medio);
+            var h = Math.max(24, parseInt(tamano.alto, 10) || a);
+            return { ancho: a, alto: h };
+        }
+        var lado = TAMANOS[String(tamano)] || TAMANOS.medio;
+        return { ancho: lado, alto: lado };
+    }
+
+    /** Slots efectivos: preset + `slots` (objeto de booleanos o lista de nombres). */
+    function resolverSlots(o) {
+        var preset = PRESETS[String(o.preset)] || PRESETS.mini;
+        var base = {};
+        var k;
+        for (k in preset) { if (preset.hasOwnProperty(k)) { base[k] = preset[k]; } }
+
+        var s = o.slots;
+        if (Array.isArray(s)) {
+            var lista = {};
+            for (var i = 0; i < s.length; i++) { lista[String(s[i])] = 1; }
+            lista.imagen = 1;                       // la imagen nunca se quita
+            return lista;
+        }
+        if (s && typeof s === 'object') {
+            for (k in s) { if (s.hasOwnProperty(k)) { base[k] = s[k] ? 1 : 0; } }
+        }
+        base.imagen = 1;
+        return base;
+    }
+
+    /** Una celda con el item (contrato C6). Nunca un boton dentro de otro. */
+    function construirCelda(doc, item, i, o, activo, slots, tam) {
+        var celda = crear(doc, 'div', 'mu-gal-celda');
+        celda.setAttribute('data-mu-gal-mini', String(i));
+        celda.style.setProperty('--mu-gal-tam', tam.ancho + 'px');
+        if (i === activo) { celda.className += ' mu-gal-celda--activa'; }
+
+        var caja = crear(doc, 'div', 'mu-gal-item');
+        caja.style.setProperty('--mu-gal-alto', tam.alto + 'px');
+
+        var abrir = crear(doc, 'button', 'mu-gal-item-abrir');
+        abrir.type = 'button';
+        abrir.setAttribute('aria-label', String(item.etiqueta || item.titulo || ('Imagen ' + (i + 1))));
+        var img = crear(doc, 'img');
+        img.setAttribute('loading', 'lazy');
+        img.setAttribute('alt', '');
+        img.setAttribute('src', String(item.thumb || item.url || ''));
+        abrir.appendChild(img);
+        abrir.addEventListener('click', function () {
+            if (typeof o.onAbrir === 'function') { o.onAbrir(i, item); }
+        });
+        caja.appendChild(abrir);
+
+        if (slots.etiqueta && item.etiqueta) {
+            caja.appendChild(crear(doc, 'span', 'mu-gal-item-etiqueta', item.etiqueta));
+        }
+
+        if (slots.favorito) {
+            var est = crear(doc, 'button', 'mu-gal-item-favorito', item.favorito ? '\u2605' : '\u2606');
+            est.type = 'button';
+            est.setAttribute('aria-pressed', item.favorito ? 'true' : 'false');
+            est.setAttribute('aria-label', item.favorito ? 'Quitar de favoritos' : 'Marcar como favorito');
+            est.addEventListener('click', function (e) {
+                if (e.stopPropagation) { e.stopPropagation(); }
+                if (typeof o.onFavorito === 'function') { o.onFavorito(i, !item.favorito, item); }
+            });
+            caja.appendChild(est);
+        }
+
+        if (slots.eliminar && typeof o.onEliminar === 'function') {
+            var del = crear(doc, 'button', 'mu-gal-item-eliminar', '\u00d7');
+            del.type = 'button';
+            del.setAttribute('aria-label', 'Quitar ' + (item.titulo || ('imagen ' + (i + 1))));
+            del.addEventListener('click', function (e) {
+                if (e.stopPropagation) { e.stopPropagation(); }
+                var seguir = true;
+                if (typeof o.confirmar === 'function') {
+                    seguir = !!o.confirmar(i, item);
+                } else if (o.confirmar !== false && typeof global.confirm === 'function') {
+                    seguir = global.confirm('Quitar esta imagen?');
+                }
+                if (seguir) { o.onEliminar(i, item); }
+            });
+            caja.appendChild(del);
+        }
+
+        var cuerpo = null;
+        function asegurarCuerpo() {
+            if (!cuerpo) {
+                cuerpo = crear(doc, 'div', 'mu-gal-item-cuerpo');
+                caja.appendChild(cuerpo);
+            }
+            return cuerpo;
+        }
+
+        if (slots.titulo && item.titulo) {
+            asegurarCuerpo().appendChild(crear(doc, 'p', 'mu-gal-item-titulo', item.titulo));
+        }
+        if (slots.descripcion && item.descripcion) {
+            asegurarCuerpo().appendChild(crear(doc, 'p', 'mu-gal-item-desc', item.descripcion));
+        }
+        if (slots.precio && item.precio && item.precio.valor !== undefined) {
+            var fila = crear(doc, 'p', 'mu-gal-item-precio');
+            if (item.precio.anterior !== undefined && item.precio.anterior !== null) {
+                fila.appendChild(crear(doc, 'span', 'mu-gal-item-antes',
+                    '$' + formatearPrecio(item.precio.anterior)));
+            }
+            fila.appendChild(crear(doc, 'strong', 'mu-gal-item-ya',
+                '$' + formatearPrecio(item.precio.valor)));
+            if (item.precio.promo) {
+                fila.appendChild(crear(doc, 'span', 'mu-gal-item-promo', item.precio.promo));
+            }
+            if (item.precio.aviso) {
+                fila.appendChild(crear(doc, 'span', 'mu-gal-item-aviso', 'actualizado'));
+            }
+            asegurarCuerpo().appendChild(fila);
+        }
+        if (slots.estado && i === activo) {
+            asegurarCuerpo().appendChild(crear(doc, 'p', 'mu-gal-item-estado', 'Elegida'));
+        }
+        if (slots.acciones && Array.isArray(item.acciones)) {
+            var acc = crear(doc, 'div', 'mu-gal-item-acciones');
+            item.acciones.forEach(function (a) {
+                var b = crear(doc, 'button', 'mu-gal-item-btn', a.etiqueta || '');
+                b.type = 'button';
+                b.addEventListener('click', function (e) {
+                    if (e.stopPropagation) { e.stopPropagation(); }
+                    if (typeof a.onAccion === 'function') { a.onAccion(i, item); }
+                });
+                acc.appendChild(b);
+            });
+            if (acc.firstChild) { asegurarCuerpo().appendChild(acc); }
+        }
+
+        celda.appendChild(caja);
+        return celda;
+    }
+
+    /** Hueco a llenar (obligatorio o invitacion). */
+    function construirHueco(doc, i, total, o, tam) {
+        var b = crear(doc, 'button', 'mu-gal-celda mu-gal-celda--vacia', '+');
+        b.type = 'button';
+        b.style.setProperty('--mu-gal-tam', tam.ancho + 'px');
+        b.setAttribute('data-mu-gal-ranura', String(i));
+        b.setAttribute('aria-label',
+            'Agregar ' + (o.sustantivoSingular || 'imagen') + ' ' + (i + 1) + (total ? (' de ' + total) : ''));
+        b.addEventListener('click', function () {
+            if (typeof o.onRanura === 'function') { o.onRanura(i, total); }
+        });
+        return b;
+    }
+
+    /** Chip "+X" como CELDA de la linea (nunca flota fuera). */
+    function construirChip(doc, cuantos, desde, o, tam) {
+        var b = crear(doc, 'button', 'mu-gal-celda mu-gal-celda--chip', '+' + cuantos);
+        b.type = 'button';
+        b.style.setProperty('--mu-gal-tam', tam.ancho + 'px');
+        b.setAttribute('data-mu-gal-chip', String(cuantos));
+        b.setAttribute('aria-label', 'Ver ' + cuantos + ' mas');
+        b.addEventListener('click', function () {
+            if (typeof o.onChip === 'function') { o.onChip(cuantos, desde); return; }
+            if (o.chipAccion === 'cargar' && typeof o.onRanura === 'function') {
+                o.onRanura(desde, 0);
+                return;
+            }
+            if (typeof o.onAbrir === 'function') { o.onAbrir(desde); }
+        });
+        return b;
+    }
+
+    /** Estado por contenedor, para repintar al cambiar el ancho. */
+    var colecciones = (typeof WeakMap === 'function') ? new WeakMap() : null;
+    var observadorColecciones = null;
+
+    /** Flechas `.mu-nav-btn` de una linea deslizable: solo si desborda y en su extremo. */
+    function flechasDeLinea(caja, linea) {
+        var doc = global.document;
+        var prev = crear(doc, 'button', 'mu-nav-btn prev mu-gal-prev');
+        prev.type = 'button';
+        prev.setAttribute('aria-label', 'Anterior');
+        prev.appendChild(crearChevron(doc, 'prev'));
+        var next = crear(doc, 'button', 'mu-nav-btn next mu-gal-next');
+        next.type = 'button';
+        next.setAttribute('aria-label', 'Siguiente');
+        next.appendChild(crearChevron(doc, 'next'));
+
+        function pintar() {
+            var sobra = linea.scrollWidth - linea.clientWidth;
+            var desborda = sobra > 1;
+            prev.hidden = !(desborda && linea.scrollLeft > 1);
+            next.hidden = !(desborda && linea.scrollLeft < sobra - 1);
+        }
+
+        prev.addEventListener('click', function () {
+            linea.scrollBy({ left: -(linea.clientWidth * 0.8), behavior: 'smooth' });
+        });
+        next.addEventListener('click', function () {
+            linea.scrollBy({ left: (linea.clientWidth * 0.8), behavior: 'smooth' });
+        });
+        linea.addEventListener('scroll', pintar, { passive: true });
+        if (global.addEventListener) { global.addEventListener('resize', pintar); }
+        caja.appendChild(prev);
+        caja.appendChild(next);
+        pintar();
+        return { pintar: pintar };
+    }
+
+    /**
+     * Galeria embebida (ambito 1). Contrato `coleccion.md`.
+     * @returns {{visiblesItems:number, huecos:number, chip:number, modo:string, desliza:boolean}}
+     */
+    function coleccion(nodo, opciones) {
+        var doc = global.document;
+        if (!doc || !nodo) { return null; }
+        var o = opciones || {};
+        var items = Array.isArray(o.items) ? o.items : [];
+        var tam = medidas(o.tamano);
+        var gap = parseInt(o.gap, 10);
+        if (!(gap >= 0)) { gap = 8; }
+        var layout = (o.layout === 'grilla') ? 'grilla' : 'fila';
+        var filas = Math.max(0, parseInt(o.filas, 10) || 0);
+        var columnas = Math.max(0, parseInt(o.columnas, 10) || 0);
+        var tope = Math.max(0, parseInt(o.tope, 10) || 0);
+        var min = Math.max(0, parseInt(o.min, 10) || 0);
+        var capacidad = Math.max(0, parseInt(o.capacidad, 10) || 0);
+        var activo = (o.activo === undefined) ? -1 : (parseInt(o.activo, 10) || 0);
+        var slots = resolverSlots(o);
+
+        // Cuantas celdas entran: manda el CONTENEDOR, nunca el viewport.
+        var ancho = nodo.clientWidth || 0;
+        var cabenLinea = caben(ancho, tam.ancho, gap);
+        var desliza = false;
+        var topeEfectivo = tope;
+
+        if (layout === 'fila') {
+            if (o.deslizable === true) {
+                desliza = true;
+            } else if (o.deslizable === false) {
+                desliza = false;
+            } else {
+                desliza = ((items.length + 1) > cabenLinea);   // 'auto'
+            }
+            if (!desliza) {
+                topeEfectivo = (tope > 0) ? Math.min(tope, cabenLinea) : cabenLinea;
+            }
+        } else if (filas > 0) {
+            var porFila = (columnas > 0) ? columnas : cabenLinea;
+            var cabenGrilla = porFila * filas;
+            topeEfectivo = (tope > 0) ? Math.min(tope, cabenGrilla) : cabenGrilla;
+        }
+
+        var res = celdas({ cargadas: items.length, min: min, capacidad: capacidad, tope: topeEfectivo });
+
+        var pieTxt = '';
+        if (o.pie !== false) {
+            if (typeof o.pie === 'string' && o.pie !== 'auto') {
+                pieTxt = o.pie;
+            } else {
+                pieTxt = pie({
+                    cargadas: items.length, min: min, capacidad: capacidad,
+                    sustantivo: o.sustantivo, sustantivoSingular: o.sustantivoSingular
+                });
+            }
+        }
+
+        var scrollPrevio = nodo.scrollLeft || 0;
+        vaciar(nodo);
+        nodo.setAttribute('data-mu-gal-layout', layout);
+
+        if (pieTxt) {
+            var p = crear(doc, 'p', 'mu-gal-pie', pieTxt);
+            p.setAttribute('role', 'status');
+            nodo.appendChild(p);
+        }
+
+        var modoClase = (layout === 'grilla') ? 'grilla' : (desliza ? 'linea' : 'fila');
+        var linea = crear(doc, 'div', 'mu-gal-linea mu-gal-linea--' + modoClase);
+        linea.style.setProperty('--mu-gal-gap', gap + 'px');
+        if (layout === 'grilla' && filas > 0) {
+            linea.setAttribute('data-filas', String(filas));
+            linea.style.setProperty('--filas', String(filas));
+        }
+        if (layout === 'grilla' && columnas > 0) {
+            linea.setAttribute('data-columnas', String(columnas));
+            linea.style.setProperty('--columnas', String(columnas));
+        }
+
+        var visibles = items.slice(0, res.visiblesItems);
+        visibles.forEach(function (it, i) {
+            linea.appendChild(construirCelda(doc, it, i, o, activo, slots, tam));
+        });
+        for (var h = 0; h < res.huecos; h++) {
+            linea.appendChild(construirHueco(doc, visibles.length + h, min || capacidad, o, tam));
+        }
+        if (res.chip > 0) {
+            linea.appendChild(construirChip(doc, res.chip, res.visiblesItems, o, tam));
+        }
+
+        if (desliza) {
+            var caja = crear(doc, 'div', 'mu-gal-caja-linea');
+            caja.appendChild(linea);
+            nodo.appendChild(caja);
+            flechasDeLinea(caja, linea);
+        } else {
+            nodo.appendChild(linea);
+        }
+        nodo.scrollLeft = scrollPrevio;
+
+        if (colecciones) {
+            colecciones.set(nodo, { opciones: o, items: items, ancho: ancho });
+            observarColeccion(nodo);
+        }
+        return {
+            visiblesItems: res.visiblesItems, huecos: res.huecos, chip: res.chip,
+            modo: modoClase, desliza: desliza
+        };
+    }
+
+    /** Repinta al cambiar el ancho del contenedor (conserva el estado de scroll). */
+    function observarColeccion(nodo) {
+        if (!colecciones || typeof global.ResizeObserver !== 'function') { return; }
+        var est = colecciones.get(nodo);
+        if (!est) { return; }
+        if (!observadorColecciones) {
+            observadorColecciones = new global.ResizeObserver(function (entradas) {
+                for (var i = 0; i < entradas.length; i++) {
+                    var destino = entradas[i].target;
+                    var s = colecciones.get(destino);
+                    if (!s || destino.clientWidth === s.ancho) { continue; }
+                    coleccion(destino, s.opciones);
+                }
+            });
+        }
+        observadorColecciones.observe(nodo);
+    }
+
     /* ==================== adaptadores (leen el DOM, no piden datos) ==================== */
 
     /**
@@ -958,11 +1414,24 @@
         autoInit: autoInit,
         arrastrar: arrastrar,
         navegarWoo: navegarWoo,
-        puro: { acotar: acotar, preCargar: preCargar, orden: orden, formatearPrecio: formatearPrecio },
+        coleccion: coleccion,
+        puro: { acotar: acotar, preCargar: preCargar, orden: orden,
+            formatearPrecio: formatearPrecio, celdas: celdas, pie: pie, caben: caben },
         version: '1.0.0'
     };
 
     global.MUGaleria = api;
+
+    // Dos ambitos con nombre propio (contrato `coleccion.md`, C0):
+    //   MU.coleccion = galeria embebida;  MU.visor = modal de ampliacion.
+    global.MU = {
+        coleccion: coleccion,
+        visor: visor,
+        arrastrar: arrastrar,
+        navegarWoo: navegarWoo,
+        puro: api.puro,
+        version: api.version
+    };
     if (typeof module !== 'undefined' && module.exports) { module.exports = api; }
 
     // Declarativo: con el DOM listo se auto-inicializa (D3). Los consumidores pueden

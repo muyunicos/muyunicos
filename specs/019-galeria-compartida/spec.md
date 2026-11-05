@@ -93,6 +93,34 @@ colores, radios, sombras y transiciones. La galeria unica debe vivir aqui.
   `flex: 1 1 0%` (no `auto`, que partia del tamaño natural de la imagen) y cuerpo/cabecera
   llevan `min-width: 0`. En 390 px se ven las dos flechas, el contador y el cerrar.
 
+### Enmienda 2026-11-05 (ter) — modelo v2: `MU.coleccion` + `MU.visor`
+
+Contrato: [contracts/coleccion.md](./contracts/coleccion.md). Reemplaza "tira + tarjeta".
+
+- **D19 — Dos ambitos con nombre propio**: `MU.coleccion` (galeria embebida: catalogo,
+  producto, opciones, cotizador) y `MU.visor` (modal de ampliacion, con la coleccion como
+  listado inferior). `MUGaleria` queda como alias una release.
+- **D20 — Un item con SLOTS**: el item se dibuja segun `slots` (imagen, etiqueta, favorito,
+  eliminar, titulo, descripcion, precio, acciones, estado). `preset` (`mini`/`tarjeta`/
+  `producto`/`opcion`) es el atajo, y `slots` lo pisa.
+- **D21 — Aritmetica de celdas pura** (`MU.puro.celdas`): las imagenes van primero; el chip
+  cuenta **solo items ocultos** y **reserva** una celda; los huecos obligatorios compiten y
+  la invitacion solo rellena si sobra; **`tope` gana sobre `min`**.
+- **D22 — Los huecos los cuenta el PIE, no el chip**: `MU.puro.pie` dice "Carga 4 imagenes"
+  / "Puedes agregar N mas" / "Maximo alcanzado". Un chip "+N" nunca habla de huecos.
+- **D23 — `capacidad`**: maximo de cargas, distinto de `tope` (maximo de items visibles).
+  Con `min 4` / `capacidad 8` / `tope 3` la secuencia es la tabla del contrato (C1).
+
+- **FR-024** `MU.coleccion(el, opciones)` con `layout` (fila/grilla), `deslizable`
+  (`auto`/true/false), `tamano`, `gap`, `filas`, `columnas`.
+- **FR-025** `MU.puro.celdas()` decide `visiblesItems`, `huecos` y `chip` (D21).
+- **FR-026** `MU.puro.pie()` produce el texto de D22.
+- **FR-027** `MU.puro.caben(ancho, celda, gap)` da el `tope` efectivo de una fila que no
+  desliza (`100/30/0 -> 3`).
+- **FR-028** El chip es una **celda** de la linea (`mu-gal-celda--chip`), nunca algo que
+  flota fuera y se recorta.
+- **FR-029** `MU.visor` monta la coleccion como listado inferior y sincroniza `activo` (F2).
+
 ## 3. Requisitos funcionales
 
 - **FR-001** `MUGaleria.visor({items, indice, titulo, tono, segmentos, acciones, meta})` abre

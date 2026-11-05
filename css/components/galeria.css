@@ -667,3 +667,291 @@ button.mu-gal-mini--vacia {
 
 /* Respaldo del bloqueo de scroll (el JS ya pone `overflow:hidden` en linea). */
 body.is-scroll-locked { overflow: hidden; }
+
+/* ============================================
+   COLECCION v2 (ambito 1) — contrato coleccion.md
+   Convive con la tira v1 mientras se retira en F3.
+   ============================================ */
+
+.mu-gal-pie {
+    margin: 0 0 6px;
+    font-size: 12px;
+    color: var(--texto-light);
+}
+
+.mu-gal-linea {
+    display: flex;
+    gap: var(--mu-gal-gap, 8px);
+    margin: 0;
+    padding: 0;
+}
+
+/* Fila que NO desliza: envuelve. */
+.mu-gal-linea--fila { flex-wrap: wrap; }
+
+/* Fila deslizable: carrusel con snap + flechas del sistema. */
+.mu-gal-linea--linea {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+}
+
+.mu-gal-linea--linea::-webkit-scrollbar { display: none; }
+.mu-gal-linea--linea > .mu-gal-celda { scroll-snap-align: start; }
+
+/* Grilla (con `filas` limita el alto y el chip resume lo que no entra). */
+.mu-gal-linea--grilla {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(var(--mu-gal-tam, 112px), 1fr));
+    gap: var(--mu-gal-gap, 8px);
+    overflow: hidden;
+}
+
+.mu-gal-linea--grilla[data-columnas] {
+    grid-template-columns: repeat(var(--columnas, 4), minmax(0, 1fr));
+    grid-auto-rows: var(--mu-gal-tam, 112px);
+}
+
+.mu-gal-linea--grilla[data-filas] {
+    grid-auto-rows: var(--mu-gal-tam, 112px);
+    max-height: calc(var(--filas, 1) * (var(--mu-gal-tam, 112px) + var(--mu-gal-gap, 8px)) - var(--mu-gal-gap, 8px));
+}
+
+/* Envoltorio de la fila deslizable: ancla las flechas fuera del recorte. */
+.mu-gal-caja-linea { position: relative; }
+
+.mu-gal-caja-linea .mu-nav-btn.prev,
+.mu-gal-caja-linea .mu-nav-btn.next {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    z-index: 2;
+}
+
+.mu-gal-caja-linea .mu-nav-btn.prev { left: -6px; }
+.mu-gal-caja-linea .mu-nav-btn.next { right: -6px; }
+.mu-gal-caja-linea .mu-nav-btn[hidden] { display: none; }
+.mu-gal-caja-linea .mu-nav-btn svg { width: 18px; height: 18px; }
+
+/* Celda: ancho por `--mu-gal-tam`; el alto lo decide el item. */
+.mu-gal-celda {
+    position: relative;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    width: var(--mu-gal-tam, 112px);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    border-radius: var(--mu-radius);
+}
+
+.mu-gal-celda--activa { outline: 2px solid var(--primario); outline-offset: 2px; }
+
+/* Hueco a llenar (min/capacidad): borde punteado, como cpmu-zona del plugin. */
+.mu-gal-celda--vacia {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--mu-gal-tam, 112px);
+    border: 2px dashed #cbd5e1;
+    background: #f8fafc;
+    color: var(--primario);
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    transition: var(--mu-transition-fast);
+}
+
+.mu-gal-celda--vacia:hover { border-color: var(--primario); background: rgb(43 159 207 / 8%); }
+.mu-gal-celda--vacia:focus-visible { outline: 3px solid var(--primario); outline-offset: 2px; }
+
+/* Chip "+X": una CELDA mas, nunca flota fuera de la linea. */
+.mu-gal-celda--chip {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--mu-gal-tam, 112px);
+    border: 2px dashed #cbd5e1;
+    background: #f8fafc;
+    color: var(--primario);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.mu-gal-celda--chip:hover { border-color: var(--primario); }
+.mu-gal-celda--chip:focus-visible { outline: 3px solid var(--primario); outline-offset: 2px; }
+
+/* --- El item (slots) --- */
+.mu-gal-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    border: 1px solid #e2e8f0;
+    border-radius: var(--mu-radius);
+    background: var(--blanco);
+    overflow: hidden;
+    transition: var(--mu-transition-fast);
+}
+
+.mu-gal-item:hover { box-shadow: var(--mu-shadow); }
+
+.mu-gal-item-abrir {
+    display: block;
+    width: 100%;
+    height: var(--mu-gal-alto, 112px);
+    padding: 0;
+    border: 0;
+    background: repeating-conic-gradient(#f1f5f9 0 25%, #ffffff 0 50%) 0 / 12px 12px;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.mu-gal-item-abrir img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border: 0;
+    box-shadow: none;
+}
+
+.mu-gal-item-abrir:focus-visible { outline: 3px solid var(--primario); outline-offset: -3px; }
+
+.mu-gal-item-etiqueta {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    padding: 1px 6px;
+    border-radius: var(--mu-radius-full);
+    background: var(--primario);
+    color: var(--blanco);
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.mu-gal-item-favorito {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: rgb(255 255 255 / 92%);
+    color: #64748b;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mu-gal-item-favorito[aria-pressed="true"] { background: var(--secundario); color: #8a6116; }
+.mu-gal-item-favorito:focus-visible { outline: 3px solid var(--primario); outline-offset: 1px; }
+
+.mu-gal-item-eliminar {
+    position: absolute;
+    right: 4px;
+    bottom: 4px;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 2px solid var(--blanco);
+    border-radius: 50%;
+    background: #d63638;
+    color: var(--blanco);
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mu-gal-item-eliminar:focus-visible { outline: 3px solid var(--secundario); outline-offset: 1px; }
+
+.mu-gal-item-cuerpo {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px;
+}
+
+.mu-gal-item-titulo {
+    margin: 0;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--texto);
+    line-height: 1.25;
+}
+
+.mu-gal-item-desc {
+    margin: 0;
+    font-size: 10px;
+    color: var(--texto-light);
+    line-height: 1.25;
+}
+
+.mu-gal-item-precio {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin: 0;
+    font-size: 10px;
+}
+
+.mu-gal-item-ya { color: #047857; font-weight: 700; }
+.mu-gal-item-antes { color: var(--texto-light); text-decoration: line-through; font-size: 9px; }
+
+.mu-gal-item-promo {
+    padding: 0 5px;
+    border-radius: var(--mu-radius-full);
+    background: #d63638;
+    color: var(--blanco);
+    font-size: 9px;
+    font-weight: 700;
+}
+
+.mu-gal-item-aviso { color: #8a6116; font-size: 9px; font-weight: 600; }
+
+.mu-gal-item-estado {
+    margin: 0;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--resaltado);
+}
+
+.mu-gal-item-acciones { display: flex; gap: 4px; padding-top: 2px; }
+
+.mu-gal-item-btn {
+    flex: 1 1 auto;
+    min-height: 26px;
+    padding: 3px 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: var(--mu-radius-sm);
+    background: var(--blanco);
+    color: #475569;
+    font-family: var(--mu-font-base);
+    font-size: 10px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.mu-gal-item-btn:hover { border-color: var(--primario); color: var(--primario); }
