@@ -107,6 +107,38 @@ check('hereda el criterio de la tira de producto', /scroll-snap-type: x mandator
 check('tiene reduced motion', /prefers-reduced-motion/.test(css));
 check('mas de 300 lineas de estilo', css.split('\n').length > 300);
 
+/* ==================== 4b. Tira v1.1 (enmienda 2026-11-05) ==================== */
+console.log('== Tira v1.1 ==');
+check('modo auto|linea|grilla', /modoEfectivo/.test(js));
+check('auto decide por ancho del CONTENEDOR',
+    /cabenEnLinea/.test(js) && /nodo\.clientWidth/.test(js));
+check('ya no depende del viewport',
+    !/matchMedia/.test(js) && !/@media \(max-width: 768px\)/.test(css) && !/tira--scroll/.test(css));
+check('repinta al cambiar el ancho', /ResizeObserver/.test(js));
+check('conserva el scroll al repintar', /scrollPrevio/.test(js));
+check('conserva el foco al repintar', /focoPrevio/.test(js));
+check('min dibuja ranuras a llenar',
+    /construirRanura/.test(js) && /mu-gal-mini--vacia/.test(js));
+check('la ranura avisa con onRanura',
+    /onRanura/.test(js) && /data-mu-gal-ranura/.test(js));
+check('contador del minimo', /mu-gal-cuenta/.test(js) && /' de ' \+ min/.test(js));
+check('tachito en la tira', /mu-gal-mini-borrar/.test(js) && /o\.onBorrar/.test(js));
+check('confirmacion configurable', /o\.confirmar/.test(js));
+check('la miniatura NO es un boton (sin boton anidado)',
+    /crear\(doc, 'div', 'mu-gal-mini'\)/.test(js) && /mu-gal-mini-abrir/.test(js));
+check('"+N" son las que FALTAN',
+    /'\+' \+ faltan/.test(js) && !/'\+' \+ items\.length/.test(js));
+check('activo por defecto: ninguna marcada', /\(o\.activo === undefined\) \? -1/.test(js));
+check('grilla con tope de filas',
+    /'--filas'/.test(js) && /data-filas/.test(js) && /grid-auto-rows/.test(css));
+check('filas recorta y lo que sobra va al "+N"',
+    /porFila \* filas/.test(js) && /\(o\.mas \|\| recortado\)/.test(js));
+check('el chip "+N" sale fuera de la grilla recortada',
+    /chipFuera/.test(js) && /mu-gal-mas--fuera/.test(css));
+check('tachito siempre visible en tactil', /@media \(hover: none\)/.test(css));
+check('linea con scroll propia (no por viewport)',
+    /\.mu-gal-tira--linea/.test(css) && /scroll-snap-type: x mandatory/.test(css));
+
 /* ==================== 5. Reglas del PHP ==================== */
 console.log('== Reglas del PHP ==');
 check('registra el estilo', /wp_register_style\(\s*'mu-galeria'/.test(php));

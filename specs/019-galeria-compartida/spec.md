@@ -57,6 +57,28 @@ colores, radios, sombras y transiciones. La galeria unica debe vivir aqui.
   `mu_enqueue_assets()`). Tocar `js/galeria.js` o `css/components/galeria.css` obliga a
   bump de la cabecera.
 
+### Enmienda 2026-11-05 — tira v1.1
+
+- **D13 — `modo` por ANCHO DEL CONTENEDOR, no por viewport**: el criterio anterior
+  (`@media (max-width: 768px)`) dejaba una tira angosta en un monitor grande **sin scroll**.
+  `auto` mide `clientWidth`: si todo cabe en una linea -> `linea`; si no y el contenedor
+  mide >= 480 px -> `grilla`; si no -> `linea` con scroll (nunca inaccesible). Se repinta
+  con `ResizeObserver` conservando scroll y foco.
+- **D14 — La miniatura es un CONTENEDOR**: `<div class="mu-gal-mini">` con
+  `mu-gal-mini-abrir` + `mu-gal-mini-borrar`. Un boton dentro de un boton es HTML
+  invalido, y el tachito lo exige.
+- **D15 — `min` dibuja ranuras a llenar**: `min` ranuras vacias (`mu-gal-mini--vacia`,
+  borde punteado como `cpmu-zona` del plugin) que disparan `onRanura(indice)`. Con
+  `contador: true` se muestra "1 de 3". Reusa el lenguaje visual del cargador del plugin
+  para que F2 no tenga dos implementaciones del minimo.
+- **D16 — El tachito confirma**: `borrar: true` + `confirmar` (`true` = `confirm()`
+  nativo, `false` = borra directo, funcion = confirmacion propia). Visible siempre en
+  tactil (`@media (hover: none)`) y en hover/foco con puntero fino.
+- **D17 — El componente no hereda bordes ni sombras del tema**: el tema y WooCommerce
+  pintan bordes en imagenes dentro de enlaces y tarjetas; dentro de la galeria se
+  neutralizan (`border/outline/box-shadow: 0`) para que el mismo HTML se vea igual en la
+  tienda, en la cuenta y en el cotizador. Lo revelo la demo con el CSS del tema cargado.
+
 ## 3. Requisitos funcionales
 
 - **FR-001** `MUGaleria.visor({items, indice, titulo, tono, segmentos, acciones, meta})` abre
@@ -70,9 +92,9 @@ colores, radios, sombras y transiciones. La galeria unica debe vivir aqui.
   (`Elegir`, `Borrar`, `Personalizar`, `Reemplazar`).
 - **FR-006** `meta` opcional bajo la imagen: titulo, descripcion, badge, precio y su aviso
   de "actualizado".
-- **FR-007** `MUGaleria.tira(el, {items, tope, scroll, forma, mas, onAbrir})`: dibuja
-  miniaturas; `scroll: true` = carrusel con snap (movil) / grilla (escritorio); `mas: true`
-  agrega el boton `+N`.
+- **FR-007** `MUGaleria.tira(el, {items, modo, filas, tope, min, mas, activo, forma,
+  borrar, confirmar, contador, onAbrir, onBorrar, onRanura, onMas})`: dibuja miniaturas.
+  `modo` es `auto`|`linea`|`grilla` (ver D13); `+N` son las imagenes que **faltan**.
 - **FR-008** `MUGaleria.tarjeta(item, {badge, precio, favorito, onUsar, onBorrar})`: tarjeta
   de catalogo con estrella y acciones.
 - **FR-009** `MUGaleria.desdeWoo(raiz)` devuelve `items` desde `.woocommerce-product-gallery`
@@ -91,6 +113,17 @@ colores, radios, sombras y transiciones. La galeria unica debe vivir aqui.
 - **FR-015** Degradacion: `mu-product-js` declara `mu-galeria` como dependencia, asi el
   orden es determinista. Sin el modulo, la ficha pierde solo el arrastre: el slider y el
   click de WooCommerce siguen funcionando.
+- **FR-016** `modo: 'auto'` resuelve por `clientWidth` del contenedor (D13) y se repinta
+  con `ResizeObserver` sin perder `scrollLeft` ni el foco.
+- **FR-017** `filas` limita el alto de la grilla (`--filas`; 2 filas = `max-height` de
+  146 px) y lo que no entra se resume en el `+N`.
+- **FR-018** `min` dibuja `min - items.length` ranuras vacias accesibles
+  (`aria-label="Agregar imagen N de M"`) que llaman `onRanura(indice)`; `contador` muestra
+  "1 de 3".
+- **FR-019** `borrar: true` + `onBorrar(indice, item)` dibuja el tachito con `confirmar`
+  configurable (D16) y `stopPropagation` para no abrir el visor.
+- **FR-020** `activo` por defecto es `-1` (ninguna marcada): la marca solo aparece cuando
+  el consumidor la pide.
 
 ## 4. Criterios de exito
 

@@ -3,19 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Galeria compartida — demo (spec 019)</title>
+<title>Galeria compartida — demo (spec 019 + tira v1.1)</title>
 <!--
-  Demo de aprobacion visual de `MUGaleria` (spec 019).
+  Demo de aprobacion visual y de comportamiento de `MUGaleria` (spec 019).
   Se abre como archivo local (no necesita WordPress ni internet): todos los
   estilos son los del tema y las imagenes se generan como SVG data-URI.
 
   Que revisar:
-    1. Tira de miniaturas (grilla en escritorio / carrusel con snap en movil).
-    2. Visor claro con segmentos, meta, precio y acciones.
+    1. Tira adaptativa: el MISMO contenido en un contenedor ancho (grilla) y en uno
+       angosto (una linea con scroll). Cambia el ancho de la ventana.
+    2. Visor claro: segmentos, meta POR IMAGEN, precio y acciones.
     3. Visor oscuro (el que usara el plugin, tono `oscuro`).
-    4. Tarjeta de catalogo con estrella, precio y acciones.
+    4. Tarjetas de catalogo (badge, estrella, precio, Usar/Borrar).
     5. Modo declarativo `data-mu-galeria` (cuenta, banners, opciones).
-    6. Ficha de WooCommerce simulada: la lupa abre el visor compartido.
+    6. Ficha de WooCommerce simulada: 4 fotos, la lupa abre el visor en la activa.
+    7. Mi cuenta: grilla a 2 filas con tachito (borra la miniatura).
+    8. Campo con minimo 3: ranuras vacias que abren el cargador.
+
+  `global-ui.css` se enlaza solo por `.mu-modal-overlay/.mu-modal-container/.mu-modal-close`
+  (el visor NO trae modal propio). En WordPress no hace falta enlazarlo: ya viaja global.
 -->
 <link rel="stylesheet" href="../style.css">
 <link rel="stylesheet" href="../css/components/global-ui.css">
@@ -47,10 +53,30 @@
     }
     .demo-boton:hover { background: var(--primario); color: var(--blanco); }
     .demo-nota { font-size: 12px; color: var(--texto-light); margin: 0 0 10px; }
+    .demo-status {
+        min-height: 18px;
+        margin: 0 0 24px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--resaltado);
+    }
+    .demo-caja {
+        border: 1px dashed #cbd5e1;
+        border-radius: var(--mu-radius);
+        padding: 8px;
+        margin: 8px 0 12px;
+    }
+    .demo-ancha { width: 100%; max-width: 820px; }
+    .demo-angosta { width: 240px; }
+    .demo-media { width: 100%; max-width: 420px; }
+    /* Solo en la demo: los tachitos de "Mi cuenta" siempre visibles, para poder verlos
+       (el componente los muestra en hover/foco y en tactil, por diseño D16). */
+    #demo-cuenta .mu-gal-mini-borrar { opacity: 1; }
+
     /* Ficha de WooCommerce simulada: solo lo necesario para verla. */
     .demo-woo {
         position: relative;
-        max-width: 480px;
+        max-width: 320px;
         border: 1px solid #e2e8f0;
         border-radius: var(--mu-radius);
         padding: 12px;
@@ -63,16 +89,26 @@
         z-index: 2;
         width: 36px;
         height: 36px;
+        padding: 0;
+        border: 0;
         border-radius: 50%;
         background: rgb(255 255 255 / 92%);
         display: flex;
         align-items: center;
         justify-content: center;
         font-size: 18px;
+        line-height: 1;
         cursor: pointer;
         box-shadow: var(--mu-shadow);
     }
-    .demo-woo .woocommerce-product-gallery__image img { display: block; width: 100%; height: auto; border-radius: var(--mu-radius-sm); }
+    .demo-woo .woocommerce-product-gallery__image img {
+        display: block;
+        width: 100%;
+        height: auto;
+        border-radius: var(--mu-radius-sm);
+    }
+    /* WooCommerce real usa un slider: solo se ve la foto activa. */
+    .demo-woo .woocommerce-product-gallery__image:nth-child(n+2) { display: none; }
     .demo-woo .flex-control-thumbs {
         display: flex;
         gap: 6px;
@@ -93,30 +129,43 @@
         cursor: pointer;
         opacity: 0.6;
     }
-    .demo-woo .flex-control-thumbs img.flex-active { border-color: var(--primario); opacity: 1; }
+    .demo-woo .flex-control-thumbs img.flex-active {
+        border-color: var(--primario);
+        opacity: 1;
+    }
 </style>
 </head>
 <body>
 
 <h1 style="margin-top:0;font-size:20px">Galeria compartida — <code>MUGaleria</code> (spec 019)</h1>
 <p class="demo-nota">
-    Un componente para toda la tienda: visor (modal del tema), tira y tarjeta.
+    Un componente para toda la tienda: visor (modal del tema), tira adaptativa y tarjeta.
     Consume los tokens de <code>style.css</code> y no pide datos.
 </p>
+<p id="demo-status" class="demo-status" role="status" aria-live="polite">Listo.</p>
 
 <section class="demo-seccion">
-    <h2>1. Tira de miniaturas (grilla / carrusel)</h2>
-    <p class="demo-nota">En escritorio es grilla; en movil se desliza con snap (probar angostando la ventana).</p>
+    <h2>1. Tira adaptativa (por ancho del contenedor)</h2>
+    <p class="demo-nota">
+        En el contenedor ancho decide sola: grilla. En el angosto (240 px) pasa a
+        <strong>una linea con scroll</strong>. Probá angostar la ventana: se repinta sola
+        sin perder el scroll.
+    </p>
     <div class="demo-fila">
-        <button type="button" class="demo-boton" id="demo-tira-mas">Tira con "+N" (10 de 14)</button>
-        <button type="button" class="demo-boton" id="demo-tira-circulo">Tira circular</button>
+        <button type="button" class="demo-boton" id="demo-tira-base">Auto (8 fotos)</button>
+        <button type="button" class="demo-boton" id="demo-tira-tope">Auto 14 con "+N" (tope 10)</button>
+        <button type="button" class="demo-boton" id="demo-tira-circulo">Circular</button>
     </div>
-    <div id="demo-tira"></div>
+    <div class="demo-caja demo-ancha"><div id="demo-tira"></div></div>
+    <div class="demo-caja demo-angosta"><div id="demo-tira-angosta"></div></div>
 </section>
 
 <section class="demo-seccion">
     <h2>2. Visor — tono claro (tienda)</h2>
-    <p class="demo-nota">Segmentos, meta con precio, y acciones declaradas por contexto.</p>
+    <p class="demo-nota">
+        Segmentos, acciones y <strong>meta por imagen</strong>: navegá y el titulo/precio
+        cambia (antes todas mostraban la misma meta).
+    </p>
     <div class="demo-fila">
         <button type="button" class="demo-boton" id="demo-claro">Abrir visor claro</button>
     </div>
@@ -132,7 +181,10 @@
 
 <section class="demo-seccion">
     <h2>4. Tarjeta de catalogo</h2>
-    <p class="demo-nota">Badge de origen, estrella, precio con "actualizado" y acciones Usar / Borrar.</p>
+    <p class="demo-nota">
+        Un solo badge de origen, estrella, precio con "actualizado" y acciones:
+        <strong>Usar</strong> en todas, <strong>Borrar</strong> solo en las guardadas.
+    </p>
     <div class="demo-fila" id="demo-tarjetas"></div>
 </section>
 
@@ -159,13 +211,18 @@
 <section class="demo-seccion">
     <h2>6. Ficha de WooCommerce simulada (default de la tienda)</h2>
     <p class="demo-nota">
-        La lupa abre <code>MUGaleria</code> con las fotos grandes del producto
-        (<code>data-large_image</code>) y la miniatura activa. Sin quitar el lightbox de Woo.
+        <strong>6 fotos</strong> (6 slides + 6 miniaturas, con desborde para poder arrastrar).
+        La lupa abre el visor en la miniatura activa y muestra <code>1 / 6</code>.
     </p>
     <div class="woocommerce-product-gallery demo-woo">
-        <div class="woocommerce-product-gallery__trigger" role="button" tabindex="0"
-             aria-label="Ver galeria de imagenes a pantalla completa">&#128269;</div>
+        <button type="button" class="woocommerce-product-gallery__trigger"
+                aria-label="Ver galeria de imagenes a pantalla completa">&#128269;</button>
         <div class="woocommerce-product-gallery__wrapper">
+            <div class="woocommerce-product-gallery__image"><img alt="" src=""></div>
+            <div class="woocommerce-product-gallery__image"><img alt="" src=""></div>
+            <div class="woocommerce-product-gallery__image"><img alt="" src=""></div>
+            <div class="woocommerce-product-gallery__image"><img alt="" src=""></div>
+            <div class="woocommerce-product-gallery__image"><img alt="" src=""></div>
             <div class="woocommerce-product-gallery__image"><img alt="" src=""></div>
         </div>
         <ul class="flex-control-thumbs">
@@ -173,8 +230,29 @@
             <li><img src="" alt=""></li>
             <li><img src="" alt=""></li>
             <li><img src="" alt=""></li>
+            <li><img src="" alt=""></li>
+            <li><img src="" alt=""></li>
         </ul>
     </div>
+</section>
+
+<section class="demo-seccion">
+    <h2>7. Mi cuenta — grilla a 2 filas con tachito</h2>
+    <p class="demo-nota">
+        <code>modo: 'grilla'</code> + <code>filas: 2</code> + <code>borrar: true</code>.
+        12 fotos en un contenedor angosto: caben 10 (2 filas de 5) y las otras 2 van al
+        chip "+2". El tachito confirma y quita la miniatura.
+    </p>
+    <div class="demo-caja demo-media"><div id="demo-cuenta"></div></div>
+</section>
+
+<section class="demo-seccion">
+    <h2>8. Campo con minimo 3 (ranuras a llenar)</h2>
+    <p class="demo-nota">
+        <code>min: 3</code> con una sola foto: dibuja 2 ranuras y el contador "1 de 3".
+        Tocar una ranura abre el cargador (<code>onRanura</code>).
+    </p>
+    <div class="demo-caja demo-ancha"><div id="demo-minimo"></div></div>
 </section>
 
 <script src="../js/galeria.js"></script>
@@ -182,10 +260,15 @@
 (function () {
     'use strict';
 
+    var STATUS = document.getElementById('demo-status');
+
+    /** Deja rastro VISIBLE de cada accion. Antes era `alert()`, que bloquea (F3). */
+    function avisar(texto) { STATUS.textContent = String(texto); }
+
     var COLORES = ['#2B9FCF', '#FFD77A', '#6c5ce7', '#047857', '#d63638',
         '#237FA9', '#f59e0b', '#ec4899', '#0ea5e9', '#22c55e'];
 
-    /** Imagen de prueba SIN red: SVG en data-URI. */
+    /** Imagen grande de prueba, SIN red: SVG en data-URI. */
     function svg(i) {
         var color = COLORES[i % COLORES.length];
         var texto = (i % 2 === 0) ? '#ffffff' : '#22303c';
@@ -196,10 +279,40 @@
         return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(marcado);
     }
 
+    /**
+     * Miniatura DISTINTA de la imagen grande a proposito (F1): fondo rayado + "T".
+     * Si la tira usara `url` en vez de `thumb`, se veria al instante.
+     */
+    function svgMini(i) {
+        var color = COLORES[i % COLORES.length];
+        var marcado = '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160">' +
+            '<rect width="160" height="160" fill="' + color + '"/>' +
+            '<path d="M-40 160 L160 -40" stroke="rgba(255,255,255,0.35)" stroke-width="14"/>' +
+            '<path d="M40 160 L160 40" stroke="rgba(255,255,255,0.2)" stroke-width="10"/>' +
+            '<text x="80" y="104" font-size="64" font-family="sans-serif" font-weight="bold"' +
+            ' text-anchor="middle" fill="#ffffff">T</text></svg>';
+        return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(marcado);
+    }
+
     var items = [];
     for (var i = 0; i < 14; i++) {
-        items.push({ url: svg(i), thumb: svg(i), etiqueta: 'Imagen ' + (i + 1) });
+        items.push({ url: svg(i), thumb: svgMini(i), etiqueta: 'Imagen ' + (i + 1) });
     }
+
+    // Meta POR IMAGEN (B4): al navegar, el titulo/precio cambia. Las que no llevan
+    // `meta` no muestran el bloque (el componente ya soporta ambos modos).
+    items[0].meta = {
+        titulo: 'Vinilo circular 3cm', descripcion: 'Ideal para logos y etiquetas de botella.',
+        badge: 'Tienda', precio: { valor: 120, anterior: 180, aviso: true }
+    };
+    items[2].meta = {
+        titulo: 'Sticker troquelado', descripcion: 'Con contorno transparente.',
+        badge: 'Guardada', precio: { valor: 95, aviso: true }
+    };
+    items[5].meta = {
+        titulo: 'Plancha A4', descripcion: 'Para vidriera o folleteria.',
+        badge: 'Tienda', precio: { valor: 210, anterior: 260 }
+    };
 
     /* ---------- 2 y 3. Visores ---------- */
     function abrirClaro(indice) {
@@ -212,38 +325,19 @@
                 { etiqueta: 'Tienda', activo: true, onElegir: function () {} },
                 { etiqueta: 'Mis imagenes', activo: false, onElegir: function () {} }
             ],
-            meta: {
-                titulo: 'Vinilo circular 3cm',
-                descripcion: 'Ideal para logos y etiquetas de botella.',
-                badge: 'Tienda',
-                precio: { valor: 120, anterior: 180, aviso: true }
-            },
             acciones: [
                 { etiqueta: 'Personalizar', clase: '', onAccion: function (n) {
-                    window.alert('Personalizar la imagen ' + (n + 1));
+                    avisar('Personalizar la imagen ' + (n + 1));
+                    window.MUGaleria.cerrar();
                 } },
                 { etiqueta: 'Borrar', clase: 'mu-gal-peligro', onAccion: function (n) {
-                    window.alert('Borrar la imagen ' + (n + 1));
+                    avisar('Borrar la imagen ' + (n + 1) + ' (solo las guardadas)');
+                    window.MUGaleria.cerrar();
                 } }
             ],
-            alCambiar: function (n) { document.body.setAttribute('data-demo-pos', String(n)); }
+            alCambiar: function (n) { avisar('Viendo la imagen ' + (n + 1) + ' de ' + items.length); }
         });
     }
-
-    /* ---------- 1. Tira ---------- */
-    var tiraEl = document.getElementById('demo-tira');
-    window.MUGaleria.tira(tiraEl, { items: items.slice(0, 8), scroll: true, onAbrir: abrirClaro });
-
-    document.getElementById('demo-tira-mas').addEventListener('click', function () {
-        window.MUGaleria.tira(tiraEl, {
-            items: items, tope: 10, mas: true, scroll: true, onAbrir: abrirClaro
-        });
-    });
-    document.getElementById('demo-tira-circulo').addEventListener('click', function () {
-        window.MUGaleria.tira(tiraEl, {
-            items: items.slice(0, 8), forma: 'circulo', scroll: true, onAbrir: abrirClaro
-        });
-    });
 
     document.getElementById('demo-claro').addEventListener('click', function () { abrirClaro(0); });
 
@@ -254,14 +348,55 @@
             titulo: 'Galeria del producto',
             tono: 'oscuro',
             acciones: [
-                { etiqueta: 'Elegir', clase: '', onAccion: function () {
+                { etiqueta: 'Elegir', clase: '', onAccion: function (n) {
+                    avisar('Elegida la imagen ' + (n + 1));
                     window.MUGaleria.cerrar();
                 } }
             ]
         });
     });
 
-    /* ---------- 4. Tarjetas de catalogo ---------- */
+    /* ---------- 1. Tira adaptativa con ESTADO unico (A4: no se pierde la forma) ---------- */
+    var TIRA = { items: items.slice(0, 8), opciones: { modo: 'auto' } };
+
+    function renderTira() {
+        var destinos = ['demo-tira', 'demo-tira-angosta'];
+        for (var k = 0; k < destinos.length; k++) {
+            window.MUGaleria.tira(document.getElementById(destinos[k]), {
+                items: TIRA.items,
+                modo: TIRA.opciones.modo,
+                tope: TIRA.opciones.tope,
+                mas: TIRA.opciones.mas,
+                forma: TIRA.opciones.forma,
+                onAbrir: abrirClaro
+            });
+        }
+    }
+
+    document.getElementById('demo-tira-base').addEventListener('click', function () {
+        TIRA.items = items.slice(0, 8);
+        TIRA.opciones = { modo: 'auto' };
+        renderTira();
+        avisar('Tira: 8 fotos, modo auto.');
+    });
+
+    document.getElementById('demo-tira-tope').addEventListener('click', function () {
+        TIRA.items = items;
+        TIRA.opciones = { modo: 'auto', tope: 10, mas: true };
+        renderTira();
+        avisar('Tira: 14 fotos con tope 10 -> el chip muestra "+4" (las que faltan).');
+    });
+
+    document.getElementById('demo-tira-circulo').addEventListener('click', function () {
+        TIRA.items = items.slice(0, 8);
+        TIRA.opciones = { modo: 'auto', forma: 'circulo' };
+        renderTira();
+        avisar('Tira circular (el chip "+N" ya no le quita la forma).');
+    });
+
+    renderTira();
+
+    /* ---------- 4. Tarjetas de catalogo (sin badge duplicado: B1) ---------- */
     var cajaTarjetas = document.getElementById('demo-tarjetas');
     var favoritos = { 1: true };
 
@@ -270,17 +405,20 @@
         var datos = [
             {
                 titulo: 'Idea de la tienda', descripcion: 'Vinilo circular 3cm',
-                url: svg(1), origen: 'Tienda', badge: 'Tienda', badgeTipo: 'tienda',
+                url: svg(1), thumb: svgMini(1),
+                badge: 'Tienda', badgeTipo: 'tienda',
                 precio: { valor: 120, anterior: 180 }
             },
             {
                 titulo: 'Mi diseno guardado', descripcion: 'Stickers para botellas',
-                url: svg(2), origen: 'Guardada', badge: 'Guardada', badgeTipo: 'guardada',
+                url: svg(2), thumb: svgMini(2),
+                badge: 'Guardada', badgeTipo: 'guardada',
                 favorito: !!favoritos[1], precio: { valor: 95, aviso: true }
             },
             {
                 titulo: 'Pedido comprado', descripcion: '12 planchas',
-                url: svg(3), origen: 'Comprada', badge: 'Comprada', badgeTipo: 'comprada'
+                url: svg(3), thumb: svgMini(3),
+                badge: 'Comprada', badgeTipo: 'comprada'
             }
         ];
 
@@ -289,41 +427,97 @@
                 onEstrella: function (valor) {
                     favoritos[indice] = valor;
                     pintarTarjetas();
+                    avisar((valor ? 'Favorito' : 'Sin favorito') + ': ' + dato.titulo);
                 },
-                onUsar: function () { window.alert('Usar: ' + dato.titulo); },
+                onUsar: function () { avisar('Usar: ' + dato.titulo); },
+                // Borrar SOLO en las guardadas (B5): las de la tienda no son del comprador.
                 onBorrar: (indice === 1)
-                    ? function () { window.alert('Borrar: ' + dato.titulo); }
+                    ? function () { avisar('Borrar: ' + dato.titulo); }
                     : null
             });
             if (articulo) { cajaTarjetas.appendChild(articulo); }
         });
     }
+
     pintarTarjetas();
 
-    /* ---------- 6. WooCommerce simulado ---------- */
+    /* ---------- 6. WooCommerce simulado: 4 fotos (A1) ---------- */
     var woo = document.querySelector('.demo-woo');
     if (woo) {
-        var slide = woo.querySelectorAll('.woocommerce-product-gallery__image img');
-        for (var s = 0; s < slide.length; s++) {
-            slide[s].setAttribute('data-large_image', svg(s));
-            slide[s].setAttribute('data-thumb', svg(s));
-            slide[s].setAttribute('src', svg(s));
-            slide[s].setAttribute('alt', 'Foto ' + (s + 1));
+        var slides = woo.querySelectorAll('.woocommerce-product-gallery__image img');
+        for (var s = 0; s < slides.length; s++) {
+            slides[s].setAttribute('data-large_image', svg(s));
+            slides[s].setAttribute('data-thumb', svgMini(s));
+            slides[s].setAttribute('src', svg(s));
+            slides[s].setAttribute('alt', 'Foto ' + (s + 1));
         }
-        var miniaturas = woo.querySelectorAll('.flex-control-thumbs img');
-        for (var t = 0; t < miniaturas.length; t++) {
-            miniaturas[t].setAttribute('src', svg(t));
-            miniaturas[t].setAttribute('alt', 'Miniatura ' + (t + 1));
+        var minis = woo.querySelectorAll('.flex-control-thumbs img');
+        for (var t = 0; t < minis.length; t++) {
+            minis[t].setAttribute('src', svgMini(t));
+            minis[t].setAttribute('alt', 'Miniatura ' + (t + 1));
         }
-        // Engancha el arrastre del slider y la lupa (ambos idempotentes).
+        // Gesto unico (arrastre) + lupa -> visor compartido. Ambos idempotentes.
         window.MUGaleria.arrastrar(woo.querySelector('.flex-control-thumbs'));
         window.MUGaleria.navegarWoo();
     }
 
-    /* ---------- Atajos para QA visual: demo.html#visor  /  demo.html#oscuro ---------- */
-    if (window.location.hash === '#visor') { abrirClaro(0); }
-    if (window.location.hash === '#oscuro') {
-        document.getElementById('demo-oscuro').click();
+    /* ---------- 7. Mi cuenta: grilla 2 filas + tachito ---------- */
+    var cuenta = items.slice(0, 12);
+
+    function pintarCuenta() {
+        window.MUGaleria.tira(document.getElementById('demo-cuenta'), {
+            items: cuenta,
+            modo: 'grilla',
+            filas: 2,
+            borrar: true,
+            confirmar: function (indice, item) {
+                var nombre = item.etiqueta || ('la imagen ' + (indice + 1));
+                return window.confirm('Quitar ' + nombre + '?');
+            },
+            onAbrir: function (indice) {
+                avisar('Abrir la imagen ' + (indice + 1) + ' de la cuenta');
+            },
+            onBorrar: function (indice, item) {
+                cuenta.splice(indice, 1);
+                pintarCuenta();
+                avisar('Quitada ' + (item.etiqueta || ('la imagen ' + (indice + 1)))
+                    + ' (quedan ' + cuenta.length + ')');
+            }
+        });
+    }
+    pintarCuenta();
+
+    /* ---------- 8. Campo con minimo 3 (ranuras a llenar) ---------- */
+    var minimo = items.slice(0, 1);
+
+    function pintarMinimo() {
+        window.MUGaleria.tira(document.getElementById('demo-minimo'), {
+            items: minimo,
+            modo: 'linea',
+            min: 3,
+            contador: true,
+            onRanura: function (indice) {
+                minimo.push({
+                    url: svg(minimo.length + 2),
+                    thumb: svgMini(minimo.length + 2),
+                    etiqueta: 'Agregada ' + (minimo.length + 1)
+                });
+                pintarMinimo();
+                avisar('Ranura ' + (indice + 1) + ': se agrego una imagen (simula el cargador).');
+            },
+            onAbrir: function (indice) {
+                avisar('Abrir la imagen ' + (indice + 1) + ' del campo');
+            }
+        });
+    }
+    pintarMinimo();
+
+    /* ---------- Atajos de QA: demo.html#visor / #oscuro / #woo ---------- */
+    if (window.location.hash === '#visor') { abrirClaro(1); }
+    if (window.location.hash === '#oscuro') { document.getElementById('demo-oscuro').click(); }
+    if (window.location.hash === '#tope') { document.getElementById('demo-tira-tope').click(); }
+    if (window.location.hash === '#woo' && woo) {
+        woo.querySelector('.woocommerce-product-gallery__trigger').click();
     }
 }());
 </script>
