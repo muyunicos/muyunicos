@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Galeria compartida — demo (spec 019)</title>
+<!--
+  Demo de aprobacion visual de `MUGaleria` (spec 019).
+  Se abre como archivo local (no necesita WordPress ni internet): todos los
+  estilos son los del tema y las imagenes se generan como SVG data-URI.
+
+  Que revisar:
+    1. Tira de miniaturas (grilla en escritorio / carrusel con snap en movil).
+    2. Visor claro con segmentos, meta, precio y acciones.
+    3. Visor oscuro (el que usara el plugin, tono `oscuro`).
+    4. Tarjeta de catalogo con estrella, precio y acciones.
+    5. Modo declarativo `data-mu-galeria` (cuenta, banners, opciones).
+    6. Ficha de WooCommerce simulada: la lupa abre el visor compartido.
+-->
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="../css/components/global-ui.css">
+<link rel="stylesheet" href="../css/components/galeria.css">
+<style>
+    body { padding: 24px; }
+    .demo-seccion { margin: 0 0 36px; }
+    .demo-seccion > h2 {
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--texto-light);
+        margin: 0 0 10px;
+    }
+    .demo-fila { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .demo-boton {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 14px;
+        border: 1px solid var(--primario);
+        border-radius: var(--mu-radius);
+        background: var(--blanco);
+        color: var(--primario);
+        font-family: var(--mu-font-base);
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .demo-boton:hover { background: var(--primario); color: var(--blanco); }
+    .demo-nota { font-size: 12px; color: var(--texto-light); margin: 0 0 10px; }
+    /* Ficha de WooCommerce simulada: solo lo necesario para verla. */
+    .demo-woo {
+        position: relative;
+        max-width: 480px;
+        border: 1px solid #e2e8f0;
+        border-radius: var(--mu-radius);
+        padding: 12px;
+        background: var(--blanco);
+    }
+    .demo-woo .woocommerce-product-gallery__trigger {
+        position: absolute;
+        top: 18px;
+        right: 18px;
+        z-index: 2;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: rgb(255 255 255 / 92%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        cursor: pointer;
+        box-shadow: var(--mu-shadow);
+    }
+    .demo-woo .woocommerce-product-gallery__image img { display: block; width: 100%; height: auto; border-radius: var(--mu-radius-sm); }
+    .demo-woo .flex-control-thumbs {
+        display: flex;
+        gap: 6px;
+        list-style: none;
+        margin: 10px 0 0;
+        padding: 0;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+    }
+    .demo-woo .flex-control-thumbs li { flex: 0 0 auto; scroll-snap-align: start; }
+    .demo-woo .flex-control-thumbs img {
+        display: block;
+        width: 70px;
+        height: 70px;
+        object-fit: cover;
+        border-radius: var(--mu-radius-sm);
+        border: 2px solid transparent;
+        cursor: pointer;
+        opacity: 0.6;
+    }
+    .demo-woo .flex-control-thumbs img.flex-active { border-color: var(--primario); opacity: 1; }
+</style>
+</head>
+<body>
+
+<h1 style="margin-top:0;font-size:20px">Galeria compartida — <code>MUGaleria</code> (spec 019)</h1>
+<p class="demo-nota">
+    Un componente para toda la tienda: visor (modal del tema), tira y tarjeta.
+    Consume los tokens de <code>style.css</code> y no pide datos.
+</p>
+
+<section class="demo-seccion">
+    <h2>1. Tira de miniaturas (grilla / carrusel)</h2>
+    <p class="demo-nota">En escritorio es grilla; en movil se desliza con snap (probar angostando la ventana).</p>
+    <div class="demo-fila">
+        <button type="button" class="demo-boton" id="demo-tira-mas">Tira con "+N" (10 de 14)</button>
+        <button type="button" class="demo-boton" id="demo-tira-circulo">Tira circular</button>
+    </div>
+    <div id="demo-tira"></div>
+</section>
+
+<section class="demo-seccion">
+    <h2>2. Visor — tono claro (tienda)</h2>
+    <p class="demo-nota">Segmentos, meta con precio, y acciones declaradas por contexto.</p>
+    <div class="demo-fila">
+        <button type="button" class="demo-boton" id="demo-claro">Abrir visor claro</button>
+    </div>
+</section>
+
+<section class="demo-seccion">
+    <h2>3. Visor — tono oscuro (plugin / pantalla completa)</h2>
+    <p class="demo-nota">El mismo componente con <code>tono: 'oscuro'</code>; sin precio ni segmentos.</p>
+    <div class="demo-fila">
+        <button type="button" class="demo-boton" id="demo-oscuro">Abrir visor oscuro</button>
+    </div>
+</section>
+
+<section class="demo-seccion">
+    <h2>4. Tarjeta de catalogo</h2>
+    <p class="demo-nota">Badge de origen, estrella, precio con "actualizado" y acciones Usar / Borrar.</p>
+    <div class="demo-fila" id="demo-tarjetas"></div>
+</section>
+
+<section class="demo-seccion">
+    <h2>5. Modo declarativo (cuenta, banners, opciones)</h2>
+    <p class="demo-nota">
+        Cualquier bloque con <code>data-mu-galeria</code>: el boton
+        <code>data-mu-galeria-abrir</code> (o el primer enlace/imagen) abre el visor.
+        No hace falta JS nuevo por caso.
+    </p>
+    <div data-mu-galeria data-mu-galeria-titulo="Mis fotos" class="demo-fila">
+        <a href="#" style="display:block"><img
+            src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='260'%3E%3Crect width='360' height='260' fill='%232B9FCF'/%3E%3Ctext x='180' y='150' font-size='64' font-family='sans-serif' fill='%23fff' text-anchor='middle'%3EA%3C/text%3E%3C/svg%3E"
+            alt="Foto A" width="150"></a>
+        <a href="#" style="display:block"><img
+            src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='260'%3E%3Crect width='360' height='260' fill='%23FFD77A'/%3E%3Ctext x='180' y='150' font-size='64' font-family='sans-serif' fill='%23333' text-anchor='middle'%3EB%3C/text%3E%3C/svg%3E"
+            alt="Foto B" width="150"></a>
+        <a href="#" style="display:block"><img
+            src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='260'%3E%3Crect width='360' height='260' fill='%236c5ce7'/%3E%3Ctext x='180' y='150' font-size='64' font-family='sans-serif' fill='%23fff' text-anchor='middle'%3EC%3C/text%3E%3C/svg%3E"
+            alt="Foto C" width="150"></a>
+    </div>
+</section>
+
+<section class="demo-seccion">
+    <h2>6. Ficha de WooCommerce simulada (default de la tienda)</h2>
+    <p class="demo-nota">
+        La lupa abre <code>MUGaleria</code> con las fotos grandes del producto
+        (<code>data-large_image</code>) y la miniatura activa. Sin quitar el lightbox de Woo.
+    </p>
+    <div class="woocommerce-product-gallery demo-woo">
+        <div class="woocommerce-product-gallery__trigger" role="button" tabindex="0"
+             aria-label="Ver galeria de imagenes a pantalla completa">&#128269;</div>
+        <div class="woocommerce-product-gallery__wrapper">
+            <div class="woocommerce-product-gallery__image"><img alt="" src=""></div>
+        </div>
+        <ul class="flex-control-thumbs">
+            <li><img src="" alt="" class="flex-active"></li>
+            <li><img src="" alt=""></li>
+            <li><img src="" alt=""></li>
+            <li><img src="" alt=""></li>
+        </ul>
+    </div>
+</section>
+
+<script src="../js/galeria.js"></script>
+<script>
+(function () {
+    'use strict';
+
+    var COLORES = ['#2B9FCF', '#FFD77A', '#6c5ce7', '#047857', '#d63638',
+        '#237FA9', '#f59e0b', '#ec4899', '#0ea5e9', '#22c55e'];
+
+    /** Imagen de prueba SIN red: SVG en data-URI. */
+    function svg(i) {
+        var color = COLORES[i % COLORES.length];
+        var texto = (i % 2 === 0) ? '#ffffff' : '#22303c';
+        var marcado = '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600">' +
+            '<rect width="800" height="600" fill="' + color + '"/>' +
+            '<text x="400" y="350" font-size="140" font-family="sans-serif" font-weight="bold"' +
+            ' text-anchor="middle" fill="' + texto + '">' + (i + 1) + '</text></svg>';
+        return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(marcado);
+    }
+
+    var items = [];
+    for (var i = 0; i < 14; i++) {
+        items.push({ url: svg(i), thumb: svg(i), etiqueta: 'Imagen ' + (i + 1) });
+    }
+
+    /* ---------- 2 y 3. Visores ---------- */
+    function abrirClaro(indice) {
+        window.MUGaleria.visor({
+            items: items,
+            indice: indice || 0,
+            titulo: 'Ideas para personalizar',
+            tono: 'claro',
+            segmentos: [
+                { etiqueta: 'Tienda', activo: true, onElegir: function () {} },
+                { etiqueta: 'Mis imagenes', activo: false, onElegir: function () {} }
+            ],
+            meta: {
+                titulo: 'Vinilo circular 3cm',
+                descripcion: 'Ideal para logos y etiquetas de botella.',
+                badge: 'Tienda',
+                precio: { valor: 120, anterior: 180, aviso: true }
+            },
+            acciones: [
+                { etiqueta: 'Personalizar', clase: '', onAccion: function (n) {
+                    window.alert('Personalizar la imagen ' + (n + 1));
+                } },
+                { etiqueta: 'Borrar', clase: 'mu-gal-peligro', onAccion: function (n) {
+                    window.alert('Borrar la imagen ' + (n + 1));
+                } }
+            ],
+            alCambiar: function (n) { document.body.setAttribute('data-demo-pos', String(n)); }
+        });
+    }
+
+    /* ---------- 1. Tira ---------- */
+    var tiraEl = document.getElementById('demo-tira');
+    window.MUGaleria.tira(tiraEl, { items: items.slice(0, 8), scroll: true, onAbrir: abrirClaro });
+
+    document.getElementById('demo-tira-mas').addEventListener('click', function () {
+        window.MUGaleria.tira(tiraEl, {
+            items: items, tope: 10, mas: true, scroll: true, onAbrir: abrirClaro
+        });
+    });
+    document.getElementById('demo-tira-circulo').addEventListener('click', function () {
+        window.MUGaleria.tira(tiraEl, {
+            items: items.slice(0, 8), forma: 'circulo', scroll: true, onAbrir: abrirClaro
+        });
+    });
+
+    document.getElementById('demo-claro').addEventListener('click', function () { abrirClaro(0); });
+
+    document.getElementById('demo-oscuro').addEventListener('click', function () {
+        window.MUGaleria.visor({
+            items: items,
+            indice: 0,
+            titulo: 'Galeria del producto',
+            tono: 'oscuro',
+            acciones: [
+                { etiqueta: 'Elegir', clase: '', onAccion: function () {
+                    window.MUGaleria.cerrar();
+                } }
+            ]
+        });
+    });
+
+    /* ---------- 4. Tarjetas de catalogo ---------- */
+    var cajaTarjetas = document.getElementById('demo-tarjetas');
+    var favoritos = { 1: true };
+
+    function pintarTarjetas() {
+        while (cajaTarjetas.firstChild) { cajaTarjetas.removeChild(cajaTarjetas.firstChild); }
+        var datos = [
+            {
+                titulo: 'Idea de la tienda', descripcion: 'Vinilo circular 3cm',
+                url: svg(1), origen: 'Tienda', badge: 'Tienda', badgeTipo: 'tienda',
+                precio: { valor: 120, anterior: 180 }
+            },
+            {
+                titulo: 'Mi diseno guardado', descripcion: 'Stickers para botellas',
+                url: svg(2), origen: 'Guardada', badge: 'Guardada', badgeTipo: 'guardada',
+                favorito: !!favoritos[1], precio: { valor: 95, aviso: true }
+            },
+            {
+                titulo: 'Pedido comprado', descripcion: '12 planchas',
+                url: svg(3), origen: 'Comprada', badge: 'Comprada', badgeTipo: 'comprada'
+            }
+        ];
+
+        datos.forEach(function (dato, indice) {
+            var articulo = window.MUGaleria.tarjeta(dato, {
+                onEstrella: function (valor) {
+                    favoritos[indice] = valor;
+                    pintarTarjetas();
+                },
+                onUsar: function () { window.alert('Usar: ' + dato.titulo); },
+                onBorrar: (indice === 1)
+                    ? function () { window.alert('Borrar: ' + dato.titulo); }
+                    : null
+            });
+            if (articulo) { cajaTarjetas.appendChild(articulo); }
+        });
+    }
+    pintarTarjetas();
+
+    /* ---------- 6. WooCommerce simulado ---------- */
+    var woo = document.querySelector('.demo-woo');
+    if (woo) {
+        var slide = woo.querySelectorAll('.woocommerce-product-gallery__image img');
+        for (var s = 0; s < slide.length; s++) {
+            slide[s].setAttribute('data-large_image', svg(s));
+            slide[s].setAttribute('data-thumb', svg(s));
+            slide[s].setAttribute('src', svg(s));
+            slide[s].setAttribute('alt', 'Foto ' + (s + 1));
+        }
+        var miniaturas = woo.querySelectorAll('.flex-control-thumbs img');
+        for (var t = 0; t < miniaturas.length; t++) {
+            miniaturas[t].setAttribute('src', svg(t));
+            miniaturas[t].setAttribute('alt', 'Miniatura ' + (t + 1));
+        }
+        // Engancha el arrastre del slider y la lupa (ambos idempotentes).
+        window.MUGaleria.arrastrar(woo.querySelector('.flex-control-thumbs'));
+        window.MUGaleria.navegarWoo();
+    }
+
+    /* ---------- Atajos para QA visual: demo.html#visor  /  demo.html#oscuro ---------- */
+    if (window.location.hash === '#visor') { abrirClaro(0); }
+    if (window.location.hash === '#oscuro') {
+        document.getElementById('demo-oscuro').click();
+    }
+}());
+</script>
+</body>
+</html>

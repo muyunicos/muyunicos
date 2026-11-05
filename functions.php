@@ -73,7 +73,7 @@ function mu_enqueue_assets() {
     // Ficha de producto individual
     if ( mu_wc_is_product() ) {
         wp_enqueue_style( 'mu-product', "$uri/css/product.css", [ 'mu-base' ], $ver );
-        wp_enqueue_script( 'mu-product-js', "$uri/js/product.js", [ 'wc-single-product' ], $ver, true );
+        wp_enqueue_script( 'mu-product-js', "$uri/js/product.js", [ 'wc-single-product', 'mu-galeria' ], $ver, true );
     }
 
     // Product Builder (Core + Addons Etiquetas/Nombre)
@@ -387,3 +387,4 @@ mu_load_module( 'tag-groups' );          // Tag Groups System (agrupamiento por 
 mu_load_module( 'products-core' );       // Productos Personalizados Core v2.1
 mu_load_module( 'addon-nombre' );        // Addon Nombre v3.0 (campo nombre personalizado)
 mu_load_module( 'addon-etiquetas' );     // Addon Etiquetas v3.0 (builder de etiquetas)
+mu_load_module( 'galeria' );             // Galeria compartida del tema (spec 019): MUGaleria

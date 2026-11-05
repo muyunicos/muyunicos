@@ -1,0 +1,124 @@
+# Spec 019 — Galeria compartida del tema (MUGaleria)
+
+**Estado**: implementada (F0 + F1, 2026-11-05). F2 (plugin) y F3 (calculadora) son fases
+posteriores y NO entran en esta spec.
+
+## 1. Contexto y problema
+
+Hoy conviven **cuatro** formas distintas de "galeria" en el ecosistema, cada una con su
+propio codigo y su propio aspecto:
+
+| Superficie | Implementacion | Problema |
+|---|---|---|
+| Calculadora (repo hermano `calculadora`) | `MiniGallery.tsx`, `TiraIdeas.tsx`, `ImageLightbox.tsx` | La mas cuidada, pero **React/TS**, y **copia** los tokens del tema (`--primario`, `--mu-radius-*`) |
+| Plugin Personalizador PDF | `assets/visor-pmu.js`, `biblioteca-pmu.js::pintarTira`, `cargador-pmu.js::tira` | Tres implementaciones de la misma tira; la galeria de la ficha se dibuja con `style.cssText` inline (no hay CSS) |
+| Tema — miniaturas de producto | `css/product.css` + `js/product.js` | El **aspecto** correcto, pero el drag-to-scroll esta duplicado en `js/global-ui.js:400-493` |
+| Tema — modal | `css/components/global-ui.css:657-747` | El **modal** ya existe (`.mu-modal-*`), pero ninguna galeria lo usa |
+
+El tema es la capa visual del sitio y sus tokens (`style.css:14-75`) ya son la fuente de los
+colores, radios, sombras y transiciones. La galeria unica debe vivir aqui.
+
+## 2. Decisiones
+
+- **D1 — Una sola galeria, tres piezas**: `visor` (modal), `tira` (miniaturas) y `tarjeta`
+  (catalogo con metadatos). No se crea un cuarto componente.
+- **D2 — El modal es el del tema**: `MUGaleria.visor` reutiliza `.mu-modal-overlay` /
+  `.mu-modal-container` / `.mu-modal-close` y la clase de estado `is-visible`. **No** se crea
+  un sistema de modal nuevo.
+- **D3 — Declarativa por defecto**: cualquier galeria futura es HTML + atributo
+  `data-mu-galeria` (con `data-mu-galeria-items` JSON opcional) y `MUGaleria.autoInit()`.
+  Agregar una galeria no debe requerir JS nuevo.
+- **D4 — Adaptadores, no datos**: `MUGaleria.desdeWoo(raiz)` y `MUGaleria.desdeEnlaces(el)`
+  leen el DOM existente. La galeria **nunca** pide datos al servidor ni guarda nada.
+- **D5 — Dos tonos**: `claro` (tienda: blanco/slate) y `oscuro` (visor fullscreen que hoy usa
+  el plugin). Es el mismo componente: solo cambia la clase de tono.
+- **D6 — El aspecto de la tira lo manda `css/product.css`**: desktop `grid auto-fill
+  minmax(70px,1fr)`, movil `flex nowrap + overflow-x:auto + scroll-snap-type: x mandatory`,
+  scrollbar oculta, y la miniatura activa con `border-color: var(--primario)` +
+  `box-shadow: var(--mu-shadow)`. La galeria hereda ese criterio; no inventa otro.
+- **D7 — Fin de la duplicacion del arrastre**: `js/product.js` deja de tener su drag-to-scroll
+  y delega en `MUGaleria.arrastrar()` (el gesto vive en un solo lugar).
+  `initCarousels()` (`global-ui.js`) **no se toca** en esta spec: otro contrato
+  (`.mu-carousel-wrapper`).
+- **D8 — Galeria de WooCommerce**: se **intercepta** el trigger
+  (`.woocommerce-product-gallery__trigger`) y se abre `MUGaleria` con las
+  `data-large_image` del slider. **No** se quita `wc-product-gallery-lightbox` en F1: es un
+  cambio de comportamiento global y se decide con prueba real en el laboratorio.
+- **D9 — Registro y encolado condicional**: `inc/galeria.php` **registra** `mu-galeria` /
+  `mu-galeria-css` y los encola en `is_product()`; ademas expone `mu_galeria_encolar()`
+  para que cualquier consumidor (plugin, shortcodes, plantillas) los encole por handle.
+  Nada de peso extra en el resto del sitio.
+- **D10 — El tema no aporta datos**: la galeria no conoce endpoints, nonces ni rutas. Quien
+  tiene los datos (plugin, calculadora, cuenta) le pasa `items`.
+- **D11 — Dependencia blanda**: el plugin y la calculadora detectan `window.MUGaleria`; si no
+  esta, siguen con su visor actual. El plugin es distribuible (`Stable tag`, GPL) y no puede
+  depender del tema.
+- **D12 — Cache-bust**: fuente unica `Version:` de `style.css` (`$ver` de
+  `mu_enqueue_assets()`). Tocar `js/galeria.js` o `css/components/galeria.css` obliga a
+  bump de la cabecera.
+
+## 3. Requisitos funcionales
+
+- **FR-001** `MUGaleria.visor({items, indice, titulo, tono, segmentos, acciones, meta})` abre
+  un modal accesible (`role="dialog"`, `aria-modal="true"`), con contador `n / total`.
+- **FR-002** Navegacion: flechas anterior/siguiente, teclado (`Escape`, `ArrowLeft`,
+  `ArrowRight`) y swipe tactil (`> 40 px`).
+- **FR-003** Precarga de vecinos (`preCargar`) y `opacity-0 -> onLoad` para que la imagen no
+  aparezca a medio cargar.
+- **FR-004** Scroll lock del `body` mientras el modal esta abierto, restaurado al cerrar.
+- **FR-005** `segmentos` (dos fuentes de imagenes) y `acciones` declaradas por contexto
+  (`Elegir`, `Borrar`, `Personalizar`, `Reemplazar`).
+- **FR-006** `meta` opcional bajo la imagen: titulo, descripcion, badge, precio y su aviso
+  de "actualizado".
+- **FR-007** `MUGaleria.tira(el, {items, tope, scroll, forma, mas, onAbrir})`: dibuja
+  miniaturas; `scroll: true` = carrusel con snap (movil) / grilla (escritorio); `mas: true`
+  agrega el boton `+N`.
+- **FR-008** `MUGaleria.tarjeta(item, {badge, precio, favorito, onUsar, onBorrar})`: tarjeta
+  de catalogo con estrella y acciones.
+- **FR-009** `MUGaleria.desdeWoo(raiz)` devuelve `items` desde `.woocommerce-product-gallery`
+  (`data-large_image`, `data-thumb`, `alt`), sin peticiones.
+- **FR-010** `MUGaleria.desdeEnlaces(el)` devuelve `items` desde cualquier `a[href]` de imagen
+  o `img` (cuenta, banners, opciones, contenido).
+- **FR-011** `[data-mu-galeria]` se auto-inicializa: abre el visor con `data-mu-galeria-items`
+  o, si no existe, con `desdeEnlaces()`. Si `data-mu-galeria-vinculo="1"`, el trigger propio
+  abre el modal.
+- **FR-012** Galeria de WooCommerce: el trigger abre `MUGaleria` en la foto activa con **todas**
+  las fotos del producto.
+- **FR-013** `MUGaleria.cerrar()`, `MUGaleria.estaAbierta()` y
+  `MUGaleria.puro = {acotar, preCargar, orden, formatearPrecio}` (testeable en Node).
+- **FR-014** `MUGaleria.arrastrar(el)`: el gesto drag-to-scroll de las tiras, en UN solo
+  lugar. Lo usa `js/product.js` sobre el slider de WooCommerce (que antes tenia su copia).
+- **FR-015** Degradacion: `mu-product-js` declara `mu-galeria` como dependencia, asi el
+  orden es determinista. Sin el modulo, la ficha pierde solo el arrastre: el slider y el
+  click de WooCommerce siguen funcionando.
+
+## 4. Criterios de exito
+
+- **SC-001** La demo `tests/galeria-demo.html` muestra los dos tonos, la tira, la tarjeta y
+  las acciones sin errores de consola.
+- **SC-002** `node tests/galeria.test.js` en verde (API completa, puros, prefijo de clases,
+  sin `innerHTML` con datos del usuario).
+- **SC-003** En el laboratorio, la ficha de producto: thumbs con arrastre (una sola
+  implementacion), trigger abre `MUGaleria`, zoom de Woo no abre Photoswipe.
+- **SC-004** El resto del sitio no cambia el peso de sus paginas (registro + encolado
+  condicional).
+- **SC-005** El plugin y la calculadora **no se tocan** en esta spec y sus puertas siguen
+  igual.
+
+## 5. Fuera de alcance
+
+- Migrar el plugin (`PMUVisor`) y la calculadora a `MUGaleria` (fases F2 y F3).
+- Quitar `wc-product-gallery-lightbox` / desactivar Photoswipe (se decide en F2 con evidencia).
+- `initCarousels()` de `global-ui.js`.
+- Cualquier endpoint, dato nuevo o permisos.
+
+## 6. Puertas
+
+```powershell
+node --check js/galeria.js
+node tests/galeria.test.js          # GALERIA OK (N checks)
+php -l inc/galeria.php
+php -l functions.php
+```
+
+Y la revision visual de `tests/galeria-demo.html` (tono claro y oscuro).
