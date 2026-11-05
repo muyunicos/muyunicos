@@ -45,7 +45,8 @@ MUGaleria.visor({
   `.is-visible` (D2). **No** crea otro modal.
 - Clases propias (todas con prefijo `mu-gal-`): `mu-gal-visor`, `mu-gal-cabecera`,
   `mu-gal-titulo`, `mu-gal-contador`, `mu-gal-segs`, `mu-gal-seg`, `mu-gal-cuerpo`,
-  `mu-gal-img`, `mu-gal-nav`, `mu-gal-prev`, `mu-gal-next`, `mu-gal-meta`, `mu-gal-acciones`.
+  `mu-gal-img`, `mu-gal-prev`, `mu-gal-next`, `mu-gal-meta`, `mu-gal-acciones`.
+  Las **flechas no son clases propias**: son `.mu-nav-btn prev/next` del tema (C8).
 - Accesibilidad: `role="dialog"`, `aria-modal="true"`, `aria-label` = `titulo`,
   `aria-hidden` en las flechas cuando `n <= 1`, foco al boton de cerrar,
   `Escape` cierra, `ArrowLeft`/`ArrowRight` navegan, `Tab` no sale del modal.
@@ -200,6 +201,21 @@ MUGaleria.puro.formatearPrecio(n)         // 'es-AR', 0 decimales
 Exportan tambien en `module.exports` cuando corren en Node (patron de `visor-pmu.js`
 del plugin), para que `tests/galeria.test.js` los ejercite sin DOM.
 
+## C8 — Flechas (D18)
+
+- El visor usa **`.mu-nav-btn prev/next`** del tema con su SVG chevron
+  (`createElementNS`, nunca `innerHTML`), mas las clases-hook `mu-gal-prev`/`mu-gal-next`
+  para el comportamiento (`hidden` cuando hay una sola imagen).
+- Dentro del visor el boton pierde el posicionamiento absoluto del carrusel
+  (`.mu-gal-cuerpo .mu-nav-btn.prev/.next { position: static }`) y va en el flex del cuerpo.
+- **Visibilidad por necesidad**: `.mu-nav-btn` solo se ve con `.is-visible`; en un extremo
+  el boton lleva `disabled` y el CSS lo oculta (`[disabled] { display: none }`).
+- `initCarousels()` (`js/global-ui.js`) enciende cada flecha si
+  `scrollWidth - clientWidth > 1` **y** queda recorrido en ese extremo
+  (`scrollLeft > 1` / `< sobra - 1`); lo recalcula en `scroll` y `resize`.
+- **Prohibido**: mostrar flechas por media query (era el mecanismo anterior) o re-declarar
+  `.mu-nav-btn` en otro CSS.
+
 ## C7 — Lo que este contrato NO permite
 
 - Pedir datos, conocer endpoints o nonces (D10).
@@ -211,3 +227,5 @@ del plugin), para que `tests/galeria.test.js` los ejercite sin DOM.
   `<button>` que contenga otro (D14).
 - **Decidir el modo por el viewport**: se mide el CONTENEDOR (D13). El CSS de la tira no
   tiene `@media` de ancho: la clase `--linea`/`--grilla` la pone el JS.
+- **Re-declarar `.mu-nav-btn`**: es el boton del tema (C8). Cada consumidor solo agrega
+  posicionamiento con su propio prefijo (`.mu-gal-cuerpo .mu-nav-btn...`).

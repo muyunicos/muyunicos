@@ -352,10 +352,19 @@ body.mu-wplng-hide .wplng-switcher {
    ============================================ */
 .mu-nav-btn.prev,
 .mu-nav-btn.next {
-    display: none; /* Oculto en desktop; visible en <= 968px */
+    /* Visibilidad por NECESIDAD (spec 019, D18): el estado inicial es oculto y lo
+       enciende el JS (`initCarousels`) solo si el track desborda y queda recorrido en
+       ese extremo. Antes dependia del ancho de pantalla, que no dice nada del contenido. */
+    display: none;
     top: 40%;
     z-index: 20;
 }
+
+.mu-nav-btn.prev.is-visible,
+.mu-nav-btn.next.is-visible { display: flex; }
+
+/* En un extremo no hay nada que hacer: se oculta, no se muestra apagada. */
+.mu-nav-btn[disabled] { display: none; }
 
 .mu-nav-btn.prev { left: -10px; }
 .mu-nav-btn.next { right: -10px; }
@@ -386,8 +395,7 @@ body.mu-wplng-hide .wplng-switcher {
         scroll-snap-align: center;
     }
 
-    .mu-nav-btn.prev,
-    .mu-nav-btn.next { display: flex; }
+    /* Las flechas ya NO se muestran por media query: las gobierna el JS (D18). */
 }
 
 /* --- MODO MÓVIL PEQUEÑO (< 480px) --- */

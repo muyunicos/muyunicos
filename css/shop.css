@@ -255,7 +255,7 @@ form.variations_form tr {
         scroll-snap-align: center;
     }
 
-    .mu-nav-btn { display: flex; }
+    /* Las flechas las enciende `initCarousels` segun el desborde (spec 019, D18). */
 }
 
 @media (max-width: 480px) {

@@ -489,6 +489,35 @@
                  const items = track.querySelectorAll('.mu-carousel-item');
                  items.forEach(c => c.classList.add('can-hover'));
             });
+
+            // --- VISIBILIDAD POR NECESIDAD (spec 019, D18) ---
+            // Las flechas se encienden SOLO si el track desborda y queda recorrido en ese
+            // extremo. Antes las mostraba una media query por ancho de pantalla, que no dice
+            // nada del contenido: una grilla sin scroll mostraba flechas muertas y un
+            // carrusel angosto en un monitor grande no mostraba ninguna.
+            const marcarFlecha = (btn, visible) => {
+                if (!btn) return;
+                if (visible) {
+                    btn.classList.add('is-visible');
+                    btn.disabled = false;
+                } else {
+                    btn.classList.remove('is-visible');
+                    btn.disabled = true;
+                }
+            };
+
+            const actualizarFlechas = () => {
+                const sobra = track.scrollWidth - track.clientWidth;
+                const desborda = sobra > 1;
+                const alInicio = track.scrollLeft <= 1;
+                const alFinal = track.scrollLeft >= sobra - 1;
+                marcarFlecha(prevBtn, desborda && !alInicio);
+                marcarFlecha(nextBtn, desborda && !alFinal);
+            };
+
+            track.addEventListener('scroll', actualizarFlechas, { passive: true });
+            window.addEventListener('resize', actualizarFlechas);
+            actualizarFlechas();
         });
     }
 

@@ -25,6 +25,9 @@ const css = lee('css/components/galeria.css');
 const php = lee('inc/galeria.php');
 const prod = lee('js/product.js');
 const func = lee('functions.php');
+const ui = lee('js/global-ui.js');
+const baseCss = lee('css/components/global-ui.css');
+const shop = lee('css/shop.css');
 
 // Codigo SIN comentarios: las reglas de "prohibido" se evaluan sobre el codigo real
 // (los docblocks explican las reglas y no deben hacer fallar la puerta).
@@ -138,6 +141,24 @@ check('el chip "+N" sale fuera de la grilla recortada',
 check('tachito siempre visible en tactil', /@media \(hover: none\)/.test(css));
 check('linea con scroll propia (no por viewport)',
     /\.mu-gal-tira--linea/.test(css) && /scroll-snap-type: x mandatory/.test(css));
+
+/* ==================== 4c. Flechas: sistema del tema (D18) ==================== */
+console.log('== Flechas ==');
+check('la galeria usa .mu-nav-btn del tema (no flechas propias)',
+    /mu-nav-btn prev mu-gal-prev/.test(js) && !/mu-gal-nav/.test(js));
+check('chevron con createElementNS (sin innerHTML)',
+    /createElementNS\(ns, 'svg'\)/.test(js) && /polyline/.test(js));
+check('el visor adapta el boton del tema a su flex',
+    /\.mu-gal-cuerpo \.mu-nav-btn\.prev/.test(css));
+check('hidden gana sobre el display del sistema',
+    /\.mu-gal-cuerpo \.mu-nav-btn\[hidden\]/.test(css));
+check('nada muestra las flechas sin is-visible',
+    !/\.mu-nav-btn\s*\{\s*display:\s*flex/.test(shop) &&
+    !/\.mu-nav-btn\.next\s*\{\s*display:\s*flex/.test(baseCss));
+check('el sistema enciende con is-visible', /\.mu-nav-btn\.prev\.is-visible/.test(baseCss));
+check('el extremo oculta la flecha (disabled)', /\.mu-nav-btn\[disabled\]/.test(baseCss));
+check('el carrusel decide por desborde y extremo',
+    /const desborda/.test(ui) && /const alInicio/.test(ui) && /const alFinal/.test(ui));
 
 /* ==================== 5. Reglas del PHP ==================== */
 console.log('== Reglas del PHP ==');

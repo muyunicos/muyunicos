@@ -72,6 +72,7 @@
     gap: var(--mu-space-sm);
     padding: 12px 16px;
     border-bottom: 1px solid #e2e8f0;
+    min-width: 0;
 }
 
 .mu-gal-visor--oscuro .mu-gal-cabecera {
@@ -85,6 +86,7 @@
     font-weight: 700;
     color: var(--texto);
     flex: 1 1 auto;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -146,14 +148,18 @@
     gap: var(--mu-space-sm);
     padding: 12px 16px;
     min-height: 0;
+    min-width: 0;
 }
 
 .mu-gal-marco {
-    flex: 1 1 auto;
+    /* `flex-basis: 0` (no `auto`): con `auto` el marco partia del tamaño NATURAL de la
+       imagen y el visor desbordaba en pantallas angostas. */
+    flex: 1 1 0%;
     display: flex;
     align-items: center;
     justify-content: center;
     min-width: 0;
+    max-width: 100%;
     background: repeating-conic-gradient(#f1f5f9 0 25%, #ffffff 0 50%) 0 / 16px 16px;
     border-radius: var(--mu-radius);
     overflow: hidden;
@@ -165,10 +171,12 @@
 
 .mu-gal-img {
     display: block;
+    /* `width: 100%` + `height: auto`: la imagen NUNCA expande el marco (con
+       `width: auto` el flex crecia al tamaño natural y el visor desbordaba en movil). */
+    width: 100%;
     max-width: 100%;
-    max-height: 62vh;
-    width: auto;
     height: auto;
+    max-height: 62vh;
     object-fit: contain;
     border-radius: var(--mu-radius-sm);
     opacity: 0;
@@ -177,36 +185,30 @@
 
 .mu-gal-img--cargada { opacity: 1; }
 
-.mu-gal-nav {
+/* Flechas del visor: reusan `.mu-nav-btn` del tema (D18). El tema las posiciona en
+   absoluto para el carrusel y las oculta por defecto; dentro del visor van en el flex
+   del cuerpo y las gobierna el JS con `hidden` (nunca dos flechas de mas). */
+.mu-gal-cuerpo .mu-nav-btn.prev,
+.mu-gal-cuerpo .mu-nav-btn.next {
+    position: static;
+    top: auto;
+    left: auto;
+    right: auto;
+    display: flex;
     flex: 0 0 auto;
-    border: 0;
-    background: var(--primario);
-    color: var(--blanco);
-    border-radius: 50%;
+    z-index: auto;
+    /* Tamaño propio: `shop.css` re-declara .mu-nav-btn a 40px y no queremos que el
+       visor cambie de tamaño segun la pagina en la que se abra. */
     width: 44px;
     height: 44px;
-    font-size: 24px;
-    line-height: 1;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: var(--mu-shadow-sm);
-    transition: var(--mu-transition-fast);
 }
 
-.mu-gal-nav:hover {
-    background: var(--resaltado);
-    transform: translateY(-1px);
-    box-shadow: var(--mu-shadow);
-}
+.mu-gal-cuerpo .mu-nav-btn[hidden] { display: none; }
 
-.mu-gal-nav:focus-visible {
+.mu-gal-cuerpo .mu-nav-btn:focus-visible {
     outline: 3px solid var(--secundario);
     outline-offset: 2px;
 }
-
-.mu-gal-nav[hidden] { display: none; }
 
 /* --- Meta (titulo, descripcion, badge, precio) --- */
 .mu-gal-meta { padding: 0 16px; }
@@ -640,7 +642,8 @@ button.mu-gal-mini--vacia {
     }
     .mu-gal-titulo { font-size: 15px; }
     .mu-gal-img { max-height: 56vh; }
-    .mu-gal-nav { width: 36px; height: 36px; font-size: 20px; }
+    .mu-gal-cuerpo .mu-nav-btn.prev,
+    .mu-gal-cuerpo .mu-nav-btn.next { width: 36px; height: 36px; }
     .mu-gal-cuerpo { padding: 8px 6px; gap: 6px; }
     .mu-gal-cabecera,
     .mu-gal-acciones { padding-left: 10px; padding-right: 10px; }
@@ -649,7 +652,7 @@ button.mu-gal-mini--vacia {
 
 @media (prefers-reduced-motion: reduce) {
     .mu-gal-img,
-    .mu-gal-nav,
+    .mu-gal-cuerpo .mu-nav-btn,
     .mu-gal-mini,
     .mu-gal-tarjeta,
     .mu-gal-accion,

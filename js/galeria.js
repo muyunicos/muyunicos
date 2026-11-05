@@ -104,6 +104,29 @@
         nodo.className = nodo.className.replace(re, '').replace(/\s+/g, ' ').replace(/^ | $/g, '');
     }
 
+    /**
+     * Chevron del sistema `.mu-nav-btn` del tema (misma forma que `inc/ui.php`).
+     * Se crea con `createElementNS`: el componente no usa `innerHTML`.
+     */
+    function crearChevron(doc, hacia) {
+        var ns = 'http://www.w3.org/2000/svg';
+        var svg = doc.createElementNS(ns, 'svg');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.setAttribute('fill', 'none');
+        svg.setAttribute('stroke', 'currentColor');
+        svg.setAttribute('stroke-width', '2');
+        svg.setAttribute('stroke-linecap', 'round');
+        svg.setAttribute('stroke-linejoin', 'round');
+        svg.setAttribute('width', '24');
+        svg.setAttribute('height', '24');
+        svg.setAttribute('aria-hidden', 'true');
+        svg.setAttribute('focusable', 'false');
+        var linea = doc.createElementNS(ns, 'polyline');
+        linea.setAttribute('points', hacia === 'prev' ? '15 18 9 12 15 6' : '9 18 15 12 9 6');
+        svg.appendChild(linea);
+        return svg;
+    }
+
     /* ==================== visor (modal del tema) ==================== */
 
     var estado = {
@@ -299,12 +322,15 @@
         }
 
         var cuerpo = crear(doc, 'div', 'mu-gal-cuerpo');
-        var prev = crear(doc, 'button', 'mu-gal-nav mu-gal-prev', '\u2039');
+        // Flechas: reusa el sistema `.mu-nav-btn` del tema (D18) con su SVG.
+        var prev = crear(doc, 'button', 'mu-nav-btn prev mu-gal-prev');
         prev.type = 'button';
         prev.setAttribute('aria-label', 'Anterior');
-        var next = crear(doc, 'button', 'mu-gal-nav mu-gal-next', '\u203a');
+        prev.appendChild(crearChevron(doc, 'prev'));
+        var next = crear(doc, 'button', 'mu-nav-btn next mu-gal-next');
         next.type = 'button';
         next.setAttribute('aria-label', 'Siguiente');
+        next.appendChild(crearChevron(doc, 'next'));
         var marco = crear(doc, 'div', 'mu-gal-marco');
         var img = crear(doc, 'img', 'mu-gal-img');
         img.setAttribute('decoding', 'async');

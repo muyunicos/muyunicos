@@ -69,6 +69,27 @@
     .demo-ancha { width: 100%; max-width: 820px; }
     .demo-angosta { width: 240px; }
     .demo-media { width: 100%; max-width: 420px; }
+    /* Simulacion del carrusel del tema para ver las flechas del sistema (D18). */
+    .demo-carrusel { position: relative; max-width: 640px; margin: 0 0 14px; }
+    .demo-carrusel .mu-carousel-track {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: 120px;
+        gap: 8px;
+        overflow-x: auto;
+        padding-bottom: 6px;
+        scroll-snap-type: x mandatory;
+        scrollbar-width: none;
+    }
+    .demo-carrusel .mu-carousel-track::-webkit-scrollbar { display: none; }
+    .demo-carrusel .mu-carousel-item { width: 120px; scroll-snap-align: start; }
+    .demo-carrusel .mu-carousel-item img {
+        display: block;
+        width: 100%;
+        height: 90px;
+        object-fit: cover;
+        border-radius: var(--mu-radius-sm);
+    }
     /* Solo en la demo: los tachitos de "Mi cuenta" siempre visibles, para poder verlos
        (el componente los muestra en hover/foco y en tactil, por diseño D16). */
     #demo-cuenta .mu-gal-mini-borrar { opacity: 1; }
@@ -253,6 +274,34 @@
         Tocar una ranura abre el cargador (<code>onRanura</code>).
     </p>
     <div class="demo-caja demo-ancha"><div id="demo-minimo"></div></div>
+</section>
+
+<section class="demo-seccion">
+    <h2>9. Carrusel del tema — flechas sólo si son necesarias</h2>
+    <p class="demo-nota">
+        <code>.mu-carousel-wrapper</code> + <code>.mu-nav-btn</code>: el sistema que ya usan
+        bestsellers y las secciones. Arriba 12 ítems (desborda: hay flechas); abajo 2 ítems
+        (no desborda: <strong>no</strong> hay flechas). Al llegar a un extremo, esa flecha
+        desaparece.
+    </p>
+    <div class="mu-carousel-wrapper demo-carrusel">
+        <button class="mu-nav-btn prev" aria-label="Anterior">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+        <button class="mu-nav-btn next" aria-label="Siguiente">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+        <div class="mu-carousel-track" id="demo-track-largo"></div>
+    </div>
+    <div class="mu-carousel-wrapper demo-carrusel">
+        <button class="mu-nav-btn prev" aria-label="Anterior">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+        <button class="mu-nav-btn next" aria-label="Siguiente">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+        <div class="mu-carousel-track" id="demo-track-corto"></div>
+    </div>
 </section>
 
 <script src="../js/galeria.js"></script>
@@ -512,6 +561,24 @@
     }
     pintarMinimo();
 
+    /* ---------- 9. Carrusel del tema (global-ui.js decide las flechas) ---------- */
+    function llenarTrack(id, cuantos) {
+        var track = document.getElementById(id);
+        if (!track) { return; }
+        for (var i = 0; i < cuantos; i++) {
+            var item = document.createElement('div');
+            item.className = 'mu-carousel-item';
+            var img = document.createElement('img');
+            img.src = svgMini(i);
+            img.alt = 'Item ' + (i + 1);
+            img.loading = 'lazy';
+            item.appendChild(img);
+            track.appendChild(item);
+        }
+    }
+    llenarTrack('demo-track-largo', 12);
+    llenarTrack('demo-track-corto', 2);
+
     /* ---------- Atajos de QA: demo.html#visor / #oscuro / #woo ---------- */
     if (window.location.hash === '#visor') { abrirClaro(1); }
     if (window.location.hash === '#oscuro') { document.getElementById('demo-oscuro').click(); }
@@ -521,5 +588,6 @@
     }
 }());
 </script>
+<script src="../js/global-ui.js"></script>
 </body>
 </html>

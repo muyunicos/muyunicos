@@ -78,6 +78,20 @@ colores, radios, sombras y transiciones. La galeria unica debe vivir aqui.
   pintan bordes en imagenes dentro de enlaces y tarjetas; dentro de la galeria se
   neutralizan (`border/outline/box-shadow: 0`) para que el mismo HTML se vea igual en la
   tienda, en la cuenta y en el cotizador. Lo revelo la demo con el CSS del tema cargado.
+- **D18 — Las flechas son `.mu-nav-btn`, del tema, y se encienden por NECESIDAD**: la
+  galeria no tiene flechas propias. En el visor reusa `.mu-nav-btn prev/next` (con su SVG
+  chevron) dentro del flex del cuerpo, y las oculta con `hidden` cuando hay una sola
+  imagen. En los carruseles, `initCarousels()` decide con `scrollWidth/clientWidth` +
+  `scrollLeft`: la flecha se enciende **solo si el track desborda y queda recorrido en ese
+  extremo**. Antes la visibilidad era una media query por ancho de pantalla.
+
+### Enmienda 2026-11-05 (bis) — flechas del sistema
+
+- **D18** (arriba) reemplaza el media query de `.mu-nav-btn.prev/.next`: `display: flex` solo
+  con `.is-visible`, y `[disabled]` oculta la flecha en el extremo.
+- **El visor no desborda en pantallas angostas**: el marco de la imagen usa
+  `flex: 1 1 0%` (no `auto`, que partia del tamaño natural de la imagen) y cuerpo/cabecera
+  llevan `min-width: 0`. En 390 px se ven las dos flechas, el contador y el cerrar.
 
 ## 3. Requisitos funcionales
 
@@ -124,13 +138,19 @@ colores, radios, sombras y transiciones. La galeria unica debe vivir aqui.
   configurable (D16) y `stopPropagation` para no abrir el visor.
 - **FR-020** `activo` por defecto es `-1` (ninguna marcada): la marca solo aparece cuando
   el consumidor la pide.
+- **FR-021** El visor usa `.mu-nav-btn prev/next` del tema con su SVG chevron (sin flechas
+  propias) y las oculta con `hidden` cuando hay una sola imagen.
+- **FR-022** `initCarousels()` enciende cada flecha **solo si el track desborda y queda
+  recorrido en ese extremo**; si no desborda, ninguna. Se recalcula en `scroll` y `resize`.
+- **FR-023** El unico mecanismo de visibilidad es `.is-visible` (+ `[disabled]` en el
+  extremo): ningun `display` por media query.
 
 ## 4. Criterios de exito
 
 - **SC-001** La demo `tests/galeria-demo.html` muestra los dos tonos, la tira, la tarjeta y
   las acciones sin errores de consola.
 - **SC-002** `node tests/galeria.test.js` en verde (API completa, puros, prefijo de clases,
-  sin `innerHTML` con datos del usuario).
+  sin `innerHTML` con datos del usuario, flechas del sistema).
 - **SC-003** En el laboratorio, la ficha de producto: thumbs con arrastre (una sola
   implementacion), trigger abre `MUGaleria`, zoom de Woo no abre Photoswipe.
 - **SC-004** El resto del sitio no cambia el peso de sus paginas (registro + encolado
