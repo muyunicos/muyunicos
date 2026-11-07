@@ -2,7 +2,7 @@
 
 **Estado**: **V1** (2026-11-07). El visor se prueba **en vivo** en
 `tests/galeria-demo.html` (panel "Visor (ambito 2)") y tiene puerta propia:
-`node tests/visor.browser.js` → **VISOR OK (51/51 checks, 2 hallazgos)**.
+`node tests/visor.browser.js` → **VISOR OK (52/52 checks, 1 hallazgo)**.
 Complementa `spec.md` §3 (FR-024…FR-030) y `contracts/galeria.md` (API del visor).
 
 Este documento es el **tablero de decisión**: lo medido, lo que falta, lo que sobra y lo
@@ -59,22 +59,25 @@ regresiones).
 | 6 | Tono oscuro | `mu-gal-visor--oscuro` aplicada | **OK** |
 | 7 | Meta por item | la del item manda sobre la global | **OK** |
 | 8 | 1 solo item | el contador se oculta solo (`contador:'auto'`) | **RESUELTO en V1** |
-| 9 | Imagen rota | marco **vacío**, sin mensaje ni reintento | **Falta** estado de error |
+| 9 | Imagen rota | marco **vacío**, sin mensaje ni reintento | **Falta** estado de error (**T041**: es el unico hallazgo abierto) |
 | 10 | Meta larga | cuerpo/banda/meta viven en `.mu-gal-scroll` (`overflow-y:auto`): no recorta | **RESUELTO en V1** |
 | 11 | 390 px | flechas superpuestas sobre el marco; la imagen usa >82% del ancho | **RESUELTO en V1** |
-| 12 | Precios | solo `precio{valor,anterior,aviso}` (`js:465`) | **Falta** `precios[]` (Regular/Mayor), `nota`, `badge{texto,tono}` |
+| 12 | Precios | solo `precio{valor,anterior,aviso}` en `pintarMeta` | **Falta** `precios[]` (Regular/Mayor), `nota` y `badge{texto,tono}` (**T043**) |
 | 13 | Damero permanente | se veia detras de TODA foto opaca (bandas grises) | **RESUELTO en V1**: damero solo con `item.transparente` |
-| 14 | Ancho fijo 880 | una foto vertical dejaba aire a los lados | **RESUELTO en V1**: `ancho:'auto'|'completo'` |
+| 14 | Ancho fijo 880 | una foto vertical dejaba aire a los lados | **RESUELTO en V1**: `ancho` auto o completo (T034) |
 | 15 | Segmentos | prometian filtros y no filtraban | **RESUELTO en V1**: son pestañas informativas; los filtros viven en la coleccion (C10) |
 | 16 | Borde y separadores | 3px dorado (casi invisible) vs grises frios vs punteado azul | **RESUELTO en V1**: 1px con `--mu-gal-sep` unico |
 | 17 | Contraste en oscuro | precio `#047857` sobre `#111827` (~3:1) | **RESUELTO en V1**: `#34d399` |
-| 18 | Badge / detalle de acciones | sin iconos ni variantes tonales | **Pendiente**: sin marcar |
-| 13 | Acciones | solo `etiqueta` + `clase` (`js:713`) | **Falta** `icono` y variantes propias |
-| 14 | Marco de la foto | damero siempre (`galeria.css:172`) | **Falta** `marco:'oscuro'` / `tono:'foto'` |
-| 15 | Ancho de la caja | 880 px fijo (`galeria.css:52`) | **Falta** `ancho` |
-| 16 | Flechas | al costado, `position: static` | **Decidir**: `flechas:'superpuestas'` para el caso tienda |
-| 17 | Contenido libre | no existe | **Decidir**: `bloque` (nodo, nunca HTML) |
-| 18 | Instancia | `visor()` crea el DOM y `cerrar()` lo borra (`js:586`) | **Falta** singleton + `MU.visor.actualizar()` |
+| 18 | Badge / detalle de acciones | sin iconos ni variantes tonales | **Falta**: `badge{texto,tono}` (**T043**) e `icono` (**T042**) |
+| 19 | Acciones | solo `etiqueta` + `clase` en `visor()` | **Falta** `icono` (**T042**) |
+| 20 | Marco de la foto (`tono:'foto'`) | el damero ya es opt-in (V1); falta un marco oscuro propio para fotos | **Decidir** (no es requisito de la V2) |
+| 21 | Ancho de la caja | era 880 px fijo | **RESUELTO en V1**: `ancho` auto o `completo` (T034) |
+| 22 | Flechas | al costado y superpuestas en movil | **RESUELTO en V1**: automaticas segun el ancho del marco (T036), no es opcion |
+| 23 | Contenido libre (`bloque`) | no existe | **Decidir** (no es requisito de la V2) |
+| 24 | Instancia | `visor()` crea el DOM y `cerrar()` lo retira | **Falta** singleton + `MU.visor.actualizar()` (**T044**) |
+
+Desde la V2 la banda inferior en 390 px **afirma** que scrollea (es un carrusel por diseno): dejo de
+ser un aviso y paso a check, por eso la puerta queda en 52/52 con 1 solo hallazgo.
 
 ## 3. Inventario: qué falta, qué sobra, qué está de más
 
@@ -149,7 +152,7 @@ parche a `HTMLElement.prototype.focus`: 1er intento `vis=hidden` sin efecto, 2do
 se reintenta cada 50 ms (hasta 8 veces) hasta que el navegador lo acepte, **sin robar el
 foco** si ya hay uno dentro del modal.
 
-## 6. Próximo paso (V2, cuando lo marques)
+## 6. V2 en curso (2026-11-07)
 
 Cada punto, con su check nuevo en `tests/visor.browser.js` y `GALERIA OK`:
 
@@ -158,7 +161,10 @@ Cada punto, con su check nuevo en `tests/visor.browser.js` y `GALERIA OK`:
 3. `acciones[].icono` + variantes tonales.
 4. Singleton + `MU.visor.actualizar()` + `[data-mu-galeria-visor]` declarativo.
 
-Nada de esto se implementa sin la marca en la columna *Decisión* de §2.
+Orden de implementacion: **T041** (error de imagen) -> **T042** (`icono`) -> **T043** (meta rica) ->
+**T044** (singleton + `actualizar`) -> **T045** (docs y bump). Cada paso entra con su commit y sus
+checks; el detalle vive en `tasks.md` (fase V2). Lo que sigue sin decision (`bloque`, `tono:'foto'`)
+**no** se implementa.
 
 ## 7. Decisiones cerradas (2026-11-07)
 

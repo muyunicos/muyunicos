@@ -50,7 +50,10 @@ function check(nombre, cond, detalle) {
 
 /* ==================== 1. API publica ==================== */
 console.log('== API ==');
-check('expone version', gal.version === '1.1.0', 'version=' + gal.version);
+// `version` es la version SEMANTICA del API y no participa del cache-bust (eso es
+// el `Version:` del tema, D12): se verifica que exista y sea comparable, no un
+// numero concreto, para no acoplar tres fuentes que se bumbean por motivos distintos.
+check('expone version', typeof gal.version === 'string' && /^\d+\.\d+\.\d+$/.test(gal.version), 'version=' + gal.version);
 ['visor', 'cerrar', 'estaAbierto', 'tira', 'tarjeta', 'desdeWoo', 'desdeEnlaces',
     'autoInit', 'arrastrar', 'navegarWoo'].forEach((fn) => {
     check('expone ' + fn, typeof gal[fn] === 'function');

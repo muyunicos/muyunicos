@@ -135,7 +135,7 @@ puertas de geometria— Playwright sobre el demo (`scrollHeight == clientHeight`
 ## Fase V1 — Pulido del visor + filtros de la coleccion (2026-11-07)
 
 Decisiones del usuario en `visor-evaluacion.md` §7. Puerta al cierre: **VISOR OK
-(51/51, 2 hallazgos)** + **GALERIA OK (222)**.
+(52/52, 1 hallazgo)** + **GALERIA OK (222)**.
 
 - [X] T032 CSS del visor: tokens LOCALES (`--mu-gal-pad/sep/lienzo/banda`), borde de 1px
       (el dorado de 3px era casi invisible sobre blanco), separador unico para cabecera,
@@ -166,6 +166,28 @@ Decisiones del usuario en `visor-evaluacion.md` §7. Puerta al cierre: **VISOR O
 - [X] T040 Docs: `contracts/galeria.md` (C1 con `contador`/`ancho`/`transparente`, C1.1, C1.2
       "segmentos NO filtra"), `contracts/coleccion.md` (C10 + slot `estado`),
       `visor-evaluacion.md` (§2 actualizado, §7 decisiones) y bump `MU.version` 1.1.0.
+
+## Fase V2 — Visor V2 (2026-11-07, en curso)
+
+Arranca con la puerta en **VISOR OK (52/52, 1 hallazgo)** + **GALERIA OK (222)**: el
+hallazgo del carrusel en movil paso a ser un check afirmado (scrollea porque es un
+carrusel), asi que el unico hallazgo abierto es la imagen rota. Un commit por tema; cada
+uno suma checks a `tests/visor.browser.js` y, si toca los puros, a `tests/galeria.test.js`.
+
+- [ ] T041 Estado de error de imagen: `.mu-gal-error` (mensaje + boton Reintentar) dentro de
+      `.mu-gal-marco`, `error`/`load` en el montaje y reset al cambiar de `src`; el reintento
+      pide `url?r=<ts>` (cache-bust). Cierra el hallazgo 1 de §2 y el punto 1 de §6.
+- [ ] T042 `acciones[].icono` con el mapa LOCAL `ICONOS` (`usar`/`descargar`/`corazon`/
+      `basura`, familia del chevron: `createElementNS`, sin `innerHTML`) y clase buena
+      `mu-gal-peligro` (`pmu-visor-peligro` se conserva como puente hasta T900).
+- [ ] T043 Meta rica: `MU.puro.normalizarMeta()` (retrocompatible con `badge` string y
+      `precio{valor,anterior,aviso}`) -> `badge{texto,tono}`, `precios[]` y `nota`; lo usan
+      `pintarMeta` del visor y `MU.tarjeta`, para no tener dos formatos.
+- [ ] T044 Singleton + `MU.visor.actualizar(parcial)` (items/meta/titulo/acciones/pos sobre
+      el modal abierto, sin cerrar ni perder el foco) y apertura declarativa
+      `[data-mu-galeria-visor]` reusando `itemsDeNodo`.
+- [ ] T045 Docs: `contracts/galeria.md` (C1 con error/iconos/meta v2/`actualizar`),
+      `visor-evaluacion.md` (§2 y §6 cerrados) y bump de `MU.version`.
 
 ## Fuera de esta spec (fases posteriores)
 

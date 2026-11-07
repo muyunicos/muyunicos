@@ -764,7 +764,7 @@
         cuerpo.appendChild(marco);
         cuerpo.appendChild(next);
         caja.appendChild(cuerpo);
-// Cuerpo fijo (la imagen no se desplaza); banda y meta scrollean. Antes la
+        // Cuerpo fijo (la imagen no se desplaza); banda y meta scrollean. Antes la
         // caja recortaba (`overflow: hidden`) y la meta larga se perdia abajo.
         var scroll = crear(doc, 'div', 'mu-gal-scroll');
         caja.appendChild(scroll);

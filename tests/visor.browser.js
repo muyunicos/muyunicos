@@ -399,10 +399,10 @@ async function ir(page, hash) {
         'justo=' + r.cuerpoJusto + ' superpuestas=' + r.flechasSuperpuestas);
     chk('la imagen usa casi todo el ancho de la caja', (r.imgAncho / r.cajaAncho) > 0.82,
         'imgAncho=' + r.imgAncho + ' cajaAncho=' + r.cajaAncho);
-    if (r.listaScrollX > 1) {
-        aviso('en 390 px la banda inferior scrollea ' + r.listaScrollX
-            + 'px en horizontal (esperado: es un carrusel)');
-    }
+    // La banda es un carrusel por diseno: que scrollee NO es un defecto, pero si es
+    // una propiedad observable del componente en movil, asi que se afirma.
+    chk('en 390 px la banda inferior es un carrusel y scrollea en horizontal',
+        r.listaScrollX > 1, 'scroll horizontal=' + r.listaScrollX + 'px');
     // La caja es max-height 92vh + overflow:hidden: en movil es donde el pie se aprieta.
     await ir(page, '#visor-meta-larga');
     r = await leer(page);
