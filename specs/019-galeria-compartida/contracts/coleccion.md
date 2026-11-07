@@ -77,6 +77,9 @@ agotado, topeCeldas, topeItems, hayChip}`.
 
 Reglas:
 
+0. **Chip ⇔ cota** (C9). El chip existe solo si la vista esta **acotada** (`tope > 0`, la
+   ventana de la grilla por `filas`/`alto`/marco que recorta, o el ancho en `fila`) y no
+   entra todo. **Sin cota** `caben` llega como `items + huecos` y no hay chip: se ve todo.
 1. **`tope` es de CELDAS**, igual que en `celdas` (C1): las imagenes, el chip
    (`mu-gal-celda--chip`) y los huecos (`mu-gal-celda--vacia`) que se ven cuentan dentro
    de el. Con `tope 4`, 2 huecos y 5 imagenes: `1 imagen + 2 huecos + chip = 4 celdas`.
@@ -147,9 +150,10 @@ MU.coleccion(el, {
   navegable: 'auto',            // 'auto' | true | false   (alias: deslizable)
   tamano: 'medio',              // 'chico' | 'medio' | 'grande' | {ancho, alto}
   gap: 8,
-  filas: 0,                     // solo grilla: filas de la vista (0 = por `alto`)
+  filas: 0,                     // solo grilla: filas de la vista (0 = por `alto`); acota
   columnas: 0,                  // solo grilla: 0 = auto-fill segun el ancho
-  alto: 0,                      // solo grilla: alto de la vista en px (0 = el del marco)
+  alto: 0,                      // solo grilla: ventana del bloque en px, PIE INCLUIDO
+                                //   (0 = el marco, solo si recorta; ver C9)
 
   // cantidad
   tope: 0,                      // max. CELDAS visibles: imagen + chip + hueco (0 = todas)
@@ -180,11 +184,10 @@ MU.coleccion(el, {
 - `true`: revela todo hasta el `tope` y es navegable desde el inicio.
 - `false`: nunca navega; el chip **abre el visor** (no acumula).
 
-**Vista fija**: fila = las celdas que entran en el ancho. Grilla = `columnas x filas`, donde
-`filas` manda sobre `alto`, y `alto: 0` usa el alto **real** del marco si el CSS lo limita; si el
-marco crece con el contenido **no hay presupuesto** y se ven todas (sin chip). Con `alto > 0` el
-marco **no crece** (`max-height` + scroll): la ventana es la declarada. El alto de celda se **mide**
-sobre el pintado anterior y, si el nodo esta vacio, se estima; tras esa medicion la galeria se
+**Vista fija**: fila = las celdas que entran en el ancho. Grilla = `columnas x filas`: la
+ventana la decide **C9** (`filas` > `alto` > marco que recorta), el **pie** se descuenta
+siempre y, si **nada acota**, se ven todas (sin chip). El alto de celda se **mide** sobre el
+pintado anterior y, si el nodo esta vacio, se estima; tras esa medicion la galeria se
 repinta UNA vez (auto-ajuste) y avisa por `onPintado`.
 
 **`tamano`** fija el lado de la celda: `chico 72`, `medio 112`, `grande 160`, o `{ancho,alto}`
@@ -245,7 +248,8 @@ Un item se dibuja con **slots** (que se ve) y **preset** (atajo):
 - El chip es una **celda mas** (no flota fuera): es lo que arregla el `+N` recortado.
 - El chip publica su accion en `data-mu-gal-chip-accion` (`revelar|abrir|cargar`).
 - La raiz publica el estado de la vista (`data-mu-gal-estado`): `fija` mientras entra todo lo
-  revelado, `navegable` cuando ya no cabe. `data-mu-gal-ancho` es el ancho medido del contenedor.
+  revelado, `navegable` cuando ya no cabe. `data-mu-gal-ancho` es el ancho medido del contenedor
+  y `data-mu-gal-cota` la **fuente** de la cota (`ancho|filas|alto|marco|libre`).
 - El pie va **arriba** de la linea y se actualiza con cada cambio (`role="status"`).
 
 ## C7 — Lo que este contrato NO permite
@@ -275,3 +279,34 @@ tira que mantener en sincronia a mano. El **repintado por resize** conserva la a
 la celda del montaje y se perdia la sincronizacion.
 
 El visor **no** implementa su propia tira: es el mismo componente (D2).
+
+## C9 — Cota y ventana (`MU.puro.ventana`)
+
+La vista fija **solo existe si algo la acota**. De ahi sale la regla que decide si hay chip:
+
+| layout | cota | sin cota |
+|---|---|---|
+| `fila` | **siempre** el ancho: `caben(ancho, celda, gap)` = una linea | no aplica |
+| `grilla` | `filas > 0` (manda) → `alto > 0` → **marco que recorta de verdad** | se pintan TODAS las filas, sin chip |
+
+```js
+MU.puro.ventana({alto, filas, altoCelda, gap, pie, marco, acota})
+// -> {acota, porAlto, altoMarco, motivo}   motivo: 'filas'|'alto'|'marco'|'libre'
+```
+
+1. **`acota`** es la evidencia del marco: `scrollHeight > clientHeight + 1` medido **antes**
+   de vaciar el nodo. Un marco que crece con el contenido **no acota** (`clientHeight` es el
+   alto del contenido; comparar solo `clientHeight > 0` era el bug: el marco medía su propio
+   recorte y la grilla mostraba una fila con 3 columnas).
+2. **El `pie` se resta siempre**: `alto` es la ventana TOTAL del bloque (pie incluido). Con
+   `alto 420` y `pie 15` el marco mide `405`, no 420 (si no, la galeria desbordaba el bloque).
+3. **`filas`** acota aunque el marco crezca y **fija el alto del marco**:
+   `altoMarco = filas*altoCelda + (filas-1)*gap`, con `alto` como maximo. No hay scroll
+   hasta que se toca el chip (ahi lo revelado ya no cabe y la galeria pasa a navegable).
+4. **Sin cota**: `porAlto = 0`, `caben` llega a `carga` como `items + huecos`, `capacidad`
+   infinita ⇒ todo visible, `chip 0`, `navegable:'auto'` ≡ `true`.
+5. **Auto-ajuste por evidencia**: si el marco recorta pero se pinto sin cota, o si el alto de
+   celda venia estimado, la galeria se repinta UNA vez (marca `firma|recorta`). El recorte
+   medido se guarda en el estado del contenedor: sin eso el siguiente pintado volveria a
+   "no acota" y entraria en ciclo.
+6. **`ventana` es puro** y no toca el DOM: se prueba con `node tests/galeria.test.js`.

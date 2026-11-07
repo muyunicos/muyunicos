@@ -673,7 +673,16 @@ body.is-scroll-locked { overflow: hidden; }
    Convive con la tira v1 mientras se retira en F3.
    ============================================ */
 
+/* Raiz de la coleccion: el pie arriba y el marco con el RESTO del alto. Sin esto el
+   marco se medía contra el alto TOTAL del bloque y lo desbordaba cuando iba acotado. */
+[data-mu-gal-layout] {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
 .mu-gal-pie {
+    flex: 0 0 auto;
     margin: 0 0 6px;
     font-size: 12px;
     color: var(--texto-light);
@@ -681,6 +690,10 @@ body.is-scroll-locked { overflow: hidden; }
 
 .mu-gal-linea {
     display: flex;
+    /* La linea NO se estira ni se comprime por si sola: la raiz es una columna (pie +
+       marco) y el alto del marco lo fija la cota, no el contenido. */
+    flex: 0 0 auto;
+    min-height: 0;
     gap: var(--mu-gal-gap, 8px);
     margin: 0;
     padding: 0;
@@ -736,8 +749,19 @@ body.is-scroll-locked { overflow: hidden; }
     padding-right: 2px;
 }
 
-/* Envoltorio de la fila deslizable: ancla las flechas fuera del recorte. */
-.mu-gal-caja-linea { position: relative; }
+/* Envoltorio de la fila deslizable: ancla las flechas fuera del recorte y se queda
+   con el alto que SOBRA en la raiz (columna: pie arriba, marco abajo). */
+.mu-gal-caja-linea {
+    position: relative;
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.mu-gal-caja-linea > .mu-gal-linea {
+    flex: 1 1 auto;
+    min-width: 0;
+}
 
 .mu-gal-caja-linea .mu-nav-btn.prev,
 .mu-gal-caja-linea .mu-nav-btn.next {

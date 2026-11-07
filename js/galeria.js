@@ -188,6 +188,46 @@
         return Math.max(1, Math.floor((a + g) / (c + g)));
     }
 
+/**
+     * Cota y ventana de la grilla (contrato `coleccion.md`, C9).
+     *
+     * El chip existe SOLO si la vista esta ACOTADA. La cota sale de tres fuentes, en
+     * este orden: `filas` (manda), `alto` declarado, o un marco que RECORTA de verdad
+     * (su contenido no entra). Sin ninguna, la grilla crece con el contenido: se pintan
+     * TODAS las filas y no hay chip (`navegable:'auto'` equivale a `true`).
+     *
+     * `alto` es la ventana TOTAL del bloque (pie incluido), asi que el pie se resta
+     * siempre: por eso el marco nunca desborda el alto declarado.
+     *
+     * @param {{alto:number, filas:number, altoCelda:number, gap:number, pie:number,
+     *          marco:number, acota:boolean}} o
+     * @returns {{acota:boolean, porAlto:number, altoMarco:number, motivo:string}}
+     */
+    function ventana(o) {
+        o = o || {};
+        var alto = Math.max(0, parseInt(o.alto, 10) || 0);
+        var filas = Math.max(0, parseInt(o.filas, 10) || 0);
+        var celda = Math.max(1, parseInt(o.altoCelda, 10) || 1);
+        var gap = Math.max(0, parseInt(o.gap, 10) || 0);
+        var pie = Math.max(0, parseInt(o.pie, 10) || 0);
+        var marco = Math.max(0, parseInt(o.marco, 10) || 0);
+        var recorta = !!o.acota;
+
+        // Alto disponible para las CELDAS: el declarado, o el del marco SI recorta.
+        var disp = (alto > 0) ? alto : (recorta ? marco : 0);
+        if (disp > 0) { disp = Math.max(0, disp - pie); }
+
+        // Filas de celdas que entran (0 = sin presupuesto: se ven todas).
+        var porAlto = (disp > 0) ? Math.max(1, Math.floor((disp + gap) / (celda + gap))) : 0;
+        var altoMarco = disp;
+        if (filas > 0) {
+            porAlto = (porAlto > 0) ? Math.min(filas, porAlto) : filas;
+            var altoFilas = filas * celda + (filas - 1) * gap;
+            altoMarco = (altoMarco > 0) ? Math.min(altoMarco, altoFilas) : altoFilas;
+        }
+        var motivo = (filas > 0) ? 'filas' : ((alto > 0) ? 'alto' : (recorta ? 'marco' : 'libre'));
+        return { acota: (porAlto > 0), porAlto: porAlto, altoMarco: altoMarco, motivo: motivo };
+    }
     /**
      * `navegable` (alias historico `deslizable`): 'auto' | true | false.
      *
@@ -1366,44 +1406,71 @@
             altoVista, String(navegable)].join('|');
         var tandas = (estPrevio && estPrevio.firma === firma) ? (estPrevio.tandas || 0) : 0;
 
-        // Celdas que entran en la vista FIJA: 0 = sin presupuesto (entran todas).
+        // El PIE se calcula y se PINTA antes de medir: su alto es parte de la ventana. Con
+        // `alto` declarado el marco mide el alto MENOS el pie; si no, desborda el bloque.
+        var pieTxt = '';
+        if (o.pie !== false) {
+            if (typeof o.pie === 'string' && o.pie !== 'auto') {
+                pieTxt = o.pie;
+            } else {
+                pieTxt = pie({
+                    cargadas: items.length, min: min, capacidad: capacidad,
+                    sustantivo: o.sustantivo, sustantivoSingular: o.sustantivoSingular
+                });
+            }
+        }
+        // Todo lo que se MIDE va ANTES de vaciar: el marco, su recorte y la celda previa.
+        var lineaPrevia = nodo.querySelector('.mu-gal-linea');
+        var scrollPrevio = lineaPrevia ? (lineaPrevia.scrollLeft || 0) : 0;
+        var celdaPrevia = nodo.querySelector('.mu-gal-celda[data-mu-gal-mini]');
+        var marcoH = nodo.clientHeight || 0;
+        // El marco ACOTA solo si su contenido NO entra (nunca si crece con el).
+        recorta = (marcoH > 0) && (nodo.scrollHeight > marcoH + 1);
+
+        vaciar(nodo);
+        nodo.setAttribute('data-mu-gal-layout', layout);
+        var pieAlto = 0;
+        if (pieTxt) {
+            var p = crear(doc, 'p', 'mu-gal-pie', pieTxt);
+            p.setAttribute('role', 'status');
+            nodo.appendChild(p);
+            pieAlto = p.offsetHeight || 0;     // reflow: el alto REAL del pie ya pintado
+        }
+
+        // Cota y ventana de la vista FIJA: 0 = sin presupuesto (entran todas, sin chip).
         var cabenVista = 0;
         var altoCelda = tam.alto;
         var midioCelda = false;
+        var recorta = false;
+        var vent = null;
         if (layout === 'grilla') {
-            // Columnas por ANCHO y filas por ALTO (`filas` > `alto` > alto real del marco).
+            // Columnas por ANCHO; las filas, por ALTO (`filas` manda sobre `alto`).
             var porFila = (columnas > 0) ? columnas : cabenLinea;
-            var altoDisp = altoVista;
-            if (altoDisp === 0) {
-                // Con `alto: 0` sirve el alto REAL del marco si el CSS lo limita; si el
-                // marco crece con el contenido no hay presupuesto y se ven todas.
-                altoDisp = nodo.clientHeight || 0;
-                var piePrevio = nodo.querySelector('.mu-gal-pie');
-                if (piePrevio) { altoDisp = Math.max(0, altoDisp - (piePrevio.offsetHeight || 0)); }
+            // Alto de la celda: se MIDE la del pintado anterior (exacto); si no hay,
+            // se estima con el cuerpo que dibujan los slots (conservador).
+            var extras = 0;
+            if (slots.titulo) { extras += 18; }
+            if (slots.descripcion) { extras += 16; }
+            if (slots.precio) { extras += 16; }
+            if (slots.acciones) { extras += 30; }
+            if (slots.estado) { extras += 14; }
+            altoCelda = tam.alto + (extras > 0 ? (extras + 12) : 0);
+            var muestra = celdaPrevia;
+            if (muestra && muestra.offsetHeight > 0) {
+                altoCelda = muestra.offsetHeight;
+                midioCelda = true;
             }
-            var porAlto = 0;
-            if (altoDisp > 0) {
-                // Alto de la celda: se MIDE la del pintado anterior (exacto); si no hay,
-                // se estima con el cuerpo que dibujan los slots (conservador).
-                var extras = 0;
-                if (slots.titulo) { extras += 18; }
-                if (slots.descripcion) { extras += 16; }
-                if (slots.precio) { extras += 16; }
-                if (slots.acciones) { extras += 30; }
-                if (slots.estado) { extras += 14; }
-                altoCelda = tam.alto + (extras > 0 ? (extras + 12) : 0);
-                var muestra = nodo.querySelector('.mu-gal-celda[data-mu-gal-mini]');
-                if (muestra && muestra.offsetHeight > 0) {
-                    altoCelda = muestra.offsetHeight;
-                    midioCelda = true;
-                }
-                porAlto = Math.max(1, Math.floor((altoDisp + gap) / (altoCelda + gap)));
-            }
-            if (filas > 0) {
-                porAlto = (porAlto > 0) ? Math.min(filas, porAlto) : filas;
-            }
-            if (porAlto > 0) { cabenVista = porFila * porAlto; }
+            vent = ventana({
+                alto: altoVista, filas: filas, altoCelda: altoCelda, gap: gap,
+                pie: pieAlto, marco: marcoH,
+                // El recorte ya visto se conserva: sin eso el marco mediria su PROPIO
+                // recorte (pintar todas -> desborda -> "no acota" -> pintar todas).
+                acota: (altoVista > 0 || filas > 0 || recorta
+                    || !!(estPrevio && estPrevio.recorta))
+            });
+            if (vent.acota) { cabenVista = porFila * vent.porAlto; }
         } else {
+            // La fila SIEMPRE acota por el ancho: una linea, el resto detras del chip.
             cabenVista = cabenLinea;
         }
 
@@ -1418,28 +1485,6 @@
         var scrollY = (layout === 'grilla' && navega);
 
         // Los huecos ya se contaron dentro de `carga` (descuentan la vista fija).
-        var pieTxt = '';
-        if (o.pie !== false) {
-            if (typeof o.pie === 'string' && o.pie !== 'auto') {
-                pieTxt = o.pie;
-            } else {
-                pieTxt = pie({
-                    cargadas: items.length, min: min, capacidad: capacidad,
-                    sustantivo: o.sustantivo, sustantivoSingular: o.sustantivoSingular
-                });
-            }
-        }
-
-        var lineaPrevia = nodo.querySelector('.mu-gal-linea');
-        var scrollPrevio = lineaPrevia ? (lineaPrevia.scrollLeft || 0) : 0;
-        vaciar(nodo);
-        nodo.setAttribute('data-mu-gal-layout', layout);
-
-        if (pieTxt) {
-            var p = crear(doc, 'p', 'mu-gal-pie', pieTxt);
-            p.setAttribute('role', 'status');
-            nodo.appendChild(p);
-        }
 
         var modoClase = (layout === 'grilla') ? 'grilla' : (navega ? 'linea' : 'fila');
         var linea = crear(doc, 'div', 'mu-gal-linea mu-gal-linea--' + modoClase);
@@ -1518,38 +1563,49 @@
             nodo.appendChild(linea);
         }
         linea.scrollLeft = scrollPrevio;
-        // Con `alto` declarado el marco NO crece: la ventana queda fija y scrollea.
-        if (layout === 'grilla' && altoVista > 0) {
-            linea.style.maxHeight = altoVista + 'px';
+        // Ventana fija: el marco mide lo que manda la cota (nunca mas que el bloque).
+        if (vent && vent.acota && vent.altoMarco > 0) {
+            linea.style.maxHeight = vent.altoMarco + 'px';
             linea.style.overflowY = 'auto';
         }
-        // Estado publicado para CSS/QA: `navegable` cuando lo revelado no cabe.
+        // Estado publicado para CSS/QA: `navegable` cuando lo revelado no cabe, y la
+        // FUENTE de la cota (`ancho` en fila; `filas`/`alto`/`marco`/`libre` en grilla).
         nodo.setAttribute('data-mu-gal-estado', navega ? 'navegable' : 'fija');
         nodo.setAttribute('data-mu-gal-ancho', String(ancho));
+        nodo.setAttribute('data-mu-gal-cota', vent ? vent.motivo : 'ancho');
 
         if (colecciones) {
             colecciones.set(nodo, {
                 opciones: o, items: items, ancho: ancho,
-                tandas: tandas, firma: firma
+                tandas: tandas, firma: firma, recorta: recorta
             });
             observarColeccion(nodo);
         }
 
-        // Auto-ajuste (UNA vez por firma): el primer pintado estima el alto de celda
-        // porque el nodo esta vacio; con celdas reales en el DOM se repinta para que
-        // las filas que entran sean exactas. La marca evita el bucle.
-        if (layout === 'grilla' && altoDisp > 0 && !midioCelda
-            && (!estPrevio || estPrevio.ajustado !== firma)
+        // Auto-ajuste (UNA vez por evidencia): el primer pintado no puede saber si el
+        // marco recorta (el nodo estaba vacio) ni el alto real de la celda. Se repinta
+        // si falto alguno de esos datos; la marca evita el bucle.
+        var marcaAjuste = firma + '|' + (recorta ? '1' : '0');
+        var necesitaAjuste = false;
+        if (layout === 'grilla' && nodo.clientHeight > 0) {
+            // El marco SI recorta pero pintamos sin cota: hay que re-medir y recortar.
+            if (!vent.acota && nodo.scrollHeight > nodo.clientHeight + 1) { necesitaAjuste = true; }
+            // Ya acota, pero el alto de celda se estimo: el real cambia las filas.
+            if (vent.acota && !midioCelda) { necesitaAjuste = true; }
+        }
+        if (necesitaAjuste && (!estPrevio || estPrevio.ajustado !== marcaAjuste)
             && typeof global.requestAnimationFrame === 'function') {
             var estAjuste = colecciones ? colecciones.get(nodo) : null;
-            if (estAjuste) { estAjuste.ajustado = firma; }
+            if (estAjuste) { estAjuste.ajustado = marcaAjuste; }
             global.requestAnimationFrame(function () { coleccion(nodo, o); });
         }
         var res = {
             visiblesItems: t.visibles, huecos: huecos, chip: t.ocultas,
             modo: modoClase, navega: navega, desliza: navega, scrollY: scrollY,
             revelados: t.revelados, tandas: tandas, capacidad: t.capacidad, paso: t.paso,
-            agotado: t.agotado
+            agotado: t.agotado,
+            acota: (vent ? vent.acota : true), cota: (vent ? vent.motivo : 'ancho'),
+            altoMarco: (vent ? vent.altoMarco : 0)
         };
         // El componente puede repintarse solo (resize, auto-ajuste de la grilla): el
         // consumidor se entera por `onPintado` y no por el valor de retorno.
@@ -1722,7 +1778,7 @@
         coleccion: coleccion,
         puro: { acotar: acotar, preCargar: preCargar, orden: orden,
             formatearPrecio: formatearPrecio, celdas: celdas, pie: pie, caben: caben,
-        carga: carga, navegableDe: navegableDe },
+        carga: carga, navegableDe: navegableDe, ventana: ventana },
         version: '1.0.0'
     };
 

@@ -55,7 +55,8 @@ check('expone version', gal.version === '1.0.0', 'version=' + gal.version);
     'autoInit', 'arrastrar', 'navegarWoo'].forEach((fn) => {
     check('expone ' + fn, typeof gal[fn] === 'function');
 });
-['acotar', 'preCargar', 'orden', 'formatearPrecio'].forEach((fn) => {
+['acotar', 'preCargar', 'orden', 'formatearPrecio', 'celdas', 'pie', 'caben',
+    'carga', 'navegableDe', 'ventana'].forEach((fn) => {
     check('expone puro.' + fn, typeof gal.puro[fn] === 'function');
 });
 
@@ -260,8 +261,8 @@ check('la grilla no fija alto de fila (era el solapamiento)',
     !/grid-auto-rows: var\(--mu-gal-tam/.test(css));
 check('la linea horizontal no captura el scroll vertical',
     /overflow-y: hidden/.test(css) && /overscroll-behavior-x: contain/.test(css));
-check('la grilla calcula las filas por el ALTO del contenedor',
-    /altoDisp/.test(js) && /porAlto/.test(js) && /altoCelda/.test(js));
+check('la grilla calcula las filas con la VENTANA (C9)',
+    /vent = ventana\(\{/.test(js) && /vent\.porAlto/.test(js) && /altoCelda/.test(js));
 check('grilla navegable = scroll vertical DERIVADO del desborde',
     /mu-gal-linea--scroll-y/.test(css)
     && /var scrollY = \(layout === 'grilla' && navega\)/.test(js));
@@ -269,6 +270,41 @@ check('las columnas no se estiran: bloque centrado',
     /justify-content: center/.test(css) && /repeat\(auto-fill, var\(--mu-gal-tam/.test(css));
 check('el contrato nuevo existe',
     fs.existsSync(path.join(RAIZ, 'specs/019-galeria-compartida/contracts/coleccion.md')));
+
+/* ==================== 4e-bis. Cota y ventana (C9) ==================== */
+console.log('== Cota y ventana ==');
+const v0 = gal.puro.ventana({});
+check('ventana · sin cota no acota',
+    v0.acota === false && v0.porAlto === 0 && v0.altoMarco === 0, JSON.stringify(v0));
+check('ventana · motivo libre', v0.motivo === 'libre', v0.motivo);
+const v1 = gal.puro.ventana({ alto: 500, pie: 24, altoCelda: 200, gap: 8 });
+check('ventana · alto declarado descuenta el pie', v1.altoMarco === 476, String(v1.altoMarco));
+check('ventana · 476px = 2 filas de 200 + gap', v1.porAlto === 2, String(v1.porAlto));
+check('ventana · motivo alto', v1.acota === true && v1.motivo === 'alto', v1.motivo);
+const v2 = gal.puro.ventana({ filas: 3, altoCelda: 200, gap: 8 });
+check('ventana · filas fija el alto del marco', v2.altoMarco === 616, String(v2.altoMarco));
+check('ventana · filas acota aunque el marco crezca',
+    v2.acota === true && v2.porAlto === 3, JSON.stringify(v2));
+check('ventana · motivo filas', v2.motivo === 'filas', v2.motivo);
+const v3 = gal.puro.ventana({ filas: 5, alto: 400, altoCelda: 200, gap: 8 });
+check('ventana · filas manda sobre alto (gana el menor)',
+    v3.porAlto === 1 && v3.altoMarco === 400, JSON.stringify(v3));
+const v4 = gal.puro.ventana({ marco: 420, pie: 20, altoCelda: 200, gap: 8, acota: true });
+check('ventana · marco que recorta acota',
+    v4.acota === true && v4.porAlto === 1 && v4.altoMarco === 400, JSON.stringify(v4));
+check('ventana · motivo marco', v4.motivo === 'marco', v4.motivo);
+const v5 = gal.puro.ventana({ marco: 420, pie: 20, altoCelda: 200, gap: 8, acota: false });
+check('ventana · marco que crece con el contenido NO acota',
+    v5.acota === false && v5.altoMarco === 0, JSON.stringify(v5));
+const v6 = gal.puro.ventana({ alto: 10, pie: 20 });
+check('ventana · alto menor que el pie no acota', v6.acota === false);
+const v7 = gal.puro.ventana({ filas: 2 });
+check('ventana · filas sin altoCelda degrada sin romper',
+    v7.porAlto === 2 && v7.altoMarco === 2, JSON.stringify(v7));
+check('ventana · filas 1 = una celda exacta',
+    gal.puro.ventana({ filas: 1, altoCelda: 160 }).altoMarco === 160);
+check('ventana · no muta las opciones',
+    typeof gal.puro.ventana({ filas: 'x', alto: null }).acota === 'boolean');
 
 /* ==================== 4f. Carga acumulativa del chip (C1bis) ==================== */
 console.log('== Carga acumulativa del chip ==');
@@ -340,11 +376,22 @@ check('el chip revela una pantalla (no pagina) y el estado es derivado',
     /function revelarSiguiente/.test(js) && /alRevelar/.test(js)
     && !/function paginarSiguiente/.test(js) && !/function tanda/.test(js));
 check('la galeria publica su estado navegable', /data-mu-gal-estado/.test(js));
-check('`alto` es opcion y con 0 mide el marco real',
+check('`alto` es opcion y con 0 se mide el marco real',
     /var altoVista = Math\.max\(0, parseInt\(o\.alto, 10\) \|\| 0\)/.test(js)
-    && /altoDisp = nodo\.clientHeight \|\| 0/.test(js));
-check('`alto` declarado fija la ventana del marco (no crece)',
-    /linea\.style\.maxHeight = altoVista \+ 'px'/.test(js));
+    && /var marcoH = nodo\.clientHeight \|\| 0/.test(js));
+check('el marco solo acota si su contenido NO entra',
+    /recorta = \(marcoH > 0\) && \(nodo\.scrollHeight > marcoH \+ 1\)/.test(js));
+check('el recorte ya visto se conserva entre pintados',
+    /!!\(estPrevio && estPrevio\.recorta\)/.test(js)
+    && /tandas: tandas, firma: firma, recorta: recorta/.test(js));
+check('la ventana fija el alto del marco (ya sin el pie, sin desbordar)',
+    /linea\.style\.maxHeight = vent\.altoMarco \+ 'px'/.test(js));
+check('sin cota no hay chip (caben = todos)',
+    js.indexOf('(cabenVista > 0) ? cabenVista : (items.length + huecos)') !== -1);
+check('la raiz reparte pie + marco (flex column)',
+    /\[data-mu-gal-layout\] \{[^}]*flex-direction: column/.test(css));
+check('la fuente de la cota se publica para QA',
+    /data-mu-gal-cota/.test(js) && /vent \? vent\.motivo : 'ancho'/.test(js));
 check('el consumidor se entera de los repintados propios (onPintado)',
     /typeof o\.onPintado === 'function'/.test(js) && /o\.onPintado\(res\)/.test(js));
 check('el listado del visor revela todo (navegable:true, sin chip)',

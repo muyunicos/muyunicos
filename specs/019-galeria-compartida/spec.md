@@ -112,6 +112,14 @@ Contrato: [contracts/coleccion.md](./contracts/coleccion.md). Reemplaza "tira + 
   visibles: imagen + chip + hueco, igual que en `MU.puro.celdas`). Con `min 4` /
   `capacidad 8` / `tope 3` la secuencia es la tabla del contrato (C1).
 
+- **D24 — La cota define el chip; sin cota no hay chip**: en `grilla` la ventana sale de
+  `filas` (manda), si no `alto`, si no un marco que **recorta de verdad**
+  (`scrollHeight > clientHeight`). Si ninguna acota, la coleccion crece con el contenido:
+  se pintan TODAS las filas y `navegable:'auto'` equivale a `true` (sin chip). En `fila` la
+  cota es siempre el **ancho** (una linea). `filas`/`alto` fijan tambien el ALTO del marco
+  (`filas*altoCelda + (filas-1)*gap`, con `alto` como maximo) y el **pie** se resta siempre:
+  el marco nunca desborda el bloque (`MU.puro.ventana`, contrato C9).
+
 - **FR-024** `MU.coleccion(el, opciones)` con `layout` (fila/grilla), `navegable`
   (`auto`/true/false; alias `deslizable`), `tamano`, `gap`, `filas`, `columnas`, `alto`.
 - **FR-025** `MU.puro.celdas()` decide `visiblesItems`, `huecos` y `chip` (D21).

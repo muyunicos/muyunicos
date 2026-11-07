@@ -441,7 +441,9 @@
             navegable: (ESTADO.navegable === 'auto') ? 'auto' : (ESTADO.navegable === 'true'),
             tamano: ESTADO.tamano,
             gap: ESTADO.gap,
-            alto: ESTADO.sinLimite ? 0 : ESTADO.alto,
+            // `alto` es la ventana del BLOQUE de la galeria: se toma el alto REAL del nodo
+            // (el lienzo del playground suma padding/borde: declarar su valor desbordaba).
+            alto: ESTADO.sinLimite ? 0 : (GALERIA.clientHeight || ESTADO.alto),
             filas: ESTADO.filas,
             columnas: ESTADO.columnas,
             tope: ESTADO.tope,
@@ -470,7 +472,8 @@
             navegable: o.navegable,
             tamano: ESTADO.tamano,
             gap: ESTADO.gap,
-            alto: o.alto,
+            alto: ESTADO.sinLimite ? 0 : ESTADO.alto,
+            altoReal: GALERIA.clientHeight,
             anchoReal: GALERIA.clientWidth,
             capacidad: res ? res.capacidad : 0,
             filas: ESTADO.filas,
@@ -478,6 +481,9 @@
             tope: ESTADO.tope,
             min: ESTADO.min,
             capacidad: ESTADO.capacidad,
+            cota: res ? res.cota : '',
+            acota: res ? res.acota : false,
+            altoMarco: res ? res.altoMarco : 0,
             slots: ESTADO.slots,
             items: o.items.length
         }, null, 1);
@@ -498,7 +504,13 @@
             + ' (entran ' + r.capacidad + ')'
             + ' · huecos ' + r.huecos + ' · chip ' + r.chip
             + (r.agotado ? ' (tope: el chip abre el visor)' : '')
-            + (r.scrollY ? ' · scroll vertical' : ''));
+            + (r.scrollY ? ' · scroll vertical' : '')
+            + ' · cota ' + r.cota + (r.altoMarco > 0 ? ' (' + r.altoMarco + 'px)' : ''));
+        // Geometria REAL (reflow): bloque/pie/marco, para verificar que nada desborda.
+        var ln = GALERIA.querySelector('.mu-gal-linea');
+        var pz = GALERIA.querySelector('.mu-gal-pie');
+        avisar(STATUS.textContent + ' | bloque ' + GALERIA.clientHeight + '/' + GALERIA.scrollHeight
+            + ' pie ' + (pz ? pz.offsetHeight : 0) + ' marco ' + (ln ? ln.offsetHeight : 0));
     }
 
     function marcarRadio(nombre, valor) {
@@ -802,6 +814,47 @@
         document.getElementById('pg-alto-out').textContent = '420';
         document.getElementById('pg-cantidad').value = '14';
         document.getElementById('pg-cantidad-out').textContent = '14';
+    }
+    if (window.location.hash === '#grilla-pie') {
+        // QA (C9): la ventana descuenta el PIE (alto = marco + pie, sin desbordar).
+        ESTADO.layout = 'grilla';
+        ESTADO.navegable = 'auto';
+        ESTADO.alto = 420;
+        ESTADO.min = 12;
+        ESTADO.cantidad = 9;
+        ESTADO.filas = 0;
+        ESTADO.columnas = 0;
+        marcarRadio('pg-layout', 'grilla');
+        marcarRadio('pg-navega', 'auto');
+        document.getElementById('pg-alto').value = '420';
+        document.getElementById('pg-alto-out').textContent = '420';
+        document.getElementById('pg-min').value = '12';
+        document.getElementById('pg-cantidad').value = '9';
+        document.getElementById('pg-cantidad-out').textContent = '9';
+    }
+    if (window.location.hash === '#sin-limite') {
+        // QA (C9): grilla 'auto' SIN cota -> se ven TODAS y NO hay chip.
+        ESTADO.layout = 'grilla';
+        ESTADO.navegable = 'auto';
+        ESTADO.tamano = 'grande';
+        ESTADO.ancho = 760;
+        ESTADO.sinLimite = true;
+        ESTADO.filas = 0;
+        ESTADO.columnas = 3;
+        ESTADO.cantidad = 9;
+        ESTADO.tope = 0;
+        marcarRadio('pg-layout', 'grilla');
+        marcarRadio('pg-navega', 'auto');
+        document.getElementById('pg-tamano').value = 'grande';
+        document.getElementById('pg-ancho').value = '760';
+        document.getElementById('pg-ancho-out').textContent = '760';
+        document.getElementById('pg-sin-limite').checked = true;
+        document.getElementById('pg-alto-out').textContent = 'sin limite';
+        document.getElementById('pg-filas').value = '0';
+        document.getElementById('pg-columnas').value = '3';
+        document.getElementById('pg-cantidad').value = '9';
+        document.getElementById('pg-cantidad-out').textContent = '9';
+        document.getElementById('pg-tope').value = '0';
     }
     sincronizarSlots();
     render();
