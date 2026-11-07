@@ -1197,6 +1197,7 @@
         var desliza = false;
         var topeEfectivo = tope;
 
+        var scrollY = false;
         if (layout === 'fila') {
             if (o.deslizable === true) {
                 desliza = true;
@@ -1208,10 +1209,33 @@
             if (!desliza) {
                 topeEfectivo = (tope > 0) ? Math.min(tope, cabenLinea) : cabenLinea;
             }
-        } else if (filas > 0) {
+        } else {
+            // Grilla: columnas por ANCHO y filas por ALTO del contenedor (si lo tiene).
             var porFila = (columnas > 0) ? columnas : cabenLinea;
-            var cabenGrilla = porFila * filas;
-            topeEfectivo = (tope > 0) ? Math.min(tope, cabenGrilla) : cabenGrilla;
+            var altoDisp = nodo.clientHeight || 0;
+            var porAlto = 0;
+            if (altoDisp > 0) {
+                // Alto de la celda: el de la imagen mas el cuerpo que dibujan los slots.
+                // Es una estimacion CONSERVADORA (suma de mas) para no desbordar nunca.
+                var extras = 0;
+                if (slots.titulo) { extras += 18; }
+                if (slots.descripcion) { extras += 16; }
+                if (slots.precio) { extras += 16; }
+                if (slots.acciones) { extras += 30; }
+                if (slots.estado) { extras += 14; }
+                var altoCelda = tam.alto + (extras > 0 ? (extras + 12) : 0);
+                porAlto = Math.max(1, Math.floor((altoDisp + gap) / (altoCelda + gap)));
+            }
+            if (filas > 0) {
+                porAlto = (porAlto > 0) ? Math.min(filas, porAlto) : filas;
+            }
+            scrollY = (o.deslizable === true);
+            if (!scrollY) {
+                var cabenGrilla = (porAlto > 0) ? (porFila * porAlto) : 0;
+                if (cabenGrilla > 0) {
+                    topeEfectivo = (tope > 0) ? Math.min(tope, cabenGrilla) : cabenGrilla;
+                }
+            }
         }
 
         var res = celdas({ cargadas: items.length, min: min, capacidad: capacidad, tope: topeEfectivo });
@@ -1244,6 +1268,7 @@
         /* La medida va en la LINEA (no solo en la celda): la grilla calcula sus
            columnas con `minmax(var(--mu-gal-tam))` y sin esto usaba 112px siempre. */
         linea.style.setProperty('--mu-gal-tam', tam.ancho + 'px');
+        if (scrollY) { linea.className += ' mu-gal-linea--scroll-y'; }
         if (layout === 'grilla' && filas > 0) {
             linea.setAttribute('data-filas', String(filas));
             linea.style.setProperty('--filas', String(filas));
@@ -1282,7 +1307,7 @@
         }
         return {
             visiblesItems: res.visiblesItems, huecos: res.huecos, chip: res.chip,
-            modo: modoClase, desliza: desliza
+            modo: modoClase, desliza: desliza, scrollY: scrollY
         };
     }
 

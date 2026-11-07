@@ -706,19 +706,34 @@ body.is-scroll-locked { overflow: hidden; }
 .mu-gal-linea--linea::-webkit-scrollbar { display: none; }
 .mu-gal-linea--linea > .mu-gal-celda { scroll-snap-align: start; }
 
-/* Grilla: columnas automaticas con `minmax(tam)`. 0 filas / 0 columnas = auto.
-   Las filas crecen con el contenido: con `grid-auto-rows` fijo la tarjeta era mas
-   alta que la fila (imagen + cuerpo) y se solapaba con la siguiente. */
+/* Grilla: columnas del tamano EXACTO (no `1fr`), asi la tarjeta no se estira cuando
+   sobran columnas y el bloque completo se centra en el contenedor. 0 filas/columnas
+   sigue siendo automatico. Las filas crecen con el contenido: con `grid-auto-rows`
+   fijo la tarjeta era mas alta que la fila (imagen + cuerpo) y se solapaba. */
 .mu-gal-linea--grilla {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(var(--mu-gal-tam, 112px), 1fr));
+    grid-template-columns: repeat(auto-fill, var(--mu-gal-tam, 112px));
+    justify-content: center;
     gap: var(--mu-gal-gap, 8px);
     align-items: start;
 }
 
-/* Columnas explicitas (0 = auto-fill de arriba). */
+/* Columnas explicitas: reparten el ancho; la celda se centra en su columna. */
 .mu-gal-linea--grilla[data-columnas] {
     grid-template-columns: repeat(var(--columnas, 4), minmax(0, 1fr));
+    justify-content: stretch;
+}
+
+.mu-gal-linea--grilla[data-columnas] .mu-gal-celda { justify-self: center; }
+
+/* Grilla navegable (`deslizable: true`): scroll vertical dentro del alto del
+   contenedor, en vez de recortar con el chip. */
+.mu-gal-linea--scroll-y {
+    overflow-y: auto;
+    max-height: 100%;
+    overscroll-behavior-y: contain;
+    scrollbar-width: thin;
+    padding-right: 2px;
 }
 
 /* Envoltorio de la fila deslizable: ancla las flechas fuera del recorte. */

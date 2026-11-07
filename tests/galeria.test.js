@@ -259,6 +259,12 @@ check('la grilla no fija alto de fila (era el solapamiento)',
     !/grid-auto-rows: var\(--mu-gal-tam/.test(css));
 check('la linea horizontal no captura el scroll vertical',
     /overflow-y: hidden/.test(css) && /overscroll-behavior-x: contain/.test(css));
+check('la grilla calcula las filas por el ALTO del contenedor',
+    /altoDisp/.test(js) && /porAlto/.test(js) && /altoCelda/.test(js));
+check('grilla navegable = scroll vertical (no recorta con chip)',
+    /mu-gal-linea--scroll-y/.test(css) && /scrollY = \(o\.deslizable === true\)/.test(js));
+check('las columnas no se estiran: bloque centrado',
+    /justify-content: center/.test(css) && /repeat\(auto-fill, var\(--mu-gal-tam/.test(css));
 check('el contrato nuevo existe',
     fs.existsSync(path.join(RAIZ, 'specs/019-galeria-compartida/contracts/coleccion.md')));
 

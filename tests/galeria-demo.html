@@ -90,6 +90,8 @@
         background: var(--blanco);
         margin-bottom: 12px;
     }
+    /* La galeria ocupa el alto del lienzo: asi la grilla mide el alto disponible. */
+    #pg-galeria { height: 100%; }
     .pg-status { min-height: 18px; margin: 0 0 8px; font-size: 12px; font-weight: 600; color: var(--resaltado); }
     .pg-ayuda { margin: 0 0 10px; font-size: 12px; color: var(--texto-light); }
     details.pg-tema { border: 1px solid #e2e8f0; border-radius: var(--mu-radius); padding: 8px 10px; }
@@ -167,6 +169,11 @@
                 <label for="pg-ancho">Ancho del lienzo</label>
                 <input type="range" id="pg-ancho" min="240" max="900" step="20" value="760">
                 <output id="pg-ancho-out">760</output>
+            </div>
+            <div class="pg-campo">
+                <label for="pg-alto">Alto del lienzo</label>
+                <input type="range" id="pg-alto" min="0" max="800" step="20" value="0">
+                <output id="pg-alto-out">auto</output>
             </div>
             <div class="pg-campo">
                 <label for="pg-filas">Filas (0 = auto)</label>
@@ -336,6 +343,7 @@
         tamano: 'medio',
         gap: 8,
         ancho: 760,
+        alto: 0,
         filas: 0,
         columnas: 0,
         cantidad: 9,
@@ -448,6 +456,7 @@
 
     function render() {
         LIENZO.style.maxWidth = ESTADO.ancho + 'px';
+        LIENZO.style.height = (ESTADO.alto > 0) ? (ESTADO.alto + 'px') : '';
         var o = opciones();
         var res = window.MU.coleccion(GALERIA, o);
         var jsonTxt = JSON.stringify({
@@ -456,6 +465,7 @@
             deslizable: o.deslizable,
             tamano: ESTADO.tamano,
             gap: ESTADO.gap,
+            alto: ESTADO.alto,
             filas: ESTADO.filas,
             columnas: ESTADO.columnas,
             tope: ESTADO.tope,
@@ -468,7 +478,8 @@
         if (document.activeElement !== JSONBOX) { JSONBOX.value = jsonTxt; }
         if (res) {
             avisar('modo ' + res.modo + ' · items ' + res.visiblesItems
-                + ' · huecos ' + res.huecos + ' · chip ' + res.chip);
+                + ' · huecos ' + res.huecos + ' · chip ' + res.chip
+                + (res.scrollY ? ' · scroll vertical' : ''));
         }
         return res;
     }
@@ -492,6 +503,8 @@
         document.getElementById('pg-gap-out').textContent = String(ESTADO.gap);
         set('pg-ancho', ESTADO.ancho);
         document.getElementById('pg-ancho-out').textContent = String(ESTADO.ancho);
+        set('pg-alto', ESTADO.alto);
+        document.getElementById('pg-alto-out').textContent = ESTADO.alto > 0 ? String(ESTADO.alto) : 'auto';
         set('pg-filas', ESTADO.filas);
         set('pg-columnas', ESTADO.columnas);
         set('pg-cantidad', ESTADO.cantidad);
@@ -536,7 +549,7 @@
             ESTADO.deslizable = (datos.deslizable === true) ? 'true'
                 : (datos.deslizable === false) ? 'false' : String(datos.deslizable);
         }
-        ['gap', 'filas', 'columnas', 'tope', 'min', 'capacidad'].forEach(function (k) {
+        ['gap', 'alto', 'filas', 'columnas', 'tope', 'min', 'capacidad'].forEach(function (k) {
             if (datos[k] !== undefined) { ESTADO[k] = Math.max(0, parseInt(datos[k], 10) || 0); }
         });
         if (datos.items !== undefined) {
@@ -598,6 +611,11 @@
     enlazar('pg-ancho', 'input', function (e) {
         ESTADO.ancho = parseInt(e.target.value, 10) || 240;
         document.getElementById('pg-ancho-out').textContent = String(ESTADO.ancho);
+        render();
+    });
+    enlazar('pg-alto', 'input', function (e) {
+        ESTADO.alto = parseInt(e.target.value, 10) || 0;
+        document.getElementById('pg-alto-out').textContent = ESTADO.alto > 0 ? String(ESTADO.alto) : 'auto';
         render();
     });
     enlazar('pg-filas', 'input', function (e) { ESTADO.filas = parseInt(e.target.value, 10) || 0; render(); });
@@ -686,6 +704,22 @@
         ESTADO.filas = 2;               // QA: grilla a 2 filas (el chip resume el resto)
         marcarRadio('pg-layout', 'grilla');
         document.getElementById('pg-filas').value = '2';
+    }
+    if (window.location.hash === '#grilla-alto') {
+        ESTADO.layout = 'grilla';       // QA: alto limitado -> chip por filas que caben
+        ESTADO.alto = 360;
+        marcarRadio('pg-layout', 'grilla');
+        document.getElementById('pg-alto').value = '360';
+        document.getElementById('pg-alto-out').textContent = '360';
+    }
+    if (window.location.hash === '#grilla-scroll') {
+        ESTADO.layout = 'grilla';       // QA: grilla navegable -> scroll vertical
+        ESTADO.alto = 360;
+        ESTADO.deslizable = 'true';
+        marcarRadio('pg-layout', 'grilla');
+        marcarRadio('pg-desliza', 'true');
+        document.getElementById('pg-alto').value = '360';
+        document.getElementById('pg-alto-out').textContent = '360';
     }
     sincronizarSlots();
     render();
