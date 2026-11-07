@@ -294,13 +294,19 @@ MU.puro.ventana({alto, filas, altoCelda, gap, pie, marco, acota})
 // -> {acota, porAlto, altoMarco, motivo}   motivo: 'filas'|'alto'|'marco'|'libre'
 ```
 
-1. **`acota`** es la evidencia del marco: `scrollHeight > clientHeight + 1` medido **antes**
+1. **`acota`** (el parametro) es SOLO la evidencia del marco: `scrollHeight > clientHeight + 1` medido **antes**
    de vaciar el nodo. Un marco que crece con el contenido **no acota** (`clientHeight` es el
    alto del contenido; comparar solo `clientHeight > 0` era el bug: el marco medía su propio
-   recorte y la grilla mostraba una fila con 3 columnas).
+   recorte y la grilla mostraba una fila con 3 columnas). Las cotas **declaradas** (`alto`,
+   `filas`) viajan por su propio parametro: pasarlas aca metia el marco medido en el calculo
+   y dejaba la vista clavada (ver el punto 3).
 2. **El `pie` se resta siempre**: `alto` es la ventana TOTAL del bloque (pie incluido). Con
    `alto 420` y `pie 15` el marco mide `405`, no 420 (si no, la galeria desbordaba el bloque).
-3. **`filas`** acota aunque el marco crezca y **fija el alto del marco**:
+3. **`filas`** es una cota **DECLARADA**: acota aunque el marco crezca y **basta por si sola**
+   (sin `alto`). Su presupuesto NO se toma del marco medido, que es justo lo que esta misma
+   galeria acabo de recortar; tomarlo del marco cierra el calculo en una fila
+   (`alto:0, filas:3, altoCelda:246, marco:246` daba `porAlto 1` / `altoMarco 246`; ahora da
+   `3` / `754`). **Fija el alto del marco**:
    `altoMarco = filas*altoCelda + (filas-1)*gap`, con `alto` como maximo. No hay scroll
    hasta que se toca el chip (ahi lo revelado ya no cabe y la galeria pasa a navegable).
 4. **Sin cota**: `porAlto = 0`, `caben` llega a `carga` como `items + huecos`, `capacidad`

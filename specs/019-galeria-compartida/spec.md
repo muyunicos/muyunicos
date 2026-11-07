@@ -116,7 +116,10 @@ Contrato: [contracts/coleccion.md](./contracts/coleccion.md). Reemplaza "tira + 
   `filas` (manda), si no `alto`, si no un marco que **recorta de verdad**
   (`scrollHeight > clientHeight`). Si ninguna acota, la coleccion crece con el contenido:
   se pintan TODAS las filas y `navegable:'auto'` equivale a `true` (sin chip). En `fila` la
-  cota es siempre el **ancho** (una linea). `filas`/`alto` fijan tambien el ALTO del marco
+  cota es siempre el **ancho** (una linea). `filas` es una cota **DECLARADA** y basta por si
+  sola (no necesita `alto` ni que el marco recorte: el marco medido mide el recorte que esta
+  misma galeria acaba de hacer y usarlo como presupuesto clavaba la vista en una fila).
+  `filas`/`alto` fijan tambien el ALTO del marco
   (`filas*altoCelda + (filas-1)*gap`, con `alto` como maximo) y el **pie** se resta siempre:
   el marco nunca desborda el bloque (`MU.puro.ventana`, contrato C9).
 

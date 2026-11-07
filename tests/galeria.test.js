@@ -306,6 +306,27 @@ check('ventana · filas 1 = una celda exacta',
 check('ventana · no muta las opciones',
     typeof gal.puro.ventana({ filas: 'x', alto: null }).acota === 'boolean');
 
+/* El marco MEDIDO es el recorte que esta misma galeria acaba de hacer (1 fila): si se
+   usa como presupuesto, `filas` queda clavada en 1. `filas` es una cota DECLARADA. */
+const v8 = gal.puro.ventana({ filas: 2, altoCelda: 246, gap: 8, marco: 246, acota: true });
+check('ventana · filas 2 con marco de 1 fila NO se queda en 1 fila',
+    v8.porAlto === 2 && v8.altoMarco === 500, JSON.stringify(v8));
+const v9 = gal.puro.ventana({ filas: 3, altoCelda: 246, gap: 8, marco: 246, acota: true, pie: 15 });
+check('ventana · filas 3 + pie: el pie no se come una fila',
+    v9.porAlto === 3 && v9.altoMarco === 754, JSON.stringify(v9));
+const v10 = gal.puro.ventana({ filas: 0, altoCelda: 246, gap: 8, marco: 246, acota: true });
+check('ventana · sin filas el marco recortado sigue mandando (1 fila)',
+    v10.porAlto === 1 && v10.altoMarco === 246 && v10.motivo === 'marco', JSON.stringify(v10));
+const v11 = gal.puro.ventana({ filas: 2, alto: 800, altoCelda: 246, gap: 8 });
+check('ventana · filas no infla el marco cuando el bloque sobra',
+    v11.porAlto === 2 && v11.altoMarco === 500, JSON.stringify(v11));
+const v12 = gal.puro.ventana({ filas: 4, alto: 300, altoCelda: 246, gap: 8 });
+check('ventana · bloque acotado recorta las filas declaradas (gana el menor)',
+    v12.porAlto === 1 && v12.altoMarco === 300, JSON.stringify(v12));
+check('coleccion · `acota` es el recorte REAL, no las cotas declaradas',
+    /acota: \(recorta \|\| !!\(estPrevio && estPrevio\.recorta\)\)/.test(js)
+    && !/acota: \(altoVista > 0 \|\| filas > 0/.test(js));
+
 /* ==================== 4f. Carga acumulativa del chip (C1bis) ==================== */
 console.log('== Carga acumulativa del chip ==');
 

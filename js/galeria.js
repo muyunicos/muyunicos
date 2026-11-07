@@ -199,6 +199,12 @@
      * `alto` es la ventana TOTAL del bloque (pie incluido), asi que el pie se resta
      * siempre: por eso el marco nunca desborda el alto declarado.
      *
+     * `filas` es una cota DECLARADA y basta por si sola: su presupuesto es
+     * `filas * altoCelda + gaps` de MARCO (+ el pie del bloque) y NO se toma del marco
+     * medido, que es justo lo que esta misma galeria acaba de recortar. Tomarlo del
+     * marco clava la vista en una fila (`alto:0, filas:3, marco:246` daba `porAlto 1`).
+     * Con `alto` declarado ademas, gana el menor de los dos (el bloque manda).
+     *
      * @param {{alto:number, filas:number, altoCelda:number, gap:number, pie:number,
      *          marco:number, acota:boolean}} o
      * @returns {{acota:boolean, porAlto:number, altoMarco:number, motivo:string}}
@@ -213,8 +219,14 @@
         var marco = Math.max(0, parseInt(o.marco, 10) || 0);
         var recorta = !!o.acota;
 
-        // Alto disponible para las CELDAS: el declarado, o el del marco SI recorta.
-        var disp = (alto > 0) ? alto : (recorta ? marco : 0);
+        // Alto de MARCO que declaran las `filas` (sin pie): es una cota absoluta.
+        var altoFilas = (filas > 0) ? (filas * celda + (filas - 1) * gap) : 0;
+        // Presupuesto TOTAL del bloque: el declarado por `alto`, el que piden las
+        // `filas` (+ su pie), o el marco SI recorta de verdad. El marco medido NUNCA
+        // decide cuando hay cota declarada.
+        var base = (alto > 0) ? alto
+            : ((filas > 0) ? (altoFilas + pie) : (recorta ? marco : 0));
+        var disp = base;
         if (disp > 0) { disp = Math.max(0, disp - pie); }
 
         // Filas de celdas que entran (0 = sin presupuesto: se ven todas).
@@ -222,7 +234,7 @@
         var altoMarco = disp;
         if (filas > 0) {
             porAlto = (porAlto > 0) ? Math.min(filas, porAlto) : filas;
-            var altoFilas = filas * celda + (filas - 1) * gap;
+            // `altoFilas` ya se calculo arriba desde la cota declarada.
             altoMarco = (altoMarco > 0) ? Math.min(altoMarco, altoFilas) : altoFilas;
         }
         var motivo = (filas > 0) ? 'filas' : ((alto > 0) ? 'alto' : (recorta ? 'marco' : 'libre'));
@@ -1465,8 +1477,10 @@
                 pie: pieAlto, marco: marcoH,
                 // El recorte ya visto se conserva: sin eso el marco mediria su PROPIO
                 // recorte (pintar todas -> desborda -> "no acota" -> pintar todas).
-                acota: (altoVista > 0 || filas > 0 || recorta
-                    || !!(estPrevio && estPrevio.recorta))
+                // SOLO el recorte REAL: `alto` y `filas` son cotas DECLARADAS y viajan
+                // por su propio parametro (pasarlas aca hacia que el marco recortado se
+                // usara como presupuesto y la vista quedara clavada en una fila).
+                acota: (recorta || !!(estPrevio && estPrevio.recorta))
             });
             if (vent.acota) { cabenVista = porFila * vent.porAlto; }
         } else {

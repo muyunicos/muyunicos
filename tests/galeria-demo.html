@@ -718,6 +718,30 @@
     }
 
     /* ---------- arranque ---------- */
+    /* Cada hash describe la vista COMPLETA. Sin este reset, navegar de un hash a otro
+       sin recargar arrastraba claves del anterior (p. ej. `sinLimite` o `filas`), y una
+       prueba parecia seguir "rara" por culpa de la vista previa, no del componente. */
+    function reiniciarEstado() {
+        ESTADO.preset = 'tarjeta';
+        ESTADO.layout = 'fila';
+        ESTADO.navegable = 'auto';
+        ESTADO.tamano = 'medio';
+        ESTADO.gap = 8;
+        ESTADO.ancho = 760;
+        ESTADO.alto = 420;
+        ESTADO.sinLimite = false;
+        ESTADO.filas = 0;
+        ESTADO.columnas = 0;
+        ESTADO.cantidad = 9;
+        ESTADO.tope = 0;
+        ESTADO.min = 0;
+        ESTADO.capacidad = 0;
+        ESTADO.sustantivo = 'imagenes';
+        ESTADO.slots = slotsDelPreset(ESTADO.preset);   // sin esto `volcar` revienta (null)
+        volcar();
+    }
+    reiniciarEstado();
+
     if (window.location.hash === '#mini') {
         document.getElementById('pg-preset').value = 'mini';
         ESTADO.preset = 'mini';
@@ -832,7 +856,8 @@
         document.getElementById('pg-cantidad').value = '9';
         document.getElementById('pg-cantidad-out').textContent = '9';
     }
-    if (window.location.hash === '#sin-limite') {
+    if (window.location.hash === '#sin-limite'
+        || /^#sin-limite-f[1-9]$/.test(window.location.hash)) {
         // QA (C9): grilla 'auto' SIN cota -> se ven TODAS y NO hay chip.
         ESTADO.layout = 'grilla';
         ESTADO.navegable = 'auto';
@@ -855,6 +880,13 @@
         document.getElementById('pg-cantidad').value = '9';
         document.getElementById('pg-cantidad-out').textContent = '9';
         document.getElementById('pg-tope').value = '0';
+        // QA del bug de la grilla: `#sin-limite-f2|f3` = filas DECLARADAS sin alto de
+        // bloque (el marco medido nunca debe decidir cuantas filas se ven).
+        var mFilasSinLimite = /^#sin-limite-f([1-9])$/.exec(window.location.hash);
+        if (mFilasSinLimite) {
+            ESTADO.filas = parseInt(mFilasSinLimite[1], 10) || 0;
+            document.getElementById('pg-filas').value = String(ESTADO.filas);
+        }
     }
     sincronizarSlots();
     render();
