@@ -77,6 +77,10 @@
         border-radius: 6px;
         font: 10px/1.35 ui-monospace, monospace;
         white-space: pre-wrap;
+        width: 100%;
+        box-sizing: border-box;
+        border: 0;
+        resize: vertical;
     }
     .pg-main { flex: 1 1 auto; min-width: 0; }
     .pg-lienzo {
@@ -165,11 +169,11 @@
                 <output id="pg-ancho-out">760</output>
             </div>
             <div class="pg-campo">
-                <label for="pg-filas">Filas (grilla)</label>
+                <label for="pg-filas">Filas (0 = auto)</label>
                 <input type="number" id="pg-filas" min="0" max="6" value="0">
             </div>
             <div class="pg-campo">
-                <label for="pg-columnas">Columnas (grilla)</label>
+                <label for="pg-columnas">Columnas (0 = auto)</label>
                 <input type="number" id="pg-columnas" min="0" max="8" value="0">
             </div>
         </section>
@@ -220,7 +224,13 @@
             <button type="button" class="pg-boton" id="pg-reset">Reset</button>
         </div>
 
-        <pre class="pg-json" id="pg-json"></pre>
+        <textarea class="pg-json" id="pg-json" spellcheck="false" rows="8"
+                  aria-label="Configuracion de la galeria (editable: cambia items, slots, etc.)"></textarea>
+        <button type="button" class="pg-boton" id="pg-json-aplicar"
+                style="margin-top:6px;width:100%">Aplicar JSON</button>
+        <p class="pg-ayuda" style="margin:6px 0 0">
+            Editá el JSON (por ejemplo <code>items</code>) y tocalo para aplicarlo.
+        </p>
     </aside>
 
     <main class="pg-main">
@@ -440,7 +450,7 @@
         LIENZO.style.maxWidth = ESTADO.ancho + 'px';
         var o = opciones();
         var res = window.MU.coleccion(GALERIA, o);
-        JSONBOX.textContent = JSON.stringify({
+        var jsonTxt = JSON.stringify({
             preset: ESTADO.preset,
             layout: ESTADO.layout,
             deslizable: o.deslizable,
@@ -454,11 +464,92 @@
             slots: ESTADO.slots,
             items: o.items.length
         }, null, 1);
+        // Editable: no se pisa mientras el usuario lo esta tocando.
+        if (document.activeElement !== JSONBOX) { JSONBOX.value = jsonTxt; }
         if (res) {
             avisar('modo ' + res.modo + ' · items ' + res.visiblesItems
                 + ' · huecos ' + res.huecos + ' · chip ' + res.chip);
         }
         return res;
+    }
+
+    function marcarRadio(nombre, valor) {
+        var lista = document.querySelectorAll('input[name="' + nombre + '"]');
+        Array.prototype.forEach.call(lista, function (r) {
+            r.checked = (r.value === String(valor));
+        });
+    }
+
+    /** Vuelca ESTADO a los controles (tras aplicar un JSON editado). */
+    function volcar() {
+        function set(id, v) {
+            var el = document.getElementById(id);
+            if (el) { el.value = v; }
+        }
+        set('pg-preset', ESTADO.preset);
+        set('pg-tamano', ESTADO.tamano);
+        set('pg-gap', ESTADO.gap);
+        document.getElementById('pg-gap-out').textContent = String(ESTADO.gap);
+        set('pg-ancho', ESTADO.ancho);
+        document.getElementById('pg-ancho-out').textContent = String(ESTADO.ancho);
+        set('pg-filas', ESTADO.filas);
+        set('pg-columnas', ESTADO.columnas);
+        set('pg-cantidad', ESTADO.cantidad);
+        document.getElementById('pg-cantidad-out').textContent = String(ESTADO.cantidad);
+        set('pg-tope', ESTADO.tope);
+        set('pg-min', ESTADO.min);
+        set('pg-capacidad', ESTADO.capacidad);
+        set('pg-sustantivo', ESTADO.sustantivo);
+        marcarRadio('pg-layout', ESTADO.layout);
+        marcarRadio('pg-desliza', ESTADO.deslizable);
+        sincronizarSlots();
+        enlazar2('pg-d-precio', 'precio');
+        enlazar2('pg-d-promo', 'promo');
+        enlazar2('pg-d-desc', 'desc');
+        enlazar2('pg-d-fav', 'fav');
+        enlazar2('pg-d-etiqueta', 'etiqueta');
+        enlazar2('pg-d-acciones', 'acciones');
+
+        function enlazar2(id, clave) {
+            var el = document.getElementById(id);
+            if (el) { el.checked = !!ESTADO.datos[clave]; }
+        }
+    }
+
+    /** Aplica el JSON editado: opciones + cantidad de items. */
+    function aplicarJson() {
+        var datos;
+        try {
+            datos = JSON.parse(JSONBOX.value);
+        } catch (e) {
+            avisar('JSON invalido: ' + e.message);
+            return;
+        }
+        if (!datos || typeof datos !== 'object') {
+            avisar('JSON invalido: se espera un objeto');
+            return;
+        }
+        if (datos.preset !== undefined) { ESTADO.preset = String(datos.preset); }
+        if (datos.layout !== undefined) { ESTADO.layout = String(datos.layout); }
+        if (datos.tamano !== undefined) { ESTADO.tamano = String(datos.tamano); }
+        if (datos.deslizable !== undefined) {
+            ESTADO.deslizable = (datos.deslizable === true) ? 'true'
+                : (datos.deslizable === false) ? 'false' : String(datos.deslizable);
+        }
+        ['gap', 'filas', 'columnas', 'tope', 'min', 'capacidad'].forEach(function (k) {
+            if (datos[k] !== undefined) { ESTADO[k] = Math.max(0, parseInt(datos[k], 10) || 0); }
+        });
+        if (datos.items !== undefined) {
+            ESTADO.cantidad = Math.max(0, Math.min(14, parseInt(datos.items, 10) || 0));
+        }
+        if (datos.slots && typeof datos.slots === 'object') {
+            for (var k in datos.slots) {
+                if (datos.slots.hasOwnProperty(k)) { ESTADO.slots[k] = !!datos.slots[k]; }
+            }
+        }
+        volcar();
+        render();
+        avisar('JSON aplicado (' + ESTADO.cantidad + ' items)');
     }
 
     function abrirVisor(indice) {
@@ -531,6 +622,7 @@
     });
 
     enlazar('pg-visor', 'click', function () { abrirVisor(0); });
+    enlazar('pg-json-aplicar', 'click', aplicarJson);
     enlazar('pg-reset', 'click', function () { window.location.reload(); });
 
     /* ---------- pruebas del tema (visor + carrusel) ---------- */
@@ -570,9 +662,30 @@
         document.getElementById('pg-preset').value = 'mini';
         ESTADO.preset = 'mini';
     }
+    if (window.location.hash === '#huecos') {
+        ESTADO.preset = 'mini';         // QA: huecos primero (min 4, tope 4, 2 cargadas)
+        ESTADO.min = 4;
+        ESTADO.tope = 4;
+        ESTADO.cantidad = 2;
+        document.getElementById('pg-preset').value = 'mini';
+        document.getElementById('pg-min').value = '4';
+        document.getElementById('pg-tope').value = '4';
+        document.getElementById('pg-cantidad').value = '2';
+        document.getElementById('pg-cantidad-out').textContent = '2';
+    }
     ESTADO.slots = slotsDelPreset(ESTADO.preset);
     if (window.location.hash === '#todo') {
         ESTADO.slots.eliminar = true;   // QA: estrella + tachito apilados
+    }
+    if (window.location.hash === '#grilla') {
+        ESTADO.layout = 'grilla';       // QA: grilla con columnas y filas en auto
+        marcarRadio('pg-layout', 'grilla');
+    }
+    if (window.location.hash === '#grilla-f2') {
+        ESTADO.layout = 'grilla';
+        ESTADO.filas = 2;               // QA: grilla a 2 filas (el chip resume el resto)
+        marcarRadio('pg-layout', 'grilla');
+        document.getElementById('pg-filas').value = '2';
     }
     sincronizarSlots();
     render();

@@ -693,6 +693,9 @@ body.is-scroll-locked { overflow: hidden; }
 .mu-gal-linea--linea {
     flex-wrap: nowrap;
     overflow-x: auto;
+    /* No captura el eje vertical: la pagina sigue scrolleando con dedo/rueda. */
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
     scroll-snap-type: x mandatory;
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
@@ -703,22 +706,19 @@ body.is-scroll-locked { overflow: hidden; }
 .mu-gal-linea--linea::-webkit-scrollbar { display: none; }
 .mu-gal-linea--linea > .mu-gal-celda { scroll-snap-align: start; }
 
-/* Grilla (con `filas` limita el alto y el chip resume lo que no entra). */
+/* Grilla: columnas automaticas con `minmax(tam)`. 0 filas / 0 columnas = auto.
+   Las filas crecen con el contenido: con `grid-auto-rows` fijo la tarjeta era mas
+   alta que la fila (imagen + cuerpo) y se solapaba con la siguiente. */
 .mu-gal-linea--grilla {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(var(--mu-gal-tam, 112px), 1fr));
     gap: var(--mu-gal-gap, 8px);
-    overflow: hidden;
+    align-items: start;
 }
 
+/* Columnas explicitas (0 = auto-fill de arriba). */
 .mu-gal-linea--grilla[data-columnas] {
     grid-template-columns: repeat(var(--columnas, 4), minmax(0, 1fr));
-    grid-auto-rows: var(--mu-gal-tam, 112px);
-}
-
-.mu-gal-linea--grilla[data-filas] {
-    grid-auto-rows: var(--mu-gal-tam, 112px);
-    max-height: calc(var(--filas, 1) * (var(--mu-gal-tam, 112px) + var(--mu-gal-gap, 8px)) - var(--mu-gal-gap, 8px));
 }
 
 /* Envoltorio de la fila deslizable: ancla las flechas fuera del recorte. */

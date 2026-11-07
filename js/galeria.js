@@ -1241,6 +1241,9 @@
         var modoClase = (layout === 'grilla') ? 'grilla' : (desliza ? 'linea' : 'fila');
         var linea = crear(doc, 'div', 'mu-gal-linea mu-gal-linea--' + modoClase);
         linea.style.setProperty('--mu-gal-gap', gap + 'px');
+        /* La medida va en la LINEA (no solo en la celda): la grilla calcula sus
+           columnas con `minmax(var(--mu-gal-tam))` y sin esto usaba 112px siempre. */
+        linea.style.setProperty('--mu-gal-tam', tam.ancho + 'px');
         if (layout === 'grilla' && filas > 0) {
             linea.setAttribute('data-filas', String(filas));
             linea.style.setProperty('--filas', String(filas));
@@ -1250,13 +1253,15 @@
             linea.style.setProperty('--columnas', String(columnas));
         }
 
+        /* Los huecos van PRIMERO: el primer tab-stop es "cargar" (accesibilidad).
+           El indice es el de la CARGA (items.length + h), no el de la posicion. */
+        for (var h = 0; h < res.huecos; h++) {
+            linea.appendChild(construirHueco(doc, res.visiblesItems + h, min || capacidad, o, tam));
+        }
         var visibles = items.slice(0, res.visiblesItems);
         visibles.forEach(function (it, i) {
             linea.appendChild(construirCelda(doc, it, i, o, activo, slots, tam));
         });
-        for (var h = 0; h < res.huecos; h++) {
-            linea.appendChild(construirHueco(doc, visibles.length + h, min || capacidad, o, tam));
-        }
         if (res.chip > 0) {
             linea.appendChild(construirChip(doc, res.chip, res.visiblesItems, o, tam));
         }

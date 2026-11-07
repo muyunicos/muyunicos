@@ -248,6 +248,17 @@ check('las flechas de la linea son del tema', /mu-gal-caja-linea \.mu-nav-btn/.t
     && /function flechasDeLinea/.test(js));
 check('el tachito es un icono (mismo estilo que la estrella)',
     /function crearTacho/.test(js) && /mu-gal-item-eliminar svg/.test(css));
+const desdeColeccion = js.indexOf('function coleccion(');
+check('los huecos van primero (primer tab-stop = cargar)',
+    js.indexOf('res.huecos; h++', desdeColeccion) !== -1
+    && js.indexOf('res.huecos; h++', desdeColeccion)
+        < js.indexOf('var visibles = items.slice(0, res.visiblesItems)', desdeColeccion));
+check('la medida va en la linea (grilla calcula sus columnas)',
+    /linea\.style\.setProperty\('--mu-gal-tam'/.test(js));
+check('la grilla no fija alto de fila (era el solapamiento)',
+    !/grid-auto-rows: var\(--mu-gal-tam/.test(css));
+check('la linea horizontal no captura el scroll vertical',
+    /overflow-y: hidden/.test(css) && /overscroll-behavior-x: contain/.test(css));
 check('el contrato nuevo existe',
     fs.existsSync(path.join(RAIZ, 'specs/019-galeria-compartida/contracts/coleccion.md')));
 
