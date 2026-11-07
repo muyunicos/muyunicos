@@ -132,6 +132,41 @@ puertas de geometria— Playwright sobre el demo (`scrollHeight == clientHeight`
       entra despues de `is-visible` con reintento acotado (8 x 50 ms) y sin robar el foco
       si ya hay uno dentro del modal.
 
+## Fase V1 — Pulido del visor + filtros de la coleccion (2026-11-07)
+
+Decisiones del usuario en `visor-evaluacion.md` §7. Puerta al cierre: **VISOR OK
+(51/51, 2 hallazgos)** + **GALERIA OK (222)**.
+
+- [X] T032 CSS del visor: tokens LOCALES (`--mu-gal-pad/sep/lienzo/banda`), borde de 1px
+      (el dorado de 3px era casi invisible sobre blanco), separador unico para cabecera,
+      meta, banda y acciones, ritmo de padding, `:focus-visible` en `.mu-gal-seg`, contraste
+      del precio en tono oscuro (`#34d399`) y banda con el tono del visor (sin cajitas
+      claras en oscuro).
+- [X] T033 Damero **opt-in**: el marco pinta el damero solo si `item.transparente`; con una
+      foto opaca eran bandas grises alrededor (defecto visual nº1 medido). Checks: `#visor`
+      sin damero, `#visor-transparente` con damero.
+- [X] T034 `contador:'auto'|true|false` (default `auto`: oculto con 1 item) y
+      `ancho:'auto'|'completo'|n` (`auto` = la caja se ajusta al contenido en escritorio).
+      Checks: `1 item` sin contador, `auto` <= 880px, `completo` > 880px.
+- [X] T035 Scroll del cuerpo: cabecera y acciones fijas, cuerpo/banda/meta en
+      `.mu-gal-scroll` (`overflow-y:auto`). La meta larga ya no se recorta (check en movil).
+- [X] T036 Flechas **superpuestas automaticas** (decision del componente, no opcion):
+      `ajustarFlechas()` mide el ancho y marca `mu-gal-cuerpo--justo`; en movil quedan sobre
+      el marco a media altura y la imagen usa >82% del ancho. Se recalcula al redimensionar.
+- [X] T037 `MU.coleccion` **filtros** (contrato C10): `filtros:'campo'|[campos]` +
+      `filtroActivo`; valores derivados de los datos, solo campos con slot visible, "Todos"
+      primero, `<select>` con 8+ valores, reseteo de tanda y chip/pie/min sobre lo filtrado.
+      Puros nuevos `filtrar`/`valoresFiltro` + checks de navegador (`#filtro-etiqueta`,
+      `#filtro-estado`).
+- [X] T038 Slot `estado` por item: pinta `item.estado` cuando existe y cae a "Elegida" solo
+      para la celda `activo` (antes dependia de un `activo` que nadie pasaba).
+- [X] T039 Demo: select de imagenes del visor (en vez del numero criptico), control de
+      "imagen elegida", control de filtros, hashes `#visor-transparente`, `#visor-completo`,
+      `#estado`, `#filtro-etiqueta`, `#filtro-estado`.
+- [X] T040 Docs: `contracts/galeria.md` (C1 con `contador`/`ancho`/`transparente`, C1.1, C1.2
+      "segmentos NO filtra"), `contracts/coleccion.md` (C10 + slot `estado`),
+      `visor-evaluacion.md` (§2 actualizado, §7 decisiones) y bump `MU.version` 1.1.0.
+
 ## Fuera de esta spec (fases posteriores)
 
 - [ ] T900 F2 — migrar `PMUVisor` (plugin) y la biblioteca del comprador a `MU.coleccion` /

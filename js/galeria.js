@@ -18,7 +18,7 @@
  *   - Consume los tokens del tema (`--primario`, `--mu-radius-*`), nunca los redefine.
  *
  * API: window.MUGaleria (ver specs/019-galeria-compartida/contracts/galeria.md).
- * Version: 1.0.1
+ * Version: 1.1.0
  */
 (function (global) {
     'use strict';
@@ -764,7 +764,7 @@
         cuerpo.appendChild(marco);
         cuerpo.appendChild(next);
         caja.appendChild(cuerpo);
-// Cuerpo fijo (la imagen no se desplaza) y banda+meta scrolleables: antes la
+// Cuerpo fijo (la imagen no se desplaza); banda y meta scrollean. Antes la
         // caja recortaba (`overflow: hidden`) y la meta larga se perdia abajo.
         var scroll = crear(doc, 'div', 'mu-gal-scroll');
         caja.appendChild(scroll);
@@ -2087,7 +2087,7 @@
             formatearPrecio: formatearPrecio, filtrar: filtrar, valoresFiltro: valoresFiltro,
             celdas: celdas, pie: pie, caben: caben,
         carga: carga, topeEnFilas: topeEnFilas, navegableDe: navegableDe, ventana: ventana },
-        version: '1.0.1'
+        version: '1.1.0'
     };
 
     global.MUGaleria = api;

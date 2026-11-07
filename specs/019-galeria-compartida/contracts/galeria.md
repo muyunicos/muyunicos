@@ -28,11 +28,13 @@ if ( function_exists( 'mu_galeria_encolar' ) ) { mu_galeria_encolar(); }
 
 ```js
 MUGaleria.visor({
-  items: [ { url, thumb, etiqueta, meta } ],   // obligatorio, >= 1
+  items: [ { url, thumb, etiqueta, meta, transparente } ],  // obligatorio, >= 1
   indice: 0,                                    // posicion inicial (acotada)
   titulo: 'Ideas',                              // encabezado
   tono: 'claro' | 'oscuro',                     // default 'claro'
-  segmentos: [ { etiqueta, activo, onElegir() } ],
+  contador: 'auto' | true | false,              // default 'auto': oculto con 1 item
+  ancho: 'auto' | 'completo' | 880,             // default 'auto' (ver C1.1)
+  segmentos: [ { etiqueta, activo, onElegir() } ],   // pestañas: NO filtran (ver C1.2)
   acciones:  [ { etiqueta, clase, onAccion(indice) } ],
   meta:      { titulo, descripcion, badge, precio: { valor, anterior, aviso } },
   listado:   'abajo' | false,                   // banda de miniaturas (default false)
@@ -40,6 +42,21 @@ MUGaleria.visor({
   alCerrar:  function () {}
 });
 ```
+
+### C1.1 — `ancho` (decision de composicion, no decoracion)
+
+| Valor | Que hace |
+|---|---|
+| `'auto'` (default) | en escritorio la caja se **ajusta al contenido** (`fit-content`, entre 420 y `min(92vw, 880px)`): una foto vertical no deja aire a los lados. En movil manda el `@media` (pantalla completa). |
+| `'completo'` | `min(96vw, 1400px)` y la foto aprovecha el alto (`max-height: calc(92vh - 260px)`). |
+| numero (legado) | fija `max-width` en px, como antes. |
+
+### C1.2 — `segmentos` NO filtra
+
+Las pestañas de la cabecera solo **avisan** al consumidor (`onElegir`): el visor nunca recorta
+`items`. Filtrar es del **ambito 1** (`MU.coleccion`, `coleccion.md` C10) y el visor recibe la
+lista **ya filtrada**. Antes parecian filtros (y el demo las llamaba Fotos/Diseños/Formas) sin
+serlo; queda escrito para que no se confunda otra vez.
 
 `listado:'abajo'` monta una `MU.coleccion` (preset `mini`, tamano `chico`) como banda inferior,
 sincronizada dos vias con la imagen grande (`MU.ir(i)`): ver `coleccion.md` C8.
@@ -58,7 +75,17 @@ sincronizada dos vias con la imagen grande (`MU.ir(i)`): ver `coleccion.md` C8.
 - `body` con `is-scroll-locked` mientras esta abierto; se restaura al cerrar
   (guarda el `overflow` previo).
 - Imagen: `opacity-0` hasta `load` (clase `mu-gal-img--cargada`), `object-fit: contain`,
-  fondo damero, `decoding="async"`.
+  `decoding="async"`.
+- **Marco**: lienzo neutro (`--mu-gal-lienzo`, transparente = el fondo de la caja) y **damero
+  solo si el item declara `transparente: true`**. El damero permanente dejaba bandas grises
+  alrededor de cualquier foto opaca (defecto medido en `visor-evaluacion.md`).
+- **Flechas**: su posicion es una **decision del componente**, no una opcion. Al costado
+  consumen `44 x 2 + gaps + padding`; si el marco quedaria por debajo de 280px utiles, el JS
+  marca `mu-gal-cuerpo--justo` y las **superpone** sobre la imagen a media altura (en movil
+  siempre). Se recalcula al redimensionar.
+- **Scroll**: cabecera y acciones quedan fijas; el cuerpo, la banda y la meta viven en
+  `.mu-gal-scroll` (`overflow-y: auto`). Una meta larga ya **no se recorta**.
+- **Contador**: `contador: 'auto'` lo oculta con un solo item (el "1 / 1" es ruido).
 - Precarga de vecinos: `VECINOS = 1` a cada lado, con `new Image()`.
 - Reabrir con otro `items` **reemplaza** el contenido (un unico modal en el documento).
 

@@ -196,6 +196,10 @@ MU.coleccion(el, {
   slots: null,                  // pisa el preset: {precio:false} o lista de nombres
   activo: -1,
 
+  // filtros (C10): recortan los items ANTES de la aritmetica de celdas
+  filtros: null,                // null | 'etiqueta' | 'estado' | ['etiqueta','estado']
+  filtroActivo: 'todos',        // valor inicial; se sanea contra los datos del campo
+
   // pie
   pie: 'auto',                  // 'auto' | false | texto
   sustantivo: 'imagenes',
@@ -203,6 +207,7 @@ MU.coleccion(el, {
 
   // eventos
   onAbrir, onRanura, onChip, onEliminar, onFavorito, onAccion, onCambiar,
+  onFiltrar,                    // (campo, valor, res) al cambiar un filtro
   onPintado                     // (res) se llama en CADA pintado, incluidos los propios
 });
 ```
@@ -236,13 +241,14 @@ Un item se dibuja con **slots** (que se ve) y **preset** (atajo):
 | `descripcion` | descripcion | `item.descripcion` |
 | `precio` | `$valor` + `anterior` tachado + `promo` + `aviso` | `item.precio` |
 | `acciones` | botones declarados | `item.acciones` |
+| `estado` | chip de estado del item | `item.estado` (si falta: "Elegida" en la celda `activo`) |
 
 | Preset | Slots |
 |---|---|
 | `mini` | imagen, eliminar |
 | `tarjeta` | imagen, etiqueta, favorito, titulo, descripcion, precio, acciones |
 | `producto` | imagen, etiqueta, titulo, precio |
-| `opcion` | imagen, titulo, estado (activo) |
+| `opcion` | imagen, titulo, estado |
 
 `slots` **pisa** el preset: `{precio: false}` quita el precio; un array reemplaza la lista.
 
@@ -353,3 +359,31 @@ MU.puro.ventana({alto, filas, altoCelda, gap, pie, marco, acota})
    (`precio` 16 px contra los 28 reales) dejaba el marco 21 px corto y abria scroll interno. Si
    la fuente del tema asienta despues, se re-mide UNA vez (`document.fonts.ready`).
    `res.altoMarco` es el marco **FINAL** (con el alto real).
+
+## C10 — Filtros (`filtros`)
+
+Recortan los items **antes** de la aritmetica de celdas: el chip `+N`, el pie y
+`min`/`capacidad` hablan siempre de lo que se ve.
+
+```js
+MU.coleccion(el, { filtros: 'etiqueta', filtroActivo: 'Oferta', onFiltrar });
+```
+
+1. **Los valores salen de los datos**: `valoresFiltro(items, campo)` toma los distintos de
+   `item[campo]`, en orden de aparicion, sin vacios ni repetidos. "Todos" siempre primero. El
+   consumidor **no** declara etiquetas a mano.
+2. **Solo se ofrece el campo cuyo SLOT esta visible**: filtrar por `etiqueta` cuando la
+   etiqueta no se pinta no le dice nada al comprador. Si el slot esta apagado, el filtro se
+   ignora sin aviso.
+3. **Con un solo valor no hay control** (no hay nada que filtrar).
+4. **Con mas de 7 valores** el control pasa a `<select>` solo (misma idea: "cuando lo amerite",
+   sin opcion). Las pills usan `aria-pressed`.
+5. **Filtrar resetea la tanda acumulada** (la firma incluye `items.length`), conserva el
+   scroll horizontal y **acota** lo elegido. El estado del filtro vive en el **contenedor**, no
+   en las opciones: el repintado por resize no lo pierde.
+6. **El visor no filtra**: `MU.coleccion` le entrega los items ya filtrados; `onAbrir(i)`
+   entrega el indice de esa lista (ver `galeria.md` C1.2).
+7. El control se pinta arriba de la linea (`mu-gal-filtros`, una fila por campo) y la raiz
+   publica `data-mu-gal-items` = items que pasaron el filtro.
+
+Puros testeados en `node tests/galeria.test.js`: `MU.puro.filtrar` y `MU.puro.valoresFiltro`.
