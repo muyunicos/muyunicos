@@ -250,9 +250,10 @@ check('el tachito es un icono (mismo estilo que la estrella)',
     /function crearTacho/.test(js) && /mu-gal-item-eliminar svg/.test(css));
 const desdeColeccion = js.indexOf('function coleccion(');
 check('los huecos van primero (primer tab-stop = cargar)',
+    // Los huecos van primero (primer tab-stop = cargar): el indice es el de la CARGA.
     js.indexOf('h < huecos; h++', desdeColeccion) !== -1
     && js.indexOf('h < huecos; h++', desdeColeccion)
-        < js.indexOf('var visibles = items.slice(t.desde', desdeColeccion));
+        < js.indexOf('var visibles = items.slice(0, t.visibles', desdeColeccion));
 check('la medida va en la linea (grilla calcula sus columnas)',
     /linea\.style\.setProperty\('--mu-gal-tam'/.test(js));
 check('la grilla no fija alto de fila (era el solapamiento)',
@@ -261,34 +262,94 @@ check('la linea horizontal no captura el scroll vertical',
     /overflow-y: hidden/.test(css) && /overscroll-behavior-x: contain/.test(css));
 check('la grilla calcula las filas por el ALTO del contenedor',
     /altoDisp/.test(js) && /porAlto/.test(js) && /altoCelda/.test(js));
-check('grilla navegable = scroll vertical (no recorta con chip)',
-    /mu-gal-linea--scroll-y/.test(css) && /scrollY = \(o\.deslizable === true\)/.test(js));
+check('grilla navegable = scroll vertical DERIVADO del desborde',
+    /mu-gal-linea--scroll-y/.test(css)
+    && /var scrollY = \(layout === 'grilla' && navega\)/.test(js));
 check('las columnas no se estiran: bloque centrado',
     /justify-content: center/.test(css) && /repeat\(auto-fill, var\(--mu-gal-tam/.test(css));
 check('el contrato nuevo existe',
     fs.existsSync(path.join(RAIZ, 'specs/019-galeria-compartida/contracts/coleccion.md')));
 
-/* ==================== 4f. Tanda del chip (C1bis) ==================== */
-console.log('== Tanda del chip ==');
+/* ==================== 4f. Carga acumulativa del chip (C1bis) ==================== */
+console.log('== Carga acumulativa del chip ==');
 
-const t0 = gal.puro.tanda({ items: 12, tope: 6, caben: 4, pagina: 0 });
-check('tanda · pagina 0 muestra 3 (reserva celda del chip) y oculta 9',
-    t0.visibles === 3 && t0.ocultas === 9 && t0.agotado === false,
-    'visibles=' + t0.visibles + ' ocultas=' + t0.ocultas);
+const c0 = gal.puro.carga({ items: 12, tope: 0, caben: 4 });
+check('carga · arranca FIJA: 3 visibles (chip reserva celda) y 9 ocultas',
+    c0.capacidad === 3 && c0.visibles === 3 && c0.ocultas === 9 && c0.navega === false,
+    'visibles=' + c0.visibles + ' ocultas=' + c0.ocultas);
+check('carga · la primera tanda suma una pantalla (3 -> 6)', c0.siguiente === 6);
 
-const t1 = gal.puro.tanda({ items: 12, tope: 6, caben: 4, pagina: 1 });
-check('tanda · pagina 1 llega al tope y queda agotada (abre visor)',
-    t1.visibles === 3 && t1.ocultas === 6 && t1.agotado === true,
-    'visibles=' + t1.visibles + ' ocultas=' + t1.ocultas);
+const c1 = gal.puro.carga({ items: 12, tope: 0, caben: 4, tandas: 1 });
+check('carga · al sumar una tanda, lo revelado YA no cabe: navega',
+    c1.visibles === 6 && c1.ocultas === 6 && c1.navega === true);
+check('carga · lo revelado NUNCA se oculta (6 de 12, no una ventana)',
+    c1.visibles > c0.visibles);
 
-check('tanda · sin tope pagina hasta el final',
-    gal.puro.tanda({ items: 9, tope: 0, caben: 6, pagina: 1 }).ocultas === 0);
-check('tanda · si todo cabe no hay chip',
-    gal.puro.tanda({ items: 5, tope: 0, caben: 6, pagina: 0 }).ocultas === 0);
-check('tanda · la pagina se acota al maximo',
-    gal.puro.tanda({ items: 12, tope: 6, caben: 4, pagina: 99 }).pagina === 1);
-check('el chip tiene accion derivada y paginado interno',
-    /accionChip/.test(js) && /alPaginar/.test(js) && /function paginarSiguiente/.test(js));
+const c2 = gal.puro.carga({ items: 12, tope: 0, caben: 4, tandas: 3 });
+check('carga · revelado todo: sin chip y sin agotar',
+    c2.visibles === 12 && c2.ocultas === 0 && c2.agotado === false && c2.navega === true);
+
+const c3 = gal.puro.carga({ items: 12, tope: 6, caben: 4, tandas: 1e9 });
+check('carga · el tope corta (es de CELDAS): 5 imagenes + chip = 6',
+    c3.visibles === 5 && c3.ocultas === 7 && c3.agotado === true && c3.topeItems === 5,
+    'visibles=' + c3.visibles + ' topeItems=' + c3.topeItems);
+check('carga · las tandas se acotan al tope',
+    gal.puro.carga({ items: 12, tope: 6, caben: 4, tandas: 99 }).visibles === 5);
+
+// El `tope` cuenta TODAS las celdas visibles: chip (`--chip`) y huecos (`--vacia`).
+const ct1 = gal.puro.carga({ items: 14, tope: 4, caben: 6 });
+check('tope 4 · 14 imagenes -> 3 + chip = 4 celdas',
+    ct1.visibles === 3 && ct1.topeItems === 3 && ct1.hayChip === true && ct1.ocultas === 11,
+    'visibles=' + ct1.visibles + ' topeItems=' + ct1.topeItems);
+const ct2 = gal.puro.carga({ items: 5, tope: 4, caben: 6, huecos: 2 });
+check('tope 4 · 2 huecos + 5 imagenes -> 1 + 2 + chip = 4 celdas',
+    ct2.visibles === 1 && ct2.topeItems === 1 && ct2.hayChip === true);
+const ct3 = gal.puro.carga({ items: 2, tope: 4, caben: 6, huecos: 2 });
+check('tope 4 · 2 huecos + 2 imagenes -> 4 celdas, sin chip',
+    ct3.visibles === 2 && ct3.ocultas === 0 && ct3.hayChip === false);
+const ct4 = gal.puro.carga({ items: 12, tope: 2, caben: 5 });
+check('tope 2 · 12 imagenes -> 1 + chip = 2 celdas',
+    ct4.visibles === 1 && ct4.topeItems === 1);
+const ct5 = gal.puro.carga({ items: 12, tope: 1, caben: 5 });
+check('tope 1 · solo el chip (0 imagenes), y abre el visor',
+    ct5.visibles === 0 && ct5.topeItems === 0 && ct5.agotado === true);
+check('tope 0 = sin tope de celdas', gal.puro.carga({ items: 12, caben: 4 }).topeItems === Infinity);
+
+// El estado es RELATIVO a la capacidad: si la vista se achica, lo revelado se re-ajusta.
+check('carga · las mismas tandas con otra capacidad se re-ajustan solas',
+    gal.puro.carga({ items: 12, caben: 12, tandas: 0 }).visibles === 12
+    && gal.puro.carga({ items: 12, caben: 5, tandas: 0 }).visibles === 4);
+
+const c4 = gal.puro.carga({ items: 5, tope: 0, caben: 6 });
+check('carga · si todo cabe no hay chip ni navegacion',
+    c4.visibles === 5 && c4.ocultas === 0 && c4.navega === false && c4.capacidad === 6);
+
+const c5 = gal.puro.carga({ items: 5, tope: 0, caben: 4, huecos: 2 });
+check('carga · los huecos descuentan la vista fija (y el chip)',
+    c5.capacidad === 1 && c5.visibles === 1);
+const c6 = gal.puro.carga({ items: 2, tope: 0, caben: 4, huecos: 2 });
+check('carga · con todo a la vista los huecos no fuerzan chip',
+    c6.capacidad === 2 && c6.visibles === 2 && c6.ocultas === 0);
+
+check('navegable · "auto" es el default y el alias historico funciona',
+    gal.puro.navegableDe({}) === 'auto'
+    && gal.puro.navegableDe({ deslizable: true }) === true
+    && gal.puro.navegableDe({ navegable: false }) === false
+    && gal.puro.navegableDe({ navegable: 'si' }) === true);
+check('el chip revela una pantalla (no pagina) y el estado es derivado',
+    /function revelarSiguiente/.test(js) && /alRevelar/.test(js)
+    && !/function paginarSiguiente/.test(js) && !/function tanda/.test(js));
+check('la galeria publica su estado navegable', /data-mu-gal-estado/.test(js));
+check('`alto` es opcion y con 0 mide el marco real',
+    /var altoVista = Math\.max\(0, parseInt\(o\.alto, 10\) \|\| 0\)/.test(js)
+    && /altoDisp = nodo\.clientHeight \|\| 0/.test(js));
+check('`alto` declarado fija la ventana del marco (no crece)',
+    /linea\.style\.maxHeight = altoVista \+ 'px'/.test(js));
+check('el consumidor se entera de los repintados propios (onPintado)',
+    /typeof o\.onPintado === 'function'/.test(js) && /o\.onPintado\(res\)/.test(js));
+check('el listado del visor revela todo (navegable:true, sin chip)',
+    /navegable: true,/.test(js)
+    && js.indexOf('navegable: true,') > js.indexOf("o.listado === 'abajo'"));
 
 /* ==================== 4g. Visor con listado inferior (F2) ==================== */
 console.log('== Visor con listado ==');

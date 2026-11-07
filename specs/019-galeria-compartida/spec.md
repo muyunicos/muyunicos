@@ -108,11 +108,12 @@ Contrato: [contracts/coleccion.md](./contracts/coleccion.md). Reemplaza "tira + 
   la invitacion solo rellena si sobra; **`tope` gana sobre `min`**.
 - **D22 — Los huecos los cuenta el PIE, no el chip**: `MU.puro.pie` dice "Carga 4 imagenes"
   / "Puedes agregar N mas" / "Maximo alcanzado". Un chip "+N" nunca habla de huecos.
-- **D23 — `capacidad`**: maximo de cargas, distinto de `tope` (maximo de items visibles).
-  Con `min 4` / `capacidad 8` / `tope 3` la secuencia es la tabla del contrato (C1).
+- **D23 — `capacidad`**: maximo de cargas, distinto de `tope` (maximo de **CELDAS**
+  visibles: imagen + chip + hueco, igual que en `MU.puro.celdas`). Con `min 4` /
+  `capacidad 8` / `tope 3` la secuencia es la tabla del contrato (C1).
 
-- **FR-024** `MU.coleccion(el, opciones)` con `layout` (fila/grilla), `deslizable`
-  (`auto`/true/false), `tamano`, `gap`, `filas`, `columnas`.
+- **FR-024** `MU.coleccion(el, opciones)` con `layout` (fila/grilla), `navegable`
+  (`auto`/true/false; alias `deslizable`), `tamano`, `gap`, `filas`, `columnas`, `alto`.
 - **FR-025** `MU.puro.celdas()` decide `visiblesItems`, `huecos` y `chip` (D21).
 - **FR-026** `MU.puro.pie()` produce el texto de D22.
 - **FR-027** `MU.puro.caben(ancho, celda, gap)` da el `tope` efectivo de una fila que no

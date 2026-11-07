@@ -189,40 +189,79 @@
     }
 
     /**
-     * Tanda del chip (contrato `coleccion.md`, C1bis).
+     * `navegable` (alias historico `deslizable`): 'auto' | true | false.
      *
-     * El chip avanza de a `paso` (las celdas que caben, reservando una para el propio
-     * chip) sin superar el `tope`. `agotado` = ya se alcanzo el tope y AUN quedan
-     * imagenes: ahi el chip deja de paginar y abre el visor.
+     * - 'auto'  -> arranca FIJA (entra lo que cabe) y el chip SUMA una pantalla mas;
+     *              en cuanto lo revelado no cabe, pasa a navegable sola.
+     * - true    -> revela todo (hasta el `tope`) y es navegable de entrada.
+     * - false   -> nunca navega: el chip abre el visor, no acumula.
      *
-     * @param {{items:number, tope:number, caben:number, pagina:number}} o
-     * @returns {{desde:number, visibles:number, fin:number, ocultas:number,
-     *            paso:number, paginas:number, pagina:number, agotado:boolean}}
+     * @param {Object} o opciones del consumidor
+     * @returns {boolean|string} 'auto' | true | false
      */
-    function tanda(o) {
+    function navegableDe(o) {
+        var v = (o.navegable !== undefined && o.navegable !== null)
+            ? o.navegable : o.deslizable;
+        if (v === true || v === 'si' || v === 'true') { return true; }
+        if (v === false || v === 'no' || v === 'false') { return false; }
+        return 'auto';
+    }
+
+    /**
+     * Carga acumulativa del chip (contrato `coleccion.md`, C1bis).
+     *
+     * El chip SUMA una pantalla de celdas: lo revelado NUNCA se oculta. La vista fija
+     * entra en `capacidad` (descontando los huecos, que van primero, y la celda del
+     * propio chip). `navega` es DERIVADO: en cuanto lo revelado no cabe en la vista,
+     * la galeria pasa a navegable. `agotado` = se alcanzo el `tope` y AUN quedan
+     * imagenes: ahi el chip deja de sumar y abre el visor.
+     *
+     * El `tope` es de **CELDAS**, igual que en `celdas` (C1): el chip
+     * (`mu-gal-celda--chip`) y los huecos (`mu-gal-celda--vacia`) que se ven ocupan
+     * lugar dentro de el. Con `tope 4`, 2 huecos y 5 imagenes se ve `1 + 2 + chip = 4`.
+     *
+     * El estado que se conserva es `tandas` (cuantas pantallas pidio el usuario), NO un
+     * numero absoluto: asi, si la vista cambia de capacidad (resize, filas, alto, o la
+     * medicion real de la celda), lo revelado se re-ajusta solo a la vista nueva.
+     *
+     * @param {{items:number, tope:number, caben:number, huecos:number,
+     *          tandas:number}} o
+     * @returns {{capacidad:number, tandas:number, revelados:number, visibles:number,
+     *            ocultas:number, paso:number, siguiente:number, navega:boolean,
+     *            agotado:boolean, topeCeldas:number, topeItems:number,
+     *            hayChip:boolean}}
+     */
+    function carga(o) {
         o = o || {};
         var n = Math.max(0, parseInt(o.items, 10) || 0);
         var tope = Math.max(0, parseInt(o.tope, 10) || 0);
-        var caben = Math.max(1, parseInt(o.caben, 10) || 1);
-        var pagina = Math.max(0, parseInt(o.pagina, 10) || 0);
-        var topeEf = (tope > 0) ? Math.min(tope, n) : n;
+        var cabenCtx = Math.max(1, parseInt(o.caben, 10) || 1);
+        var huecos = Math.max(0, parseInt(o.huecos, 10) || 0);
 
-        // Si no caben todos hay chip, y el chip ocupa una celda.
-        var hayChip = (n > caben);
-        var paso = hayChip ? Math.max(1, caben - 1) : caben;
+        // Celdas de IMAGEN que quedan si el chip no existiera (los huecos van primero).
+        var capItemsSinChip = Math.max(1, cabenCtx - huecos);
+        var topeItemsSinChip = (tope > 0) ? Math.max(0, tope - huecos) : Infinity;
 
-        var paginas = Math.max(1, Math.ceil(topeEf / paso));
-        if (pagina > paginas - 1) { pagina = paginas - 1; }
+        // El chip existe si quedaran imagenes ocultas; y ocupa una celda de ambos.
+        var hayChip = (n > Math.min(capItemsSinChip, topeItemsSinChip));
+        var capacidad = Math.max(1, capItemsSinChip - (hayChip ? 1 : 0));
+        var topeItems = (tope > 0)
+            ? Math.max(0, topeItemsSinChip - (hayChip ? 1 : 0))
+            : Infinity;
 
-        var desde = pagina * paso;
-        var visibles = Math.min(paso, Math.max(0, topeEf - desde));
-        var fin = desde + visibles;
-        var ocultas = Math.max(0, n - fin);
+        var tandas = Math.max(0, parseInt(o.tandas, 10) || 0);
+        var minimo = Math.min(capacidad, topeItems, n);
+        var visibles = Math.min(n, topeItems, Math.max(minimo, capacidad * (1 + tandas)));
+        var ocultas = Math.max(0, n - visibles);
 
         return {
-            desde: desde, visibles: visibles, fin: fin, ocultas: ocultas,
-            paso: paso, paginas: paginas, pagina: pagina,
-            agotado: (fin >= topeEf && ocultas > 0)
+            capacidad: capacidad, tandas: tandas,
+            revelados: visibles, visibles: visibles,
+            ocultas: ocultas, paso: capacidad,
+            siguiente: Math.min(topeItems, visibles + capacidad),
+            navega: (visibles > capacidad),
+            agotado: (visibles >= Math.min(topeItems, n) && ocultas > 0),
+            topeCeldas: tope, topeItems: topeItems, hayChip: hayChip
         };
     }
 
@@ -563,7 +602,9 @@
                 layout: 'fila',
                 preset: 'mini',
                 tamano: 'chico',
-                deslizable: 'auto',
+                // El listado muestra TODO de una (`navegable: true`): asi la celda
+                // activa siempre existe y `marcarLista` puede acercarla.
+                navegable: true,
                 activo: acotar(o.indice, items.length),
                 pie: false,
                 tope: 0,
@@ -1213,7 +1254,7 @@
 
     /**
      * Chip "+X" como CELDA de la linea. `info.accion` decide que hace:
-     *   'paginar' -> muestra la tanda siguiente (lo hace el propio componente)
+     *   'revelar' -> SUMA una pantalla de celdas (lo hace el propio componente)
      *   'abrir'   -> abre el visor en el primer oculto
      *   'cargar'  -> abre el cargador
      * `o.onChip` externo tiene prioridad (compatibilidad).
@@ -1225,7 +1266,8 @@
         b.type = 'button';
         b.style.setProperty('--mu-gal-tam', tam.ancho + 'px');
         b.setAttribute('data-mu-gal-chip', String(cuantos));
-        b.setAttribute('aria-label', (info.accion === 'paginar')
+        b.setAttribute('data-mu-gal-chip-accion', String(info.accion || ''));
+        b.setAttribute('aria-label', (info.accion === 'revelar')
             ? ('Ver ' + cuantos + ' mas: muestra ' + (info.muestra || cuantos))
             : ('Ver las ' + cuantos + ' restantes en el visor'));
         b.addEventListener('click', function () {
@@ -1234,8 +1276,8 @@
                 o.onRanura(desde, 0);
                 return;
             }
-            if (info.accion === 'paginar' && typeof info.alPaginar === 'function') {
-                info.alPaginar();
+            if (info.accion === 'revelar' && typeof info.alRevelar === 'function') {
+                info.alRevelar();
                 return;
             }
             if (typeof o.onAbrir === 'function') { o.onAbrir(desde); }
@@ -1282,7 +1324,11 @@
 
     /**
      * Galeria embebida (ambito 1). Contrato `coleccion.md`.
-     * @returns {{visiblesItems:number, huecos:number, chip:number, modo:string, desliza:boolean}}
+     * La vista arranca FIJA (lo que cabe) y el chip SUMA tandas; `navega` es derivado.
+     *
+     * @returns {{visiblesItems:number, huecos:number, chip:number, modo:string,
+     *            navega:boolean, desliza:boolean, scrollY:boolean, revelados:number,
+     *            tandas:number, capacidad:number, paso:number, agotado:boolean}}
      */
     function coleccion(nodo, opciones) {
         var doc = global.document;
@@ -1301,74 +1347,77 @@
         var activo = (o.activo === undefined) ? -1 : (parseInt(o.activo, 10) || 0);
         var slots = resolverSlots(o);
 
-        // Cuantas celdas entran: manda el CONTENEDOR, nunca el viewport.
+        // Cuantas celdas entran en la VISTA: manda el CONTENEDOR, nunca el viewport.
         var ancho = nodo.clientWidth || 0;
         var cabenLinea = caben(ancho, tam.ancho, gap);
-        var desliza = false;
-        var topeEfectivo = tope;
+        var navegable = navegableDe(o);
+        var altoVista = Math.max(0, parseInt(o.alto, 10) || 0);
 
-        // Pagina vigente: solo se conserva si no cambiaron items/tope/layout.
+        // Huecos: obligatorios e invitacion. Van SIEMPRE primero y ocupan celda.
+        var obligatorios = Math.max(0, min - items.length);
+        var cargable = (min > 0 || capacidad > 0);
+        var invitacion = (cargable && items.length >= min
+            && (capacidad === 0 || capacidad > items.length)) ? 1 : 0;
+        var huecos = obligatorios + invitacion;
+
+        // Tandas pedidas por el chip: se conservan mientras no cambien las opciones.
         var estPrevio = colecciones ? colecciones.get(nodo) : null;
-        var firma = [items.length, tope, min, capacidad, layout, filas, columnas].join('|');
-        var pagina = (estPrevio && estPrevio.firma === firma) ? (estPrevio.pagina || 0) : 0;
+        var firma = [items.length, tope, min, capacidad, layout, filas, columnas,
+            altoVista, String(navegable)].join('|');
+        var tandas = (estPrevio && estPrevio.firma === firma) ? (estPrevio.tandas || 0) : 0;
 
-        var scrollY = false;
-        var cabenContexto = 0;           // celdas donde caben IMAGENES (0 = navegable, sin tope)
-        if (layout === 'fila') {
-            if (o.deslizable === true) {
-                desliza = true;
-            } else if (o.deslizable === false) {
-                desliza = false;
-            } else {
-                desliza = ((items.length + 1) > cabenLinea);   // 'auto'
-            }
-            if (!desliza) { cabenContexto = cabenLinea; }
-        } else {
-            // Grilla: columnas por ANCHO y filas por ALTO del contenedor (si lo tiene).
+        // Celdas que entran en la vista FIJA: 0 = sin presupuesto (entran todas).
+        var cabenVista = 0;
+        var altoCelda = tam.alto;
+        var midioCelda = false;
+        if (layout === 'grilla') {
+            // Columnas por ANCHO y filas por ALTO (`filas` > `alto` > alto real del marco).
             var porFila = (columnas > 0) ? columnas : cabenLinea;
-            var altoDisp = nodo.clientHeight || 0;
+            var altoDisp = altoVista;
+            if (altoDisp === 0) {
+                // Con `alto: 0` sirve el alto REAL del marco si el CSS lo limita; si el
+                // marco crece con el contenido no hay presupuesto y se ven todas.
+                altoDisp = nodo.clientHeight || 0;
+                var piePrevio = nodo.querySelector('.mu-gal-pie');
+                if (piePrevio) { altoDisp = Math.max(0, altoDisp - (piePrevio.offsetHeight || 0)); }
+            }
             var porAlto = 0;
             if (altoDisp > 0) {
-                // Alto de la celda: el de la imagen mas el cuerpo que dibujan los slots.
-                // Es una estimacion CONSERVADORA (suma de mas) para no desbordar nunca.
+                // Alto de la celda: se MIDE la del pintado anterior (exacto); si no hay,
+                // se estima con el cuerpo que dibujan los slots (conservador).
                 var extras = 0;
                 if (slots.titulo) { extras += 18; }
                 if (slots.descripcion) { extras += 16; }
                 if (slots.precio) { extras += 16; }
                 if (slots.acciones) { extras += 30; }
                 if (slots.estado) { extras += 14; }
-                var altoCelda = tam.alto + (extras > 0 ? (extras + 12) : 0);
+                altoCelda = tam.alto + (extras > 0 ? (extras + 12) : 0);
+                var muestra = nodo.querySelector('.mu-gal-celda[data-mu-gal-mini]');
+                if (muestra && muestra.offsetHeight > 0) {
+                    altoCelda = muestra.offsetHeight;
+                    midioCelda = true;
+                }
                 porAlto = Math.max(1, Math.floor((altoDisp + gap) / (altoCelda + gap)));
             }
             if (filas > 0) {
                 porAlto = (porAlto > 0) ? Math.min(filas, porAlto) : filas;
             }
-            scrollY = (o.deslizable === true);
-            if (!scrollY) { cabenContexto = porFila * (porAlto > 0 ? porAlto : items.length); }
+            if (porAlto > 0) { cabenVista = porFila * porAlto; }
+        } else {
+            cabenVista = cabenLinea;
         }
 
-        // La tanda decide que se ve y cuanto resume el chip (sin superar el tope).
-        var t = tanda({
-            items: items.length, tope: tope, pagina: pagina,
-            caben: (cabenContexto > 0) ? cabenContexto : items.length
+        // Carga ACUMULATIVA: `navegable: true` revela todo de una; el resto arranca fijo.
+        var t = carga({
+            items: items.length, tope: tope, huecos: huecos,
+            caben: (cabenVista > 0) ? cabenVista : (items.length + huecos),
+            tandas: (navegable === true) ? 1e9 : tandas
         });
-        pagina = t.pagina;
+        tandas = t.tandas;
+        var navega = t.navega;               // DERIVADO: lo revelado ya no cabe en la vista
+        var scrollY = (layout === 'grilla' && navega);
 
-        // Huecos: obligatorios e invitacion, SOLO en la primera tanda.
-        var obligatorios = Math.max(0, min - items.length);
-        var cargable = (min > 0 || capacidad > 0);
-        var invitacion = (cargable && items.length >= min
-            && (capacidad === 0 || capacidad > items.length)) ? 1 : 0;
-        var huecos = 0;
-        if (t.pagina === 0) {
-            if (cabenContexto > 0) {
-                var libres = Math.max(0, cabenContexto - t.visibles - (t.ocultas > 0 ? 1 : 0));
-                huecos = Math.min(obligatorios + invitacion, libres);
-            } else {
-                huecos = obligatorios + invitacion;
-            }
-        }
-
+        // Los huecos ya se contaron dentro de `carga` (descuentan la vista fija).
         var pieTxt = '';
         if (o.pie !== false) {
             if (typeof o.pie === 'string' && o.pie !== 'auto') {
@@ -1381,7 +1430,8 @@
             }
         }
 
-        var scrollPrevio = nodo.scrollLeft || 0;
+        var lineaPrevia = nodo.querySelector('.mu-gal-linea');
+        var scrollPrevio = lineaPrevia ? (lineaPrevia.scrollLeft || 0) : 0;
         vaciar(nodo);
         nodo.setAttribute('data-mu-gal-layout', layout);
 
@@ -1391,7 +1441,7 @@
             nodo.appendChild(p);
         }
 
-        var modoClase = (layout === 'grilla') ? 'grilla' : (desliza ? 'linea' : 'fila');
+        var modoClase = (layout === 'grilla') ? 'grilla' : (navega ? 'linea' : 'fila');
         var linea = crear(doc, 'div', 'mu-gal-linea mu-gal-linea--' + modoClase);
         linea.style.setProperty('--mu-gal-gap', gap + 'px');
         /* La medida va en la LINEA (no solo en la celda): la grilla calcula sus
@@ -1412,42 +1462,54 @@
         for (var h = 0; h < huecos; h++) {
             linea.appendChild(construirHueco(doc, items.length + h, min || capacidad, o, tam));
         }
-        var visibles = items.slice(t.desde, t.fin);
+        var visibles = items.slice(0, t.visibles);
         visibles.forEach(function (it, i) {
-            linea.appendChild(construirCelda(doc, it, t.desde + i, o, activo, slots, tam));
+            linea.appendChild(construirCelda(doc, it, i, o, activo, slots, tam));
         });
 
-        // Chip: pagina hasta el tope y, agotado el tope, abre el visor (C1bis).
+        // Chip: SUMA una pantalla de celdas; agotado el tope, abre el visor (C1bis).
         if (t.ocultas > 0) {
             var accionChip = o.chipAccion;
             if (!accionChip || accionChip === 'auto') {
-                accionChip = t.agotado ? 'abrir' : 'paginar';
-            } else if (accionChip === 'paginar' && t.agotado) {
-                accionChip = 'abrir';
+                // `navegable: false` no acumula: el chip lleva al visor.
+                accionChip = (navegable === false) ? 'abrir' : (t.agotado ? 'abrir' : 'revelar');
+            } else if (accionChip === 'paginar') {
+                accionChip = 'revelar';               // 'paginar' era el nombre viejo
             }
+            if (accionChip === 'revelar' && t.agotado) { accionChip = 'abrir'; }
             linea.appendChild(construirChip(doc, {
                 cuantos: t.ocultas,
-                desde: t.fin,
+                desde: t.visibles,
                 accion: accionChip,
-                muestra: t.paso,
-                alPaginar: paginarSiguiente
+                muestra: Math.min(t.paso, t.ocultas),
+                alPaginar: revelarSiguiente,
+                alRevelar: revelarSiguiente
             }, o, tam));
         }
 
-        /** Avanza una tanda (estado interno; se conserva si no cambian las opciones). */
-        function paginarSiguiente() {
+        /**
+         * Suma una pantalla de celdas (estado interno). Lo ya revelado NO se oculta:
+         * la vista se desplaza hasta la PRIMERA celda nueva.
+         */
+        function revelarSiguiente() {
             var est = colecciones ? colecciones.get(nodo) : null;
-            if (!est) { return; }
-            est.pagina = (est.pagina || 0) + 1;
+            if (!est) { return null; }
+            var previos = t.visibles;
+            est.tandas = t.tandas + 1;
             est.firma = firma;
-            coleccion(nodo, est.opciones);
+            var res = coleccion(nodo, est.opciones);
+            var celdas = nodo.querySelectorAll('[data-mu-gal-mini]');
+            var destino = celdas[previos] || null;
+            if (destino && typeof destino.scrollIntoView === 'function') {
+                try { destino.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
+                catch (eScroll) { /* sin scroll */ }
+            }
             var chipNuevo = nodo.querySelector('[data-mu-gal-chip]');
-            var primera = nodo.querySelector('[data-mu-gal-mini] .mu-gal-item-abrir');
-            var destino = chipNuevo || primera;
-            if (destino) { try { destino.focus(); } catch (eFoco) { /* sin foco */ } }
+            if (chipNuevo) { try { chipNuevo.focus(); } catch (eFoco) { /* sin foco */ } }
+            return res;
         }
 
-        if (desliza) {
+        if (navega) {
             var caja = crear(doc, 'div', 'mu-gal-caja-linea');
             caja.appendChild(linea);
             nodo.appendChild(caja);
@@ -1455,20 +1517,46 @@
         } else {
             nodo.appendChild(linea);
         }
-        nodo.scrollLeft = scrollPrevio;
+        linea.scrollLeft = scrollPrevio;
+        // Con `alto` declarado el marco NO crece: la ventana queda fija y scrollea.
+        if (layout === 'grilla' && altoVista > 0) {
+            linea.style.maxHeight = altoVista + 'px';
+            linea.style.overflowY = 'auto';
+        }
+        // Estado publicado para CSS/QA: `navegable` cuando lo revelado no cabe.
+        nodo.setAttribute('data-mu-gal-estado', navega ? 'navegable' : 'fija');
+        nodo.setAttribute('data-mu-gal-ancho', String(ancho));
 
         if (colecciones) {
             colecciones.set(nodo, {
                 opciones: o, items: items, ancho: ancho,
-                pagina: t.pagina, firma: firma
+                tandas: tandas, firma: firma
             });
             observarColeccion(nodo);
         }
-        return {
+
+        // Auto-ajuste (UNA vez por firma): el primer pintado estima el alto de celda
+        // porque el nodo esta vacio; con celdas reales en el DOM se repinta para que
+        // las filas que entran sean exactas. La marca evita el bucle.
+        if (layout === 'grilla' && altoDisp > 0 && !midioCelda
+            && (!estPrevio || estPrevio.ajustado !== firma)
+            && typeof global.requestAnimationFrame === 'function') {
+            var estAjuste = colecciones ? colecciones.get(nodo) : null;
+            if (estAjuste) { estAjuste.ajustado = firma; }
+            global.requestAnimationFrame(function () { coleccion(nodo, o); });
+        }
+        var res = {
             visiblesItems: t.visibles, huecos: huecos, chip: t.ocultas,
-            modo: modoClase, desliza: desliza, scrollY: scrollY,
-            pagina: t.pagina, paginas: t.paginas, agotado: t.agotado
+            modo: modoClase, navega: navega, desliza: navega, scrollY: scrollY,
+            revelados: t.revelados, tandas: tandas, capacidad: t.capacidad, paso: t.paso,
+            agotado: t.agotado
         };
+        // El componente puede repintarse solo (resize, auto-ajuste de la grilla): el
+        // consumidor se entera por `onPintado` y no por el valor de retorno.
+        if (typeof o.onPintado === 'function') {
+            try { o.onPintado(res); } catch (ePintado) { /* el consumidor manda */ }
+        }
+        return res;
     }
 
     /** Repinta al cambiar el ancho del contenedor (conserva el estado de scroll). */
@@ -1633,7 +1721,8 @@
         navegarWoo: navegarWoo,
         coleccion: coleccion,
         puro: { acotar: acotar, preCargar: preCargar, orden: orden,
-            formatearPrecio: formatearPrecio, celdas: celdas, pie: pie, caben: caben, tanda: tanda },
+            formatearPrecio: formatearPrecio, celdas: celdas, pie: pie, caben: caben,
+        carga: carga, navegableDe: navegableDe },
         version: '1.0.0'
     };
 

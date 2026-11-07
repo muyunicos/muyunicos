@@ -52,49 +52,73 @@ Tabla de referencia (`min 4`, `capacidad 8`, `tope 3`), verificada en la puerta:
 | 7 | `[O][O][+5]` | Puedes agregar 1 mas |
 | 8 | `[O][O][+6]` | Maximo alcanzado |
 
-## C1bis — `MU.puro.tanda({items, tope, caben, pagina})`
+## C1bis — `MU.puro.carga({items, tope, caben, huecos, tandas})`
 
-La **tanda** es lo que decide `chipAccion:'auto'`: cuantas imagenes se ven en cada paso y
-cuando el chip deja de paginar y pasa a **abrir el visor**.
+La **carga** decide `chipAccion:'auto'`: cuantas imagenes se ven, cuanto **SUMA** el chip y
+cuando deja de sumar para **abrir el visor**. Es **acumulativa**: lo revelado nunca se oculta.
 
 ```
-topeEf  = tope > 0 ? min(tope, items) : items      // el tope NUNCA se toca
-hayChip = items > caben                             // si no caben todos, hay chip
-paso    = hayChip ? max(1, caben - 1) : caben        // el chip reserva una celda
-paginas = max(1, ceil(topeEf / paso))
-pagina  = clamp(pagina, 0, paginas - 1)
-desde   = pagina * paso
-visibles= min(paso, max(0, topeEf - desde))
-fin     = desde + visibles
-ocultas = max(0, items - fin)
-agotado = fin >= topeEf && ocultas > 0               // el chip ABRE el visor
+topeC     = tope                                       // 0 = sin tope
+capBase   = max(1, caben - huecos)                      // celdas de IMAGEN sin contar chip
+topeBase  = tope > 0 ? max(0, tope - huecos) : Infinity
+hayChip   = items > min(capBase, topeBase)              // quedaran imagenes ocultas
+capacidad = max(1, capBase - (hayChip ? 1 : 0))          // una "pantalla" FIJA
+topeItems = tope > 0 ? max(0, topeBase - (hayChip ? 1 : 0)) : Infinity
+visibles  = min(items, topeItems, max(min(capacidad, topeItems, items),
+                                      capacidad * (1 + tandas)))
+ocultas   = max(0, items - visibles)
+siguiente = min(topeItems, visibles + capacidad)
+navega    = visibles > capacidad                        // DERIVADO
+agotado   = visibles >= min(topeItems, items) && ocultas > 0   // el chip ABRE el visor
 ```
 
-Devuelve `{desde, visibles, fin, ocultas, paso, paginas, pagina, agotado}`.
+Devuelve `{capacidad, tandas, revelados, visibles, ocultas, paso, siguiente, navega,
+agotado, topeCeldas, topeItems, hayChip}`.
 
 Reglas:
 
-1. **`tope` es el maximo de items visibles en TODO el paginado** (0 = todos). No se reescribe.
-2. Si el chip aparece, **ocupa una celda**: por eso `paso = caben - 1`. Con 2 celdas y chip se
-   ve 1 imagen, no 2.
-3. **`agotado`** = ya se llego al `tope` y **aun** quedan imagenes: ahi el chip deja de paginar
-   y abre el visor (nunca desaparece, nunca deja imagenes inalcanzables).
-4. La **pagina es estado interno** del contenedor, no una opcion: se guarda por nodo con una
-   firma de `items/tope/min/capacidad/layout/filas/columnas`. Cambiar cualquiera de esos la
-   resetea a 0; **redimensionar la conserva**.
-5. Los **huecos** (`min`/`invitacion`) salen **solo en la tanda 0** y compiten con las imagenes
-   por las celdas libres: `libres = caben - visibles - (hayChip ? 1 : 0)`.
+1. **`tope` es de CELDAS**, igual que en `celdas` (C1): las imagenes, el chip
+   (`mu-gal-celda--chip`) y los huecos (`mu-gal-celda--vacia`) que se ven cuentan dentro
+   de el. Con `tope 4`, 2 huecos y 5 imagenes: `1 imagen + 2 huecos + chip = 4 celdas`.
+2. Si el chip aparece, **ocupa una celda** de la vista fija (`capacidad`) y del `tope`
+   (`topeItems`). Con 2 celdas y chip se ve 1 imagen, no 2.
+3. **`navega` es DERIVADO, no una opcion**: en cuanto `visibles > capacidad` la galeria pasa a
+   navegable (scroll + flechas) sola. En la vista fija no hay scroll.
+4. El estado que se conserva es **`tandas`** (cuantas pantallas pidio el usuario), **no** un
+   numero absoluto: si la vista cambia de capacidad (`resize`, `filas`, `alto`, o la medicion
+   real de la celda) lo revelado se **re-ajusta solo**. La firma
+   (`items/tope/min/capacidad/layout/filas/columnas/alto/navegable`) lo resetea a 0;
+   **redimensionar lo conserva**.
+5. Los **huecos** (`min`/`invitacion`) van **siempre primero** y descuentan tanto la vista
+   fija como el `tope`.
+6. **`agotado`** = ya se llego al `tope` y **aun** quedan imagenes: ahi el chip deja de sumar
+   y abre el visor (nunca deja imagenes inalcanzables). Con `tope 1` la unica celda es el
+   chip: `visibles 0`, `agotado`.
 
-Tabla de referencia (`items 12`, `tope 6`, `caben 4` -> `paso 3`, `paginas 2`):
+Tabla de referencia (`items 12`, `caben 4` -> `capacidad 3`):
 
-| Tanda | Ve | Chip | Accion del chip |
-|---|---|---|---|
-| 0 | 3 (0..2) | `+9` | paginar -> tanda 1 |
-| 1 | 3 (3..5) | `+6` | **abrir visor** (tope alcanzado) |
+| Tandas | Ve | Chip | Accion del chip | Estado |
+|---|---|---|---|---|
+| 0 (arranque) | 3 (0..2) | `+9` | revelar (suma 3) | fija |
+| 1 | 6 (0..5) | `+6` | revelar (suma 3) | **navegable** |
+| 3 | 12 (0..11) | — | — | navegable |
 
-**`chipAccion:'auto'`** (default) deriva del layout: en fila con `deslizable:true` **no hay
-chip** (todo es alcanzable con scroll); si el chip existe, pagina hasta el `tope` y despues
-abre el visor. `'abrir'` abre siempre; `'cargar'` delega en `onRanura`.
+Que celdas entran en el `tope` (`caben 6`, `items 12`):
+
+| `tope` | huecos | Ve | Chip | Celdas ocupadas |
+|---|---|---|---|---|
+| 0 | 0 | 5 | `+7` | 6 (lo limita la vista) |
+| 4 | 0 | 3 | `+9` | **4** |
+| 4 | 2 | 1 | `+4` | **4** (1 + 2 + chip) |
+| 2 | 0 | 1 | `+11` | **2** (1 + chip) |
+| 1 | 0 | 0 | `+12` | **1** (solo el chip, abre visor) |
+
+Con `tope 6` (celdas) y `caben 4`: `topeItems 5`, asi que a las 2 tandas ve 5 y el chip pasa
+a **abrir visor** (`+7`, `agotado`) — 5 imagenes + chip = 6 celdas.
+
+**`chipAccion:'auto'`** (default): `navegable === false` -> `'abrir'` (no acumula);
+`agotado` -> `'abrir'`; si no, `'revelar'`. `'abrir'` abre siempre; `'cargar'` delega en
+`onRanura`; `'paginar'` es el nombre viejo de `'revelar'`.
 
 ## C2 — `MU.puro.pie({cargadas, min, capacidad, sustantivo, sustantivoSingular})`
 
@@ -110,7 +134,7 @@ Texto que reemplaza al chip para los huecos:
 ## C3 — `MU.puro.caben(ancho, celda, gap)`
 
 `max(1, floor((ancho + gap) / (celda + gap)))`. Con `100 / 30 / 0` -> **3**: dos items y
-el chip. Es el `tope` efectivo de una fila **no deslizable** (se recalcula en resize).
+el chip. Es el `tope` efectivo de una fila **fija** (se recalcula en resize).
 
 ## C4 — Opciones de `MU.coleccion`
 
@@ -120,14 +144,15 @@ MU.coleccion(el, {
 
   // forma
   layout: 'fila',               // 'fila' | 'grilla'
-  deslizable: 'auto',           // 'auto' | true | false   (solo fila)
+  navegable: 'auto',            // 'auto' | true | false   (alias: deslizable)
   tamano: 'medio',              // 'chico' | 'medio' | 'grande' | {ancho, alto}
   gap: 8,
-  filas: 0,                     // solo grilla: tope de filas (0 = todas)
+  filas: 0,                     // solo grilla: filas de la vista (0 = por `alto`)
   columnas: 0,                  // solo grilla: 0 = auto-fill segun el ancho
+  alto: 0,                      // solo grilla: alto de la vista en px (0 = el del marco)
 
   // cantidad
-  tope: 0,                      // max. ITEMS visibles (0 = todos)
+  tope: 0,                      // max. CELDAS visibles: imagen + chip + hueco (0 = todas)
   min: 0,                       // min. CARGAS (huecos obligatorios)
   capacidad: 0,                 // max. CARGAS (0 = sin tope de invitacion)
   chip: 'auto',                 // 'auto' | false
@@ -144,14 +169,23 @@ MU.coleccion(el, {
   sustantivoSingular: 'imagen',
 
   // eventos
-  onAbrir, onRanura, onChip, onEliminar, onFavorito, onAccion, onCambiar
+  onAbrir, onRanura, onChip, onEliminar, onFavorito, onAccion, onCambiar,
+  onPintado                     // (res) se llama en CADA pintado, incluidos los propios
 });
 ```
 
-**`deslizable`**:
-- `'auto'` (default): en `fila`, desliza **solo si no caben** (`caben < items`); en `grilla` no aplica.
-- `true`: fila con scroll-snap + flechas `.mu-nav-btn` (C8 del contrato del visor).
-- `false`: se calcula `tope = min(tope || ∞, caben)` y **no** hay scroll.
+**`navegable`** (alias historico `deslizable`, misma clave):
+- `'auto'` (default): arranca **fija** (entra lo que cabe) con el chip `+N`; al tocarlo **suma**
+  una pantalla mas y, como ya no cabe, la galeria pasa a navegable sola (scroll + flechas).
+- `true`: revela todo hasta el `tope` y es navegable desde el inicio.
+- `false`: nunca navega; el chip **abre el visor** (no acumula).
+
+**Vista fija**: fila = las celdas que entran en el ancho. Grilla = `columnas x filas`, donde
+`filas` manda sobre `alto`, y `alto: 0` usa el alto **real** del marco si el CSS lo limita; si el
+marco crece con el contenido **no hay presupuesto** y se ven todas (sin chip). Con `alto > 0` el
+marco **no crece** (`max-height` + scroll): la ventana es la declarada. El alto de celda se **mide**
+sobre el pintado anterior y, si el nodo esta vacio, se estima; tras esa medicion la galeria se
+repinta UNA vez (auto-ajuste) y avisa por `onPintado`.
 
 **`tamano`** fija el lado de la celda: `chico 72`, `medio 112`, `grande 160`, o `{ancho,alto}`
 para medidas libres (el calculo usa el numero declarado, nunca mide el DOM).
@@ -183,7 +217,8 @@ Un item se dibuja con **slots** (que se ve) y **preset** (atajo):
 ## C6 — DOM
 
 ```html
-<div class="mu-gal-coleccion mu-gal-coleccion--fila|--grilla" data-mu-gal-modo="...">
+<div class="mu-gal-coleccion mu-gal-coleccion--fila|--grilla" data-mu-gal-modo="..."
+     data-mu-gal-estado="fija|navegable" data-mu-gal-ancho="740">
   <p class="mu-gal-pie" role="status">Carga 4 imagenes</p>          <!-- si hay pie -->
   <div class="mu-gal-linea" data-mu-gal-modo="linea|grilla">
     <div class="mu-gal-celda" data-mu-gal-mini="0">
@@ -208,6 +243,9 @@ Un item se dibuja con **slots** (que se ve) y **preset** (atajo):
 
 - La miniatura sigue siendo un **contenedor** con botones (nunca boton anidado, D14).
 - El chip es una **celda mas** (no flota fuera): es lo que arregla el `+N` recortado.
+- El chip publica su accion en `data-mu-gal-chip-accion` (`revelar|abrir|cargar`).
+- La raiz publica el estado de la vista (`data-mu-gal-estado`): `fija` mientras entra todo lo
+  revelado, `navegable` cuando ya no cabe. `data-mu-gal-ancho` es el ancho medido del contenedor.
 - El pie va **arriba** de la linea y se actualiza con cada cambio (`role="status"`).
 
 ## C7 — Lo que este contrato NO permite
@@ -223,8 +261,9 @@ Un item se dibuja con **slots** (que se ve) y **preset** (atajo):
 
 `MU.visor({items, indice, listado: 'abajo'})` **monta una `coleccion`** (la misma pieza, D2) como
 banda inferior, con `preset:'mini'`, `tamano:'chico'`, `pie:false`, `tope:0` y
-`deslizable:'auto'` (si las miniaturas no caben, desliza; el listado nunca lleva chip porque
-todo es alcanzable). Sincronizacion **dos vias**:
+`navegable:true` (todo revelado y con scroll: el listado nunca lleva chip, porque la celda
+activa tiene que existir para que `MU.ir`/`marcarLista` puedan acercarla). Sincronizacion
+**dos vias**:
 
 - clic en una miniatura -> `MU.ir(i)`;
 - `MU.ir(i)` o las flechas/teclado -> marca `mu-gal-celda--activa` en la celda `i` y la acerca

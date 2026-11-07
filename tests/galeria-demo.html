@@ -6,7 +6,7 @@
 <title>MU.coleccion — playground (spec 019)</title>
 <!--
   Playground de la galeria (ambito 1). UNA sola galeria, configurable en vivo:
-  layout, tamano, deslizable, tope, min, capacidad, preset y slots.
+  layout, tamano, navegable, alto, tope, min, capacidad, preset y slots.
 
   El panel de la izquierda ES la documentacion del contrato `coleccion.md`:
   cada control corresponde a una opcion de `MU.coleccion`.
@@ -148,9 +148,9 @@
             </div>
             <div class="pg-campo">
                 <label>Navegable</label>
-                <label><input type="radio" name="pg-desliza" value="auto" checked> auto</label>
-                <label><input type="radio" name="pg-desliza" value="true"> si</label>
-                <label><input type="radio" name="pg-desliza" value="false"> no</label>
+                <label><input type="radio" name="pg-navega" value="auto" checked> auto</label>
+                <label><input type="radio" name="pg-navega" value="true"> si</label>
+                <label><input type="radio" name="pg-navega" value="false"> no</label>
             </div>
             <div class="pg-campo">
                 <label for="pg-tamano">Tamano</label>
@@ -171,9 +171,12 @@
                 <output id="pg-ancho-out">760</output>
             </div>
             <div class="pg-campo">
-                <label for="pg-alto">Alto del lienzo</label>
-                <input type="range" id="pg-alto" min="0" max="800" step="20" value="0">
-                <output id="pg-alto-out">auto</output>
+                <label for="pg-alto">Alto de la vista</label>
+                <input type="range" id="pg-alto" min="240" max="900" step="20" value="420">
+                <output id="pg-alto-out">420</output>
+            </div>
+            <div class="pg-campo">
+                <label><input type="checkbox" id="pg-sin-limite"> sin limite (auto real)</label>
             </div>
             <div class="pg-campo">
                 <label for="pg-filas">Filas (0 = auto)</label>
@@ -339,11 +342,12 @@
     var ESTADO = {
         preset: 'tarjeta',
         layout: 'fila',
-        deslizable: 'auto',
+        navegable: 'auto',
         tamano: 'medio',
         gap: 8,
         ancho: 760,
-        alto: 0,
+        alto: 420,
+        sinLimite: false,
         filas: 0,
         columnas: 0,
         cantidad: 9,
@@ -434,9 +438,10 @@
             preset: ESTADO.preset,
             slots: ESTADO.slots,
             layout: ESTADO.layout,
-            deslizable: (ESTADO.deslizable === 'auto') ? 'auto' : (ESTADO.deslizable === 'true'),
+            navegable: (ESTADO.navegable === 'auto') ? 'auto' : (ESTADO.navegable === 'true'),
             tamano: ESTADO.tamano,
             gap: ESTADO.gap,
+            alto: ESTADO.sinLimite ? 0 : ESTADO.alto,
             filas: ESTADO.filas,
             columnas: ESTADO.columnas,
             tope: ESTADO.tope,
@@ -446,6 +451,7 @@
             sustantivoSingular: 'imagen',
             confirmar: false,
             onAbrir: function (i) { abrirVisor(i); },
+            onPintado: function (r) { estado(r); },
             onRanura: function () { avisar('Ranura tocada: el consumidor abre su cargador'); },
             onEliminar: function (i) { avisar('Eliminar la imagen ' + (i + 1)); },
             onFavorito: function (i, v) { avisar((v ? 'Favorito' : 'Sin favorito') + ' en la ' + (i + 1)); },
@@ -455,16 +461,18 @@
 
     function render() {
         LIENZO.style.maxWidth = ESTADO.ancho + 'px';
-        LIENZO.style.height = (ESTADO.alto > 0) ? (ESTADO.alto + 'px') : '';
+        LIENZO.style.height = ESTADO.sinLimite ? '' : (ESTADO.alto + 'px');
         var o = opciones();
         var res = window.MU.coleccion(GALERIA, o);
         var jsonTxt = JSON.stringify({
             preset: ESTADO.preset,
             layout: ESTADO.layout,
-            deslizable: o.deslizable,
+            navegable: o.navegable,
             tamano: ESTADO.tamano,
             gap: ESTADO.gap,
-            alto: ESTADO.alto,
+            alto: o.alto,
+            anchoReal: GALERIA.clientWidth,
+            capacidad: res ? res.capacidad : 0,
             filas: ESTADO.filas,
             columnas: ESTADO.columnas,
             tope: ESTADO.tope,
@@ -476,13 +484,21 @@
         // Editable: no se pisa mientras el usuario lo esta tocando.
         if (document.activeElement !== JSONBOX) { JSONBOX.value = jsonTxt; }
         if (res) {
-            avisar('modo ' + res.modo + ' · items ' + res.visiblesItems
-                + ' · huecos ' + res.huecos + ' · chip ' + res.chip
-                + ' · tanda ' + (res.pagina + 1) + '/' + res.paginas
-                + (res.agotado ? ' (tope: el chip abre el visor)' : '')
-                + (res.scrollY ? ' · scroll vertical' : ''));
+            estado(res);
         }
         return res;
+    }
+
+    /** Pinta el estado REAL del ultimo pintado (tambien los que hace el componente solo). */
+    function estado(r) {
+        if (!r) { return; }
+        var total = ESTADO.cantidad;
+        avisar('modo ' + r.modo + ' · navegable ' + (r.navega ? 'si' : 'no')
+            + ' · visibles ' + r.visiblesItems + ' de ' + total
+            + ' (entran ' + r.capacidad + ')'
+            + ' · huecos ' + r.huecos + ' · chip ' + r.chip
+            + (r.agotado ? ' (tope: el chip abre el visor)' : '')
+            + (r.scrollY ? ' · scroll vertical' : ''));
     }
 
     function marcarRadio(nombre, valor) {
@@ -505,7 +521,10 @@
         set('pg-ancho', ESTADO.ancho);
         document.getElementById('pg-ancho-out').textContent = String(ESTADO.ancho);
         set('pg-alto', ESTADO.alto);
-        document.getElementById('pg-alto-out').textContent = ESTADO.alto > 0 ? String(ESTADO.alto) : 'auto';
+        document.getElementById('pg-alto-out').textContent = ESTADO.sinLimite
+            ? 'sin limite' : String(ESTADO.alto);
+        var chk = document.getElementById('pg-sin-limite');
+        if (chk) { chk.checked = !!ESTADO.sinLimite; }
         set('pg-filas', ESTADO.filas);
         set('pg-columnas', ESTADO.columnas);
         set('pg-cantidad', ESTADO.cantidad);
@@ -515,7 +534,7 @@
         set('pg-capacidad', ESTADO.capacidad);
         set('pg-sustantivo', ESTADO.sustantivo);
         marcarRadio('pg-layout', ESTADO.layout);
-        marcarRadio('pg-desliza', ESTADO.deslizable);
+        marcarRadio('pg-navega', ESTADO.navegable);
         sincronizarSlots();
         enlazar2('pg-d-precio', 'precio');
         enlazar2('pg-d-promo', 'promo');
@@ -546,10 +565,11 @@
         if (datos.preset !== undefined) { ESTADO.preset = String(datos.preset); }
         if (datos.layout !== undefined) { ESTADO.layout = String(datos.layout); }
         if (datos.tamano !== undefined) { ESTADO.tamano = String(datos.tamano); }
-        if (datos.deslizable !== undefined) {
-            ESTADO.deslizable = (datos.deslizable === true) ? 'true'
-                : (datos.deslizable === false) ? 'false' : String(datos.deslizable);
+        if (datos.navegable !== undefined || datos.deslizable !== undefined) {
+            var nav = (datos.navegable !== undefined) ? datos.navegable : datos.deslizable;
+            ESTADO.navegable = (nav === true) ? 'true' : (nav === false) ? 'false' : String(nav);
         }
+        if (datos.sinLimite !== undefined) { ESTADO.sinLimite = !!datos.sinLimite; }
         ['gap', 'alto', 'filas', 'columnas', 'tope', 'min', 'capacidad'].forEach(function (k) {
             if (datos[k] !== undefined) { ESTADO[k] = Math.max(0, parseInt(datos[k], 10) || 0); }
         });
@@ -600,8 +620,8 @@
     Array.prototype.forEach.call(document.querySelectorAll('input[name="pg-layout"]'), function (r) {
         r.addEventListener('change', function () { ESTADO.layout = r.value; render(); });
     });
-    Array.prototype.forEach.call(document.querySelectorAll('input[name="pg-desliza"]'), function (r) {
-        r.addEventListener('change', function () { ESTADO.deslizable = r.value; render(); });
+    Array.prototype.forEach.call(document.querySelectorAll('input[name="pg-navega"]'), function (r) {
+        r.addEventListener('change', function () { ESTADO.navegable = r.value; render(); });
     });
 
     enlazar('pg-tamano', 'change', function (e) { ESTADO.tamano = e.target.value; render(); });
@@ -616,8 +636,16 @@
         render();
     });
     enlazar('pg-alto', 'input', function (e) {
-        ESTADO.alto = parseInt(e.target.value, 10) || 0;
-        document.getElementById('pg-alto-out').textContent = ESTADO.alto > 0 ? String(ESTADO.alto) : 'auto';
+        ESTADO.alto = parseInt(e.target.value, 10) || 240;
+        document.getElementById('pg-alto-out').textContent = ESTADO.sinLimite
+            ? 'sin limite' : String(ESTADO.alto);
+        render();
+    });
+    enlazar('pg-sin-limite', 'change', function (e) {
+        // Auto real: el lienzo crece con el contenido (sin presupuesto -> se ven todas).
+        ESTADO.sinLimite = !!e.target.checked;
+        document.getElementById('pg-alto-out').textContent = ESTADO.sinLimite
+            ? 'sin limite' : String(ESTADO.alto);
         render();
     });
     enlazar('pg-filas', 'input', function (e) { ESTADO.filas = parseInt(e.target.value, 10) || 0; render(); });
@@ -704,8 +732,16 @@
     if (window.location.hash === '#grilla-f2') {
         ESTADO.layout = 'grilla';
         ESTADO.filas = 2;               // QA: grilla a 2 filas (el chip resume el resto)
+        ESTADO.alto = 560;              // alto para 2 filas reales (celda ~250)
+        ESTADO.columnas = 4;
+        ESTADO.cantidad = 14;
         marcarRadio('pg-layout', 'grilla');
         document.getElementById('pg-filas').value = '2';
+        document.getElementById('pg-columnas').value = '4';
+        document.getElementById('pg-alto').value = '560';
+        document.getElementById('pg-alto-out').textContent = '560';
+        document.getElementById('pg-cantidad').value = '14';
+        document.getElementById('pg-cantidad-out').textContent = '14';
     }
     if (window.location.hash === '#grilla-alto') {
         ESTADO.layout = 'grilla';       // QA: alto limitado -> chip por filas que caben
@@ -717,14 +753,14 @@
     if (window.location.hash === '#grilla-scroll') {
         ESTADO.layout = 'grilla';       // QA: grilla navegable -> scroll vertical
         ESTADO.alto = 360;
-        ESTADO.deslizable = 'true';
+        ESTADO.navegable = 'true';
         marcarRadio('pg-layout', 'grilla');
-        marcarRadio('pg-desliza', 'true');
+        marcarRadio('pg-navega', 'true');
         document.getElementById('pg-alto').value = '360';
         document.getElementById('pg-alto-out').textContent = '360';
     }
-    if (window.location.hash === '#pagina') {
-        ESTADO.layout = 'grilla';       // QA: chip que pagina (tope 9 en un lienzo de 1 fila)
+    if (window.location.hash === '#pagina' || window.location.hash === '#carga') {
+        ESTADO.layout = 'grilla';       // QA: chip que SUMA por tandas (tope 9)
         ESTADO.alto = 360;
         ESTADO.cantidad = 14;
         ESTADO.tope = 9;
@@ -735,8 +771,53 @@
         document.getElementById('pg-cantidad-out').textContent = '14';
         document.getElementById('pg-tope').value = '9';
     }
+    if (window.location.hash === '#tope') {
+        ESTADO.layout = 'fila';         // QA: tope 3 = 3 CELDAS (imagen + chip)
+        ESTADO.navegable = 'auto';
+        ESTADO.cantidad = 9;
+        ESTADO.tope = 3;
+        marcarRadio('pg-layout', 'fila');
+        marcarRadio('pg-navega', 'auto');
+        document.getElementById('pg-cantidad').value = '9';
+        document.getElementById('pg-cantidad-out').textContent = '9';
+        document.getElementById('pg-tope').value = '3';
+    }
+    if (window.location.hash === '#fila-auto') {
+        ESTADO.layout = 'fila';         // QA: fila 'auto' -> fija con chip, suma al tocarlo
+        ESTADO.navegable = 'auto';
+        ESTADO.cantidad = 9;
+        marcarRadio('pg-layout', 'fila');
+        marcarRadio('pg-navega', 'auto');
+        document.getElementById('pg-cantidad').value = '9';
+        document.getElementById('pg-cantidad-out').textContent = '9';
+    }
+    if (window.location.hash === '#grilla-auto') {
+        ESTADO.layout = 'grilla';       // QA: grilla 'auto' con alto -> chip por filas
+        ESTADO.navegable = 'auto';
+        ESTADO.alto = 420;
+        ESTADO.cantidad = 14;
+        marcarRadio('pg-layout', 'grilla');
+        marcarRadio('pg-navega', 'auto');
+        document.getElementById('pg-alto').value = '420';
+        document.getElementById('pg-alto-out').textContent = '420';
+        document.getElementById('pg-cantidad').value = '14';
+        document.getElementById('pg-cantidad-out').textContent = '14';
+    }
     sincronizarSlots();
     render();
+
+    // QA combinable con cualquier hash: `?clic=1` toca el chip una vez (debe SUMAR
+    // celdas y pasar la galeria a navegable).
+    if (/[?&]clic=1/.test(window.location.search)) {
+        var chipQa = GALERIA.querySelector('[data-mu-gal-chip]');
+        if (chipQa) {
+            avisar('chip tocado (' + chipQa.getAttribute('data-mu-gal-chip-accion')
+                + '): ' + chipQa.textContent);
+            chipQa.click();
+        } else {
+            avisar('no hay chip: todo entra en la vista');
+        }
+    }
 
     // QA: visor con listado inferior (F2); `#visor3` ademas prueba `MU.ir(3)`.
     if (window.location.hash === '#visor' || window.location.hash === '#visor3') {
