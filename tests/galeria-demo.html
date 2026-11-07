@@ -3,509 +3,552 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Galeria compartida — demo (spec 019 + tira v1.1)</title>
+<title>MU.coleccion — playground (spec 019)</title>
 <!--
-  Demo de aprobacion visual y de comportamiento de `MUGaleria` (spec 019).
-  Se abre como archivo local (no necesita WordPress ni internet): todos los
-  estilos son los del tema y las imagenes se generan como SVG data-URI.
+  Playground de la galeria (ambito 1). UNA sola galeria, configurable en vivo:
+  layout, tamano, deslizable, tope, min, capacidad, preset y slots.
 
-  Que revisar:
-    1. Tira adaptativa: el MISMO contenido en un contenedor ancho (grilla) y en uno
-       angosto (una linea con scroll). Cambia el ancho de la ventana.
-    2. Visor claro: segmentos, meta POR IMAGEN, precio y acciones.
-    3. Visor oscuro (el que usara el plugin, tono `oscuro`).
-    4. Tarjetas de catalogo (badge, estrella, precio, Usar/Borrar).
-    5. Modo declarativo `data-mu-galeria` (cuenta, banners, opciones).
-    6. Ficha de WooCommerce simulada: 4 fotos, la lupa abre el visor en la activa.
-    7. Mi cuenta: grilla a 2 filas con tachito (borra la miniatura).
-    8. Campo con minimo 3: ranuras vacias que abren el cargador.
+  El panel de la izquierda ES la documentacion del contrato `coleccion.md`:
+  cada control corresponde a una opcion de `MU.coleccion`.
 
-  `global-ui.css` se enlaza solo por `.mu-modal-overlay/.mu-modal-container/.mu-modal-close`
-  (el visor NO trae modal propio). En WordPress no hace falta enlazarlo: ya viaja global.
+  Debajo, en "Pruebas del tema", quedan el visor (ambito 2) y el carrusel del tema
+  con sus flechas, que no son parte de la coleccion pero comparten sistema.
 -->
 <link rel="stylesheet" href="../style.css">
 <link rel="stylesheet" href="../css/components/global-ui.css">
 <link rel="stylesheet" href="../css/components/galeria.css">
 <style>
-    body { padding: 24px; }
-    .demo-seccion { margin: 0 0 36px; }
-    .demo-seccion > h2 {
-        font-size: 14px;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: var(--texto-light);
-        margin: 0 0 10px;
-    }
-    .demo-fila { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
-    .demo-boton {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 8px 14px;
-        border: 1px solid var(--primario);
+    body { padding: 18px; }
+    .pg { display: flex; gap: 20px; align-items: flex-start; }
+    .pg-panel {
+        flex: 0 0 300px;
+        border: 1px solid #e2e8f0;
         border-radius: var(--mu-radius);
+        background: var(--blanco);
+        padding: 12px;
+        max-height: 82vh;
+        overflow-y: auto;
+    }
+    .pg-panel h2 { margin: 0 0 8px; font-size: 14px; color: var(--texto); }
+    .pg-grupo { border-top: 1px solid #e2e8f0; padding: 8px 0; }
+    .pg-grupo:first-of-type { border-top: 0; }
+    .pg-grupo > h3 {
+        margin: 0 0 6px;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--texto-light);
+    }
+    .pg-campo { display: flex; align-items: center; gap: 6px; margin: 4px 0; font-size: 12px; color: var(--texto); }
+    .pg-campo > label { flex: 1 1 auto; }
+    .pg-campo input[type="number"], .pg-campo select, .pg-campo input[type="text"] {
+        width: 90px;
+        padding: 2px 4px;
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        font-family: var(--mu-font-base);
+        font-size: 12px;
+    }
+    .pg-campo input[type="range"] { width: 110px; }
+    .pg-campo output { width: 36px; text-align: right; font-variant-numeric: tabular-nums; }
+    .pg-slots { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; }
+    .pg-slots label { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--texto); }
+    .pg-acciones { display: flex; gap: 6px; margin-top: 8px; }
+    .pg-boton {
+        flex: 1 1 auto;
+        padding: 6px 8px;
+        border: 1px solid var(--primario);
+        border-radius: var(--mu-radius-sm);
         background: var(--blanco);
         color: var(--primario);
         font-family: var(--mu-font-base);
-        font-size: 13px;
-        font-weight: 600;
-        cursor: pointer;
-    }
-    .demo-boton:hover { background: var(--primario); color: var(--blanco); }
-    .demo-nota { font-size: 12px; color: var(--texto-light); margin: 0 0 10px; }
-    .demo-status {
-        min-height: 18px;
-        margin: 0 0 24px;
         font-size: 12px;
         font-weight: 600;
-        color: var(--resaltado);
+        cursor: pointer;
     }
-    .demo-caja {
+    .pg-boton:hover { background: var(--primario); color: var(--blanco); }
+    .pg-json {
+        margin: 8px 0 0;
+        padding: 8px;
+        max-height: 150px;
+        overflow: auto;
+        background: #0f172a;
+        color: #a5f3fc;
+        border-radius: 6px;
+        font: 10px/1.35 ui-monospace, monospace;
+        white-space: pre-wrap;
+    }
+    .pg-main { flex: 1 1 auto; min-width: 0; }
+    .pg-lienzo {
         border: 1px dashed #cbd5e1;
         border-radius: var(--mu-radius);
-        padding: 8px;
-        margin: 8px 0 12px;
-    }
-    .demo-ancha { width: 100%; max-width: 820px; }
-    .demo-angosta { width: 240px; }
-    .demo-media { width: 100%; max-width: 420px; }
-    /* Simulacion del carrusel del tema para ver las flechas del sistema (D18). */
-    .demo-carrusel { position: relative; max-width: 640px; margin: 0 0 14px; }
-    .demo-carrusel .mu-carousel-track {
-        display: grid;
-        grid-auto-flow: column;
-        grid-auto-columns: 120px;
-        gap: 8px;
-        overflow-x: auto;
-        padding-bottom: 6px;
-        scroll-snap-type: x mandatory;
-        scrollbar-width: none;
-    }
-    .demo-carrusel .mu-carousel-track::-webkit-scrollbar { display: none; }
-    .demo-carrusel .mu-carousel-item { width: 120px; scroll-snap-align: start; }
-    .demo-carrusel .mu-carousel-item img {
-        display: block;
-        width: 100%;
-        height: 90px;
-        object-fit: cover;
-        border-radius: var(--mu-radius-sm);
-    }
-    /* Solo en la demo: los tachitos de "Mi cuenta" siempre visibles, para poder verlos
-       (el componente los muestra en hover/foco y en tactil, por diseño D16). */
-    #demo-cuenta .mu-gal-mini-borrar { opacity: 1; }
-
-    /* Ficha de WooCommerce simulada: solo lo necesario para verla. */
-    .demo-woo {
-        position: relative;
-        max-width: 320px;
-        border: 1px solid #e2e8f0;
-        border-radius: var(--mu-radius);
-        padding: 12px;
+        padding: 10px;
         background: var(--blanco);
+        margin-bottom: 12px;
     }
-    .demo-woo .woocommerce-product-gallery__trigger {
-        position: absolute;
-        top: 18px;
-        right: 18px;
-        z-index: 2;
-        width: 36px;
-        height: 36px;
-        padding: 0;
-        border: 0;
-        border-radius: 50%;
-        background: rgb(255 255 255 / 92%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 18px;
-        line-height: 1;
-        cursor: pointer;
-        box-shadow: var(--mu-shadow);
+    .pg-status { min-height: 18px; margin: 0 0 8px; font-size: 12px; font-weight: 600; color: var(--resaltado); }
+    .pg-ayuda { margin: 0 0 10px; font-size: 12px; color: var(--texto-light); }
+    details.pg-tema { border: 1px solid #e2e8f0; border-radius: var(--mu-radius); padding: 8px 10px; }
+    details.pg-tema summary { cursor: pointer; font-size: 12px; font-weight: 600; color: var(--texto); }
+    .pg-woo { position: relative; max-width: 320px; margin-top: 10px; }
+    .pg-woo .woocommerce-product-gallery__trigger {
+        position: absolute; top: 8px; right: 8px; z-index: 2;
+        width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%;
+        background: rgb(255 255 255 / 92%); cursor: pointer; box-shadow: var(--mu-shadow);
     }
-    .demo-woo .woocommerce-product-gallery__image img {
-        display: block;
-        width: 100%;
-        height: auto;
-        border-radius: var(--mu-radius-sm);
-    }
-    /* WooCommerce real usa un slider: solo se ve la foto activa. */
-    .demo-woo .woocommerce-product-gallery__image:nth-child(n+2) { display: none; }
-    .demo-woo .flex-control-thumbs {
-        display: flex;
-        gap: 6px;
-        list-style: none;
-        margin: 10px 0 0;
-        padding: 0;
-        overflow-x: auto;
-        scroll-snap-type: x mandatory;
-    }
-    .demo-woo .flex-control-thumbs li { flex: 0 0 auto; scroll-snap-align: start; }
-    .demo-woo .flex-control-thumbs img {
-        display: block;
-        width: 70px;
-        height: 70px;
-        object-fit: cover;
-        border-radius: var(--mu-radius-sm);
-        border: 2px solid transparent;
-        cursor: pointer;
-        opacity: 0.6;
-    }
-    .demo-woo .flex-control-thumbs img.flex-active {
-        border-color: var(--primario);
-        opacity: 1;
+    .pg-woo img { display: block; width: 100%; border-radius: var(--mu-radius-sm); }
+    @media (max-width: 860px) {
+        .pg { flex-direction: column; }
+        .pg-panel { flex: 1 1 auto; width: 100%; max-height: none; }
     }
 </style>
 </head>
 <body>
 
-<h1 style="margin-top:0;font-size:20px">Galeria compartida — <code>MUGaleria</code> (spec 019)</h1>
-<p class="demo-nota">
-    Un componente para toda la tienda: visor (modal del tema), tira adaptativa y tarjeta.
-    Consume los tokens de <code>style.css</code> y no pide datos.
+<h1 style="margin:0 0 4px;font-size:19px">MU.coleccion — playground</h1>
+<p class="pg-ayuda">
+    Una sola galeria, configurable en vivo. El panel de la izquierda es el contrato
+    <code>coleccion.md</code>: cada control es una opcion de <code>MU.coleccion</code>.
 </p>
-<p id="demo-status" class="demo-status" role="status" aria-live="polite">Listo.</p>
+<p id="pg-status" class="pg-status" role="status" aria-live="polite">Listo.</p>
 
-<section class="demo-seccion">
-    <h2>1. Tira adaptativa (por ancho del contenedor)</h2>
-    <p class="demo-nota">
-        En el contenedor ancho decide sola: grilla. En el angosto (240 px) pasa a
-        <strong>una linea con scroll</strong>. Probá angostar la ventana: se repinta sola
-        sin perder el scroll.
-    </p>
-    <div class="demo-fila">
-        <button type="button" class="demo-boton" id="demo-tira-base">Auto (8 fotos)</button>
-        <button type="button" class="demo-boton" id="demo-tira-tope">Auto 14 con "+N" (tope 10)</button>
-        <button type="button" class="demo-boton" id="demo-tira-circulo">Circular</button>
-    </div>
-    <div class="demo-caja demo-ancha"><div id="demo-tira"></div></div>
-    <div class="demo-caja demo-angosta"><div id="demo-tira-angosta"></div></div>
-</section>
+<div class="pg">
+    <aside class="pg-panel">
+        <h2>Configuracion</h2>
 
-<section class="demo-seccion">
-    <h2>2. Visor — tono claro (tienda)</h2>
-    <p class="demo-nota">
-        Segmentos, acciones y <strong>meta por imagen</strong>: navegá y el titulo/precio
-        cambia (antes todas mostraban la misma meta).
-    </p>
-    <div class="demo-fila">
-        <button type="button" class="demo-boton" id="demo-claro">Abrir visor claro</button>
-    </div>
-</section>
+        <section class="pg-grupo">
+            <h3>Preset (atajo de slots)</h3>
+            <div class="pg-campo">
+                <label for="pg-preset">Plantilla</label>
+                <select id="pg-preset">
+                    <option value="mini">mini (imagen + eliminar)</option>
+                    <option value="tarjeta" selected>tarjeta (completa)</option>
+                    <option value="producto">producto (tienda)</option>
+                    <option value="opcion">opcion (selector)</option>
+                </select>
+            </div>
+            <p class="pg-ayuda" style="margin:6px 0 0">
+                Cambiar el preset reinicia los interruptores de abajo; despues podes
+                apagar cualquiera y la galeria pasa a "personalizado".
+            </p>
+        </section>
 
-<section class="demo-seccion">
-    <h2>3. Visor — tono oscuro (plugin / pantalla completa)</h2>
-    <p class="demo-nota">El mismo componente con <code>tono: 'oscuro'</code>; sin precio ni segmentos.</p>
-    <div class="demo-fila">
-        <button type="button" class="demo-boton" id="demo-oscuro">Abrir visor oscuro</button>
-    </div>
-</section>
+        <section class="pg-grupo">
+            <h3>Forma</h3>
+            <div class="pg-campo">
+                <label>Layout</label>
+                <label><input type="radio" name="pg-layout" value="fila" checked> fila</label>
+                <label><input type="radio" name="pg-layout" value="grilla"> grilla</label>
+            </div>
+            <div class="pg-campo">
+                <label>Navegable</label>
+                <label><input type="radio" name="pg-desliza" value="auto" checked> auto</label>
+                <label><input type="radio" name="pg-desliza" value="true"> si</label>
+                <label><input type="radio" name="pg-desliza" value="false"> no</label>
+            </div>
+            <div class="pg-campo">
+                <label for="pg-tamano">Tamano</label>
+                <select id="pg-tamano">
+                    <option value="chico">chico (72)</option>
+                    <option value="medio" selected>medio (112)</option>
+                    <option value="grande">grande (160)</option>
+                </select>
+            </div>
+            <div class="pg-campo">
+                <label for="pg-gap">Separacion</label>
+                <input type="range" id="pg-gap" min="0" max="24" step="2" value="8">
+                <output id="pg-gap-out">8</output>
+            </div>
+            <div class="pg-campo">
+                <label for="pg-ancho">Ancho del lienzo</label>
+                <input type="range" id="pg-ancho" min="240" max="900" step="20" value="760">
+                <output id="pg-ancho-out">760</output>
+            </div>
+            <div class="pg-campo">
+                <label for="pg-filas">Filas (grilla)</label>
+                <input type="number" id="pg-filas" min="0" max="6" value="0">
+            </div>
+            <div class="pg-campo">
+                <label for="pg-columnas">Columnas (grilla)</label>
+                <input type="number" id="pg-columnas" min="0" max="8" value="0">
+            </div>
+        </section>
+    <section class="pg-grupo">
+            <h3>Cantidad</h3>
+            <div class="pg-campo">
+                <label for="pg-cantidad">Items</label>
+                <input type="range" id="pg-cantidad" min="0" max="14" value="9">
+                <output id="pg-cantidad-out">9</output>
+            </div>
+            <div class="pg-campo">
+                <label for="pg-tope">Tope (0 = todos)</label>
+                <input type="number" id="pg-tope" min="0" max="14" value="0">
+            </div>
+            <div class="pg-campo">
+                <label for="pg-min">Minimo de cargas</label>
+                <input type="number" id="pg-min" min="0" max="10" value="0">
+            </div>
+            <div class="pg-campo">
+                <label for="pg-capacidad">Capacidad de cargas</label>
+                <input type="number" id="pg-capacidad" min="0" max="10" value="0">
+            </div>
+            <div class="pg-campo">
+                <label for="pg-sustantivo">Sustantivo</label>
+                <input type="text" id="pg-sustantivo" value="imagenes">
+            </div>
+        </section>
 
-<section class="demo-seccion">
-    <h2>4. Tarjeta de catalogo</h2>
-    <p class="demo-nota">
-        Un solo badge de origen, estrella, precio con "actualizado" y acciones:
-        <strong>Usar</strong> en todas, <strong>Borrar</strong> solo en las guardadas.
-    </p>
-    <div class="demo-fila" id="demo-tarjetas"></div>
-</section>
+        <section class="pg-grupo">
+            <h3>Slots visibles</h3>
+            <div class="pg-slots" id="pg-slots"></div>
+        </section>
 
-<section class="demo-seccion">
-    <h2>5. Modo declarativo (cuenta, banners, opciones)</h2>
-    <p class="demo-nota">
-        Cualquier bloque con <code>data-mu-galeria</code>: el boton
-        <code>data-mu-galeria-abrir</code> (o el primer enlace/imagen) abre el visor.
-        No hace falta JS nuevo por caso.
-    </p>
-    <div data-mu-galeria data-mu-galeria-titulo="Mis fotos" class="demo-fila">
-        <a href="#" style="display:block"><img
-            src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='260'%3E%3Crect width='360' height='260' fill='%232B9FCF'/%3E%3Ctext x='180' y='150' font-size='64' font-family='sans-serif' fill='%23fff' text-anchor='middle'%3EA%3C/text%3E%3C/svg%3E"
-            alt="Foto A" width="150"></a>
-        <a href="#" style="display:block"><img
-            src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='260'%3E%3Crect width='360' height='260' fill='%23FFD77A'/%3E%3Ctext x='180' y='150' font-size='64' font-family='sans-serif' fill='%23333' text-anchor='middle'%3EB%3C/text%3E%3C/svg%3E"
-            alt="Foto B" width="150"></a>
-        <a href="#" style="display:block"><img
-            src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='260'%3E%3Crect width='360' height='260' fill='%236c5ce7'/%3E%3Ctext x='180' y='150' font-size='64' font-family='sans-serif' fill='%23fff' text-anchor='middle'%3EC%3C/text%3E%3C/svg%3E"
-            alt="Foto C" width="150"></a>
-    </div>
-</section>
+        <section class="pg-grupo">
+            <h3>Datos de los items</h3>
+            <div class="pg-slots">
+                <label><input type="checkbox" id="pg-d-precio" checked> precio</label>
+                <label><input type="checkbox" id="pg-d-promo" checked> promo</label>
+                <label><input type="checkbox" id="pg-d-desc" checked> descripcion</label>
+                <label><input type="checkbox" id="pg-d-fav"> favorito (2do)</label>
+                <label><input type="checkbox" id="pg-d-etiqueta" checked> etiqueta</label>
+                <label><input type="checkbox" id="pg-d-acciones" checked> boton "Usar"</label>
+            </div>
+        </section>
 
-<section class="demo-seccion">
-    <h2>6. Ficha de WooCommerce simulada (default de la tienda)</h2>
-    <p class="demo-nota">
-        <strong>6 fotos</strong> (6 slides + 6 miniaturas, con desborde para poder arrastrar).
-        La lupa abre el visor en la miniatura activa y muestra <code>1 / 6</code>.
-    </p>
-    <div class="woocommerce-product-gallery demo-woo">
-        <button type="button" class="woocommerce-product-gallery__trigger"
-                aria-label="Ver galeria de imagenes a pantalla completa">&#128269;</button>
-        <div class="woocommerce-product-gallery__wrapper">
-            <div class="woocommerce-product-gallery__image"><img alt="" src=""></div>
-            <div class="woocommerce-product-gallery__image"><img alt="" src=""></div>
-            <div class="woocommerce-product-gallery__image"><img alt="" src=""></div>
-            <div class="woocommerce-product-gallery__image"><img alt="" src=""></div>
-            <div class="woocommerce-product-gallery__image"><img alt="" src=""></div>
-            <div class="woocommerce-product-gallery__image"><img alt="" src=""></div>
+        <div class="pg-acciones">
+            <button type="button" class="pg-boton" id="pg-visor">Abrir visor</button>
+            <button type="button" class="pg-boton" id="pg-reset">Reset</button>
         </div>
-        <ul class="flex-control-thumbs">
-            <li><img src="" alt="" class="flex-active"></li>
-            <li><img src="" alt=""></li>
-            <li><img src="" alt=""></li>
-            <li><img src="" alt=""></li>
-            <li><img src="" alt=""></li>
-            <li><img src="" alt=""></li>
-        </ul>
-    </div>
-</section>
 
-<section class="demo-seccion">
-    <h2>7. Mi cuenta — grilla a 2 filas con tachito</h2>
-    <p class="demo-nota">
-        <code>modo: 'grilla'</code> + <code>filas: 2</code> + <code>borrar: true</code>.
-        12 fotos en un contenedor angosto: caben 10 (2 filas de 5) y las otras 2 van al
-        chip "+2". El tachito confirma y quita la miniatura.
-    </p>
-    <div class="demo-caja demo-media"><div id="demo-cuenta"></div></div>
-</section>
+        <pre class="pg-json" id="pg-json"></pre>
+    </aside>
 
-<section class="demo-seccion">
-    <h2>8. Campo con minimo 3 (ranuras a llenar)</h2>
-    <p class="demo-nota">
-        <code>min: 3</code> con una sola foto: dibuja 2 ranuras y el contador "1 de 3".
-        Tocar una ranura abre el cargador (<code>onRanura</code>).
-    </p>
-    <div class="demo-caja demo-ancha"><div id="demo-minimo"></div></div>
-</section>
+    <main class="pg-main">
+        <p class="pg-ayuda">
+            <strong>Galeria</strong> (ambito 1). Toca una imagen para abrir el visor, los
+            <code>+</code> para cargar y el chip <code>+N</code> para las imagenes ocultas.
+        </p>
+        <div class="pg-lienzo" id="pg-lienzo">
+            <div id="pg-galeria"></div>
+        </div>
 
-<section class="demo-seccion">
-    <h2>9. Carrusel del tema — flechas sólo si son necesarias</h2>
-    <p class="demo-nota">
-        <code>.mu-carousel-wrapper</code> + <code>.mu-nav-btn</code>: el sistema que ya usan
-        bestsellers y las secciones. Arriba 12 ítems (desborda: hay flechas); abajo 2 ítems
-        (no desborda: <strong>no</strong> hay flechas). Al llegar a un extremo, esa flecha
-        desaparece.
-    </p>
-    <div class="mu-carousel-wrapper demo-carrusel">
-        <button class="mu-nav-btn prev" aria-label="Anterior">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><polyline points="15 18 9 12 15 6"></polyline></svg>
-        </button>
-        <button class="mu-nav-btn next" aria-label="Siguiente">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><polyline points="9 18 15 12 9 6"></polyline></svg>
-        </button>
-        <div class="mu-carousel-track" id="demo-track-largo"></div>
-    </div>
-    <div class="mu-carousel-wrapper demo-carrusel">
-        <button class="mu-nav-btn prev" aria-label="Anterior">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><polyline points="15 18 9 12 15 6"></polyline></svg>
-        </button>
-        <button class="mu-nav-btn next" aria-label="Siguiente">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><polyline points="9 18 15 12 9 6"></polyline></svg>
-        </button>
-        <div class="mu-carousel-track" id="demo-track-corto"></div>
-    </div>
-</section>
-
-<section class="demo-seccion">
-    <h2>10. MU.coleccion (modelo v2: un item, slots, layout)</h2>
-    <p class="demo-nota">
-        El mismo componente, configurado. Arriba: catálogo (<code>preset:'tarjeta'</code>,
-        fila que no desliza, <code>tope: 4</code>). Abajo: campo con <code>min: 4</code>,
-        <code>capacidad: 8</code> y <code>tope: 3</code>: el pie dice lo que falta, los huecos
-        se llenan y el chip resume las imágenes ocultas.
-    </p>
-    <p class="demo-nota">Catálogo (fila, tope 4):</p>
-    <div id="demo-coleccion-catalogo"></div>
-    <p class="demo-nota">Campo (min 4 / capacidad 8 / tope 3):</p>
-    <div id="demo-coleccion-campo"></div>
-</section>
+        <details class="pg-tema">
+            <summary>Pruebas del tema (visor y carrusel con flechas)</summary>
+            <p class="pg-ayuda" style="margin:8px 0 0">
+                El visor (ambito 2) usa el sistema de modal del tema. El carrusel usa
+                <code>.mu-nav-btn</code>: las flechas se encienden solo si desborda.
+            </p>
+            <div class="mu-carousel-wrapper" style="position:relative;margin-top:10px">
+                <button class="mu-nav-btn prev" aria-label="Anterior">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </button>
+                <button class="mu-nav-btn next" aria-label="Siguiente">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </button>
+                <div class="mu-carousel-track" id="pg-track" style="display:grid;grid-auto-flow:column;grid-auto-columns:96px;gap:8px;overflow-x:auto"></div>
+            </div>
+            <div class="pg-woo" id="pg-woo">
+                <button type="button" class="woocommerce-product-gallery__trigger"
+                        aria-label="Ver galeria de imagenes a pantalla completa">&#128269;</button>
+                <div class="woocommerce-product-gallery__wrapper">
+                    <div class="woocommerce-product-gallery__image"><img alt="" src=""></div>
+                    <div class="woocommerce-product-gallery__image"><img alt="" src=""></div>
+                    <div class="woocommerce-product-gallery__image"><img alt="" src=""></div>
+                </div>
+                <ul class="flex-control-thumbs" style="display:flex;gap:6px;list-style:none;margin:8px 0 0;padding:0;overflow-x:auto">
+                    <li><img src="" alt="" class="flex-active" style="width:64px;height:64px;object-fit:cover"></li>
+                    <li><img src="" alt="" style="width:64px;height:64px;object-fit:cover"></li>
+                    <li><img src="" alt="" style="width:64px;height:64px;object-fit:cover"></li>
+                </ul>
+            </div>
+        </details>
+    </main>
+</div>
 
 <script src="../js/galeria.js"></script>
 <script>
 (function () {
     'use strict';
 
-    var STATUS = document.getElementById('demo-status');
+    var STATUS = document.getElementById('pg-status');
+    var GALERIA = document.getElementById('pg-galeria');
+    var LIENZO = document.getElementById('pg-lienzo');
+    var JSONBOX = document.getElementById('pg-json');
 
-    /** Deja rastro VISIBLE de cada accion. Antes era `alert()`, que bloquea (F3). */
-    function avisar(texto) { STATUS.textContent = String(texto); }
+    function avisar(t) { STATUS.textContent = String(t); }
 
     var COLORES = ['#2B9FCF', '#FFD77A', '#6c5ce7', '#047857', '#d63638',
         '#237FA9', '#f59e0b', '#ec4899', '#0ea5e9', '#22c55e'];
 
-    /** Imagen grande de prueba, SIN red: SVG en data-URI. */
     function svg(i) {
         var color = COLORES[i % COLORES.length];
         var texto = (i % 2 === 0) ? '#ffffff' : '#22303c';
-        var marcado = '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600">' +
+        var m = '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600">' +
             '<rect width="800" height="600" fill="' + color + '"/>' +
             '<text x="400" y="350" font-size="140" font-family="sans-serif" font-weight="bold"' +
             ' text-anchor="middle" fill="' + texto + '">' + (i + 1) + '</text></svg>';
-        return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(marcado);
+        return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(m);
     }
 
-    /**
-     * Miniatura DISTINTA de la imagen grande a proposito (F1): fondo rayado + "T".
-     * Si la tira usara `url` en vez de `thumb`, se veria al instante.
-     */
     function svgMini(i) {
         var color = COLORES[i % COLORES.length];
-        var marcado = '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160">' +
+        var m = '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160">' +
             '<rect width="160" height="160" fill="' + color + '"/>' +
             '<path d="M-40 160 L160 -40" stroke="rgba(255,255,255,0.35)" stroke-width="14"/>' +
-            '<path d="M40 160 L160 40" stroke="rgba(255,255,255,0.2)" stroke-width="10"/>' +
             '<text x="80" y="104" font-size="64" font-family="sans-serif" font-weight="bold"' +
             ' text-anchor="middle" fill="#ffffff">T</text></svg>';
-        return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(marcado);
+        return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(m);
     }
 
-    var items = [];
-    for (var i = 0; i < 14; i++) {
-        items.push({ url: svg(i), thumb: svgMini(i), etiqueta: 'Imagen ' + (i + 1) });
-    }
-
-    // Meta POR IMAGEN (B4): al navegar, el titulo/precio cambia. Las que no llevan
-    // `meta` no muestran el bloque (el componente ya soporta ambos modos).
-    items[0].meta = {
-        titulo: 'Vinilo circular 3cm', descripcion: 'Ideal para logos y etiquetas de botella.',
-        badge: 'Tienda', precio: { valor: 120, anterior: 180, aviso: true }
-    };
-    items[2].meta = {
-        titulo: 'Sticker troquelado', descripcion: 'Con contorno transparente.',
-        badge: 'Guardada', precio: { valor: 95, aviso: true }
-    };
-    items[5].meta = {
-        titulo: 'Plancha A4', descripcion: 'Para vidriera o folleteria.',
-        badge: 'Tienda', precio: { valor: 210, anterior: 260 }
-    };
-
-    /* ---------- 2 y 3. Visores ---------- */
-    function abrirClaro(indice) {
-        window.MUGaleria.visor({
-            items: items,
-            indice: indice || 0,
-            titulo: 'Ideas para personalizar',
-            tono: 'claro',
-            segmentos: [
-                { etiqueta: 'Tienda', activo: true, onElegir: function () {} },
-                { etiqueta: 'Mis imagenes', activo: false, onElegir: function () {} }
-            ],
-            acciones: [
-                { etiqueta: 'Personalizar', clase: '', onAccion: function (n) {
-                    avisar('Personalizar la imagen ' + (n + 1));
-                    window.MUGaleria.cerrar();
-                } },
-                { etiqueta: 'Borrar', clase: 'mu-gal-peligro', onAccion: function (n) {
-                    avisar('Borrar la imagen ' + (n + 1) + ' (solo las guardadas)');
-                    window.MUGaleria.cerrar();
-                } }
-            ],
-            alCambiar: function (n) { avisar('Viendo la imagen ' + (n + 1) + ' de ' + items.length); }
+    /* Universo de items: los datos completos. Los toggles de "Datos" deciden
+       que se le pasa a la galeria (contrato C5, slots de datos). */
+    var UNIVERSO = [];
+    for (var u = 0; u < 14; u++) {
+        UNIVERSO.push({
+            id: u + 1,
+            url: svg(u),
+            thumb: svgMini(u),
+            titulo: 'Producto ' + (u + 1),
+            descripcion: 'Vinilo circular 3cm',
+            etiqueta: 'Oferta',
+            favorito: false,
+            precio: { valor: 120 + u * 10, anterior: 180, promo: '33% OFF' },
+            acciones: [{ etiqueta: 'Usar' }]
         });
     }
+    UNIVERSO[1].favorito = true;
 
-    document.getElementById('demo-claro').addEventListener('click', function () { abrirClaro(0); });
+    /* Estado del playground. Cada clave es una opcion de MU.coleccion. */
+    var ESTADO = {
+        preset: 'tarjeta',
+        layout: 'fila',
+        deslizable: 'auto',
+        tamano: 'medio',
+        gap: 8,
+        ancho: 760,
+        filas: 0,
+        columnas: 0,
+        cantidad: 9,
+        tope: 0,
+        min: 0,
+        capacidad: 0,
+        sustantivo: 'imagenes',
+        slots: null,            // se inicializa con el preset
+        datos: { precio: true, promo: true, desc: true, fav: false, etiqueta: true, acciones: true }
+    };
 
-    document.getElementById('demo-oscuro').addEventListener('click', function () {
-        window.MUGaleria.visor({
-            items: items,
-            indice: 0,
-            titulo: 'Galeria del producto',
-            tono: 'oscuro',
-            acciones: [
-                { etiqueta: 'Elegir', clase: '', onAccion: function (n) {
-                    avisar('Elegida la imagen ' + (n + 1));
-                    window.MUGaleria.cerrar();
-                } }
-            ]
+    var SLOTS = [
+        { k: 'imagen', t: 'imagen', fijo: true },
+        { k: 'etiqueta', t: 'etiqueta' },
+        { k: 'favorito', t: 'favorito' },
+        { k: 'eliminar', t: 'eliminar' },
+        { k: 'titulo', t: 'titulo' },
+        { k: 'descripcion', t: 'descripcion' },
+        { k: 'precio', t: 'precio' },
+        { k: 'acciones', t: 'acciones' },
+        { k: 'estado', t: 'estado' }
+    ];
+
+    function slotsDelPreset(preset) {
+        var base = window.MU.presets[preset] || window.MU.presets.mini;
+        var s = {};
+        for (var k in base) { if (base.hasOwnProperty(k)) { s[k] = !!base[k]; } }
+        s.imagen = true;
+        return s;
+    }
+
+    /* Los slots se pintan como interruptores; marcar/desmarcar pasa a "personalizado". */
+    var CAJA_SLOTS = document.getElementById('pg-slots');
+    var INTERRUPTORES = {};
+
+    SLOTS.forEach(function (s) {
+        var lab = document.createElement('label');
+        var chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.disabled = !!s.fijo;
+        chk.checked = !!s.fijo;
+        chk.addEventListener('change', function () {
+            ESTADO.slots[s.k] = chk.checked;
+            render();
         });
+        lab.appendChild(chk);
+        lab.appendChild(document.createTextNode(s.t));
+        CAJA_SLOTS.appendChild(lab);
+        INTERRUPTORES[s.k] = chk;
     });
 
-    /* ---------- 1. Tira adaptativa con ESTADO unico (A4: no se pierde la forma) ---------- */
-    var TIRA = { items: items.slice(0, 8), opciones: { modo: 'auto' } };
-
-    function renderTira() {
-        var destinos = ['demo-tira', 'demo-tira-angosta'];
-        for (var k = 0; k < destinos.length; k++) {
-            window.MUGaleria.tira(document.getElementById(destinos[k]), {
-                items: TIRA.items,
-                modo: TIRA.opciones.modo,
-                tope: TIRA.opciones.tope,
-                mas: TIRA.opciones.mas,
-                forma: TIRA.opciones.forma,
-                onAbrir: abrirClaro
-            });
+    function sincronizarSlots() {
+        for (var k in INTERRUPTORES) {
+            if (!INTERRUPTORES.hasOwnProperty(k)) { continue; }
+            INTERRUPTORES[k].checked = !!ESTADO.slots[k];
         }
     }
 
-    document.getElementById('demo-tira-base').addEventListener('click', function () {
-        TIRA.items = items.slice(0, 8);
-        TIRA.opciones = { modo: 'auto' };
-        renderTira();
-        avisar('Tira: 8 fotos, modo auto.');
-    });
-
-    document.getElementById('demo-tira-tope').addEventListener('click', function () {
-        TIRA.items = items;
-        TIRA.opciones = { modo: 'auto', tope: 10, mas: true };
-        renderTira();
-        avisar('Tira: 14 fotos con tope 10 -> el chip muestra "+4" (las que faltan).');
-    });
-
-    document.getElementById('demo-tira-circulo').addEventListener('click', function () {
-        TIRA.items = items.slice(0, 8);
-        TIRA.opciones = { modo: 'auto', forma: 'circulo' };
-        renderTira();
-        avisar('Tira circular (el chip "+N" ya no le quita la forma).');
-    });
-
-    renderTira();
-
-    /* ---------- 4. Tarjetas de catalogo (sin badge duplicado: B1) ---------- */
-    var cajaTarjetas = document.getElementById('demo-tarjetas');
-    var favoritos = { 1: true };
-
-    function pintarTarjetas() {
-        while (cajaTarjetas.firstChild) { cajaTarjetas.removeChild(cajaTarjetas.firstChild); }
-        var datos = [
-            {
-                titulo: 'Idea de la tienda', descripcion: 'Vinilo circular 3cm',
-                url: svg(1), thumb: svgMini(1),
-                badge: 'Tienda', badgeTipo: 'tienda',
-                precio: { valor: 120, anterior: 180 }
-            },
-            {
-                titulo: 'Mi diseno guardado', descripcion: 'Stickers para botellas',
-                url: svg(2), thumb: svgMini(2),
-                badge: 'Guardada', badgeTipo: 'guardada',
-                favorito: !!favoritos[1], precio: { valor: 95, aviso: true }
-            },
-            {
-                titulo: 'Pedido comprado', descripcion: '12 planchas',
-                url: svg(3), thumb: svgMini(3),
-                badge: 'Comprada', badgeTipo: 'comprada'
+    /* Items que se le pasan a la galeria segun cantidad y toggles de datos. */
+    function itemsActuales() {
+        var out = [];
+        for (var i = 0; i < ESTADO.cantidad; i++) {
+            var base = UNIVERSO[i];
+            var it = {
+                id: base.id, url: base.url, thumb: base.thumb,
+                titulo: base.titulo,
+                favorito: ESTADO.datos.fav ? base.favorito : false
+            };
+            if (ESTADO.datos.desc) { it.descripcion = base.descripcion; }
+            if (ESTADO.datos.etiqueta) { it.etiqueta = base.etiqueta; }
+            if (ESTADO.datos.precio) {
+                it.precio = {
+                    valor: base.precio.valor,
+                    anterior: base.precio.anterior
+                };
+                if (ESTADO.datos.promo) { it.precio.promo = base.precio.promo; }
             }
-        ];
+            if (ESTADO.datos.acciones) { it.acciones = base.acciones; }
+            out.push(it);
+        }
+        return out;
+    }
 
-        datos.forEach(function (dato, indice) {
-            var articulo = window.MUGaleria.tarjeta(dato, {
-                onEstrella: function (valor) {
-                    favoritos[indice] = valor;
-                    pintarTarjetas();
-                    avisar((valor ? 'Favorito' : 'Sin favorito') + ': ' + dato.titulo);
-                },
-                onUsar: function () { avisar('Usar: ' + dato.titulo); },
-                // Borrar SOLO en las guardadas (B5): las de la tienda no son del comprador.
-                onBorrar: (indice === 1)
-                    ? function () { avisar('Borrar: ' + dato.titulo); }
-                    : null
-            });
-            if (articulo) { cajaTarjetas.appendChild(articulo); }
+    /* ---------- render ---------- */
+    function opciones() {
+        return {
+            items: itemsActuales(),
+            preset: ESTADO.preset,
+            slots: ESTADO.slots,
+            layout: ESTADO.layout,
+            deslizable: (ESTADO.deslizable === 'auto') ? 'auto' : (ESTADO.deslizable === 'true'),
+            tamano: ESTADO.tamano,
+            gap: ESTADO.gap,
+            filas: ESTADO.filas,
+            columnas: ESTADO.columnas,
+            tope: ESTADO.tope,
+            min: ESTADO.min,
+            capacidad: ESTADO.capacidad,
+            sustantivo: ESTADO.sustantivo,
+            sustantivoSingular: 'imagen',
+            confirmar: false,
+            onAbrir: function (i) { abrirVisor(i); },
+            onRanura: function () { avisar('Ranura tocada: el consumidor abre su cargador'); },
+            onChip: function (n) { avisar('El chip resume ' + n + ' imagenes ocultas'); },
+            onEliminar: function (i) { avisar('Eliminar la imagen ' + (i + 1)); },
+            onFavorito: function (i, v) { avisar((v ? 'Favorito' : 'Sin favorito') + ' en la ' + (i + 1)); },
+            onAccion: function (i) { avisar('Accion del item ' + (i + 1)); }
+        };
+    }
+
+    function render() {
+        LIENZO.style.maxWidth = ESTADO.ancho + 'px';
+        var o = opciones();
+        var res = window.MU.coleccion(GALERIA, o);
+        JSONBOX.textContent = JSON.stringify({
+            preset: ESTADO.preset,
+            layout: ESTADO.layout,
+            deslizable: o.deslizable,
+            tamano: ESTADO.tamano,
+            gap: ESTADO.gap,
+            filas: ESTADO.filas,
+            columnas: ESTADO.columnas,
+            tope: ESTADO.tope,
+            min: ESTADO.min,
+            capacidad: ESTADO.capacidad,
+            slots: ESTADO.slots,
+            items: o.items.length
+        }, null, 1);
+        if (res) {
+            avisar('modo ' + res.modo + ' · items ' + res.visiblesItems
+                + ' · huecos ' + res.huecos + ' · chip ' + res.chip);
+        }
+        return res;
+    }
+
+    function abrirVisor(indice) {
+        // El listado inferior del visor llega en F2; hoy abre con las imagenes del item.
+        window.MU.visor({
+            items: itemsActuales(),
+            indice: indice || 0,
+            titulo: 'Galeria',
+            tono: 'claro',
+            acciones: [{
+                etiqueta: 'Elegir', clase: '', onAccion: function (n) {
+                    avisar('Elegida la imagen ' + (n + 1));
+                    window.MU.cerrar();
+                }
+            }]
         });
     }
 
-    pintarTarjetas();
+    /* ---------- controles ---------- */
+    function enlazar(id, evento, fn) {
+        var el = document.getElementById(id);
+        if (el) { el.addEventListener(evento, fn); }
+    }
 
-    /* ---------- 6. WooCommerce simulado: 4 fotos (A1) ---------- */
-    var woo = document.querySelector('.demo-woo');
+    enlazar('pg-preset', 'change', function (e) {
+        ESTADO.preset = e.target.value;
+        ESTADO.slots = slotsDelPreset(ESTADO.preset);
+        sincronizarSlots();
+        render();
+        avisar('Preset ' + ESTADO.preset + ' (podes apagar cualquier slot)');
+    });
+
+    Array.prototype.forEach.call(document.querySelectorAll('input[name="pg-layout"]'), function (r) {
+        r.addEventListener('change', function () { ESTADO.layout = r.value; render(); });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('input[name="pg-desliza"]'), function (r) {
+        r.addEventListener('change', function () { ESTADO.deslizable = r.value; render(); });
+    });
+
+    enlazar('pg-tamano', 'change', function (e) { ESTADO.tamano = e.target.value; render(); });
+    enlazar('pg-gap', 'input', function (e) {
+        ESTADO.gap = parseInt(e.target.value, 10) || 0;
+        document.getElementById('pg-gap-out').textContent = String(ESTADO.gap);
+        render();
+    });
+    enlazar('pg-ancho', 'input', function (e) {
+        ESTADO.ancho = parseInt(e.target.value, 10) || 240;
+        document.getElementById('pg-ancho-out').textContent = String(ESTADO.ancho);
+        render();
+    });
+    enlazar('pg-filas', 'input', function (e) { ESTADO.filas = parseInt(e.target.value, 10) || 0; render(); });
+    enlazar('pg-columnas', 'input', function (e) { ESTADO.columnas = parseInt(e.target.value, 10) || 0; render(); });
+    enlazar('pg-cantidad', 'input', function (e) {
+        ESTADO.cantidad = parseInt(e.target.value, 10) || 0;
+        document.getElementById('pg-cantidad-out').textContent = String(ESTADO.cantidad);
+        render();
+    });
+    enlazar('pg-tope', 'input', function (e) { ESTADO.tope = parseInt(e.target.value, 10) || 0; render(); });
+    enlazar('pg-min', 'input', function (e) { ESTADO.min = parseInt(e.target.value, 10) || 0; render(); });
+    enlazar('pg-capacidad', 'input', function (e) { ESTADO.capacidad = parseInt(e.target.value, 10) || 0; render(); });
+    enlazar('pg-sustantivo', 'input', function (e) {
+        ESTADO.sustantivo = String(e.target.value || 'imagenes');
+        render();
+    });
+
+    [['pg-d-precio', 'precio'], ['pg-d-promo', 'promo'], ['pg-d-desc', 'desc'],
+        ['pg-d-fav', 'fav'], ['pg-d-etiqueta', 'etiqueta'], ['pg-d-acciones', 'acciones']
+    ].forEach(function (par) {
+        enlazar(par[0], 'change', function (e) { ESTADO.datos[par[1]] = e.target.checked; render(); });
+    });
+
+    enlazar('pg-visor', 'click', function () { abrirVisor(0); });
+    enlazar('pg-reset', 'click', function () { window.location.reload(); });
+
+    /* ---------- pruebas del tema (visor + carrusel) ---------- */
+    var track = document.getElementById('pg-track');
+    if (track) {
+        for (var t = 0; t < 12; t++) {
+            var celdaT = document.createElement('div');
+            celdaT.className = 'mu-carousel-item';
+            var imT = document.createElement('img');
+            imT.src = svgMini(t);
+            imT.alt = 'Item ' + (t + 1);
+            imT.style.cssText = 'width:96px;height:96px;object-fit:cover;border-radius:6px';
+            celdaT.appendChild(imT);
+            track.appendChild(celdaT);
+        }
+    }
+
+    var woo = document.getElementById('pg-woo');
     if (woo) {
         var slides = woo.querySelectorAll('.woocommerce-product-gallery__image img');
         for (var s = 0; s < slides.length; s++) {
@@ -514,144 +557,19 @@
             slides[s].setAttribute('src', svg(s));
             slides[s].setAttribute('alt', 'Foto ' + (s + 1));
         }
-        var minis = woo.querySelectorAll('.flex-control-thumbs img');
-        for (var t = 0; t < minis.length; t++) {
-            minis[t].setAttribute('src', svgMini(t));
-            minis[t].setAttribute('alt', 'Miniatura ' + (t + 1));
+        var thumbs = woo.querySelectorAll('.flex-control-thumbs img');
+        for (var tb = 0; tb < thumbs.length; tb++) {
+            thumbs[tb].setAttribute('src', svgMini(tb));
+            thumbs[tb].setAttribute('alt', 'Miniatura ' + (tb + 1));
         }
-        // Gesto unico (arrastre) + lupa -> visor compartido. Ambos idempotentes.
-        window.MUGaleria.arrastrar(woo.querySelector('.flex-control-thumbs'));
-        window.MUGaleria.navegarWoo();
+        window.MU.navegarWoo();
     }
 
-    /* ---------- 7. Mi cuenta: grilla 2 filas + tachito ---------- */
-    var cuenta = items.slice(0, 12);
-
-    function pintarCuenta() {
-        window.MUGaleria.tira(document.getElementById('demo-cuenta'), {
-            items: cuenta,
-            modo: 'grilla',
-            filas: 2,
-            borrar: true,
-            confirmar: function (indice, item) {
-                var nombre = item.etiqueta || ('la imagen ' + (indice + 1));
-                return window.confirm('Quitar ' + nombre + '?');
-            },
-            onAbrir: function (indice) {
-                avisar('Abrir la imagen ' + (indice + 1) + ' de la cuenta');
-            },
-            onBorrar: function (indice, item) {
-                cuenta.splice(indice, 1);
-                pintarCuenta();
-                avisar('Quitada ' + (item.etiqueta || ('la imagen ' + (indice + 1)))
-                    + ' (quedan ' + cuenta.length + ')');
-            }
-        });
-    }
-    pintarCuenta();
-
-    /* ---------- 8. Campo con minimo 3 (ranuras a llenar) ---------- */
-    var minimo = items.slice(0, 1);
-
-    function pintarMinimo() {
-        window.MUGaleria.tira(document.getElementById('demo-minimo'), {
-            items: minimo,
-            modo: 'linea',
-            min: 3,
-            contador: true,
-            onRanura: function (indice) {
-                minimo.push({
-                    url: svg(minimo.length + 2),
-                    thumb: svgMini(minimo.length + 2),
-                    etiqueta: 'Agregada ' + (minimo.length + 1)
-                });
-                pintarMinimo();
-                avisar('Ranura ' + (indice + 1) + ': se agrego una imagen (simula el cargador).');
-            },
-            onAbrir: function (indice) {
-                avisar('Abrir la imagen ' + (indice + 1) + ' del campo');
-            }
-        });
-    }
-    pintarMinimo();
-
-    /* ---------- 9. Carrusel del tema (global-ui.js decide las flechas) ---------- */
-    function llenarTrack(id, cuantos) {
-        var track = document.getElementById(id);
-        if (!track) { return; }
-        for (var i = 0; i < cuantos; i++) {
-            var item = document.createElement('div');
-            item.className = 'mu-carousel-item';
-            var img = document.createElement('img');
-            img.src = svgMini(i);
-            img.alt = 'Item ' + (i + 1);
-            img.loading = 'lazy';
-            item.appendChild(img);
-            track.appendChild(item);
-        }
-    }
-    llenarTrack('demo-track-largo', 12);
-    llenarTrack('demo-track-corto', 2);
-
-    /* ---------- 10. MU.coleccion (ambito 1, modelo v2) ---------- */
-    var CATALOGO = [];
-    for (var c = 0; c < 9; c++) {
-        CATALOGO.push({
-            url: svg(c), thumb: svgMini(c),
-            titulo: 'Producto ' + (c + 1),
-            descripcion: 'Vinilo 3cm',
-            etiqueta: 'Oferta',
-            precio: { valor: 120 + c * 10, anterior: 180, promo: '33% OFF' }
-        });
-    }
-
-    window.MU.coleccion(document.getElementById('demo-coleccion-catalogo'), {
-        items: CATALOGO, preset: 'tarjeta', layout: 'fila',
-        deslizable: false, tope: 4, tamano: 'medio',
-        onAbrir: function (i) { avisar('Abrir el producto ' + (i + 1)); }
-    });
-
-    var CAMPO = [];
-    for (var f = 0; f < 4; f++) {
-        CAMPO.push({ url: svg(f), thumb: svgMini(f), titulo: 'Foto ' + (f + 1) });
-    }
-
-    function pintarCampo() {
-        window.MU.coleccion(document.getElementById('demo-coleccion-campo'), {
-            items: CAMPO, preset: 'mini', layout: 'fila',
-            deslizable: false, tope: 3, tamano: 'chico',
-            min: 4, capacidad: 8,
-            sustantivo: 'imagenes', sustantivoSingular: 'imagen',
-            confirmar: false,
-            onRanura: function () {
-                if (CAMPO.length >= 8) { return; }
-                CAMPO.push({
-                    url: svg(CAMPO.length + 3), thumb: svgMini(CAMPO.length + 3),
-                    titulo: 'Foto ' + (CAMPO.length + 1)
-                });
-                pintarCampo();
-                avisar('Cargada ' + CAMPO.length + ' de 8');
-            },
-            onEliminar: function (i) {
-                CAMPO.splice(i, 1);
-                pintarCampo();
-                avisar('Quedan ' + CAMPO.length + ' cargadas');
-            },
-            onChip: function (n) { avisar('El chip resume ' + n + ' imagenes ocultas'); },
-            onAbrir: function (i) { avisar('Abrir la foto ' + (i + 1)); }
-        });
-    }
-    pintarCampo();
-
-    /* ---------- Atajos de QA: demo.html#visor / #oscuro / #woo ---------- */
-    if (window.location.hash === '#visor') { abrirClaro(1); }
-    if (window.location.hash === '#oscuro') { document.getElementById('demo-oscuro').click(); }
-    if (window.location.hash === '#tope') { document.getElementById('demo-tira-tope').click(); }
-    if (window.location.hash === '#woo' && woo) {
-        woo.querySelector('.woocommerce-product-gallery__trigger').click();
-    }
+    /* ---------- arranque ---------- */
+    ESTADO.slots = slotsDelPreset(ESTADO.preset);
+    sincronizarSlots();
+    render();
 }());
 </script>
 <script src="../js/global-ui.js"></script>
 </body>
-</html>

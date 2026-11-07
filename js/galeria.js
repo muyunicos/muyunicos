@@ -1427,9 +1427,12 @@
     global.MU = {
         coleccion: coleccion,
         visor: visor,
+        cerrar: cerrar,
         arrastrar: arrastrar,
         navegarWoo: navegarWoo,
         puro: api.puro,
+        presets: PRESETS,
+        tamanos: TAMANOS,
         version: api.version
     };
     if (typeof module !== 'undefined' && module.exports) { module.exports = api; }

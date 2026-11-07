@@ -729,6 +729,8 @@ body.is-scroll-locked { overflow: hidden; }
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
+    /* El sistema las deja en `display:none`; aca las enciende el JS con `hidden`. */
+    display: flex;
     width: 36px;
     height: 36px;
     z-index: 2;
