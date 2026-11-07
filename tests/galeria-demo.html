@@ -243,11 +243,22 @@
                 <input type="text" id="pgv-titulo" value="Galeria">
             </div>
             <div class="pg-campo">
-                <label for="pgv-items">Items (0 = los de la galeria)</label>
-                <input type="number" id="pgv-items" min="0" max="40" value="0">
+                <label for="pgv-items">Imagenes del visor</label>
+                <select id="pgv-items">
+                    <option value="0" selected>las de la galeria (reales)</option>
+                    <option value="1">1 propia (sin flechas)</option>
+                    <option value="3">3 propias</option>
+                    <option value="4">4 propias</option>
+                    <option value="12">12 propias</option>
+                    <option value="40">40 propias</option>
+                </select>
             </div>
             <div class="pg-campo">
-                <label for="pgv-indice">Indice</label>
+                <label for="pgv-activo">Imagen elegida (-1 = ninguna)</label>
+                <input type="number" id="pgv-activo" min="-1" max="39" value="0">
+            </div>
+            <div class="pg-campo">
+                <label for="pgv-indice">Indice al abrir</label>
                 <input type="number" id="pgv-indice" min="0" max="39" value="0">
             </div>
             <div class="pg-campo">
@@ -270,6 +281,13 @@
             <div class="pg-campo">
                 <label for="pgv-acciones">Acciones</label>
                 <input type="number" id="pgv-acciones" min="0" max="4" value="1">
+            </div>
+            <div class="pg-campo">
+                <label for="pgv-ancho">Ancho de la caja</label>
+                <select id="pgv-ancho">
+                    <option value="auto" selected>auto (al contenido)</option>
+                    <option value="completo">pantalla completa</option>
+                </select>
             </div>
             <div class="pg-campo">
                 <label><input type="checkbox" id="pgv-roto"> imagenes rotas</label>
@@ -499,10 +517,12 @@
         items: 0,           // 0 = los items de la galeria (lo real); >0 = propios
         indice: 0,
         listado: true,
+        activo: 0,          // celda "Elegida": la usan la galeria y el visor
         segmentos: 0,
         meta: 'simple',     // sin | simple | rica | larga | item
         acciones: 1,
-        roto: false
+        roto: false,
+        ancho: 'auto',      // 'auto' = al contenido (default) | 'completo' = casi pantalla
     };
 
     /** Items propios del visor: `n` los fabrica; `roto` rompe las urls a proposito. */
@@ -514,6 +534,7 @@
                 id: base.id,
                 url: VISOR.roto ? ('no-existe-' + (i + 1) + '.png') : svg(i),
                 thumb: VISOR.roto ? ('no-existe-mini-' + (i + 1) + '.png') : svgMini(i),
+                transparente: !!VISOR.transparente,
                 etiqueta: base.etiqueta
             });
         }
@@ -607,6 +628,7 @@
             items: items,
             indice: pos,
             titulo: VISOR.titulo,
+            ancho: VISOR.ancho,
             tono: VISOR.tono,
             meta: (VISOR.meta === 'item') ? null : metaDelVisor(),
             acciones: accionesVisor(),
@@ -625,6 +647,7 @@
     function opciones() {
         return {
             items: itemsActuales(),
+            activo: (VISOR.activo === undefined) ? -1 : VISOR.activo,
             preset: ESTADO.preset,
             slots: ESTADO.slots,
             layout: ESTADO.layout,
@@ -895,9 +918,11 @@
         set('pgv-titulo', VISOR.titulo);
         set('pgv-items', VISOR.items);
         set('pgv-indice', VISOR.indice);
+        set('pgv-activo', VISOR.activo);
         set('pgv-segmentos', VISOR.segmentos);
         set('pgv-meta', VISOR.meta);
         set('pgv-acciones', VISOR.acciones);
+        set('pgv-ancho', VISOR.ancho);
         var l = document.getElementById('pgv-listado');
         if (l) { l.checked = !!VISOR.listado; }
         var r = document.getElementById('pgv-roto');
@@ -912,9 +937,15 @@
     enlazar('pgv-titulo', 'input', function (e) {
         VISOR.titulo = String(e.target.value || 'Galeria');
     });
-    enlazar('pgv-items', 'input', function () {
+    enlazar('pgv-items', 'change', function () {
         VISOR.items = Math.min(40, enteroDe('pgv-items'));
-        avisar('Items del visor: ' + (VISOR.items || 'los de la galeria'));
+        avisar('Imagenes del visor: ' + (VISOR.items || 'las de la galeria') + ' (reabri el visor)');
+    });
+    enlazar('pgv-activo', 'input', function () {
+        // -1 = ninguna elegida. Es el dato que enciende el slot `estado` ("Elegida").
+        var v = parseInt(valorDe('pgv-activo'), 10);
+        VISOR.activo = isNaN(v) ? -1 : Math.max(-1, Math.min(39, v));
+        render();
     });
     enlazar('pgv-indice', 'input', function () {
         VISOR.indice = enteroDe('pgv-indice');
@@ -930,6 +961,10 @@
     enlazar('pgv-meta', 'change', function (e) {
         VISOR.meta = String(e.target.value || 'simple');
         avisar('Meta ' + VISOR.meta + ' (reabri el visor)');
+    });
+    enlazar('pgv-ancho', 'change', function (e) {
+        VISOR.ancho = String(e.target.value || 'auto');
+        avisar('Ancho de la caja: ' + VISOR.ancho + ' (reabri el visor)');
     });
     enlazar('pgv-acciones', 'input', function () {
         VISOR.acciones = Math.min(4, enteroDe('pgv-acciones'));
@@ -1189,6 +1224,19 @@
 
     // QA combinable con cualquier hash: `?clic=1` toca el chip una vez (debe SUMAR
     // celdas y pasar la galeria a navegable).
+    if (window.location.hash === '#estado') {
+        // QA: el slot `estado` del preset `opcion` solo se pintaba en la celda `activo`
+        // y el demo nunca la pasaba, asi que no se veia nunca.
+        ESTADO.preset = 'opcion';
+        ESTADO.cantidad = 6;
+        ESTADO.slots = slotsDelPreset('opcion');
+        VISOR.activo = 1;
+        document.getElementById('pg-preset').value = 'opcion';
+        document.getElementById('pg-cantidad').value = '6';
+        document.getElementById('pg-cantidad-out').textContent = '6';
+        sincronizarVisor();
+        render();
+    }
     if (/[?&]clic=1/.test(window.location.search)) {
         var chipQa = GALERIA.querySelector('[data-mu-gal-chip]');
         if (chipQa) {
@@ -1207,6 +1255,9 @@
         '#visor': {},
         '#visor-oscuro': { tono: 'oscuro' },
         '#visor-1': { items: 1, listado: false },
+        '#visor-elegida': { items: 3, activo: 1, meta: 'rica' },
+        '#visor-completo': { items: 3, ancho: 'completo' },
+        '#visor-transparente': { items: 3, transparente: true },
         '#visor-meta-rica': { meta: 'rica' },
         '#visor-meta-larga': { meta: 'larga' },
         '#visor-meta-item': { meta: 'item' },

@@ -44,6 +44,24 @@
     backdrop-filter: none;
 }
 
+/* Tokens LOCALES del visor (prefijo propio: el componente NO redefine los del tema).
+   `--mu-gal-sep` unifica cabecera, meta, banda y acciones (antes convivian gris frio,
+   punteado azul y dorado).
+   `--mu-gal-lienzo` es el fondo del marco; el damero queda para imagenes que pueden
+   ser transparentes, porque con una foto opaca son bandas grises alrededor. */
+.mu-gal-visor {
+    --mu-gal-pad: 16px;
+    --mu-gal-sep: rgb(15 23 42 / 10%);
+    --mu-gal-lienzo: transparent;
+    --mu-gal-banda: #ffffff;
+}
+
+.mu-gal-visor--oscuro {
+    --mu-gal-sep: rgb(255 255 255 / 12%);
+    --mu-gal-lienzo: transparent;
+    --mu-gal-banda: #1f2937;
+}
+
 /* La caja del visor es mas ancha que el modal de formulario (440px del base). */
 .mu-modal-container.mu-gal-caja {
     display: flex;
@@ -56,12 +74,12 @@
     border-radius: var(--mu-radius-lg);
     box-shadow: var(--mu-shadow-lg);
     background: var(--blanco);
-    border: 3px solid var(--secundario);
+    border: 1px solid var(--mu-gal-sep);
 }
 
 .mu-gal-visor--oscuro .mu-gal-caja {
     background: #111827;
-    border: 1px solid rgb(255 255 255 / 18%);
+    border: 1px solid var(--mu-gal-sep);
     color: #f8fafc;
 }
 
@@ -71,12 +89,12 @@
     align-items: center;
     gap: var(--mu-space-sm);
     padding: 12px 16px;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid var(--mu-gal-sep);
     min-width: 0;
 }
 
 .mu-gal-visor--oscuro .mu-gal-cabecera {
-    border-bottom-color: rgb(255 255 255 / 12%);
+    border-bottom-color: var(--mu-gal-sep);
 }
 
 .mu-gal-titulo {
@@ -104,6 +122,9 @@
 
 .mu-gal-visor--oscuro .mu-gal-contador { color: rgb(255 255 255 / 70%); }
 
+/* `contador: 'auto'` (default) lo oculta con un solo item; `false` siempre. */
+.mu-gal-contador[hidden] { display: none; }
+
 .mu-gal-cerrar {
     position: static;
     flex: 0 0 auto;
@@ -117,7 +138,7 @@
     gap: 8px;
     justify-content: center;
     flex-wrap: wrap;
-    padding: 8px 16px 0;
+    padding: 10px var(--mu-gal-pad) 0;
 }
 
 .mu-gal-seg {
@@ -134,10 +155,26 @@
 
 .mu-gal-seg:hover { background: rgb(43 159 207 / 12%); }
 
+.mu-gal-seg:focus-visible {
+    outline: 3px solid var(--secundario);
+    outline-offset: 2px;
+}
+
 .mu-gal-seg[aria-pressed="true"] {
     background: var(--primario);
     color: var(--blanco);
     font-weight: 600;
+}
+
+/* Cuerpo + banda + meta scrollean JUNTOS: la cabecera y las acciones quedan fijas.
+   Antes la caja recortaba (`overflow: hidden`) y la meta larga se perdia abajo. */
+.mu-gal-scroll {
+    display: flex;
+    flex-direction: column;
+    gap: var(--mu-space-sm);
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
 }
 
 /* --- Cuerpo: flechas + marco + imagen --- */
@@ -160,13 +197,23 @@
     justify-content: center;
     min-width: 0;
     max-width: 100%;
+    background: var(--mu-gal-lienzo);
+}
+
+/* Damero SOLO para imagenes que pueden ser transparentes (`item.transparente`):
+   con una foto opaca eran bandas grises alrededor de la imagen. */
+.mu-gal-marco--damero {
     background: repeating-conic-gradient(#f1f5f9 0 25%, #ffffff 0 50%) 0 / 16px 16px;
+}
+
+.mu-gal-visor--oscuro .mu-gal-marco--damero {
+    background: repeating-conic-gradient(#333333 0 25%, #444444 0 50%) 0 / 20px 20px;
     border-radius: var(--mu-radius);
     overflow: hidden;
 }
 
 .mu-gal-visor--oscuro .mu-gal-marco {
-    background: repeating-conic-gradient(#333333 0 25%, #444444 0 50%) 0 / 20px 20px;
+    background: var(--mu-gal-lienzo);
 }
 
 .mu-gal-img {
@@ -205,13 +252,51 @@
 
 .mu-gal-cuerpo .mu-nav-btn[hidden] { display: none; }
 
+/* Flechas SUPERPUESTAS cuando el ancho no da. Es una DECISION del componente, no una
+   opcion: el JS marca `mu-gal-cuerpo--justo` si el marco quedaria por debajo del
+   minimo util, y ahi las flechas van SOBRE el marco, a media altura. Al costado
+   consumian 84px en un telefono (dos de 44 + gaps) y se comian la imagen. */
+.mu-gal-cuerpo--justo {
+    position: relative;
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
+.mu-gal-cuerpo--justo .mu-nav-btn.prev,
+.mu-gal-cuerpo--justo .mu-nav-btn.next {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 3;
+    box-shadow: 0 4px 14px rgb(15 23 42 / 28%);
+}
+
+.mu-gal-cuerpo--justo .mu-nav-btn.prev { left: 12px; }
+.mu-gal-cuerpo--justo .mu-nav-btn.next { right: 12px; }
+
+/* Respaldo sin JS (SSR / impresion): en pantallas angostas, siempre superpuestas. */
+@media (max-width: 600px) {
+    .mu-gal-cuerpo { position: relative; }
+
+    .mu-gal-cuerpo .mu-nav-btn.prev,
+    .mu-gal-cuerpo .mu-nav-btn.next {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 3;
+    }
+
+    .mu-gal-cuerpo .mu-nav-btn.prev { left: 8px; }
+    .mu-gal-cuerpo .mu-nav-btn.next { right: 8px; }
+}
+
 .mu-gal-cuerpo .mu-nav-btn:focus-visible {
     outline: 3px solid var(--secundario);
     outline-offset: 2px;
 }
 
 /* --- Meta (titulo, descripcion, badge, precio) --- */
-.mu-gal-meta { padding: 0 16px; }
+.mu-gal-meta { padding: 0 var(--mu-gal-pad); }
 
 .mu-gal-meta[hidden] { display: none; }
 
@@ -220,7 +305,7 @@
     flex-direction: column;
     align-items: flex-start;   /* el badge es un chip: no se estira a todo el ancho */
     gap: 6px;
-    border-top: 1px dashed rgb(43 159 207 / 35%);
+    border-top: 1px solid var(--mu-gal-sep);
     padding-top: 10px;
 }
 
@@ -248,7 +333,7 @@
     gap: 10px;
     flex-wrap: wrap;
     padding: 12px 16px 16px;
-    border-top: 1px solid #e2e8f0;
+    border-top: 1px solid var(--mu-gal-sep);
 }
 
 .mu-gal-visor--oscuro .mu-gal-acciones {
@@ -599,6 +684,10 @@ button.mu-gal-mini--vacia {
 
 /* Verde de PRECIO (semantico del componente, no color de marca del tema). */
 .mu-gal-precio-ya { color: #047857; font-weight: 700; }
+
+/* El verde profundo sobre el fondo oscuro del visor quedaba en ~3:1 de contraste. */
+.mu-gal-visor--oscuro .mu-gal-precio-ya { color: #34d399; }
+.mu-gal-visor--oscuro .mu-gal-precio-antes { color: rgb(255 255 255 / 55%); }
 .mu-gal-precio-antes { color: var(--texto-light); text-decoration: line-through; font-size: 10px; }
 .mu-gal-precio-aviso { color: #8a6116; font-size: 10px; font-weight: 600; }
 
@@ -648,6 +737,29 @@ button.mu-gal-mini--vacia {
     .mu-gal-cabecera,
     .mu-gal-acciones { padding-left: 10px; padding-right: 10px; }
     .mu-gal-tarjeta { width: 168px; }
+}
+
+/* `ancho` (contrato C1): en ESCRITORIO la caja se ajusta al contenido (`auto`, el
+   default) en vez de estirarse a 880px dejando aire alrededor de una foto vertical;
+   `completo` la lleva casi a pantalla. En movil manda el @media de abajo (fullscreen). */
+@media (min-width: 601px) {
+    .mu-modal-container.mu-gal-caja.mu-gal-caja--auto {
+        width: fit-content;
+        min-width: 420px;
+        max-width: min(92vw, 880px);
+    }
+
+    .mu-gal-caja--auto .mu-gal-marco { flex: 0 0 auto; max-width: 100%; }
+    .mu-gal-caja--auto .mu-gal-img { width: auto; max-width: 100%; }
+
+    .mu-modal-container.mu-gal-caja.mu-gal-caja--completo {
+        width: min(96vw, 1400px);
+        max-width: min(96vw, 1400px);
+        max-height: 96vh;
+    }
+
+    /* A pantalla completa la foto manda: se aprovecha el alto disponible. */
+    .mu-gal-caja--completo .mu-gal-img { max-height: calc(92vh - 260px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -811,12 +923,16 @@ body.is-scroll-locked { overflow: hidden; }
 /* Listado inferior del visor (F2): una banda con la MISMA coleccion en preset mini.
    `padding-bottom` deja respirar el outline del activo. */
 .mu-gal-visor-lista {
-    margin-top: 10px;
+    margin: 0 var(--mu-gal-pad);
     padding: 10px 2px 6px;
-    border-top: 1px solid var(--mu-borde, #e5e7eb);
+    border-top: 1px solid var(--mu-gal-sep);
     max-width: 100%;
     overflow: hidden;
 }
+
+/* La banda son MINIATURAS del visor: mismo tono y sin damero (el damero de la mini
+   sugeria transparencia donde no la hay y hacia cajitas claras en el tono oscuro). */
+.mu-gal-visor-lista .mu-gal-item-abrir { background: var(--mu-gal-banda); }
 
 .mu-gal-visor-lista .mu-gal-linea {
     padding: 2px;
@@ -824,6 +940,8 @@ body.is-scroll-locked { overflow: hidden; }
 
 .mu-gal-visor-lista .mu-gal-item {
     border-radius: calc(var(--mu-radius) / 2);
+    border-color: var(--mu-gal-sep);
+    background: var(--mu-gal-banda);
 }
 
 /* Hueco a llenar (min/capacidad): borde punteado, como cpmu-zona del plugin. */

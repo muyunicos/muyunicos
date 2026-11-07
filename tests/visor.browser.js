@@ -32,6 +32,8 @@ async function leer(page) {
         const raiz = document.querySelector('.mu-gal-visor');
         if (!raiz) { return { abierto: false }; }
         const caja = raiz.querySelector('.mu-gal-caja');
+        const scroll = raiz.querySelector('.mu-gal-scroll');
+        const marco = raiz.querySelector('.mu-gal-marco');
         const cont = raiz.querySelector('.mu-gal-contador');
         const img = raiz.querySelector('.mu-gal-img');
         const meta = raiz.querySelector('.mu-gal-meta');
@@ -51,6 +53,10 @@ async function leer(page) {
             ariaHidden: raiz.getAttribute('aria-hidden'),
             titulo: (raiz.querySelector('.mu-gal-titulo') || {}).textContent || '',
             contador: cont ? cont.textContent : '',
+            contadorHidden: cont ? !!cont.hidden : true,
+            marcoDamero: marco ? marco.className.indexOf('mu-gal-marco--damero') !== -1 : false,
+            cajaBorder: caja ? getComputedStyle(caja).borderTopWidth : '',
+            scrollOverflow: scroll ? getComputedStyle(scroll).overflowY : '',
             prevHidden: !!(raiz.querySelector('.mu-gal-prev') || {}).hidden,
             nextHidden: !!(raiz.querySelector('.mu-gal-next') || {}).hidden,
             metaVisible: meta ? !meta.hidden : false,
@@ -60,11 +66,30 @@ async function leer(page) {
             imgNatural: img ? img.naturalWidth : -1,
             imgAlto: img ? Math.round(img.getBoundingClientRect().height) : 0,
             imgAncho: img ? Math.round(img.getBoundingClientRect().width) : 0,
+            cuerpoJusto: /mu-gal-cuerpo--justo/.test((raiz.querySelector('.mu-gal-cuerpo') || {}).className || ''),
+            flechasAlCostado: (function () {
+                const p = raiz.querySelector('.mu-gal-prev');
+                const m = raiz.querySelector('.mu-gal-marco');
+                if (!p || !m || p.hidden) { return false; }
+                return p.getBoundingClientRect().right <= m.getBoundingClientRect().left + 1;
+            }()),
+            flechasSuperpuestas: (function () {
+                const p = raiz.querySelector('.mu-gal-prev');
+                const m = raiz.querySelector('.mu-gal-marco');
+                if (!p || !m || p.hidden) { return false; }
+                const pr = p.getBoundingClientRect();
+                const mr = m.getBoundingClientRect();
+                return pr.left >= mr.left - 1 && pr.right <= mr.right + 1;
+            }()),
             cajaClientH: caja.clientHeight,
+            cajaAncho: Math.round(cajaR.width),
+            cajaClases: caja.className,
             cajaScrollH: caja.scrollHeight,
+            scrollClientH: scroll ? scroll.clientHeight : 0,
+            scrollH: scroll ? scroll.scrollHeight : 0,
             metaAbajo: ultimo ? Math.round(ultimo.bottom) : null,
             cajaAbajo: Math.round(cajaR.bottom),
-            recorta: ultimo ? (ultimo.bottom > cajaR.bottom + 1) : false,
+            recorta: (ultimo && scroll) ? (ultimo.bottom > scroll.getBoundingClientRect().bottom + 1) : false,
             celdas: celdas.length,
             activa: activa ? celdas.indexOf(activa) : -1,
             listaScrollX: lista ? (lista.scrollWidth - lista.clientWidth) : 0,
@@ -109,6 +134,14 @@ async function ir(page, hash) {
     chk('contador "1 / 9" y titulo "Galeria"', r.contador === '1 / 9' && r.titulo === 'Galeria',
         'contador="' + r.contador + '" titulo="' + r.titulo + '"');
     chk('flechas visibles con mas de un item', !r.prevHidden && !r.nextHidden);
+    chk('el marco NO pinta damero con fotos opacas', r.marcoDamero === false);
+    chk('en escritorio las flechas van AL COSTADO del marco',
+        r.flechasAlCostado === true && r.cuerpoJusto === false,
+        'costado=' + r.flechasAlCostado + ' justo=' + r.cuerpoJusto);
+    chk('`ancho: auto` (default) no pasa de 880px', /mu-gal-caja--auto/.test(r.cajaClases)
+        && r.cajaAncho <= 880, 'clases=' + r.cajaClases + ' ancho=' + r.cajaAncho);
+    chk('la caja usa un borde fino (1px), sin el dorado de 3px', r.cajaBorder === '1px',
+        'border=' + r.cajaBorder);
     chk('banda inferior con 9 miniaturas y la 1ra activa',
         r.celdas === 9 && r.activa === 0, 'celdas=' + r.celdas + ' activa=' + r.activa);
 
@@ -125,9 +158,39 @@ async function ir(page, hash) {
     await ir(page, '#visor-1');
     r = await leer(page);
     chk('oculta ambas flechas con un item', r.prevHidden && r.nextHidden);
-    chk('contador "1 / 1" y sin banda', r.contador === '1 / 1' && r.celdas === 0,
+    chk('sin contador (auto con 1 item) y sin banda', r.contador === '' && r.celdas === 0,
         'contador="' + r.contador + '" celdas=' + r.celdas);
-    aviso('con 1 item el contador "1 / 1" igual se pinta: no hay forma de ocultarlo');
+    chk('con 1 item el contador se oculta (contador auto)', r.contador === '' && r.contadorHidden === true,
+        'contador="' + r.contador + '" hidden=' + r.contadorHidden);
+
+    /* ---------------- 3bis. damero, elegida y estado ---------------- */
+    console.log('== #visor-transparente: el damero solo si el item lo declara ==');
+    await ir(page, '#visor-transparente');
+    r = await leer(page);
+    chk('con `transparente: true` el marco pinta damero', r.marcoDamero === true);
+
+    console.log('== #visor-elegida: la galeria marca la elegida (ambito 1) ==');
+    await ir(page, '#estado');
+    const est = await page.evaluate(() => {
+        const celdas = Array.from(document.querySelectorAll('#pg-galeria .mu-gal-celda'));
+        const conEstado = celdas
+            .map((c, i) => {
+                const e = c.querySelector('.mu-gal-item-estado');
+                return e ? i + ':' + e.textContent : '';
+            })
+            .filter(Boolean);
+        return { celdas: celdas.length, conEstado: conEstado };
+    });
+    chk('el preset `opcion` pinta "Elegida" solo en la celda elegida',
+        est.conEstado.length === 1 && est.conEstado[0] === '1:Elegida',
+        'celdas=' + est.celdas + ' conEstado=' + JSON.stringify(est.conEstado));
+
+    console.log('== #visor-completo: ancho de caja a pantalla ==');
+    await ir(page, '#visor-completo');
+    r = await leer(page);
+    chk('`ancho: completo` ensancha la caja mas alla de 880px',
+        /mu-gal-caja--completo/.test(r.cajaClases) && r.cajaAncho > 880,
+        'clases=' + r.cajaClases + ' ancho=' + r.cajaAncho);
 
     /* ---------------- 4. meta rica ---------------- */
     console.log('== #visor-meta-rica: badge + precio anterior/valor ==');
@@ -142,11 +205,13 @@ async function ir(page, hash) {
     await ir(page, '#visor-meta-larga');
     r = await leer(page);
     chk('la meta larga entra en el DOM', r.metaVisible === true);
+    chk('el contenedor del cuerpo/meta es scrolleable (overflow-y:auto)', r.scrollOverflow === 'auto',
+        'overflow=' + r.scrollOverflow);
     const desborde = r.cajaScrollH - r.cajaClientH;
     console.log('  datos  caja clientH=' + r.cajaClientH + ' scrollH=' + r.cajaScrollH
         + ' desborde=' + desborde + ' ultimoNodo.bottom=' + r.metaAbajo
         + ' caja.bottom=' + r.cajaAbajo);
-    if (r.recorta || desborde > 1) {
+    if (r.recorta) {
         aviso('meta larga RECORTADA: el pie no scrollea (desborde ' + desborde
             + 'px, ultimo nodo ' + (r.metaAbajo - r.cajaAbajo) + 'px fuera de la caja)');
     } else {
@@ -266,6 +331,11 @@ async function ir(page, hash) {
     chk('el boton cerrar queda dentro del viewport', r.cerrarVisible === true);
     chk('la imagen no desborda el ancho del viewport', r.imgAncho <= 390,
         'imgAncho=' + r.imgAncho);
+    chk('en 390 las flechas se SUPERponen al marco (decision del componente)',
+        r.cuerpoJusto === true && r.flechasSuperpuestas === true,
+        'justo=' + r.cuerpoJusto + ' superpuestas=' + r.flechasSuperpuestas);
+    chk('la imagen usa casi todo el ancho de la caja', (r.imgAncho / r.cajaAncho) > 0.82,
+        'imgAncho=' + r.imgAncho + ' cajaAncho=' + r.cajaAncho);
     if (r.listaScrollX > 1) {
         aviso('en 390 px la banda inferior scrollea ' + r.listaScrollX
             + 'px en horizontal (esperado: es un carrusel)');
@@ -278,10 +348,10 @@ async function ir(page, hash) {
         + ' scrollH=' + r.cajaScrollH + ' desborde=' + desbordeMovil);
     chk('en movil el modal sigue usable (imagen con alto util)', r.imgAlto > 100,
         'imgAlto=' + r.imgAlto);
-    if (r.recorta || desbordeMovil > 1) {
-        aviso('en 390x844 la meta larga RECORTA ' + desbordeMovil
-            + 'px y el pie no scrollea (ultimo nodo ' + (r.metaAbajo - r.cajaAbajo) + 'px fuera)');
-    }
+    chk('en movil la meta larga scrollea y nunca recorta',
+        !r.recorta && r.scrollOverflow === 'auto',
+        'recorta=' + r.recorta + ' overflow=' + r.scrollOverflow
+            + ' scrollH=' + r.scrollH + ' clientH=' + r.scrollClientH);
 
     await page.screenshot({ path: path.join(process.env.TEMP, 'qa-visor-390.png') });
     await page.setViewportSize({ width: 1440, height: 960 });

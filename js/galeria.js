@@ -431,7 +431,7 @@
 
     var estado = {
         raiz: null, items: [], pos: 0, opciones: {}, onKey: null,
-        overflowPrevio: '', focoPrevio: null
+        overflowPrevio: '', focoPrevio: null, onResize: null
     };
 
     /** Hay un visor abierto. */
@@ -478,6 +478,27 @@
         return caja;
     }
 
+    /**
+     * Decide si las flechas van AL COSTADO o SUPERPUESTAS (no es una opcion del
+     * contrato). Al costado consumen 84px (44 x 2) + gaps: si el marco quedaria por
+     * debajo del ancho util, se superponen sobre la imagen a media altura.
+     */
+    function ajustarFlechas() {
+        var r = estado.raiz;
+        if (!r) { return; }
+        var cuerpo = r.querySelector('.mu-gal-cuerpo');
+        if (!cuerpo) { return; }
+        var ancho = cuerpo.clientWidth || 0;
+        if (!ancho) { return; }                 // sin layout: no se decide a ciegas
+        var libre = ancho - (44 * 2) - (10 * 3) - (16 * 2);
+        var justo = cuerpo.className.indexOf('mu-gal-cuerpo--justo') !== -1;
+        if (libre < 280) {
+            if (!justo) { cuerpo.className += ' mu-gal-cuerpo--justo'; }
+        } else if (justo) {
+            sinClase(cuerpo, 'mu-gal-cuerpo--justo');
+        }
+    }
+
     /** Repinta contador, imagen, flechas, meta y precarga de la posicion actual. */
     function pintarVisor() {
         var s = estado;
@@ -487,7 +508,14 @@
         var o = s.opciones || {};
 
         var cont = s.raiz.querySelector('.mu-gal-contador');
-        if (cont) { cont.textContent = (s.pos + 1) + ' / ' + total; }
+        if (cont) {
+            // `contador: 'auto'` (default) lo oculta cuando no aporta: con un solo item
+            // el "1 / 1" es ruido, no informacion. `true` lo fuerza y `false` lo apaga.
+            var modoCont = (o.contador === undefined) ? 'auto' : o.contador;
+            var muestraCont = (modoCont === true) || (modoCont === 'auto' && total > 1);
+            cont.hidden = !muestraCont;
+            cont.textContent = muestraCont ? ((s.pos + 1) + ' / ' + total) : '';
+        }
 
         var img = s.raiz.querySelector('.mu-gal-img');
         if (img) {
@@ -497,6 +525,19 @@
                 img.setAttribute('src', url);
             }
             img.setAttribute('alt', String(item.etiqueta || ''));
+
+        // El damero solo aporta si la imagen PUEDE tener transparencia: con una foto
+        // opaca eran bandas grises alrededor. El item lo declara con `transparente`.
+        var marcoV = s.raiz.querySelector('.mu-gal-marco');
+        if (marcoV) {
+            if (item.transparente) {
+                if (marcoV.className.indexOf('mu-gal-marco--damero') === -1) {
+                    marcoV.className += ' mu-gal-marco--damero';
+                }
+            } else {
+                sinClase(marcoV, 'mu-gal-marco--damero');
+            }
+        }
         }
 
         var prev = s.raiz.querySelector('.mu-gal-prev');
@@ -525,6 +566,7 @@
         if (typeof o.alCambiar === 'function') { o.alCambiar(s.pos); }
 
         // Sincronizacion dos vias con el listado inferior (F2).
+        ajustarFlechas();
         marcarLista(s.pos);
     }
 
@@ -579,6 +621,10 @@
         sinClase(s.raiz, 'is-visible');
         s.raiz.setAttribute('aria-hidden', 'true');
         if (s.onKey && doc) { doc.removeEventListener('keydown', s.onKey); }
+        if (s.onResize && global.removeEventListener) {
+            global.removeEventListener('resize', s.onResize);
+        }
+        s.onResize = null;
         s.onKey = null;
         bloquearScroll(doc, false);
         // Se retira del documento: un solo modal vivo, nunca dos apilados.
@@ -635,6 +681,16 @@
         overlay.setAttribute('aria-label', String(o.titulo || 'Galeria de imagenes'));
 
         var caja = crear(doc, 'div', 'mu-modal-container mu-gal-caja');
+        // `ancho`: 'auto' (default) ajusta la caja al contenido en escritorio;
+        // 'completo' la lleva casi a pantalla; un numero fija `max-width` (legado).
+        if (o.ancho === 'completo') {
+            caja.className += ' mu-gal-caja--completo';
+        } else if (o.ancho === undefined || o.ancho === 'auto') {
+            caja.className += ' mu-gal-caja--auto';
+        } else {
+            var anchoPx = parseInt(o.ancho, 10);
+            if (anchoPx > 0) { caja.style.maxWidth = anchoPx + 'px'; }
+        }
 
         var cab = crear(doc, 'div', 'mu-gal-cabecera');
         cab.appendChild(crear(doc, 'p', 'mu-gal-titulo', o.titulo || 'Galeria'));
@@ -681,12 +737,19 @@
         cuerpo.appendChild(marco);
         cuerpo.appendChild(next);
         caja.appendChild(cuerpo);
+// Cuerpo fijo (la imagen no se desplaza) y banda+meta scrolleables: antes la
+        // caja recortaba (`overflow: hidden`) y la meta larga se perdia abajo.
+        var scroll = crear(doc, 'div', 'mu-gal-scroll');
+        caja.appendChild(scroll);
 
         // Listado inferior (F2): la MISMA coleccion en preset mini, sincronizada
         // dos vias (click en la mini -> `ir`; `ir` -> celda activa + scroll).
         if (o.listado === 'abajo' && items.length > 1) {
             var lista = crear(doc, 'div', 'mu-gal-visor-lista');
-            caja.appendChild(lista);
+            // La celda marcada es la que se esta VIENDO (F2): el listado se sincroniza
+            // con `ir`; la "Elegida" del ambito 1 es otra cosa y no se mezcla aca.
+            var posElegida = acotar(o.indice, items.length);
+            scroll.appendChild(lista);
             coleccion(lista, {
                 items: items.map(function (it) {
                     return { url: it.thumb || it.url, etiqueta: it.etiqueta || '' };
@@ -697,7 +760,7 @@
                 // El listado muestra TODO de una (`navegable: true`): asi la celda
                 // activa siempre existe y `marcarLista` puede acercarla.
                 navegable: true,
-                activo: acotar(o.indice, items.length),
+                activo: posElegida,
                 pie: false,
                 tope: 0,
                 onAbrir: function (i) { ir(i); }
@@ -706,7 +769,7 @@
 
         var cajaMeta = crear(doc, 'div', 'mu-gal-meta');
         cajaMeta.hidden = true;
-        caja.appendChild(cajaMeta);
+        scroll.appendChild(cajaMeta);
 
         var acciones = crear(doc, 'div', 'mu-gal-acciones');
         (Array.isArray(o.acciones) ? o.acciones : []).forEach(function (ac) {
@@ -753,6 +816,9 @@
             if (e.key === 'Tab') { atraparFoco(e, overlay); }
         };
         doc.addEventListener('keydown', estado.onKey);
+        // El ancho decide las flechas: se recalcula al redimensionar (rotar el telefono).
+        estado.onResize = function () { ajustarFlechas(); };
+        if (global.addEventListener) { global.addEventListener('resize', estado.onResize); }
 
         bloquearScroll(doc, true);
         pintarVisor();
@@ -764,6 +830,7 @@
         setTimeout(function () {
             if (estado.raiz !== overlay) { return; }
             overlay.className += ' is-visible';
+            ajustarFlechas();
             overlay.setAttribute('aria-hidden', 'false');
             // `transition: visibility` mantiene el valor computado en `hidden` un
             // rato, y el navegador IGNORA `.focus()` en silencio: abriendo por click
