@@ -596,16 +596,28 @@
     /** Acciones del visor: la primera cierra (como "Elegir" en la tienda). */
     function accionesVisor() {
         var nombres = ['Elegir', 'Comparar', 'Comprar', 'Eliminar'];
+        var iconos = ['usar', 'descargar', 'corazon', 'basura'];
         var out = [];
         for (var i = 0; i < VISOR.acciones; i++) {
             var nombre = nombres[i % nombres.length];
             out.push({
                 etiqueta: nombre,
+                icono: iconos[i % iconos.length],
                 clase: (nombre === 'Eliminar') ? 'mu-gal-peligro' : '',
                 onAccion: (function (n) {
                     return function (pos) { avisar('Accion "' + n + '" sobre la imagen ' + (pos + 1)); };
                 }(nombre))
             });
+        }
+        if (out.length >= 4) {
+            /* La 4ta es SOLO icono: prueba el contrato por el lado dificil (nombre
+               accesible sin texto visible). */
+            out[3] = {
+                icono: 'basura',
+                clase: 'mu-gal-peligro',
+                aria: 'Eliminar la imagen',
+                onAccion: function (pos) { avisar('Eliminar la imagen ' + (pos + 1)); }
+            };
         }
         if (out.length) {
             out[0].onAccion = function (pos) {
@@ -1320,7 +1332,7 @@
         '#visor-roto-mixto': { items: 4, rotoHasta: 2 },
         '#visor-sin-lista': { listado: false },
         '#visor-segmentos': { segmentos: 2 },
-        '#visor-todo': { tono: 'oscuro', meta: 'larga', segmentos: 3, acciones: 3, items: 12 }
+        '#visor-todo': { tono: 'oscuro', meta: 'larga', segmentos: 3, acciones: 4, items: 12 }
     };
     var vistaVisor = VISTAS_VISOR[window.location.hash];
     if (vistaVisor || window.location.hash === '#visor3') {

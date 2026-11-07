@@ -35,7 +35,7 @@ MUGaleria.visor({
   contador: 'auto' | true | false,              // default 'auto': oculto con 1 item
   ancho: 'auto' | 'completo' | 880,             // default 'auto' (ver C1.1)
   segmentos: [ { etiqueta, activo, onElegir() } ],   // pestañas: NO filtran (ver C1.2)
-  acciones:  [ { etiqueta, clase, onAccion(indice) } ],
+  acciones:  [ { etiqueta, icono, aria, clase, onAccion(indice) } ],
   meta:      { titulo, descripcion, badge, precio: { valor, anterior, aviso } },
   listado:   'abajo' | false,                   // banda de miniaturas (default false)
   alCambiar: function (indice) {},
@@ -84,6 +84,13 @@ sincronizada dos vias con la imagen grande (`MU.ir(i)`): ver `coleccion.md` C8.
   asi no se ve el icono del navegador. El estado vive en el DOM del **marco**: al cambiar de
   imagen el `src` nuevo lo limpia solo, sin estado extra. El marco reserva `min-height: 220px`
   (`mu-gal-marco--error`) para que el mensaje no colapse cuando no hay alto natural.
+- **Acciones con icono** (V2, T042): `acciones[].icono` acepta `usar`, `descargar`, `corazon` o
+  `basura`. **No es un set del tema**: son cuatro SVG de la familia del chevron, creados con
+  `createElementNS` (el componente no usa `innerHTML`) y decorativos (`aria-hidden`), asi que el
+  nombre accesible sigue siendo el **texto**. Un nombre desconocido no rompe la accion: el boton
+  queda con su etiqueta. Una accion **sin** `etiqueta` toma el nombre accesible de `aria` (o del
+  `icono`). La clase destructiva buena es `mu-gal-peligro`; `pmu-visor-peligro` sobrevive como
+  **puente** hasta F2/T900 (hoy la usa el plugin).
 - **Marco**: lienzo neutro (`--mu-gal-lienzo`, transparente = el fondo de la caja) y **damero
   solo si el item declara `transparente: true`**. El damero permanente dejaba bandas grises
   alrededor de cualquier foto opaca (defecto medido en `visor-evaluacion.md`).

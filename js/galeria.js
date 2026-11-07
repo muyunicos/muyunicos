@@ -464,7 +464,44 @@
         return u + (u.indexOf('?') === -1 ? '?' : '&') + 'r=' + Date.now();
     }
 
-/* ==================== visor (modal del tema) ==================== */
+/**
+     * Iconos de accion (V2, T042): misma familia que el chevron y el tachito, todos con
+     * `createElementNS` porque el componente no usa `innerHTML`. NO es un set del tema:
+     * son los cuatro nombres que el visor necesita, y el texto del boton sigue mandando
+     * (el icono es decorativo: `aria-hidden`).
+     */
+    var ICONOS = {
+        usar: 'M20 6L9 17l-5-5',
+        descargar: 'M12 4v10M7 9l5 5 5-5M5 20h14',
+        corazon: 'M12 20s-7-4.6-7-9.6A4.4 4.4 0 0112 7a4.4 4.4 0 017 3.4c0 5-7 9.6-7 9.6z',
+        basura: 'M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14'
+    };
+
+    /**
+     * Icono de accion por nombre conocido; `null` si el nombre no existe, y entonces el
+     * boton queda solo con su etiqueta (un nombre desconocido no rompe la accion).
+     */
+    function crearIcono(doc, nombre) {
+        if (!Object.prototype.hasOwnProperty.call(ICONOS, nombre)) { return null; }
+        var ns = 'http://www.w3.org/2000/svg';
+        var svg = doc.createElementNS(ns, 'svg');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.setAttribute('fill', 'none');
+        svg.setAttribute('stroke', 'currentColor');
+        svg.setAttribute('stroke-width', '2');
+        svg.setAttribute('stroke-linecap', 'round');
+        svg.setAttribute('stroke-linejoin', 'round');
+        svg.setAttribute('width', '18');
+        svg.setAttribute('height', '18');
+        svg.setAttribute('aria-hidden', 'true');
+        svg.setAttribute('focusable', 'false');
+        var camino = doc.createElementNS(ns, 'path');
+        camino.setAttribute('d', ICONOS[nombre]);
+        svg.appendChild(camino);
+        return svg;
+    }
+
+    /* ==================== visor (modal del tema) ==================== */
 
     var estado = {
         raiz: null, items: [], pos: 0, opciones: {}, onKey: null,
@@ -844,7 +881,16 @@
 
         var acciones = crear(doc, 'div', 'mu-gal-acciones');
         (Array.isArray(o.acciones) ? o.acciones : []).forEach(function (ac) {
-            var b = crear(doc, 'button', 'mu-gal-accion ' + (ac.clase || ''), ac.etiqueta || '');
+            var b = crear(doc, 'button', 'mu-gal-accion ' + (ac.clase || ''));
+            var iconoAc = ac.icono ? crearIcono(doc, String(ac.icono)) : null;
+            if (iconoAc) { b.appendChild(iconoAc); }
+            // El texto manda: el icono es decorativo. Sin etiqueta el boton queda solo con
+            // el icono, y entonces el nombre accesible NO puede faltar (`aria-label`).
+            if (ac.etiqueta) {
+                b.appendChild(doc.createTextNode(String(ac.etiqueta)));
+            } else {
+                b.setAttribute('aria-label', String(ac.aria || ac.icono || 'Accion'));
+            }
             b.type = 'button';
             b.addEventListener('click', function () {
                 if (typeof ac.onAccion === 'function') { ac.onAccion(estado.pos); }

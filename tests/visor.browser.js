@@ -96,6 +96,14 @@ async function leer(page) {
             segs: raiz.querySelectorAll('.mu-gal-seg').length,
             segActivo: (raiz.querySelector('.mu-gal-seg[aria-pressed="true"]') || {}).textContent || '',
             acciones: raiz.querySelectorAll('.mu-gal-accion').length,
+            accionesConIcono: raiz.querySelectorAll('.mu-gal-accion svg').length,
+            iconosDecorativos: raiz.querySelectorAll('.mu-gal-accion svg[aria-hidden="true"]').length,
+            accionPeligro: raiz.querySelectorAll('.mu-gal-accion.mu-gal-peligro').length,
+            accionSoloIconoAria: (function () {
+                const as = Array.from(raiz.querySelectorAll('.mu-gal-accion'));
+                const solo = as.filter((a) => !a.textContent.trim() && a.querySelector('svg'));
+                return solo.length ? (solo[0].getAttribute('aria-label') || '') : '';
+            }()),
             hayAvisoError: raiz.querySelectorAll('[data-mu-gal-error], .mu-gal-error').length,
             errorVisible: (function () {
                 const e = raiz.querySelector('.mu-gal-error');
@@ -359,6 +367,19 @@ async function ir(page, hash) {
     chk('al pasar a una imagen buena el error se limpia solo',
         r.errorVisible === false && r.imgNatural > 0 && r.imgRoto === false,
         'visible=' + r.errorVisible + ' naturalWidth=' + r.imgNatural + ' roto=' + r.imgRoto);
+
+    /* ---------------- 8c. acciones con icono (V2, T042) ---------------- */
+    console.log('== #visor-todo: acciones con icono ==');
+    await ir(page, '#visor-todo');
+    r = await leer(page);
+    chk('las 4 acciones pintan su icono, decorativo (aria-hidden)',
+        r.acciones === 4 && r.accionesConIcono === 4 && r.iconosDecorativos === 4,
+        'acciones=' + r.acciones + ' conIcono=' + r.accionesConIcono
+            + ' decorativos=' + r.iconosDecorativos);
+    chk('la accion destructiva lleva la clase buena mu-gal-peligro',
+        r.accionPeligro === 1, 'peligro=' + r.accionPeligro);
+    chk('una accion solo-icono conserva su nombre accesible (aria-label)',
+        r.accionSoloIconoAria.length > 3, 'aria-label="' + r.accionSoloIconoAria + '"');
 
 /* ---------------- 9. sin listado y segmentos ---------------- */
     console.log('== #visor-sin-lista y #visor-segmentos ==');

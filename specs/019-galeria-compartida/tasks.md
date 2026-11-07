@@ -177,7 +177,7 @@ uno suma checks a `tests/visor.browser.js` y, si toca los puros, a `tests/galeri
 - [X] T041 Estado de error de imagen: `.mu-gal-error` (mensaje + boton Reintentar) dentro de
       `.mu-gal-marco`, `error`/`load` en el montaje y reset al cambiar de `src`; el reintento
       pide `url?r=<ts>` (cache-bust). Cierra el hallazgo 1 de §2 y el punto 1 de §6.
-- [ ] T042 `acciones[].icono` con el mapa LOCAL `ICONOS` (`usar`/`descargar`/`corazon`/
+- [X] T042 `acciones[].icono` con el mapa LOCAL `ICONOS` (`usar`/`descargar`/`corazon`/
       `basura`, familia del chevron: `createElementNS`, sin `innerHTML`) y clase buena
       `mu-gal-peligro` (`pmu-visor-peligro` se conserva como puente hasta T900).
 - [ ] T043 Meta rica: `MU.puro.normalizarMeta()` (retrocompatible con `badge` string y

@@ -2,7 +2,7 @@
 
 **Estado**: **V1** (2026-11-07). El visor se prueba **en vivo** en
 `tests/galeria-demo.html` (panel "Visor (ambito 2)") y tiene puerta propia:
-`node tests/visor.browser.js` → **VISOR OK (58/58 checks, 0 hallazgos)**.
+`node tests/visor.browser.js` → **VISOR OK (61/61 checks, 0 hallazgos)**.
 Complementa `spec.md` §3 (FR-024…FR-030) y `contracts/galeria.md` (API del visor).
 
 Este documento es el **tablero de decisión**: lo medido, lo que falta, lo que sobra y lo
@@ -68,8 +68,8 @@ regresiones).
 | 15 | Segmentos | prometian filtros y no filtraban | **RESUELTO en V1**: son pestañas informativas; los filtros viven en la coleccion (C10) |
 | 16 | Borde y separadores | 3px dorado (casi invisible) vs grises frios vs punteado azul | **RESUELTO en V1**: 1px con `--mu-gal-sep` unico |
 | 17 | Contraste en oscuro | precio `#047857` sobre `#111827` (~3:1) | **RESUELTO en V1**: `#34d399` |
-| 18 | Badge / detalle de acciones | sin iconos ni variantes tonales | **Falta**: `badge{texto,tono}` (**T043**) e `icono` (**T042**) |
-| 19 | Acciones | solo `etiqueta` + `clase` en `visor()` | **Falta** `icono` (**T042**) |
+| 18 | Badge tonal | sin variantes tonales | **Falta** `badge{texto,tono}` (**T043**) |
+| 19 | Acciones | solo `etiqueta` + `clase` en `visor()` | **RESUELTO en V2** (T042): `icono` de la familia local + `aria` |
 | 20 | Marco de la foto (`tono:'foto'`) | el damero ya es opt-in (V1); falta un marco oscuro propio para fotos | **Decidir** (no es requisito de la V2) |
 | 21 | Ancho de la caja | era 880 px fijo | **RESUELTO en V1**: `ancho` auto o `completo` (T034) |
 | 22 | Flechas | al costado y superpuestas en movil | **RESUELTO en V1**: automaticas segun el ancho del marco (T036), no es opcion |
@@ -77,8 +77,8 @@ regresiones).
 | 24 | Instancia | `visor()` crea el DOM y `cerrar()` lo retira | **Falta** singleton + `MU.visor.actualizar()` (**T044**) |
 
 Desde la V2 la banda inferior en 390 px **afirma** que scrollea (es un carrusel por diseno): dejo de
-ser un aviso y paso a check. La imagen rota ya tiene estado propio (fila 9), asi que la puerta queda
-en **58/58 con 0 hallazgos**.
+ser un aviso y paso a check. La imagen rota ya tiene estado propio (fila 9) y las acciones su
+icono (fila 19), asi que la puerta queda en **61/61 con 0 hallazgos**.
 
 ## 3. Inventario: qué falta, qué sobra, qué está de más
 
@@ -157,9 +157,9 @@ foco** si ya hay uno dentro del modal.
 
 Cada punto, con su check nuevo en `tests/visor.browser.js` y `GALERIA OK`:
 
-1. Estado de error de imagen (mensaje + reintento).
-2. `precios[]` + `nota` + `badge{texto,tono}`.
-3. `acciones[].icono` + variantes tonales.
+1. ~~Estado de error de imagen (mensaje + reintento).~~ **hecho** (T041).
+2. ~~`acciones[].icono` + variantes tonales.~~ **hecho** (T042: familia local, sin set del tema).
+3. `precios[]` + `nota` + `badge{texto,tono}`, unificando con `MU.tarjeta`.
 4. Singleton + `MU.visor.actualizar()` + `[data-mu-galeria-visor]` declarativo.
 
 Orden de implementacion: **T041** (error de imagen) -> **T042** (`icono`) -> **T043** (meta rica) ->
