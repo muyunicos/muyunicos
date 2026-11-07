@@ -189,6 +189,8 @@
 }
 
 .mu-gal-marco {
+    /* El marco es el contenedor de referencia del mensaje de error (absoluto). */
+    position: relative;
     /* `flex-basis: 0` (no `auto`): con `auto` el marco partia del tamaño NATURAL de la
        imagen y el visor desbordaba en pantallas angostas. */
     flex: 1 1 0%;
@@ -231,6 +233,50 @@
 }
 
 .mu-gal-img--cargada { opacity: 1; }
+
+/* Imagen que no cargo: se oculta el icono roto del navegador y en su lugar aparece el
+   mensaje con "Reintentar". El estado lo gobierna el JS con `hidden`. */
+.mu-gal-img--roto { opacity: 0; }
+
+/* Sin imagen no hay alto natural: el marco reserva un alto util para el mensaje. */
+.mu-gal-marco--error { min-height: 220px; }
+
+.mu-gal-error {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--mu-space-sm);
+    padding: 12px;
+    text-align: center;
+}
+
+/* `hidden` GANA a `display: flex` (la hoja del autor pisa la del navegador). */
+.mu-gal-error[hidden] { display: none; }
+
+.mu-gal-error-texto {
+    margin: 0;
+    font-size: 14px;
+    color: var(--texto-light);
+}
+
+.mu-gal-error-reintentar {
+    padding: 6px 14px;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    background: transparent;
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.mu-gal-error-reintentar:hover { background: rgb(15 23 42 / 6%); }
+.mu-gal-error-reintentar:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+
+.mu-gal-visor--oscuro .mu-gal-error-texto { color: rgb(255 255 255 / 78%); }
+.mu-gal-visor--oscuro .mu-gal-error-reintentar:hover { background: rgb(255 255 255 / 10%); }
 
 /* Flechas del visor: reusan `.mu-nav-btn` del tema (D18). El tema las posiciona en
    absoluto para el carrusel y las oculta por defecto; dentro del visor van en el flex

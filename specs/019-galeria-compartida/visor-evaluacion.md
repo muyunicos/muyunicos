@@ -2,7 +2,7 @@
 
 **Estado**: **V1** (2026-11-07). El visor se prueba **en vivo** en
 `tests/galeria-demo.html` (panel "Visor (ambito 2)") y tiene puerta propia:
-`node tests/visor.browser.js` → **VISOR OK (52/52 checks, 1 hallazgo)**.
+`node tests/visor.browser.js` → **VISOR OK (58/58 checks, 0 hallazgos)**.
 Complementa `spec.md` §3 (FR-024…FR-030) y `contracts/galeria.md` (API del visor).
 
 Este documento es el **tablero de decisión**: lo medido, lo que falta, lo que sobra y lo
@@ -59,7 +59,7 @@ regresiones).
 | 6 | Tono oscuro | `mu-gal-visor--oscuro` aplicada | **OK** |
 | 7 | Meta por item | la del item manda sobre la global | **OK** |
 | 8 | 1 solo item | el contador se oculta solo (`contador:'auto'`) | **RESUELTO en V1** |
-| 9 | Imagen rota | marco **vacío**, sin mensaje ni reintento | **Falta** estado de error (**T041**: es el unico hallazgo abierto) |
+| 9 | Imagen rota | mensaje + **Reintentar** (`?r=<ts>`) y la rota oculta (`mu-gal-img--roto`) | **RESUELTO en V2** (T041) |
 | 10 | Meta larga | cuerpo/banda/meta viven en `.mu-gal-scroll` (`overflow-y:auto`): no recorta | **RESUELTO en V1** |
 | 11 | 390 px | flechas superpuestas sobre el marco; la imagen usa >82% del ancho | **RESUELTO en V1** |
 | 12 | Precios | solo `precio{valor,anterior,aviso}` en `pintarMeta` | **Falta** `precios[]` (Regular/Mayor), `nota` y `badge{texto,tono}` (**T043**) |
@@ -77,7 +77,8 @@ regresiones).
 | 24 | Instancia | `visor()` crea el DOM y `cerrar()` lo retira | **Falta** singleton + `MU.visor.actualizar()` (**T044**) |
 
 Desde la V2 la banda inferior en 390 px **afirma** que scrollea (es un carrusel por diseno): dejo de
-ser un aviso y paso a check, por eso la puerta queda en 52/52 con 1 solo hallazgo.
+ser un aviso y paso a check. La imagen rota ya tiene estado propio (fila 9), asi que la puerta queda
+en **58/58 con 0 hallazgos**.
 
 ## 3. Inventario: qué falta, qué sobra, qué está de más
 

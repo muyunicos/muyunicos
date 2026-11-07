@@ -68,6 +68,8 @@ sincronizada dos vias con la imagen grande (`MU.ir(i)`): ver `coleccion.md` C8.
   `mu-gal-titulo`, `mu-gal-contador`, `mu-gal-segs`, `mu-gal-seg`, `mu-gal-cuerpo`,
   `mu-gal-img`, `mu-gal-prev`, `mu-gal-next`, `mu-gal-meta`, `mu-gal-acciones`,
   `mu-gal-visor-lista` (banda del listado, solo con `listado:'abajo'`).
+  Con estado de error (V2): `mu-gal-error`, `mu-gal-error-texto`, `mu-gal-error-reintentar`,
+  `mu-gal-marco--error` (el marco reserva alto) y `mu-gal-img--roto`.
   Las **flechas no son clases propias**: son `.mu-nav-btn prev/next` del tema (C8).
 - Accesibilidad: `role="dialog"`, `aria-modal="true"`, `aria-label` = `titulo`,
   `aria-hidden` en las flechas cuando `n <= 1`, foco al boton de cerrar,
@@ -76,6 +78,12 @@ sincronizada dos vias con la imagen grande (`MU.ir(i)`): ver `coleccion.md` C8.
   (guarda el `overflow` previo).
 - Imagen: `opacity-0` hasta `load` (clase `mu-gal-img--cargada`), `object-fit: contain`,
   `decoding="async"`.
+- **Imagen que no carga** (V2, T041): el marco pinta `mu-gal-error` con el texto "No se pudo
+  cargar la imagen" y un boton **Reintentar** que vuelve a pedir la misma url con `?r=<ts>`
+  (el navegador cachea el fallo). La imagen rota queda con `opacity: 0` (`mu-gal-img--roto`),
+  asi no se ve el icono del navegador. El estado vive en el DOM del **marco**: al cambiar de
+  imagen el `src` nuevo lo limpia solo, sin estado extra. El marco reserva `min-height: 220px`
+  (`mu-gal-marco--error`) para que el mensaje no colapse cuando no hay alto natural.
 - **Marco**: lienzo neutro (`--mu-gal-lienzo`, transparente = el fondo de la caja) y **damero
   solo si el item declara `transparente: true`**. El damero permanente dejaba bandas grises
   alrededor de cualquier foto opaca (defecto medido en `visor-evaluacion.md`).

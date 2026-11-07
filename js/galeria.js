@@ -454,7 +454,17 @@
         return svg;
     }
 
-    /* ==================== visor (modal del tema) ==================== */
+    /**
+     * Agrega un parametro de cache a una url: es lo unico que hace util el boton
+     * "Reintentar" del visor, porque el navegador cachea el fallo de la misma url.
+     */
+    function conCache(url) {
+        var u = String(url || '');
+        if (!u) { return u; }
+        return u + (u.indexOf('?') === -1 ? '?' : '&') + 'r=' + Date.now();
+    }
+
+/* ==================== visor (modal del tema) ==================== */
 
     var estado = {
         raiz: null, items: [], pos: 0, opciones: {}, onKey: null,
@@ -548,6 +558,12 @@
         if (img) {
             var url = String(item.url || item.thumb || '');
             if (img.getAttribute('src') !== url) {
+                // Cambiar de imagen limpia el estado de error de la anterior: el `load`
+                // o el `error` del `src` nuevo vuelven a decidirlo.
+                var cajaErr = s.raiz.querySelector('.mu-gal-error');
+                if (cajaErr) { cajaErr.hidden = true; }
+                var marcoErr = s.raiz.querySelector('.mu-gal-marco');
+                if (marcoErr) { sinClase(marcoErr, 'mu-gal-marco--error'); }
                 img.className = 'mu-gal-img';
                 img.setAttribute('src', url);
             }
@@ -756,10 +772,38 @@
         var img = crear(doc, 'img', 'mu-gal-img');
         img.setAttribute('decoding', 'async');
         img.setAttribute('alt', '');
+        // Estado de error DENTRO del marco (nunca en `estado`): se limpia solo cuando el
+        // `src` nuevo carga, asi sobrevive a los repintados sin logica extra.
+        var cajaError = crear(doc, 'div', 'mu-gal-error');
+        cajaError.hidden = true;
+        var textoError = crear(doc, 'p', 'mu-gal-error-texto', 'No se pudo cargar la imagen');
+        var botonError = crear(doc, 'button', 'mu-gal-error-reintentar', 'Reintentar');
+        botonError.type = 'button';
+        cajaError.appendChild(textoError);
+        cajaError.appendChild(botonError);
         img.addEventListener('load', function () {
             img.className = 'mu-gal-img mu-gal-img--cargada';
+            sinClase(marco, 'mu-gal-marco--error');
+            cajaError.hidden = true;
+        });
+        img.addEventListener('error', function () {
+            // El `src` vacio no es un fallo (es el marco antes del primer pintado).
+            if (!img.getAttribute('src')) { return; }
+            img.className = 'mu-gal-img mu-gal-img--roto';
+            if (marco.className.indexOf('mu-gal-marco--error') === -1) {
+                marco.className += ' mu-gal-marco--error';
+            }
+            cajaError.hidden = false;
+        });
+        botonError.addEventListener('click', function () {
+            var actual = img.getAttribute('src') || '';
+            if (!actual) { return; }
+            cajaError.hidden = true;
+            img.className = 'mu-gal-img';
+            img.setAttribute('src', conCache(actual));
         });
         marco.appendChild(img);
+        marco.appendChild(cajaError);
         cuerpo.appendChild(prev);
         cuerpo.appendChild(marco);
         cuerpo.appendChild(next);

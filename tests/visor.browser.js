@@ -97,6 +97,15 @@ async function leer(page) {
             segActivo: (raiz.querySelector('.mu-gal-seg[aria-pressed="true"]') || {}).textContent || '',
             acciones: raiz.querySelectorAll('.mu-gal-accion').length,
             hayAvisoError: raiz.querySelectorAll('[data-mu-gal-error], .mu-gal-error').length,
+            errorVisible: (function () {
+                const e = raiz.querySelector('.mu-gal-error');
+                if (!e) { return false; }
+                return !e.hidden && getComputedStyle(e).display !== 'none';
+            }()),
+            errorTexto: (raiz.querySelector('.mu-gal-error-texto') || {}).textContent || '',
+            hayReintento: raiz.querySelectorAll('.mu-gal-error-reintentar').length,
+            imgSrc: img ? (img.getAttribute('src') || '') : '',
+            imgRoto: img ? /mu-gal-img--roto/.test(img.className) : false,
             cerrarVisible: cerrarR
                 ? (cerrarR.width > 0 && cerrarR.height > 0 && cerrarR.bottom <= window.innerHeight + 1)
                 : false,
@@ -318,9 +327,38 @@ async function ir(page, hash) {
     chk('el visor abre igual con imagenes rotas', r.abierto === true && r.contador === '1 / 4',
         'contador="' + r.contador + '"');
     chk('la imagen no carga (naturalWidth 0)', r.imgNatural === 0, 'naturalWidth=' + r.imgNatural);
-    if (r.hayAvisoError === 0) {
-        aviso('imagen rota: marco vacio sin mensaje ni reintento (no hay estado de error)');
+    chk('la imagen rota muestra mensaje, reintento y oculta el icono del navegador',
+        r.errorVisible === true && r.hayReintento === 1 && r.imgRoto === true
+            && r.errorTexto.length > 8,
+        'visible=' + r.errorVisible + ' botones=' + r.hayReintento
+            + ' roto=' + r.imgRoto + ' texto="' + r.errorTexto + '"');
+    const srcRoto = r.imgSrc;
+    const reintentar = await page.$('.mu-gal-error-reintentar');
+    chk('el boton Reintentar esta en el marco y es clickeable', !!reintentar);
+    if (reintentar) {
+        await reintentar.click();
+        await page.waitForTimeout(450);
+        r = await leer(page);
+        chk('Reintentar pide la imagen de nuevo (url con parametro de cache)',
+            r.imgSrc !== srcRoto && /[?&]r=\d+/.test(r.imgSrc),
+            'antes="' + srcRoto + '" despues="' + r.imgSrc + '"');
+        chk('si vuelve a fallar, el mensaje sigue visible', r.errorVisible === true);
     }
+
+    /* ---------------- 8b. el error no queda pegado al cambiar de imagen ---------------- */
+    console.log('== #visor-roto-mixto: 2 rotas y 2 buenas ==');
+    await ir(page, '#visor-roto-mixto');
+    r = await leer(page);
+    chk('el visor mixto arranca en la rota y muestra el error', r.errorVisible === true,
+        'visible=' + r.errorVisible);
+    await page.click('.mu-gal-next');
+    await page.waitForTimeout(250);
+    await page.click('.mu-gal-next');
+    await page.waitForTimeout(500);
+    r = await leer(page);
+    chk('al pasar a una imagen buena el error se limpia solo',
+        r.errorVisible === false && r.imgNatural > 0 && r.imgRoto === false,
+        'visible=' + r.errorVisible + ' naturalWidth=' + r.imgNatural + ' roto=' + r.imgRoto);
 
 /* ---------------- 9. sin listado y segmentos ---------------- */
     console.log('== #visor-sin-lista y #visor-segmentos ==');

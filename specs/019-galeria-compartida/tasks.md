@@ -174,7 +174,7 @@ hallazgo del carrusel en movil paso a ser un check afirmado (scrollea porque es 
 carrusel), asi que el unico hallazgo abierto es la imagen rota. Un commit por tema; cada
 uno suma checks a `tests/visor.browser.js` y, si toca los puros, a `tests/galeria.test.js`.
 
-- [ ] T041 Estado de error de imagen: `.mu-gal-error` (mensaje + boton Reintentar) dentro de
+- [X] T041 Estado de error de imagen: `.mu-gal-error` (mensaje + boton Reintentar) dentro de
       `.mu-gal-marco`, `error`/`load` en el montaje y reset al cambiar de `src`; el reintento
       pide `url?r=<ts>` (cache-bust). Cierra el hallazgo 1 de §2 y el punto 1 de §6.
 - [ ] T042 `acciones[].icono` con el mapa LOCAL `ICONOS` (`usar`/`descargar`/`corazon`/

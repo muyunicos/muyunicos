@@ -331,7 +331,7 @@
                 style="margin-top:6px;width:100%">Aplicar JSON</button>
         <p class="pg-ayuda" style="margin:6px 0 0">
             Editá el JSON (por ejemplo <code>items</code>) y tocalo para aplicarlo.
-            Tambien acepta <code>visor:{tono,meta,items,listado,segmentos,acciones,roto}</code>
+            Tambien acepta <code>visor:{tono,meta,items,listado,segmentos,acciones,roto,rotoHasta}</code>
             para fijar un escenario del modal de un pegado.
         </p>
     </aside>
@@ -542,6 +542,7 @@
         meta: 'simple',     // sin | simple | rica | larga | item
         acciones: 1,
         roto: false,
+        rotoHasta: 0,       // N: rompe solo los primeros N items (0 = ninguna)
         ancho: 'auto',      // 'auto' = al contenido (default) | 'completo' = casi pantalla
     };
 
@@ -550,10 +551,11 @@
         var out = [];
         for (var i = 0; i < n; i++) {
             var base = UNIVERSO[i % UNIVERSO.length];
+            var caida = !!VISOR.roto || i < (VISOR.rotoHasta || 0);
             out.push({
                 id: base.id,
-                url: VISOR.roto ? ('no-existe-' + (i + 1) + '.png') : svg(i),
-                thumb: VISOR.roto ? ('no-existe-mini-' + (i + 1) + '.png') : svgMini(i),
+                url: caida ? ('no-existe-' + (i + 1) + '.png') : svg(i),
+                thumb: caida ? ('no-existe-mini-' + (i + 1) + '.png') : svgMini(i),
                 transparente: !!VISOR.transparente,
                 etiqueta: base.etiqueta
             });
@@ -817,6 +819,9 @@
             if (dv.meta !== undefined) { VISOR.meta = String(dv.meta); }
             if (dv.listado !== undefined) { VISOR.listado = !!dv.listado; }
             if (dv.roto !== undefined) { VISOR.roto = !!dv.roto; }
+            if (dv.rotoHasta !== undefined) {
+                VISOR.rotoHasta = Math.max(0, parseInt(dv.rotoHasta, 10) || 0);
+            }
             ['items', 'indice', 'segmentos', 'acciones'].forEach(function (k) {
                 if (dv[k] !== undefined) {
                     VISOR[k] = Math.max(0, parseInt(dv[k], 10) || 0);
@@ -1312,6 +1317,7 @@
         '#visor-meta-item': { meta: 'item' },
         '#visor-40': { items: 40 },
         '#visor-roto': { items: 4, roto: true },
+        '#visor-roto-mixto': { items: 4, rotoHasta: 2 },
         '#visor-sin-lista': { listado: false },
         '#visor-segmentos': { segmentos: 2 },
         '#visor-todo': { tono: 'oscuro', meta: 'larga', segmentos: 3, acciones: 3, items: 12 }
