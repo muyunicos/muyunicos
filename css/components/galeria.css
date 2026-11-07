@@ -771,6 +771,24 @@ body.is-scroll-locked { overflow: hidden; }
 
 .mu-gal-celda--activa { outline: 2px solid var(--primario); outline-offset: 2px; }
 
+/* Listado inferior del visor (F2): una banda con la MISMA coleccion en preset mini.
+   `padding-bottom` deja respirar el outline del activo. */
+.mu-gal-visor-lista {
+    margin-top: 10px;
+    padding: 10px 2px 6px;
+    border-top: 1px solid var(--mu-borde, #e5e7eb);
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.mu-gal-visor-lista .mu-gal-linea {
+    padding: 2px;
+}
+
+.mu-gal-visor-lista .mu-gal-item {
+    border-radius: calc(var(--mu-radius) / 2);
+}
+
 /* Hueco a llenar (min/capacidad): borde punteado, como cpmu-zona del plugin. */
 .mu-gal-celda--vacia {
     display: flex;

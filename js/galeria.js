@@ -392,14 +392,52 @@
         }
 
         if (typeof o.alCambiar === 'function') { o.alCambiar(s.pos); }
+
+        // Sincronizacion dos vias con el listado inferior (F2).
+        marcarLista(s.pos);
     }
 
     /** Navega (circular) y repinta. */
     function mover(delta) {
+        if (estado.items.length <= 1) { return; }
+        ir(estado.pos + delta);
+    }
+
+    /**
+     * Va a una posicion concreta (contrato C1: `ir(i)`). Repinta el visor y
+     * sincroniza el listado inferior (activo + `scrollIntoView` nearest).
+     * @returns {boolean} true si movio.
+     */
+    function ir(i) {
         var total = estado.items.length;
-        if (total <= 1) { return; }
-        estado.pos = (estado.pos + delta + total) % total;
+        if (!total) { return false; }
+        var n = parseInt(i, 10);
+        if (isNaN(n)) { return false; }
+        estado.pos = ((n % total) + total) % total;
         pintarVisor();
+        return true;
+    }
+
+    /** Marca la celda activa del listado inferior y la acerca sin saltar la pagina. */
+    function marcarLista(pos) {
+        var raiz = estado.raiz;
+        if (!raiz) { return; }
+        var lista = raiz.querySelector('.mu-gal-visor-lista');
+        if (!lista) { return; }
+        var previa = lista.querySelector('.mu-gal-celda--activa');
+        if (previa) { sinClase(previa, 'mu-gal-celda--activa'); }
+        var celda = lista.querySelector('[data-mu-gal-mini="' + pos + '"]');
+        if (!celda) { return; }
+        celda.className += ' mu-gal-celda--activa';
+        // Un repintado por resize reusa las opciones guardadas: sin esto volveria
+        // a marcar la celda del montaje y se perderia la sincronizacion.
+        var est = colecciones ? colecciones.get(lista) : null;
+        if (est && est.opciones) { est.opciones.activo = pos; }
+        if (typeof celda.scrollIntoView === 'function') {
+            try {
+                celda.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+            } catch (eScroll) { celda.scrollIntoView(); }
+        }
     }
 
     /** Cierra el visor: restaura el scroll, el foco y retira el nodo. */
@@ -512,6 +550,26 @@
         cuerpo.appendChild(marco);
         cuerpo.appendChild(next);
         caja.appendChild(cuerpo);
+
+        // Listado inferior (F2): la MISMA coleccion en preset mini, sincronizada
+        // dos vias (click en la mini -> `ir`; `ir` -> celda activa + scroll).
+        if (o.listado === 'abajo' && items.length > 1) {
+            var lista = crear(doc, 'div', 'mu-gal-visor-lista');
+            caja.appendChild(lista);
+            coleccion(lista, {
+                items: items.map(function (it) {
+                    return { url: it.thumb || it.url, etiqueta: it.etiqueta || '' };
+                }),
+                layout: 'fila',
+                preset: 'mini',
+                tamano: 'chico',
+                deslizable: 'auto',
+                activo: acotar(o.indice, items.length),
+                pie: false,
+                tope: 0,
+                onAbrir: function (i) { ir(i); }
+            });
+        }
 
         var cajaMeta = crear(doc, 'div', 'mu-gal-meta');
         cajaMeta.hidden = true;
@@ -1586,6 +1644,7 @@
     global.MU = {
         coleccion: coleccion,
         visor: visor,
+        ir: ir,
         cerrar: cerrar,
         arrastrar: arrastrar,
         navegarWoo: navegarWoo,

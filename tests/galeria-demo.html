@@ -567,8 +567,9 @@
     }
 
     function abrirVisor(indice) {
-        // El listado inferior del visor llega en F2; hoy abre con las imagenes del item.
+        // Listado inferior (F2): la banda de miniaturas sincronizada con la imagen grande.
         window.MU.visor({
+            listado: 'abajo',
             items: itemsActuales(),
             indice: indice || 0,
             titulo: 'Galeria',
@@ -736,6 +737,12 @@
     }
     sincronizarSlots();
     render();
+
+    // QA: visor con listado inferior (F2); `#visor3` ademas prueba `MU.ir(3)`.
+    if (window.location.hash === '#visor' || window.location.hash === '#visor3') {
+        abrirVisor(0);
+        if (window.location.hash === '#visor3') { window.MU.ir(3); }
+    }
 }());
 </script>
 <script src="../js/global-ui.js"></script>

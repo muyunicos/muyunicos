@@ -52,6 +52,50 @@ Tabla de referencia (`min 4`, `capacidad 8`, `tope 3`), verificada en la puerta:
 | 7 | `[O][O][+5]` | Puedes agregar 1 mas |
 | 8 | `[O][O][+6]` | Maximo alcanzado |
 
+## C1bis — `MU.puro.tanda({items, tope, caben, pagina})`
+
+La **tanda** es lo que decide `chipAccion:'auto'`: cuantas imagenes se ven en cada paso y
+cuando el chip deja de paginar y pasa a **abrir el visor**.
+
+```
+topeEf  = tope > 0 ? min(tope, items) : items      // el tope NUNCA se toca
+hayChip = items > caben                             // si no caben todos, hay chip
+paso    = hayChip ? max(1, caben - 1) : caben        // el chip reserva una celda
+paginas = max(1, ceil(topeEf / paso))
+pagina  = clamp(pagina, 0, paginas - 1)
+desde   = pagina * paso
+visibles= min(paso, max(0, topeEf - desde))
+fin     = desde + visibles
+ocultas = max(0, items - fin)
+agotado = fin >= topeEf && ocultas > 0               // el chip ABRE el visor
+```
+
+Devuelve `{desde, visibles, fin, ocultas, paso, paginas, pagina, agotado}`.
+
+Reglas:
+
+1. **`tope` es el maximo de items visibles en TODO el paginado** (0 = todos). No se reescribe.
+2. Si el chip aparece, **ocupa una celda**: por eso `paso = caben - 1`. Con 2 celdas y chip se
+   ve 1 imagen, no 2.
+3. **`agotado`** = ya se llego al `tope` y **aun** quedan imagenes: ahi el chip deja de paginar
+   y abre el visor (nunca desaparece, nunca deja imagenes inalcanzables).
+4. La **pagina es estado interno** del contenedor, no una opcion: se guarda por nodo con una
+   firma de `items/tope/min/capacidad/layout/filas/columnas`. Cambiar cualquiera de esos la
+   resetea a 0; **redimensionar la conserva**.
+5. Los **huecos** (`min`/`invitacion`) salen **solo en la tanda 0** y compiten con las imagenes
+   por las celdas libres: `libres = caben - visibles - (hayChip ? 1 : 0)`.
+
+Tabla de referencia (`items 12`, `tope 6`, `caben 4` -> `paso 3`, `paginas 2`):
+
+| Tanda | Ve | Chip | Accion del chip |
+|---|---|---|---|
+| 0 | 3 (0..2) | `+9` | paginar -> tanda 1 |
+| 1 | 3 (3..5) | `+6` | **abrir visor** (tope alcanzado) |
+
+**`chipAccion:'auto'`** (default) deriva del layout: en fila con `deslizable:true` **no hay
+chip** (todo es alcanzable con scroll); si el chip existe, pagina hasta el `tope` y despues
+abre el visor. `'abrir'` abre siempre; `'cargar'` delega en `onRanura`.
+
 ## C2 — `MU.puro.pie({cargadas, min, capacidad, sustantivo, sustantivoSingular})`
 
 Texto que reemplaza al chip para los huecos:
@@ -87,7 +131,7 @@ MU.coleccion(el, {
   min: 0,                       // min. CARGAS (huecos obligatorios)
   capacidad: 0,                 // max. CARGAS (0 = sin tope de invitacion)
   chip: 'auto',                 // 'auto' | false
-  chipAccion: 'abrir',          // 'abrir' | 'cargar' | fn
+  chipAccion: 'auto',           // 'auto' | 'abrir' | 'cargar' | fn
 
   // contenido
   preset: 'mini',               // 'mini' | 'tarjeta' | 'producto' | 'opcion'
@@ -177,9 +221,18 @@ Un item se dibuja con **slots** (que se ve) y **preset** (atajo):
 
 ## C8 — Relacion con el visor (ambito 2)
 
-`MU.visor({items, indice, slots, listado: 'abajo'})` **monta una `coleccion`** como listado
-inferior con `preset:'mini'`, `deslizable:true` y `activo` sincronizado en dos vias:
-- clic en una miniatura -> `visor.ir(i)`;
-- cambio en el visor -> marca `activo` y `scrollIntoView({block:'nearest', inline:'center'})`.
+`MU.visor({items, indice, listado: 'abajo'})` **monta una `coleccion`** (la misma pieza, D2) como
+banda inferior, con `preset:'mini'`, `tamano:'chico'`, `pie:false`, `tope:0` y
+`deslizable:'auto'` (si las miniaturas no caben, desliza; el listado nunca lleva chip porque
+todo es alcanzable). Sincronizacion **dos vias**:
+
+- clic en una miniatura -> `MU.ir(i)`;
+- `MU.ir(i)` o las flechas/teclado -> marca `mu-gal-celda--activa` en la celda `i` y la acerca
+  con `scrollIntoView({block:'nearest', inline:'nearest'})` (no salta si ya se ve).
+
+`MU.ir(i)` es **publico** (`MU.ir`), acota el indice en circular y repinta: no hay una segunda
+tira que mantener en sincronia a mano. El **repintado por resize** conserva la activa
+(`marcarLista` guarda `activo` en el estado del contenedor); sin eso el observer volvia a marcar
+la celda del montaje y se perdia la sincronizacion.
 
 El visor **no** implementa su propia tira: es el mismo componente (D2).

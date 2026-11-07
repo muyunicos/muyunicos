@@ -35,17 +35,22 @@ MUGaleria.visor({
   segmentos: [ { etiqueta, activo, onElegir() } ],
   acciones:  [ { etiqueta, clase, onAccion(indice) } ],
   meta:      { titulo, descripcion, badge, precio: { valor, anterior, aviso } },
+  listado:   'abajo' | false,                   // banda de miniaturas (default false)
   alCambiar: function (indice) {},
   alCerrar:  function () {}
 });
 ```
+
+`listado:'abajo'` monta una `MU.coleccion` (preset `mini`, tamano `chico`) como banda inferior,
+sincronizada dos vias con la imagen grande (`MU.ir(i)`): ver `coleccion.md` C8.
 
 - Devuelve `true` si abrio; `false` si no hay `items` o no hay `document`.
 - Reutiliza `.mu-modal-overlay` + `.mu-modal-container` + `.mu-modal-close` y
   `.is-visible` (D2). **No** crea otro modal.
 - Clases propias (todas con prefijo `mu-gal-`): `mu-gal-visor`, `mu-gal-cabecera`,
   `mu-gal-titulo`, `mu-gal-contador`, `mu-gal-segs`, `mu-gal-seg`, `mu-gal-cuerpo`,
-  `mu-gal-img`, `mu-gal-prev`, `mu-gal-next`, `mu-gal-meta`, `mu-gal-acciones`.
+  `mu-gal-img`, `mu-gal-prev`, `mu-gal-next`, `mu-gal-meta`, `mu-gal-acciones`,
+  `mu-gal-visor-lista` (banda del listado, solo con `listado:'abajo'`).
   Las **flechas no son clases propias**: son `.mu-nav-btn prev/next` del tema (C8).
 - Accesibilidad: `role="dialog"`, `aria-modal="true"`, `aria-label` = `titulo`,
   `aria-hidden` en las flechas cuando `n <= 1`, foco al boton de cerrar,

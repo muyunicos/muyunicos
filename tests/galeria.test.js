@@ -290,6 +290,22 @@ check('tanda · la pagina se acota al maximo',
 check('el chip tiene accion derivada y paginado interno',
     /accionChip/.test(js) && /alPaginar/.test(js) && /function paginarSiguiente/.test(js));
 
+/* ==================== 4g. Visor con listado inferior (F2) ==================== */
+console.log('== Visor con listado ==');
+
+check('el visor monta la coleccion con listado abajo',
+    js.indexOf("o.listado === 'abajo'") !== -1 && /mu-gal-visor-lista/.test(js)
+    && js.indexOf("preset: 'mini'") !== -1);
+check('dos vias: la mini llama ir y mover pasa por ir',
+    /onAbrir: function \(i\) \{ ir\(i\); \}/.test(js) && /function ir\(i\)/.test(js)
+    && js.indexOf('ir(estado.pos + delta)') !== -1);
+check('ir sincroniza el listado (marcarLista)',
+    js.indexOf('marcarLista(s.pos)') !== -1 && /function marcarLista/.test(js));
+check('la activa sobrevive al repintado por resize',
+    js.indexOf('est.opciones.activo = pos') !== -1);
+check('MU.ir esta expuesto', /^\s{8}ir: ir,$/m.test(js));
+check('el listado tiene CSS propio', /\.mu-gal-visor-lista/.test(css));
+
 /* ==================== 5. Reglas del PHP ==================== */
 console.log('== Reglas del PHP ==');
 check('registra el estilo', /wp_register_style\(\s*'mu-galeria'/.test(php));
