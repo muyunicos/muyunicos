@@ -55,8 +55,8 @@ check('expone version', gal.version === '1.0.1', 'version=' + gal.version);
     'autoInit', 'arrastrar', 'navegarWoo'].forEach((fn) => {
     check('expone ' + fn, typeof gal[fn] === 'function');
 });
-['acotar', 'preCargar', 'orden', 'formatearPrecio', 'celdas', 'pie', 'caben',
-    'carga', 'navegableDe', 'ventana'].forEach((fn) => {
+['acotar', 'preCargar', 'orden', 'formatearPrecio', 'filtrar', 'valoresFiltro', 'celdas',
+    'pie', 'caben', 'carga', 'navegableDe', 'ventana'].forEach((fn) => {
     check('expone puro.' + fn, typeof gal.puro[fn] === 'function');
 });
 
@@ -83,6 +83,25 @@ check('orden: key desempata estable',
 check('formatearPrecio miles', gal.puro.formatearPrecio(1234.6) === '1.235',
     gal.puro.formatearPrecio(1234.6));
 check('formatearPrecio invalido', gal.puro.formatearPrecio('x') === '');
+
+/* --- Filtros (contrato C10) --- */
+const ITEMS_F = [
+    { etiqueta: 'Oferta' }, { etiqueta: 'Nuevo' }, { etiqueta: 'Oferta' },
+    { etiqueta: '' }, { etiqueta: 'Pack' }, {}
+];
+check('valoresFiltro: distintos en orden de aparicion',
+    gal.puro.valoresFiltro(ITEMS_F, 'etiqueta').join('|') === 'Oferta|Nuevo|Pack',
+    gal.puro.valoresFiltro(ITEMS_F, 'etiqueta').join('|'));
+check('valoresFiltro: sin datos -> vacio', gal.puro.valoresFiltro(ITEMS_F, 'estado').length === 0);
+check('valoresFiltro: lista vacia no rompe', gal.puro.valoresFiltro(null, 'etiqueta').length === 0);
+check('filtrar: todos devuelve la lista entera', gal.puro.filtrar(ITEMS_F, 'etiqueta', 'todos').length === 6);
+check('filtrar: sin campo devuelve la lista entera', gal.puro.filtrar(ITEMS_F, '', 'Oferta').length === 6);
+check('filtrar: por valor deja los que coinciden',
+    gal.puro.filtrar(ITEMS_F, 'etiqueta', 'Oferta').length === 2);
+check('filtrar: valor inexistente -> vacio', gal.puro.filtrar(ITEMS_F, 'etiqueta', 'Nada').length === 0);
+check('filtrar: compara por texto (numero vs string)',
+    gal.puro.filtrar([{ estado: 3 }, { estado: '3' }], 'estado', '3').length === 2);
+check('filtrar: no muta la lista original', ITEMS_F.length === 6);
 
 /* ==================== 3. Reglas del JavaScript (C7) ==================== */
 console.log('== Reglas del JS ==');

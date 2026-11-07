@@ -230,6 +230,23 @@
         </section>
 
         <section class="pg-grupo">
+            <h3>Filtros de la galeria</h3>
+            <div class="pg-campo">
+                <label for="pg-filtros">Filtrar por</label>
+                <select id="pg-filtros">
+                    <option value="" selected>ninguno</option>
+                    <option value="etiqueta">etiqueta</option>
+                    <option value="estado">estado (necesita el slot estado)</option>
+                </select>
+            </div>
+            <p class="pg-ayuda" style="margin:6px 0 0">
+                Solo se ofrece el campo cuyo slot esta visible, y con un solo valor no
+                aparece. El chip y el pie hablan de lo filtrado; el visor recibe los
+                items YA filtrados (el visor no filtra).
+            </p>
+        </section>
+
+        <section class="pg-grupo">
             <h3>Visor (ambito 2)</h3>
             <div class="pg-campo">
                 <label for="pgv-tono">Tono</label>
@@ -255,7 +272,7 @@
             </div>
             <div class="pg-campo">
                 <label for="pgv-activo">Imagen elegida (-1 = ninguna)</label>
-                <input type="number" id="pgv-activo" min="-1" max="39" value="0">
+                <input type="number" id="pgv-activo" min="-1" max="39" value="-1">
             </div>
             <div class="pg-campo">
                 <label for="pgv-indice">Indice al abrir</label>
@@ -406,7 +423,8 @@
             thumb: svgMini(u),
             titulo: 'Producto ' + (u + 1),
             descripcion: 'Vinilo circular 3cm',
-            etiqueta: 'Oferta',
+            etiqueta: ['Oferta', 'Nuevo', 'Pack'][u % 3],
+            estado: ['En stock', 'A pedido', 'Ultimas'][u % 3],
             favorito: false,
             precio: { valor: 120 + u * 10, anterior: 180, promo: '33% OFF' },
             acciones: [{ etiqueta: 'Usar' }]
@@ -432,7 +450,8 @@
         capacidad: 0,
         sustantivo: 'imagenes',
         slots: null,            // se inicializa con el preset
-        datos: { precio: true, promo: true, desc: true, fav: false, etiqueta: true, acciones: true }
+        filtros: '',            // '' | 'etiqueta' | 'estado' (contrato C10)
+        datos: { precio: true, promo: true, desc: true, fav: false, etiqueta: true, acciones: true, estado: true }
     };
 
     var SLOTS = [
@@ -490,6 +509,7 @@
             var it = {
                 id: base.id, url: base.url, thumb: base.thumb,
                 titulo: base.titulo,
+                estado: (ESTADO.datos.estado === false) ? undefined : base.estado,
                 favorito: ESTADO.datos.fav ? base.favorito : false
             };
             if (ESTADO.datos.desc) { it.descripcion = base.descripcion; }
@@ -517,7 +537,7 @@
         items: 0,           // 0 = los items de la galeria (lo real); >0 = propios
         indice: 0,
         listado: true,
-        activo: 0,          // celda "Elegida": la usan la galeria y el visor
+        activo: -1,          // celda "Elegida": -1 = ninguna (la galeria no marca nada)
         segmentos: 0,
         meta: 'simple',     // sin | simple | rica | larga | item
         acciones: 1,
@@ -648,6 +668,7 @@
         return {
             items: itemsActuales(),
             activo: (VISOR.activo === undefined) ? -1 : VISOR.activo,
+            filtros: ESTADO.filtros || undefined,
             preset: ESTADO.preset,
             slots: ESTADO.slots,
             layout: ESTADO.layout,
@@ -740,6 +761,7 @@
             if (el) { el.value = v; }
         }
         set('pg-preset', ESTADO.preset);
+        set('pg-filtros', ESTADO.filtros);
         set('pg-tamano', ESTADO.tamano);
         set('pg-gap', ESTADO.gap);
         document.getElementById('pg-gap-out').textContent = String(ESTADO.gap);
@@ -838,6 +860,15 @@
         if (el) { el.addEventListener(evento, fn); }
     }
 
+    enlazar('pg-filtros', 'change', function (e) {
+        ESTADO.filtros = String(e.target.value || '');
+        // El filtro solo existe si el slot esta visible: al elegir `estado` se enciende.
+        if (ESTADO.filtros === 'estado') {
+            ESTADO.slots.estado = true;
+            sincronizarSlots();
+        }
+        render();
+    });
     enlazar('pg-preset', 'change', function (e) {
         ESTADO.preset = e.target.value;
         ESTADO.slots = slotsDelPreset(ESTADO.preset);
@@ -1224,12 +1255,30 @@
 
     // QA combinable con cualquier hash: `?clic=1` toca el chip una vez (debe SUMAR
     // celdas y pasar la galeria a navegable).
+    if (window.location.hash === '#filtro-etiqueta'
+        || window.location.hash === '#filtro-estado') {
+        // QA (C10): filtro por etiqueta o por estado. `estado` exige el slot visible,
+        // asi que ese hash usa el preset `opcion` (el unico que lo trae).
+        ESTADO.filtros = (window.location.hash === '#filtro-estado') ? 'estado' : 'etiqueta';
+        ESTADO.cantidad = 9;
+        if (ESTADO.filtros === 'estado') {
+            ESTADO.preset = 'opcion';
+            ESTADO.slots = slotsDelPreset('opcion');
+            document.getElementById('pg-preset').value = 'opcion';
+        }
+        document.getElementById('pg-filtros').value = ESTADO.filtros;
+        document.getElementById('pg-cantidad').value = '9';
+        document.getElementById('pg-cantidad-out').textContent = '9';
+    sincronizarSlots();
+        render();
+    }
     if (window.location.hash === '#estado') {
         // QA: el slot `estado` del preset `opcion` solo se pintaba en la celda `activo`
         // y el demo nunca la pasaba, asi que no se veia nunca.
         ESTADO.preset = 'opcion';
         ESTADO.cantidad = 6;
         ESTADO.slots = slotsDelPreset('opcion');
+        ESTADO.datos.estado = false;      // sin estado por item: prueba el fallback "Elegida"
         VISOR.activo = 1;
         document.getElementById('pg-preset').value = 'opcion';
         document.getElementById('pg-cantidad').value = '6';

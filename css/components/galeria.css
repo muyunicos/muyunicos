@@ -980,6 +980,50 @@ body.is-scroll-locked { overflow: hidden; }
 .mu-gal-celda--chip:hover { border-color: var(--primario); }
 .mu-gal-celda--chip:focus-visible { outline: 3px solid var(--primario); outline-offset: 2px; }
 
+/* Filtros de la coleccion (contrato C10): recortan los items y el chip, el pie y
+   `min`/`capacidad` hablan siempre de lo filtrado. Mismo lenguaje que los segmentos. */
+.mu-gal-filtros {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: var(--mu-space-sm);
+}
+
+.mu-gal-filtro {
+    border: 1px solid var(--primario);
+    background: transparent;
+    color: var(--primario);
+    border-radius: var(--mu-radius-full);
+    padding: 3px 12px;
+    font-size: 12px;
+    font-family: var(--mu-font-base);
+    cursor: pointer;
+    transition: var(--mu-transition-fast);
+}
+
+.mu-gal-filtro:hover { background: rgb(43 159 207 / 12%); }
+
+.mu-gal-filtro[aria-pressed="true"] {
+    background: var(--primario);
+    color: var(--blanco);
+    font-weight: 600;
+}
+
+.mu-gal-filtro:focus-visible {
+    outline: 3px solid var(--secundario);
+    outline-offset: 2px;
+}
+
+.mu-gal-filtro-select {
+    border: 1px solid var(--primario);
+    border-radius: var(--mu-radius);
+    padding: 4px 8px;
+    font-size: 12px;
+    background: var(--blanco);
+    color: var(--texto);
+}
+
 /* --- El item (slots) --- */
 .mu-gal-item {
     position: relative;

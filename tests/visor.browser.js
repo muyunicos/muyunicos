@@ -192,6 +192,69 @@ async function ir(page, hash) {
         /mu-gal-caja--completo/.test(r.cajaClases) && r.cajaAncho > 880,
         'clases=' + r.cajaClases + ' ancho=' + r.cajaAncho);
 
+    console.log('== #filtro-etiqueta: los filtros son de la galeria (C10) ==');
+    await ir(page, '#filtro-etiqueta');
+    const filtro = await page.evaluate(() => {
+        const nodo = document.getElementById('pg-galeria');
+        const pills = Array.from(nodo.querySelectorAll('.mu-gal-filtro'));
+        return {
+            campo: (nodo.querySelector('[data-mu-gal-filtro]') || {}).getAttribute
+                ? nodo.querySelector('[data-mu-gal-filtro]').getAttribute('data-mu-gal-filtro') : '',
+            etiquetas: pills.map(p => p.textContent),
+            activa: (pills.find(p => p.getAttribute('aria-pressed') === 'true') || {}).textContent || '',
+            items: Number(nodo.getAttribute('data-mu-gal-items')),
+            celdas: nodo.querySelectorAll('.mu-gal-celda[data-mu-gal-mini]').length
+        };
+    });
+    chk('pinta la fila de filtros del campo `etiqueta`',
+        filtro.campo === 'etiqueta' && filtro.etiquetas[0] === 'Todos',
+        JSON.stringify(filtro));
+    chk('los valores salen de los datos (Oferta/Nuevo/Pack) y Todos esta activo',
+        filtro.etiquetas.join('|') === 'Todos|Oferta|Nuevo|Pack' && filtro.activa === 'Todos',
+        filtro.etiquetas.join('|') + ' activa=' + filtro.activa);
+
+    // Click en "Oferta": recorta a un tercio y el chip/pie hablan de lo filtrado.
+    await page.click('#pg-galeria .mu-gal-filtro[data-mu-gal-valor="Oferta"]');
+    await page.waitForTimeout(250);
+    const filtrado = await page.evaluate(() => {
+        const nodo = document.getElementById('pg-galeria');
+        return {
+            items: Number(nodo.getAttribute('data-mu-gal-items')),
+            celdas: nodo.querySelectorAll('.mu-gal-celda[data-mu-gal-mini]').length,
+            activa: (nodo.querySelector('.mu-gal-filtro[aria-pressed="true"]') || {}).textContent || '',
+            estados: Array.from(nodo.querySelectorAll('.mu-gal-item-estado')).map(e => e.textContent)
+        };
+    });
+    chk('filtrar deja solo los items de la etiqueta elegida',
+        filtrado.items === 3 && filtrado.celdas === 3,
+        'items=' + filtrado.items + ' celdas=' + filtrado.celdas);
+    chk('la pill elegida queda marcada', filtrado.activa === 'Oferta', 'activa=' + filtrado.activa);
+
+    // Volver a "Todos" restaura la lista completa.
+    await page.click('#pg-galeria .mu-gal-filtro[data-mu-gal-valor="todos"]');
+    await page.waitForTimeout(250);
+    const vuelto = await page.evaluate(() =>
+        Number(document.getElementById('pg-galeria').getAttribute('data-mu-gal-items')));
+    chk('"Todos" restaura los 9 items', vuelto === 9, 'items=' + vuelto);
+
+    console.log('== #filtro-estado: filtro por estado (slot visible) ==');
+    await ir(page, '#filtro-estado');
+    const estFiltro = await page.evaluate(() => {
+        const nodo = document.getElementById('pg-galeria');
+        return {
+            campo: (nodo.querySelector('[data-mu-gal-filtro]') || {}).getAttribute
+                ? nodo.querySelector('[data-mu-gal-filtro]').getAttribute('data-mu-gal-filtro') : '',
+            etiquetas: Array.from(nodo.querySelectorAll('.mu-gal-filtro')).map(p => p.textContent),
+            estados: Array.from(nodo.querySelectorAll('.mu-gal-item-estado')).map(e => e.textContent)
+        };
+    });
+    chk('el filtro por `estado` aparece con el slot estado visible',
+        estFiltro.campo === 'estado' && estFiltro.etiquetas[0] === 'Todos',
+        JSON.stringify(estFiltro.etiquetas));
+    chk('el slot `estado` pinta el texto del item (no solo "Elegida")',
+        estFiltro.estados.length > 0 && estFiltro.estados.indexOf('En stock') !== -1,
+        JSON.stringify(estFiltro.estados));
+
     /* ---------------- 4. meta rica ---------------- */
     console.log('== #visor-meta-rica: badge + precio anterior/valor ==');
     await ir(page, '#visor-meta-rica');

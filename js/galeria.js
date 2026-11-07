@@ -32,6 +32,33 @@
 
     /* ==================== puros (sin DOM, testea Node) ==================== */
 
+    /** Valores distintos de un campo, en orden de aparicion (sin vacios ni repetidos). */
+    function valoresFiltro(items, campo) {
+        var out = [];
+        var vistos = {};
+        (items || []).forEach(function (it) {
+            var v = it ? it[campo] : undefined;
+            if (v === undefined || v === null || v === '') { return; }
+            var k = String(v);
+            if (vistos[k]) { return; }
+            vistos[k] = 1;
+            out.push(k);
+        });
+        return out;
+    }
+
+    /** Items que pasan el filtro. 'todos' (o sin campo) devuelve la lista entera. */
+    function filtrar(items, campo, valor) {
+        var lista = Array.isArray(items) ? items : [];
+        if (!campo || valor === undefined || valor === null || String(valor) === 'todos') {
+            return lista;
+        }
+        var v = String(valor);
+        return lista.filter(function (it) {
+            return !!it && String(it[campo]) === v;
+        });
+    }
+
     /** Posicion valida dentro de la lista. */
     function acotar(indice, total) {
         var i = parseInt(indice, 10) || 0;
@@ -1392,8 +1419,14 @@
             }
             asegurarCuerpo().appendChild(fila);
         }
-        if (slots.estado && i === activo) {
-            asegurarCuerpo().appendChild(crear(doc, 'p', 'mu-gal-item-estado', 'Elegida'));
+        // `estado` (contrato C10): el texto del ITEM si lo trae; si no, "Elegida" para
+        // la celda activa. Antes solo existia "Elegida" y dependia de un `activo` que
+        // el consumidor casi nunca pasaba, asi que no se veia nunca.
+        var textoEstado = (item.estado === undefined || item.estado === null)
+            ? '' : String(item.estado);
+        if (slots.estado && (textoEstado || i === activo)) {
+            asegurarCuerpo().appendChild(crear(doc, 'p', 'mu-gal-item-estado',
+                textoEstado || 'Elegida'));
         }
         if (slots.acciones && Array.isArray(item.acciones)) {
             var acc = crear(doc, 'div', 'mu-gal-item-acciones');
@@ -1522,6 +1555,36 @@
         var activo = (o.activo === undefined) ? -1 : (parseInt(o.activo, 10) || 0);
         var slots = resolverSlots(o);
 
+        // FILTROS (contrato C10). Recortan los items ANTES de la aritmetica de celdas,
+        // asi el chip, el pie y `min`/`capacidad` hablan siempre de lo que se ve.
+        // Solo se ofrece un campo si su SLOT esta visible: filtrar por `etiqueta`
+        // cuando la etiqueta no se pinta no le dice nada al comprador.
+        var itemsBase = items;
+        var estPrev = colecciones ? colecciones.get(nodo) : null;
+        var filtrosEstado = (estPrev && estPrev.filtros) ? estPrev.filtros : {};
+        var camposFiltro = [];
+        var pedidosFiltro = o.filtros ? (Array.isArray(o.filtros) ? o.filtros : [o.filtros]) : [];
+        pedidosFiltro.forEach(function (c) {
+            var campo = String(c || '');
+            if (campo && slots[campo] && camposFiltro.indexOf(campo) === -1) {
+                camposFiltro.push(campo);
+            }
+        });
+        camposFiltro.forEach(function (campo) {
+            var valores = valoresFiltro(itemsBase, campo);
+            var v = filtrosEstado[campo];
+            if (v === undefined && o.filtroActivo && String(o.filtroActivo) !== 'todos') {
+                v = String(o.filtroActivo);
+            }
+            if (v === undefined || v === null) { v = 'todos'; }
+            // Con un solo valor no hay nada que filtrar (y el control no se pinta).
+            if (valores.length < 2 || (String(v) !== 'todos' && valores.indexOf(String(v)) === -1)) {
+                v = 'todos';
+            }
+            filtrosEstado[campo] = String(v);
+            items = filtrar(items, campo, filtrosEstado[campo]);
+        });
+
         // Cuantas celdas entran en la VISTA: manda el CONTENEDOR, nunca el viewport.
         var ancho = nodo.clientWidth || 0;
         var cabenLinea = caben(ancho, tam.ancho, gap);
@@ -1568,6 +1631,51 @@
         recorta = (marcoH > 0) && (nodo.scrollHeight > marcoH + 1);
 
         vaciar(nodo);
+/* Filtros visibles (C10): pills hasta 7 valores; con mas, un `<select>`.
+           "Todos" va primero y el estado del filtro vive en el CONTENEDOR (para que
+           el repintado por resize no lo pierda). */
+        function aplicarFiltro(campo, valor) {
+            var est = colecciones ? colecciones.get(nodo) : null;
+            if (!est) { return null; }
+            est.filtros = est.filtros || {};
+            if (String(est.filtros[campo]) === String(valor)) { return null; }
+            est.filtros[campo] = String(valor);
+            var nuevo = coleccion(nodo, o);
+            if (typeof o.onFiltrar === 'function') {
+                try { o.onFiltrar(campo, String(valor), nuevo); } catch (eFiltro) { /* manda el consumidor */ }
+            }
+            return nuevo;
+        }
+
+        camposFiltro.forEach(function (campo) {
+            var valoresVisibles = valoresFiltro(itemsBase, campo);
+            if (valoresVisibles.length < 2) { return; }
+            var fila = crear(doc, 'div', 'mu-gal-filtros');
+            fila.setAttribute('data-mu-gal-filtro', campo);
+            if (valoresVisibles.length > 7) {
+                var sel = crear(doc, 'select', 'mu-gal-filtro-select');
+                sel.setAttribute('aria-label', 'Filtrar por ' + campo);
+                ['todos'].concat(valoresVisibles).forEach(function (v) {
+                    var op = crear(doc, 'option', '', (v === 'todos') ? 'Todos' : v);
+                    op.value = v;
+                    sel.appendChild(op);
+                });
+                sel.value = filtrosEstado[campo];
+                sel.addEventListener('change', function () { aplicarFiltro(campo, sel.value); });
+                fila.appendChild(sel);
+            } else {
+                ['todos'].concat(valoresVisibles).forEach(function (v) {
+                    var b = crear(doc, 'button', 'mu-gal-filtro', (v === 'todos') ? 'Todos' : v);
+                    b.type = 'button';
+                    b.setAttribute('data-mu-gal-valor', v);
+                    b.setAttribute('aria-pressed',
+                        (String(filtrosEstado[campo]) === v) ? 'true' : 'false');
+                    b.addEventListener('click', function () { aplicarFiltro(campo, v); });
+                    fila.appendChild(b);
+                });
+            }
+            nodo.appendChild(fila);
+        });
         nodo.setAttribute('data-mu-gal-layout', layout);
         var pieAlto = 0;
         if (pieTxt) {
@@ -1754,10 +1862,12 @@
         nodo.setAttribute('data-mu-gal-estado', navega ? 'navegable' : 'fija');
         nodo.setAttribute('data-mu-gal-ancho', String(ancho));
         nodo.setAttribute('data-mu-gal-cota', vent ? vent.motivo : 'ancho');
+        // Cuantos items pasaron el filtro (QA y consumidores): `data-mu-gal-items`.
+        nodo.setAttribute('data-mu-gal-items', String(items.length));
 
         if (colecciones) {
             colecciones.set(nodo, {
-                opciones: o, items: items, ancho: ancho,
+                opciones: o, items: items, ancho: ancho, filtros: filtrosEstado,
                 tandas: tandas, firma: firma, recorta: recorta
             });
             observarColeccion(nodo);
@@ -1974,7 +2084,8 @@
         navegarWoo: navegarWoo,
         coleccion: coleccion,
         puro: { acotar: acotar, preCargar: preCargar, orden: orden,
-            formatearPrecio: formatearPrecio, celdas: celdas, pie: pie, caben: caben,
+            formatearPrecio: formatearPrecio, filtrar: filtrar, valoresFiltro: valoresFiltro,
+            celdas: celdas, pie: pie, caben: caben,
         carga: carga, topeEnFilas: topeEnFilas, navegableDe: navegableDe, ventana: ventana },
         version: '1.0.1'
     };
