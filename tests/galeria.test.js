@@ -250,9 +250,9 @@ check('el tachito es un icono (mismo estilo que la estrella)',
     /function crearTacho/.test(js) && /mu-gal-item-eliminar svg/.test(css));
 const desdeColeccion = js.indexOf('function coleccion(');
 check('los huecos van primero (primer tab-stop = cargar)',
-    js.indexOf('res.huecos; h++', desdeColeccion) !== -1
-    && js.indexOf('res.huecos; h++', desdeColeccion)
-        < js.indexOf('var visibles = items.slice(0, res.visiblesItems)', desdeColeccion));
+    js.indexOf('h < huecos; h++', desdeColeccion) !== -1
+    && js.indexOf('h < huecos; h++', desdeColeccion)
+        < js.indexOf('var visibles = items.slice(t.desde', desdeColeccion));
 check('la medida va en la linea (grilla calcula sus columnas)',
     /linea\.style\.setProperty\('--mu-gal-tam'/.test(js));
 check('la grilla no fija alto de fila (era el solapamiento)',
@@ -267,6 +267,28 @@ check('las columnas no se estiran: bloque centrado',
     /justify-content: center/.test(css) && /repeat\(auto-fill, var\(--mu-gal-tam/.test(css));
 check('el contrato nuevo existe',
     fs.existsSync(path.join(RAIZ, 'specs/019-galeria-compartida/contracts/coleccion.md')));
+
+/* ==================== 4f. Tanda del chip (C1bis) ==================== */
+console.log('== Tanda del chip ==');
+
+const t0 = gal.puro.tanda({ items: 12, tope: 6, caben: 4, pagina: 0 });
+check('tanda · pagina 0 muestra 3 (reserva celda del chip) y oculta 9',
+    t0.visibles === 3 && t0.ocultas === 9 && t0.agotado === false,
+    'visibles=' + t0.visibles + ' ocultas=' + t0.ocultas);
+
+const t1 = gal.puro.tanda({ items: 12, tope: 6, caben: 4, pagina: 1 });
+check('tanda · pagina 1 llega al tope y queda agotada (abre visor)',
+    t1.visibles === 3 && t1.ocultas === 6 && t1.agotado === true,
+    'visibles=' + t1.visibles + ' ocultas=' + t1.ocultas);
+
+check('tanda · sin tope pagina hasta el final',
+    gal.puro.tanda({ items: 9, tope: 0, caben: 6, pagina: 1 }).ocultas === 0);
+check('tanda · si todo cabe no hay chip',
+    gal.puro.tanda({ items: 5, tope: 0, caben: 6, pagina: 0 }).ocultas === 0);
+check('tanda · la pagina se acota al maximo',
+    gal.puro.tanda({ items: 12, tope: 6, caben: 4, pagina: 99 }).pagina === 1);
+check('el chip tiene accion derivada y paginado interno',
+    /accionChip/.test(js) && /alPaginar/.test(js) && /function paginarSiguiente/.test(js));
 
 /* ==================== 5. Reglas del PHP ==================== */
 console.log('== Reglas del PHP ==');

@@ -188,6 +188,44 @@
         return Math.max(1, Math.floor((a + g) / (c + g)));
     }
 
+    /**
+     * Tanda del chip (contrato `coleccion.md`, C1bis).
+     *
+     * El chip avanza de a `paso` (las celdas que caben, reservando una para el propio
+     * chip) sin superar el `tope`. `agotado` = ya se alcanzo el tope y AUN quedan
+     * imagenes: ahi el chip deja de paginar y abre el visor.
+     *
+     * @param {{items:number, tope:number, caben:number, pagina:number}} o
+     * @returns {{desde:number, visibles:number, fin:number, ocultas:number,
+     *            paso:number, paginas:number, pagina:number, agotado:boolean}}
+     */
+    function tanda(o) {
+        o = o || {};
+        var n = Math.max(0, parseInt(o.items, 10) || 0);
+        var tope = Math.max(0, parseInt(o.tope, 10) || 0);
+        var caben = Math.max(1, parseInt(o.caben, 10) || 1);
+        var pagina = Math.max(0, parseInt(o.pagina, 10) || 0);
+        var topeEf = (tope > 0) ? Math.min(tope, n) : n;
+
+        // Si no caben todos hay chip, y el chip ocupa una celda.
+        var hayChip = (n > caben);
+        var paso = hayChip ? Math.max(1, caben - 1) : caben;
+
+        var paginas = Math.max(1, Math.ceil(topeEf / paso));
+        if (pagina > paginas - 1) { pagina = paginas - 1; }
+
+        var desde = pagina * paso;
+        var visibles = Math.min(paso, Math.max(0, topeEf - desde));
+        var fin = desde + visibles;
+        var ocultas = Math.max(0, n - fin);
+
+        return {
+            desde: desde, visibles: visibles, fin: fin, ocultas: ocultas,
+            paso: paso, paginas: paginas, pagina: pagina,
+            agotado: (fin >= topeEf && ocultas > 0)
+        };
+    }
+
     /* ==================== helpers de DOM ==================== */
 
     /** Crea un elemento con clase y texto (nunca HTML: solo `textContent`). */
@@ -1115,17 +1153,31 @@
         return b;
     }
 
-    /** Chip "+X" como CELDA de la linea (nunca flota fuera). */
-    function construirChip(doc, cuantos, desde, o, tam) {
+    /**
+     * Chip "+X" como CELDA de la linea. `info.accion` decide que hace:
+     *   'paginar' -> muestra la tanda siguiente (lo hace el propio componente)
+     *   'abrir'   -> abre el visor en el primer oculto
+     *   'cargar'  -> abre el cargador
+     * `o.onChip` externo tiene prioridad (compatibilidad).
+     */
+    function construirChip(doc, info, o, tam) {
+        var cuantos = Math.max(0, parseInt(info.cuantos, 10) || 0);
+        var desde = Math.max(0, parseInt(info.desde, 10) || 0);
         var b = crear(doc, 'button', 'mu-gal-celda mu-gal-celda--chip', '+' + cuantos);
         b.type = 'button';
         b.style.setProperty('--mu-gal-tam', tam.ancho + 'px');
         b.setAttribute('data-mu-gal-chip', String(cuantos));
-        b.setAttribute('aria-label', 'Ver ' + cuantos + ' mas');
+        b.setAttribute('aria-label', (info.accion === 'paginar')
+            ? ('Ver ' + cuantos + ' mas: muestra ' + (info.muestra || cuantos))
+            : ('Ver las ' + cuantos + ' restantes en el visor'));
         b.addEventListener('click', function () {
-            if (typeof o.onChip === 'function') { o.onChip(cuantos, desde); return; }
-            if (o.chipAccion === 'cargar' && typeof o.onRanura === 'function') {
+            if (typeof o.onChip === 'function') { o.onChip(cuantos, desde, info); return; }
+            if (info.accion === 'cargar' && typeof o.onRanura === 'function') {
                 o.onRanura(desde, 0);
+                return;
+            }
+            if (info.accion === 'paginar' && typeof info.alPaginar === 'function') {
+                info.alPaginar();
                 return;
             }
             if (typeof o.onAbrir === 'function') { o.onAbrir(desde); }
@@ -1197,7 +1249,13 @@
         var desliza = false;
         var topeEfectivo = tope;
 
+        // Pagina vigente: solo se conserva si no cambiaron items/tope/layout.
+        var estPrevio = colecciones ? colecciones.get(nodo) : null;
+        var firma = [items.length, tope, min, capacidad, layout, filas, columnas].join('|');
+        var pagina = (estPrevio && estPrevio.firma === firma) ? (estPrevio.pagina || 0) : 0;
+
         var scrollY = false;
+        var cabenContexto = 0;           // celdas donde caben IMAGENES (0 = navegable, sin tope)
         if (layout === 'fila') {
             if (o.deslizable === true) {
                 desliza = true;
@@ -1206,9 +1264,7 @@
             } else {
                 desliza = ((items.length + 1) > cabenLinea);   // 'auto'
             }
-            if (!desliza) {
-                topeEfectivo = (tope > 0) ? Math.min(tope, cabenLinea) : cabenLinea;
-            }
+            if (!desliza) { cabenContexto = cabenLinea; }
         } else {
             // Grilla: columnas por ANCHO y filas por ALTO del contenedor (si lo tiene).
             var porFila = (columnas > 0) ? columnas : cabenLinea;
@@ -1230,15 +1286,30 @@
                 porAlto = (porAlto > 0) ? Math.min(filas, porAlto) : filas;
             }
             scrollY = (o.deslizable === true);
-            if (!scrollY) {
-                var cabenGrilla = (porAlto > 0) ? (porFila * porAlto) : 0;
-                if (cabenGrilla > 0) {
-                    topeEfectivo = (tope > 0) ? Math.min(tope, cabenGrilla) : cabenGrilla;
-                }
-            }
+            if (!scrollY) { cabenContexto = porFila * (porAlto > 0 ? porAlto : items.length); }
         }
 
-        var res = celdas({ cargadas: items.length, min: min, capacidad: capacidad, tope: topeEfectivo });
+        // La tanda decide que se ve y cuanto resume el chip (sin superar el tope).
+        var t = tanda({
+            items: items.length, tope: tope, pagina: pagina,
+            caben: (cabenContexto > 0) ? cabenContexto : items.length
+        });
+        pagina = t.pagina;
+
+        // Huecos: obligatorios e invitacion, SOLO en la primera tanda.
+        var obligatorios = Math.max(0, min - items.length);
+        var cargable = (min > 0 || capacidad > 0);
+        var invitacion = (cargable && items.length >= min
+            && (capacidad === 0 || capacidad > items.length)) ? 1 : 0;
+        var huecos = 0;
+        if (t.pagina === 0) {
+            if (cabenContexto > 0) {
+                var libres = Math.max(0, cabenContexto - t.visibles - (t.ocultas > 0 ? 1 : 0));
+                huecos = Math.min(obligatorios + invitacion, libres);
+            } else {
+                huecos = obligatorios + invitacion;
+            }
+        }
 
         var pieTxt = '';
         if (o.pie !== false) {
@@ -1279,16 +1350,43 @@
         }
 
         /* Los huecos van PRIMERO: el primer tab-stop es "cargar" (accesibilidad).
-           El indice es el de la CARGA (items.length + h), no el de la posicion. */
-        for (var h = 0; h < res.huecos; h++) {
-            linea.appendChild(construirHueco(doc, res.visiblesItems + h, min || capacidad, o, tam));
+           El indice es el de la CARGA (items.length + h) y solo salen en la tanda 0. */
+        for (var h = 0; h < huecos; h++) {
+            linea.appendChild(construirHueco(doc, items.length + h, min || capacidad, o, tam));
         }
-        var visibles = items.slice(0, res.visiblesItems);
+        var visibles = items.slice(t.desde, t.fin);
         visibles.forEach(function (it, i) {
-            linea.appendChild(construirCelda(doc, it, i, o, activo, slots, tam));
+            linea.appendChild(construirCelda(doc, it, t.desde + i, o, activo, slots, tam));
         });
-        if (res.chip > 0) {
-            linea.appendChild(construirChip(doc, res.chip, res.visiblesItems, o, tam));
+
+        // Chip: pagina hasta el tope y, agotado el tope, abre el visor (C1bis).
+        if (t.ocultas > 0) {
+            var accionChip = o.chipAccion;
+            if (!accionChip || accionChip === 'auto') {
+                accionChip = t.agotado ? 'abrir' : 'paginar';
+            } else if (accionChip === 'paginar' && t.agotado) {
+                accionChip = 'abrir';
+            }
+            linea.appendChild(construirChip(doc, {
+                cuantos: t.ocultas,
+                desde: t.fin,
+                accion: accionChip,
+                muestra: t.paso,
+                alPaginar: paginarSiguiente
+            }, o, tam));
+        }
+
+        /** Avanza una tanda (estado interno; se conserva si no cambian las opciones). */
+        function paginarSiguiente() {
+            var est = colecciones ? colecciones.get(nodo) : null;
+            if (!est) { return; }
+            est.pagina = (est.pagina || 0) + 1;
+            est.firma = firma;
+            coleccion(nodo, est.opciones);
+            var chipNuevo = nodo.querySelector('[data-mu-gal-chip]');
+            var primera = nodo.querySelector('[data-mu-gal-mini] .mu-gal-item-abrir');
+            var destino = chipNuevo || primera;
+            if (destino) { try { destino.focus(); } catch (eFoco) { /* sin foco */ } }
         }
 
         if (desliza) {
@@ -1302,12 +1400,16 @@
         nodo.scrollLeft = scrollPrevio;
 
         if (colecciones) {
-            colecciones.set(nodo, { opciones: o, items: items, ancho: ancho });
+            colecciones.set(nodo, {
+                opciones: o, items: items, ancho: ancho,
+                pagina: t.pagina, firma: firma
+            });
             observarColeccion(nodo);
         }
         return {
-            visiblesItems: res.visiblesItems, huecos: res.huecos, chip: res.chip,
-            modo: modoClase, desliza: desliza, scrollY: scrollY
+            visiblesItems: t.visibles, huecos: huecos, chip: t.ocultas,
+            modo: modoClase, desliza: desliza, scrollY: scrollY,
+            pagina: t.pagina, paginas: t.paginas, agotado: t.agotado
         };
     }
 
@@ -1473,7 +1575,7 @@
         navegarWoo: navegarWoo,
         coleccion: coleccion,
         puro: { acotar: acotar, preCargar: preCargar, orden: orden,
-            formatearPrecio: formatearPrecio, celdas: celdas, pie: pie, caben: caben },
+            formatearPrecio: formatearPrecio, celdas: celdas, pie: pie, caben: caben, tanda: tanda },
         version: '1.0.0'
     };
 

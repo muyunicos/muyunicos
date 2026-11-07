@@ -447,7 +447,6 @@
             confirmar: false,
             onAbrir: function (i) { abrirVisor(i); },
             onRanura: function () { avisar('Ranura tocada: el consumidor abre su cargador'); },
-            onChip: function (n) { avisar('El chip resume ' + n + ' imagenes ocultas'); },
             onEliminar: function (i) { avisar('Eliminar la imagen ' + (i + 1)); },
             onFavorito: function (i, v) { avisar((v ? 'Favorito' : 'Sin favorito') + ' en la ' + (i + 1)); },
             onAccion: function (i) { avisar('Accion del item ' + (i + 1)); }
@@ -479,6 +478,8 @@
         if (res) {
             avisar('modo ' + res.modo + ' · items ' + res.visiblesItems
                 + ' · huecos ' + res.huecos + ' · chip ' + res.chip
+                + ' · tanda ' + (res.pagina + 1) + '/' + res.paginas
+                + (res.agotado ? ' (tope: el chip abre el visor)' : '')
                 + (res.scrollY ? ' · scroll vertical' : ''));
         }
         return res;
@@ -720,6 +721,18 @@
         marcarRadio('pg-desliza', 'true');
         document.getElementById('pg-alto').value = '360';
         document.getElementById('pg-alto-out').textContent = '360';
+    }
+    if (window.location.hash === '#pagina') {
+        ESTADO.layout = 'grilla';       // QA: chip que pagina (tope 9 en un lienzo de 1 fila)
+        ESTADO.alto = 360;
+        ESTADO.cantidad = 14;
+        ESTADO.tope = 9;
+        marcarRadio('pg-layout', 'grilla');
+        document.getElementById('pg-alto').value = '360';
+        document.getElementById('pg-alto-out').textContent = '360';
+        document.getElementById('pg-cantidad').value = '14';
+        document.getElementById('pg-cantidad-out').textContent = '14';
+        document.getElementById('pg-tope').value = '9';
     }
     sincronizarSlots();
     render();
