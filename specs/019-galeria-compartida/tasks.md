@@ -230,6 +230,15 @@ uno suma checks a `tests/visor.browser.js` y, si toca los puros, a `tests/galeri
       C1.1, `spec.md` D25 y `visor-evaluacion.md` fila 30; bump `MU.version` a 1.4.0 +
       `Version:` de `style.css` (cache-bust, D12).
 
+- [X] T052 Piso de la RAIZ en el ambito 1 (D26, C11): `coleccion()` publica
+      `--mu-gal-alto-celda` y `--mu-gal-alto-min` (celda MAS ALTA medida con
+      `max(offsetHeight, scrollHeight)` + pie + paddings + filtros) y
+      `[data-mu-gal-layout]` pasa de `min-height: 0` a `min-height: var(--mu-gal-alto-min)`;
+      `res.altoCelda`/`res.altoMin` para QA. Puertas: 32 checks de mini cuadrada en
+      `visor.browser.js` (4 escenarios x 4 viewports) + el bloque de contenedor corto del
+      ambito 1 + `recorta` pasa a significar "contenido inalcanzable" (un pie que scrollea
+      no es un recorte); 3 checks en `galeria.test.js`.
+
 - [ ] T900 F2 — migrar `PMUVisor` (plugin) y la biblioteca del comprador a `MU.coleccion` /
       `MU.visor` (D11: dependencia BLANDA, el plugin no puede exigir el tema).
 - [ ] T901 F3 — la calculadora de `muyunicos` como consumidor de la coleccion.

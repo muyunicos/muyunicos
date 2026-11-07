@@ -653,6 +653,15 @@ check('el alto del lienzo sale de la ventana menos el cromo vertical (no a ojo)'
     && !/vh \* 0\.62/.test(jsCodigo));
 check('la caja declara el tope de 92vh que el JS respeta', /max-height: 92vh/.test(cssCodigo));
 
+/* --- C11 (D26): la raiz de una coleccion no se aplasta por debajo de una celda --- */
+check('la raiz publica el piso de una celda (--mu-gal-alto-min)',
+    /--mu-gal-alto-min/.test(jsCodigo) && /--mu-gal-alto-celda/.test(jsCodigo));
+check('el CSS aplica el piso a la raiz de la coleccion',
+    /\[data-mu-gal-layout\] \{[^}]*min-height: var\(--mu-gal-alto-min/.test(cssCodigo)
+    && !/\[data-mu-gal-layout\] \{[^}]*min-height: 0;/.test(cssCodigo));
+check('el piso se mide con el alto NATURAL de la celda (no con el recortado)',
+    /Math\.max\(celdaPiso\.offsetHeight \|\| 0, celdaPiso\.scrollHeight \|\| 0\)/.test(jsCodigo));
+
 /* ==================== Resultado ==================== */
 console.log('');
 if (fallos > 0) {

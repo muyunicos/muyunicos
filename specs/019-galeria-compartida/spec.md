@@ -171,6 +171,18 @@ Contrato: [contracts/coleccion.md](./contracts/coleccion.md). Reemplaza "tira + 
   el 4:3 tambien se acota por el alto (`min(maxW, maxH * aspecto)`). Se re-mide al montar
   y al redimensionar, **nunca** al navegar (D19).
 
+- **D26 — El piso de la coleccion es UNA celda, y es del ambito 1** (2026-11-07): la banda
+  del visor se aplastaba (mini de 74 -> 0 px) y el defecto **no** era del visor: la RAIZ de
+  la coleccion es un flex item del consumidor y, con `overflow: hidden` encima (la banda),
+  su minimo automatico pasa a 0. Arreglarlo solo en el visor habria dejado el mismo agujero
+  en cualquier consumidor presente o futuro (ficha, cotizador, biblioteca). Ahora
+  `coleccion()` publica `--mu-gal-alto-celda` (alto **natural** de la celda MAS ALTA:
+  `max(offsetHeight, scrollHeight)`) y `--mu-gal-alto-min` (ese alto + pie + paddings), y el
+  CSS aplica `min-height: var(--mu-gal-alto-min)` a `[data-mu-gal-layout]`. **Manda el
+  contenido, no el preset**: hay celdas con titulo, precio o acciones y `tamano` acepta
+  `{ancho, alto}` (contrato `coleccion.md`, C11). Validado: mini de 74 px en 4 escenarios x
+  4 viewports y en movil, y un contenedor corto del ambito 1 ya no la recorta.
+
 - **FR-024** `MU.coleccion(el, opciones)` con `layout` (fila/grilla), `navegable`
   (`auto`/true/false; alias `deslizable`), `tamano`, `gap`, `filas`, `columnas`, `alto`.
 - **FR-025** `MU.puro.celdas()` decide `visiblesItems`, `huecos` y `chip` (D21).

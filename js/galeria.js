@@ -18,7 +18,7 @@
  *   - Consume los tokens del tema (`--primario`, `--mu-radius-*`), nunca los redefine.
  *
  * API: window.MUGaleria (ver specs/019-galeria-compartida/contracts/galeria.md).
- * Version: 1.4.0
+ * Version: 1.5.0
  */
 (function (global) {
     'use strict';
@@ -2263,6 +2263,42 @@
             nodo.appendChild(linea);
         }
         linea.scrollLeft = scrollPrevio;
+        // PISO DE LA RAIZ (contrato `coleccion.md`, C11): si el consumidor mete esta raiz
+        // en un contenedor flex y le pone `overflow: hidden` (la banda del visor), su
+        // minimo automatico pasa a 0 y las celdas se recortan hasta desaparecer (medido:
+        // mini de 74 -> 0 px). Se publica el alto de la celda MAS ALTA (el contenido
+        // manda, no el preset: hay celdas con titulo, precio o acciones) + el pie + los
+        // paddings, y el CSS lo aplica como `min-height` de la raiz.
+        // `scrollHeight` entra en la cuenta: con la raiz ya aplastada el rect miente y el
+        // alto NATURAL del contenido no.
+        var altoCeldaMax = 0;
+        var celdasPiso = linea.querySelectorAll('[data-mu-gal-mini]');
+        for (var ip = 0; ip < celdasPiso.length; ip++) {
+            var celdaPiso = celdasPiso[ip];
+            var altoPiso = Math.max(celdaPiso.offsetHeight || 0, celdaPiso.scrollHeight || 0);
+            if (altoPiso > altoCeldaMax) { altoCeldaMax = altoPiso; }
+        }
+        if (altoCeldaMax <= 0) { altoCeldaMax = altoCelda; }   // sin celdas: el preset
+        var altoMin = altoCeldaMax + (pieAlto || 0);
+        var csLinea = global.getComputedStyle ? global.getComputedStyle(linea) : null;
+        var csNodo = global.getComputedStyle ? global.getComputedStyle(nodo) : null;
+        if (csLinea) {
+            altoMin += (parseFloat(csLinea.paddingTop) || 0)
+                + (parseFloat(csLinea.paddingBottom) || 0);
+        }
+        if (csNodo) {
+            altoMin += (parseFloat(csNodo.paddingTop) || 0)
+                + (parseFloat(csNodo.paddingBottom) || 0)
+                + (parseFloat(csNodo.borderTopWidth) || 0)
+                + (parseFloat(csNodo.borderBottomWidth) || 0);
+        }
+        // Los filtros (C10) son parte del contenido de la raiz: tambien cuentan.
+        var filasFiltro = nodo.querySelectorAll('.mu-gal-filtros');
+        for (var ifi = 0; ifi < filasFiltro.length; ifi++) {
+            altoMin += filasFiltro[ifi].offsetHeight || 0;
+        }
+        nodo.style.setProperty('--mu-gal-alto-celda', Math.ceil(altoCeldaMax) + 'px');
+        nodo.style.setProperty('--mu-gal-alto-min', Math.ceil(altoMin) + 'px');
         // Alto REAL de la fila y marco definitivo (los ajusta `ajustarAltoFila`).
         var altoFila = altoCelda;
         var marcoFinal = vent ? vent.altoMarco : 0;
@@ -2342,6 +2378,7 @@
         }
         var res = {
             visiblesItems: t.visibles, huecos: huecos, chip: t.ocultas,
+            altoCelda: Math.ceil(altoCeldaMax), altoMin: Math.ceil(altoMin),
             modo: modoClase, navega: navega, desliza: navega, scrollY: scrollY,
             revelados: t.revelados, tandas: tandas, capacidad: t.capacidad, paso: t.paso,
             agotado: t.agotado,
@@ -2538,7 +2575,7 @@
             filtrar: filtrar, valoresFiltro: valoresFiltro,
             celdas: celdas, pie: pie, caben: caben,
         carga: carga, topeEnFilas: topeEnFilas, navegableDe: navegableDe, ventana: ventana },
-        version: '1.4.0'
+        version: '1.5.0'
     };
 
     // `MU.visor.actualizar(parcial)` (V2, T044): se cuelga de la MISMA funcion `visor`, asi

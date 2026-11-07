@@ -81,6 +81,10 @@ antes era `fit-content` y cada foto re-dimensionaba la caja (el `mu-gal-cuerpo` 
   .mu-gal-cuerpo` (`flex: 0 0 auto` + `overflow: hidden`) **no encoge** y
   `.mu-gal-caja--fija .mu-gal-scroll` (`flex: 1 1 auto`, `min-height: 0`) absorbe y
   scrollea: el marco **nunca** se escapa de la caja.
+- **El pie NO se aplasta**: la banda y la meta conservan su alto; si no entran, el scroll
+  del visor scrollea. Lo garantiza el **piso de la raiz** de la coleccion
+  (`coleccion.md`, C11): sin el, dentro de un flex con `overflow: hidden` la banda se
+  encogia a 14 px y la mini caia de 74 a **0 px**.
 - Se recalcula al montar, al redimensionar la ventana y cuando `actualizar()` cambia
   `items`/`ancho`. **Nunca** al navegar.
 

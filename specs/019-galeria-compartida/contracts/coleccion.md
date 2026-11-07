@@ -387,3 +387,39 @@ MU.coleccion(el, { filtros: 'etiqueta', filtroActivo: 'Oferta', onFiltrar });
    publica `data-mu-gal-items` = items que pasaron el filtro.
 
 Puros testeados en `node tests/galeria.test.js`: `MU.puro.filtrar` y `MU.puro.valoresFiltro`.
+
+## C11 — Piso de la RAIZ (`--mu-gal-alto-min`)
+
+La raiz que recibe `coleccion()` es un **flex item** del consumidor. Si el consumidor la
+mete en un contenedor flex y le pone `overflow: hidden` (la banda del visor), su **minimo
+automatico pasa a 0**: la raiz se encogia a 14 px y las celdas se recortaban hasta
+desaparecer (**mini de 74 -> 0 px**, medido en escritorio y en movil).
+
+El JS publica en la raiz:
+
+| Variable | Valor |
+|---|---|
+| `--mu-gal-alto-celda` | alto **natural** de la celda MAS ALTA: `max(offsetHeight, scrollHeight)` — con la raiz aplastada el rect miente y el `scrollHeight` no |
+| `--mu-gal-alto-min` | ese alto + pie del bloque + padding vertical de la linea + padding/bordes de la raiz + las filas de filtros (C10) |
+
+y el CSS lo aplica:
+
+```css
+[data-mu-gal-layout] { box-sizing: border-box; min-height: var(--mu-gal-alto-min, 0); }
+```
+
+Reglas:
+
+1. **Manda el contenido, no el preset**: hay celdas con titulo, descripcion, precio o
+   acciones (C5) y `tamano` acepta `{ancho, alto}`. El piso es la celda MAS ALTA, asi que
+   una celda alta no queda recortada por una baja.
+2. **Una celda, no todo el bloque**: el piso garantiza que ninguna celda se recorte; si el
+   consumidor da menos alto, el contenido se desborda o scrollea, **nunca se aplasta**.
+3. La cota (C9) sigue mandando por su cuenta (`data-cota` / `--fila-alto`): el piso es un
+   minimo, no una ventana.
+4. Se **re-publica en cada pintado** (resize y repintados incluidos): cambiando el ancho,
+   el tamano o el contenido, el piso se recalcula solo.
+5. `res.altoCelda` y `res.altoMin` viajan en el retorno para QA.
+
+Puerta: `tests/galeria.test.js` (CSS + JS) y, en navegador real, `tests/visor.browser.js`
+(la mini conserva su alto en 4 escenarios x 4 viewports + un contenedor corto en el ambito 1).

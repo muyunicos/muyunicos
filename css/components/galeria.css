@@ -858,11 +858,17 @@ body.is-scroll-locked { overflow: hidden; }
    ============================================ */
 
 /* Raiz de la coleccion: el pie arriba y el marco con el RESTO del alto. Sin esto el
-   marco se medía contra el alto TOTAL del bloque y lo desbordaba cuando iba acotado. */
+   marco se medía contra el alto TOTAL del bloque y lo desbordaba cuando iba acotado.
+   El PISO es UNA celda (C11, D26): el consumidor puede meter esta raiz en un flex y,
+   si le pone `overflow: hidden` (la banda del visor), su mínimo automático pasa a 0 y
+   las celdas se recortaban hasta desaparecer (medido: mini de 74 -> 0 px). El JS
+   publica `--mu-gal-alto-min` con el alto de la celda MÁS ALTA (manda el contenido, no
+   el preset: hay celdas con título, precio o acciones) + el pie + los paddings. */
 [data-mu-gal-layout] {
     display: flex;
     flex-direction: column;
-    min-height: 0;
+    box-sizing: border-box;
+    min-height: var(--mu-gal-alto-min, 0);
 }
 
 .mu-gal-pie {

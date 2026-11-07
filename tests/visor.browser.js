@@ -94,7 +94,14 @@ async function leer(page) {
             scrollH: scroll ? scroll.scrollHeight : 0,
             metaAbajo: ultimo ? Math.round(ultimo.bottom) : null,
             cajaAbajo: Math.round(cajaR.bottom),
-            recorta: (ultimo && scroll) ? (ultimo.bottom > scroll.getBoundingClientRect().bottom + 1) : false,
+            // Recorte REAL = contenido que el scroll NO alcanza. Un pie que scrollea no es un
+            // recorte (medir solo el rect daba falso positivo al dejar de aplastar).
+            recorta: (function () {
+                if (!ultimo || !scroll) { return false; }
+                const falta = ultimo.bottom - scroll.getBoundingClientRect().bottom;
+                const puede = scroll.scrollHeight - scroll.clientHeight;
+                return falta > 1 && falta > puede + 1;
+            }()),
             celdas: celdas.length,
             activa: activa ? celdas.indexOf(activa) : -1,
             listaScrollX: lista ? (lista.scrollWidth - lista.clientWidth) : 0,
@@ -569,6 +576,18 @@ async function ir(page, hash) {
             cabecera: uno(q('.mu-gal-cabecera')),
             cuerpo: uno(q('.mu-gal-cuerpo')),
             marco: uno(q('.mu-gal-marco')),
+            // La mini de la banda: alto REAL vs alto NATURAL (`scrollHeight`). Si el
+            // contenedor la aplasta, el rect baja y `scrollHeight` sigue midiendo el
+            // contenido (C11, D26).
+            celda: (function () {
+                const c = raiz.querySelector('.mu-gal-visor-lista [data-mu-gal-mini]');
+                if (!c) { return null; }
+                const b = c.getBoundingClientRect();
+                return {
+                    w: Math.round(b.width), h: Math.round(b.height),
+                    nat: c.scrollHeight || 0
+                };
+            })(),
             meta: uno(q('.mu-gal-meta')),
             scroll: uno(q('.mu-gal-scroll')),
             img: uno(q('.mu-gal-img')),
@@ -675,6 +694,23 @@ async function ir(page, hash) {
             + ' marco=' + v.marco.w + 'x' + v.marco.h);
     }
 
+    /* ------- 12quinque. la banda no se aplasta: la mini conserva su alto (C11/D26) ------- */
+    console.log('== banda del visor: la mini conserva su alto en todo viewport ==');
+
+    for (const [wv, hv] of [[1440, 960], [1000, 768], [820, 768], [390, 844]]) {
+        for (const vista of ['#visor', '#visor-40', '#visor-todo', '#visor-meta-larga']) {
+            await page.setViewportSize({ width: wv, height: hv });
+            await ir(page, vista);
+            const v = await medirResponsive();
+            const etq = ' (' + vista + ' ' + wv + 'x' + hv + ')';
+            const c = v.celda;
+            chk('la mini no se aplasta: conserva su alto natural' + etq,
+                !!c && c.h >= c.nat - 1 && c.h > 40, 'celda=' + JSON.stringify(c));
+            chk('la mini queda cuadrada (el stretch no la recorta)' + etq,
+                !!c && Math.abs(c.w - c.h) <= 6, 'celda=' + JSON.stringify(c));
+        }
+    }
+
     await page.setViewportSize({ width: 520, height: 900 });
     await ir(page, '#visor');
     const adapt = await medirResponsive();
@@ -683,6 +719,32 @@ async function ir(page, hash) {
         'fija=' + adapt.fija + ' ancho=' + adapt.caja.w);
 
     await page.setViewportSize({ width: 1440, height: 960 });
+
+    /* ------- 12sexies. ambito 1: un contenedor corto no aplasta las celdas (C11) ------- */
+    console.log('== ambito 1: contenedor corto con overflow hidden ==');
+
+    await page.setViewportSize({ width: 1200, height: 900 });
+    await page.goto(DEMO);
+    await page.waitForTimeout(500);
+    const a1 = await page.evaluate(() => {
+        const n = document.querySelector('[data-mu-gal-layout]');
+        if (!n) { return null; }
+        const caja = document.createElement('div');
+        caja.style.cssText = 'height:120px;display:flex;overflow:hidden';
+        n.parentNode.insertBefore(caja, n);
+        caja.appendChild(n);
+        const c = n.querySelector('.mu-gal-celda[data-mu-gal-mini]');
+        const r = c ? c.getBoundingClientRect() : null;
+        return {
+            piso: getComputedStyle(n).minHeight,
+            celda: r ? Math.round(r.height) : 0,
+            natural: c ? (c.scrollHeight || 0) : 0
+        };
+    });
+    chk('la raiz publica el piso de una celda (--mu-gal-alto-min)',
+        !!a1 && parseFloat(a1.piso) > 40, JSON.stringify(a1));
+    chk('en un contenedor corto la celda conserva su alto (ambito 1)',
+        !!a1 && a1.celda >= a1.natural - 1 && a1.celda > 40, JSON.stringify(a1));
 
     /* ---------------- 12. sin errores de JS ---------------- */
     chk('sin errores de JS en la pagina', errores.length === 0, errores.join(' | '));

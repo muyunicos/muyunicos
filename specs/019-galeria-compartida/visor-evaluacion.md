@@ -79,6 +79,7 @@ regresiones).
 | 28 | **Flechas de la fila sobresalen** (reportado) | `left/right: -6px` fuera del bloque | **CORREGIDO en V3** (T047): `0` + la fila reserva el ancho |
 | 29 | **Lineas divisorias** (reportado) | cuatro rayas apiladas (cabecera, meta, acciones, banda) | **CORREGIDO en V3** (T047): cero lineas, separacion por espacio |
 | 30 | **La caja se escapa del 92vh con 768 px de ventana** (medido) | el alto del lienzo era `vh * 0.62` a ojo: la caja pasaba de su `max-height` y el marco empujaba la banda y la meta fuera (el `overflow: hidden` las cortaba) | **CORREGIDO en V4** (T049/T050): alto = 92vh - cromo VERTICAL medido; el cuerpo no encoge y el scroll absorbe |
+| 31 | **La banda del visor se aplasta** (reportado) | la mini caia de 74 a 0-62 px: la RAIZ de la coleccion es un flex item encogible y con `overflow: hidden` su minimo automatico pasa a 0 | **CORREGIDO en V5** (T052): piso de la raiz en el AMBITO 1 (`--mu-gal-alto-min` = alto de la celda MAS ALTA), no en el visor |
 | 23 | Contenido libre (`bloque`) | no existe | **Decidir** (no es requisito de la V2) |
 | 24 | Instancia | `visor.actualizar()` cambia el contenido con el modal abierto y sin recrear el DOM | **RESUELTO en V2** (T044) |
 
@@ -102,6 +103,17 @@ scroll interno). En 768 px de alto el pie conserva ~180 px utiles y puede quedar
 20-30 px de scroll dentro de `.mu-gal-scroll` (el lienzo mas chico ensancha el texto de la
 meta: nunca se recorta). Puertas: **VISOR OK (107/107 checks, 0 hallazgos)** + **GALERIA
 OK (249 checks)**.
+
+**V5 (2026-11-07 quater)** corrige la banda aplastada (fila 31), y la arregla **en el ambito
+1**, no en el visor: `coleccion()` publica el piso (`--mu-gal-alto-min`, alto de la celda MAS
+ALTA medido con `max(offsetHeight, scrollHeight)`) y `[data-mu-gal-layout]` lo aplica como
+`min-height`. La mini vuelve a **74 px** en 4 escenarios x 4 viewports y en movil; en el
+ambito 1 un contenedor corto con `overflow: hidden` ya no la recorta. Consecuencia: el cromo
+de la V4 ahora mide el pie REAL, asi que el lienzo cede lo suyo (a 1000x768: caja 463x707,
+marco 323x242; a 820x768: caja 437x707, marco 297x223) y el pie se ve entero: los numeros de
+la V4 quedan superados. Tambien se corrigio `recorta` en la puerta: un pie que **scrollea**
+ya no cuenta como recorte (se mide contenido inalcanzable). Puertas: **VISOR OK (141/141
+checks, 0 hallazgos)** + **GALERIA OK (252 checks)**.
 
 ## 3. Inventario: qué falta, qué sobra, qué está de más
 
