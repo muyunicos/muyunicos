@@ -183,11 +183,13 @@ uno suma checks a `tests/visor.browser.js` y, si toca los puros, a `tests/galeri
 - [X] T043 Meta rica: `MU.puro.normalizarMeta()` (retrocompatible con `badge` string y
       `precio{valor,anterior,aviso}`) -> `badge{texto,tono}`, `precios[]` y `nota`; lo usan
       `pintarMeta` del visor y `MU.tarjeta`, para no tener dos formatos.
-- [ ] T044 Singleton + `MU.visor.actualizar(parcial)` (items/meta/titulo/acciones/pos sobre
-      el modal abierto, sin cerrar ni perder el foco) y apertura declarativa
-      `[data-mu-galeria-visor]` reusando `itemsDeNodo`.
-- [ ] T045 Docs: `contracts/galeria.md` (C1 con error/iconos/meta v2/`actualizar`),
-      `visor-evaluacion.md` (§2 y §6 cerrados) y bump de `MU.version`.
+- [X] T044 Singleton + `MU.visor.actualizar(parcial)` (items/meta/titulo/acciones/segmentos/
+      contador/ancho sobre el modal abierto, sin cerrar ni recrear el DOM). El declarativo NO se
+      duplica: `[data-mu-galeria]` + `[data-mu-galeria-abrir]` ya abren el visor (D3), asi que
+      `[data-mu-galeria-visor]` se descarta por ser un segundo nombre de lo mismo.
+- [X] T045 Docs: `contracts/galeria.md` (C1 con error/iconos/meta v2/`actualizar`),
+      `visor-evaluacion.md` (§2 y §6 cerrados) y bump de `MU.version` a 1.2.0 +
+      `Version:` de `style.css` (cache-bust, D12).
 
 ## Fuera de esta spec (fases posteriores)
 

@@ -400,6 +400,36 @@ async function ir(page, hash) {
         /mu-gal-badge--nuevo/.test(r.badgeClases) && r.badge === 'Nuevo' && r.nota.length > 10,
         'badge=' + r.badge + ' clases="' + r.badgeClases + '" nota=' + r.nota.length);
 
+    /* ---------------- 8e. actualizar() sin cerrar (V2, T044) ---------------- */
+    console.log('== MU.visor.actualizar sobre el visor abierto ==');
+    await ir(page, '#visor-todo');
+    await page.evaluate(() => {
+        document.querySelector('.mu-gal-visor').setAttribute('data-test-marca', 'vivo');
+        window.MU.visor.actualizar({
+            titulo: 'Titulo actualizado',
+            meta: { titulo: 'Meta nueva', nota: 'nota viva' },
+            acciones: [{ etiqueta: 'Nueva', icono: 'usar' }]
+        });
+    });
+    await page.waitForTimeout(300);
+    r = await leer(page);
+    const marca = await page.evaluate(() =>
+        document.querySelector('.mu-gal-visor').getAttribute('data-test-marca'));
+    chk('actualizar() cambia titulo, meta y acciones SIN recrear el DOM',
+        marca === 'vivo' && r.abierto === true && r.titulo === 'Titulo actualizado'
+            && r.acciones === 1 && r.nota === 'nota viva',
+        'marca=' + marca + ' titulo="' + r.titulo + '" acciones=' + r.acciones
+            + ' nota="' + r.nota + '"');
+    await page.evaluate(() => {
+        window.MU.visor({ items: [{ url: 'no-1.png' }] });
+        window.MU.visor({ items: [{ url: 'no-2.png' }] });
+    });
+    await page.waitForTimeout(450);
+    const overlays = await page.evaluate(() =>
+        document.querySelectorAll('.mu-modal-overlay.mu-gal-visor').length);
+    chk('abrir dos veces deja UN solo overlay (nunca dos modales apilados)',
+        overlays === 1, 'overlays=' + overlays);
+
 /* ---------------- 9. sin listado y segmentos ---------------- */
     console.log('== #visor-sin-lista y #visor-segmentos ==');
     await ir(page, '#visor-sin-lista');

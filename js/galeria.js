@@ -18,7 +18,7 @@
  *   - Consume los tokens del tema (`--primario`, `--mu-radius-*`), nunca los redefine.
  *
  * API: window.MUGaleria (ver specs/019-galeria-compartida/contracts/galeria.md).
- * Version: 1.1.0
+ * Version: 1.2.0
  */
 (function (global) {
     'use strict';
@@ -503,6 +503,72 @@
 
     /* ==================== visor (modal del tema) ==================== */
 
+    /** Aplica `ancho` a la caja (C1.1): 'auto' | 'completo' | numero en px (legado). */
+    function aplicarAncho(caja, ancho) {
+        if (!caja) { return; }
+        sinClase(caja, 'mu-gal-caja--completo');
+        sinClase(caja, 'mu-gal-caja--auto');
+        caja.style.maxWidth = '';
+        if (ancho === 'completo') {
+            caja.className += ' mu-gal-caja--completo';
+        } else if (ancho === undefined || ancho === 'auto') {
+            caja.className += ' mu-gal-caja--auto';
+        } else {
+            var anchoPx = parseInt(ancho, 10);
+            if (anchoPx > 0) { caja.style.maxWidth = anchoPx + 'px'; }
+        }
+    }
+
+    /**
+     * Monta (o RE-monta) las pestañas informativas: nunca filtran (C1.2). Se llama en el
+     * montaje y desde `actualizar()`, asi que borra las previas antes de pintar.
+     */
+    function montarSegmentos(doc, caja, o) {
+        var previo = caja.querySelector('.mu-gal-segs');
+        if (previo) { previo.parentNode.removeChild(previo); }
+        if (!Array.isArray(o.segmentos) || !o.segmentos.length) { return; }
+        var segs = crear(doc, 'div', 'mu-gal-segs');
+        o.segmentos.forEach(function (seg) {
+            var b = crear(doc, 'button', 'mu-gal-seg', seg.etiqueta);
+            b.type = 'button';
+            b.setAttribute('aria-pressed', seg.activo ? 'true' : 'false');
+            b.addEventListener('click', function () {
+                if (typeof seg.onElegir === 'function') { seg.onElegir(); }
+            });
+            segs.appendChild(b);
+        });
+        // Van entre la cabecera y el cuerpo, tanto al montar como al re-montar.
+        var cuerpo = caja.querySelector('.mu-gal-cuerpo');
+        if (cuerpo) { caja.insertBefore(segs, cuerpo); } else { caja.appendChild(segs); }
+    }
+
+    /** Monta (o RE-monta) los botones de accion al pie de la caja (V2, T042/T044). */
+    function montarAcciones(doc, caja, o) {
+        var previo = caja.querySelector('.mu-gal-acciones');
+        if (previo) { previo.parentNode.removeChild(previo); }
+        var lista = (Array.isArray(o.acciones) ? o.acciones : []);
+        if (!lista.length) { return; }
+        var acciones = crear(doc, 'div', 'mu-gal-acciones');
+        lista.forEach(function (ac) {
+            var b = crear(doc, 'button', 'mu-gal-accion ' + (ac.clase || ''));
+            var iconoAc = ac.icono ? crearIcono(doc, String(ac.icono)) : null;
+            if (iconoAc) { b.appendChild(iconoAc); }
+            // El texto manda: el icono es decorativo. Sin etiqueta el boton queda solo con
+            // el icono, y entonces el nombre accesible NO puede faltar (`aria-label`).
+            if (ac.etiqueta) {
+                b.appendChild(doc.createTextNode(String(ac.etiqueta)));
+            } else {
+                b.setAttribute('aria-label', String(ac.aria || ac.icono || 'Accion'));
+            }
+            b.type = 'button';
+            b.addEventListener('click', function () {
+                if (typeof ac.onAccion === 'function') { ac.onAccion(estado.pos); }
+            });
+            acciones.appendChild(b);
+        });
+        caja.appendChild(acciones);
+    }
+
     var estado = {
         raiz: null, items: [], pos: 0, opciones: {}, onKey: null,
         overflowPrevio: '', focoPrevio: null, onResize: null
@@ -776,6 +842,49 @@
         return true;
     }
 
+    /**
+     * Actualiza el visor ABIERTO sin cerrarlo ni recrear el DOM (V2, T044): `items`,
+     * `indice`, `titulo`, `meta`, `contador`, `ancho`, `segmentos` y `acciones`.
+     * OJO: `listado` (la banda inferior) NO se re-monta; si cambia, cerrar y volver a abrir.
+     * @returns {boolean} true si habia un visor abierto y se actualizo.
+     */
+    function actualizar(parcial) {
+        var s = estado;
+        var doc = global.document;
+        if (!doc || !s.raiz) { return false; }
+        var caja = s.raiz.querySelector('.mu-gal-caja');
+        if (!caja) { return false; }
+        var p = parcial || {};
+        var o = s.opciones || {};
+
+        if (Array.isArray(p.items)) { s.items = p.items.slice(); }
+        if (!s.items.length) { return cerrar(); }
+
+        if (p.titulo !== undefined) {
+            o.titulo = String(p.titulo || '');
+            var texto = o.titulo || 'Galeria';
+            var titulo = s.raiz.querySelector('.mu-gal-titulo');
+            if (titulo) { titulo.textContent = texto; }
+            s.raiz.setAttribute('aria-label', texto);
+        }
+        if (p.meta !== undefined) { o.meta = p.meta; }
+        if (p.contador !== undefined) { o.contador = p.contador; }
+        if (p.ancho !== undefined) { o.ancho = p.ancho; aplicarAncho(caja, p.ancho); }
+        if (p.segmentos !== undefined) {
+            o.segmentos = p.segmentos;
+            montarSegmentos(doc, caja, o);
+        }
+        if (p.acciones !== undefined) {
+            o.acciones = p.acciones;
+            montarAcciones(doc, caja, o);
+        }
+
+        s.opciones = o;
+        s.pos = acotar((p.indice !== undefined) ? p.indice : s.pos, s.items.length);
+        pintarVisor();
+        return true;
+    }
+
     /** Mantiene el foco dentro del modal (Tab / Shift+Tab). */
     function atraparFoco(e, raiz) {
         var focos = raiz.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
@@ -816,14 +925,7 @@
         var caja = crear(doc, 'div', 'mu-modal-container mu-gal-caja');
         // `ancho`: 'auto' (default) ajusta la caja al contenido en escritorio;
         // 'completo' la lleva casi a pantalla; un numero fija `max-width` (legado).
-        if (o.ancho === 'completo') {
-            caja.className += ' mu-gal-caja--completo';
-        } else if (o.ancho === undefined || o.ancho === 'auto') {
-            caja.className += ' mu-gal-caja--auto';
-        } else {
-            var anchoPx = parseInt(o.ancho, 10);
-            if (anchoPx > 0) { caja.style.maxWidth = anchoPx + 'px'; }
-        }
+        aplicarAncho(caja, o.ancho);
 
         var cab = crear(doc, 'div', 'mu-gal-cabecera');
         cab.appendChild(crear(doc, 'p', 'mu-gal-titulo', o.titulo || 'Galeria'));
@@ -834,19 +936,7 @@
         cab.appendChild(botonCerrar);
         caja.appendChild(cab);
 
-        if (Array.isArray(o.segmentos) && o.segmentos.length) {
-            var segs = crear(doc, 'div', 'mu-gal-segs');
-            o.segmentos.forEach(function (seg) {
-                var b = crear(doc, 'button', 'mu-gal-seg', seg.etiqueta);
-                b.type = 'button';
-                b.setAttribute('aria-pressed', seg.activo ? 'true' : 'false');
-                b.addEventListener('click', function () {
-                    if (typeof seg.onElegir === 'function') { seg.onElegir(); }
-                });
-                segs.appendChild(b);
-            });
-            caja.appendChild(segs);
-        }
+        montarSegmentos(doc, caja, o);
 
         var cuerpo = crear(doc, 'div', 'mu-gal-cuerpo');
         // Flechas: reusa el sistema `.mu-nav-btn` del tema (D18) con su SVG.
@@ -932,25 +1022,7 @@
         cajaMeta.hidden = true;
         scroll.appendChild(cajaMeta);
 
-        var acciones = crear(doc, 'div', 'mu-gal-acciones');
-        (Array.isArray(o.acciones) ? o.acciones : []).forEach(function (ac) {
-            var b = crear(doc, 'button', 'mu-gal-accion ' + (ac.clase || ''));
-            var iconoAc = ac.icono ? crearIcono(doc, String(ac.icono)) : null;
-            if (iconoAc) { b.appendChild(iconoAc); }
-            // El texto manda: el icono es decorativo. Sin etiqueta el boton queda solo con
-            // el icono, y entonces el nombre accesible NO puede faltar (`aria-label`).
-            if (ac.etiqueta) {
-                b.appendChild(doc.createTextNode(String(ac.etiqueta)));
-            } else {
-                b.setAttribute('aria-label', String(ac.aria || ac.icono || 'Accion'));
-            }
-            b.type = 'button';
-            b.addEventListener('click', function () {
-                if (typeof ac.onAccion === 'function') { ac.onAccion(estado.pos); }
-            });
-            acciones.appendChild(b);
-        });
-        if (acciones.firstChild) { caja.appendChild(acciones); }
+        montarAcciones(doc, caja, o);
 
         overlay.appendChild(caja);
         doc.body.appendChild(overlay);
@@ -2234,9 +2306,12 @@
             filtrar: filtrar, valoresFiltro: valoresFiltro,
             celdas: celdas, pie: pie, caben: caben,
         carga: carga, topeEnFilas: topeEnFilas, navegableDe: navegableDe, ventana: ventana },
-        version: '1.1.0'
+        version: '1.2.0'
     };
 
+    // `MU.visor.actualizar(parcial)` (V2, T044): se cuelga de la MISMA funcion `visor`, asi
+    // `MU.visor(...)` sigue siendo la apertura y no hay un segundo nombre del mismo ambito.
+    visor.actualizar = actualizar;
     global.MUGaleria = api;
 
     // Dos ambitos con nombre propio (contrato `coleccion.md`, C0):

@@ -65,6 +65,15 @@ serlo; queda escrito para que no se confunda otra vez.
 sincronizada dos vias con la imagen grande (`MU.ir(i)`): ver `coleccion.md` C8.
 
 - Devuelve `true` si abrio; `false` si no hay `items` o no hay `document`.
+- **`MUGaleria.visor.actualizar(parcial)`** (V2, T044): con el visor **abierto** cambia
+  `items`, `indice`, `titulo`, `meta`, `contador`, `ancho`, `segmentos` y `acciones` **sin
+  cerrar** ni recrear el DOM (los listeners de la caja y de las flechas se conservan). Devuelve
+  `true` si habia un visor. Con `items` vacio cierra. **`listado` no se re-monta**: si cambia la
+  banda inferior hay que cerrar y volver a abrir. El modo declarativo **no** agrega un
+  `[data-mu-galeria-visor]`: `[data-mu-galeria]` + `[data-mu-galeria-abrir]` ya abren el visor
+  (D3) y un segundo atributo seria un duplicado.
+- **Instancia**: `visor()` retira el anterior y monta uno nuevo; `cerrar()` lo retira a los
+  250 ms de la transicion. Nunca hay dos `.mu-gal-visor` en el documento.
 - Reutiliza `.mu-modal-overlay` + `.mu-modal-container` + `.mu-modal-close` y
   `.is-visible` (D2). **No** crea otro modal.
 - Clases propias (todas con prefijo `mu-gal-`): `mu-gal-visor`, `mu-gal-cabecera`,

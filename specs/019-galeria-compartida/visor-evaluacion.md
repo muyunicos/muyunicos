@@ -2,7 +2,7 @@
 
 **Estado**: **V1** (2026-11-07). El visor se prueba **en vivo** en
 `tests/galeria-demo.html` (panel "Visor (ambito 2)") y tiene puerta propia:
-`node tests/visor.browser.js` → **VISOR OK (64/64 checks, 0 hallazgos)**.
+`node tests/visor.browser.js` → **VISOR OK (66/66 checks, 0 hallazgos)**.
 Complementa `spec.md` §3 (FR-024…FR-030) y `contracts/galeria.md` (API del visor).
 
 Este documento es el **tablero de decisión**: lo medido, lo que falta, lo que sobra y lo
@@ -74,12 +74,13 @@ regresiones).
 | 21 | Ancho de la caja | era 880 px fijo | **RESUELTO en V1**: `ancho` auto o `completo` (T034) |
 | 22 | Flechas | al costado y superpuestas en movil | **RESUELTO en V1**: automaticas segun el ancho del marco (T036), no es opcion |
 | 23 | Contenido libre (`bloque`) | no existe | **Decidir** (no es requisito de la V2) |
-| 24 | Instancia | `visor()` crea el DOM y `cerrar()` lo retira | **Falta** singleton + `MU.visor.actualizar()` (**T044**) |
+| 24 | Instancia | `visor.actualizar()` cambia el contenido con el modal abierto y sin recrear el DOM | **RESUELTO en V2** (T044) |
 
 Desde la V2 la banda inferior en 390 px **afirma** que scrollea (es un carrusel por diseno): dejo de
 ser un aviso y paso a check. La imagen rota ya tiene estado propio (fila 9), las acciones su
-icono (fila 19) y la meta su forma unica (filas 12 y 18): la puerta queda en **64/64 con 0
-hallazgos**.
+icono (fila 19), la meta su forma unica (filas 12 y 18) y la instancia su `actualizar()` (fila 24):
+la puerta queda en **66/66 con 0 hallazgos**. El **unico** pendiente medido es SC-003 en el
+laboratorio (T022/T023), que necesita `C:\wp-lab` corriendo.
 
 ## 3. Inventario: qué falta, qué sobra, qué está de más
 
@@ -161,7 +162,10 @@ Cada punto, con su check nuevo en `tests/visor.browser.js` y `GALERIA OK`:
 1. ~~Estado de error de imagen (mensaje + reintento).~~ **hecho** (T041).
 2. ~~`acciones[].icono` + variantes tonales.~~ **hecho** (T042: familia local, sin set del tema).
 3. ~~`precios[]` + `nota` + `badge{texto,tono}`, unificando con `MU.tarjeta`.~~ **hecho** (T043).
-4. Singleton + `MU.visor.actualizar()` + `[data-mu-galeria-visor]` declarativo.
+4. ~~Singleton + `MU.visor.actualizar()` + `[data-mu-galeria-visor]` declarativo.~~ **hecho**
+   (T044; el atributo declarativo se descarto porque ya existe `[data-mu-galeria-abrir]`).
+
+La **V2 queda cerrada**. Lo unico abierto de la spec es SC-003 en el laboratorio (T022/T023).
 
 Orden de implementacion: **T041** (error de imagen) -> **T042** (`icono`) -> **T043** (meta rica) ->
 **T044** (singleton + `actualizar`) -> **T045** (docs y bump). Cada paso entra con su commit y sus
