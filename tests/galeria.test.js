@@ -246,6 +246,8 @@ check('el hueco es una celda', /mu-gal-celda--vacia/.test(css));
 check('el pie existe y es status', /mu-gal-pie/.test(css) && /'mu-gal-pie'/.test(js) && /'status'/.test(js));
 check('las flechas de la linea son del tema', /mu-gal-caja-linea \.mu-nav-btn/.test(css)
     && /function flechasDeLinea/.test(js));
+check('el tachito es un icono (mismo estilo que la estrella)',
+    /function crearTacho/.test(js) && /mu-gal-item-eliminar svg/.test(css));
 check('el contrato nuevo existe',
     fs.existsSync(path.join(RAIZ, 'specs/019-galeria-compartida/contracts/coleccion.md')));
 

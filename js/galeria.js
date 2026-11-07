@@ -232,6 +232,32 @@
         return svg;
     }
 
+    /** Icono de tachito (misma familia que el chevron: SVG sin innerHTML). */
+    function crearTacho(doc) {
+        var ns = 'http://www.w3.org/2000/svg';
+        var svg = doc.createElementNS(ns, 'svg');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.setAttribute('fill', 'none');
+        svg.setAttribute('stroke', 'currentColor');
+        svg.setAttribute('stroke-width', '2');
+        svg.setAttribute('stroke-linecap', 'round');
+        svg.setAttribute('stroke-linejoin', 'round');
+        svg.setAttribute('width', '24');
+        svg.setAttribute('height', '24');
+        svg.setAttribute('aria-hidden', 'true');
+        svg.setAttribute('focusable', 'false');
+        var tapa = doc.createElementNS(ns, 'path');
+        tapa.setAttribute('d', 'M3 6h18');
+        var asa = doc.createElementNS(ns, 'path');
+        asa.setAttribute('d', 'M8 6V4h8v2');
+        var caja = doc.createElementNS(ns, 'path');
+        caja.setAttribute('d', 'M6 6l1 14h10l1-14');
+        svg.appendChild(tapa);
+        svg.appendChild(asa);
+        svg.appendChild(caja);
+        return svg;
+    }
+
     /* ==================== visor (modal del tema) ==================== */
 
     var estado = {
@@ -1006,9 +1032,10 @@
         }
 
         if (slots.eliminar && typeof o.onEliminar === 'function') {
-            var del = crear(doc, 'button', 'mu-gal-item-eliminar', '\u00d7');
+            var del = crear(doc, 'button', 'mu-gal-item-eliminar');
             del.type = 'button';
             del.setAttribute('aria-label', 'Quitar ' + (item.titulo || ('imagen ' + (i + 1))));
+            del.appendChild(crearTacho(doc));
             del.addEventListener('click', function (e) {
                 if (e.stopPropagation) { e.stopPropagation(); }
                 var seguir = true;

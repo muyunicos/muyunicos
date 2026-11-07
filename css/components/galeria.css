@@ -865,26 +865,41 @@ body.is-scroll-locked { overflow: hidden; }
 .mu-gal-item-favorito[aria-pressed="true"] { background: var(--secundario); color: #8a6116; }
 .mu-gal-item-favorito:focus-visible { outline: 3px solid var(--primario); outline-offset: 1px; }
 
+/* Tachito: MISMO estilo que la estrella (circulo blanco), debajo de ella si esta. */
 .mu-gal-item-eliminar {
     position: absolute;
+    top: 4px;
     right: 4px;
-    bottom: 4px;
-    width: 22px;
-    height: 22px;
+    width: 24px;
+    height: 24px;
     padding: 0;
-    border: 2px solid var(--blanco);
+    border: 0;
     border-radius: 50%;
-    background: #d63638;
-    color: var(--blanco);
-    font-size: 12px;
-    line-height: 1;
+    background: rgb(255 255 255 / 92%);
+    color: #64748b;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: var(--mu-transition-fast);
 }
 
-.mu-gal-item-eliminar:focus-visible { outline: 3px solid var(--secundario); outline-offset: 1px; }
+/* En el DOM la estrella se crea antes: si existe, el tachito baja para no taparla
+   (y si no existe, queda arriba sin dejar un hueco). */
+.mu-gal-item-favorito ~ .mu-gal-item-eliminar { top: 34px; }
+
+.mu-gal-item-eliminar svg {
+    width: 14px;
+    height: 14px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.mu-gal-item-eliminar:hover { background: #fef2f2; color: #d63638; }
+.mu-gal-item-eliminar:focus-visible { outline: 3px solid #d63638; outline-offset: 1px; }
 
 .mu-gal-item-cuerpo {
     display: flex;

@@ -566,7 +566,14 @@
     }
 
     /* ---------- arranque ---------- */
+    if (window.location.hash === '#mini') {
+        document.getElementById('pg-preset').value = 'mini';
+        ESTADO.preset = 'mini';
+    }
     ESTADO.slots = slotsDelPreset(ESTADO.preset);
+    if (window.location.hash === '#todo') {
+        ESTADO.slots.eliminar = true;   // QA: estrella + tachito apilados
+    }
     sincronizarSlots();
     render();
 }());
