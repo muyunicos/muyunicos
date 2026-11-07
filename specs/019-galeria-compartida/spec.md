@@ -1,7 +1,9 @@
 # Spec 019 — Galeria compartida del tema (MUGaleria)
 
-**Estado**: implementada (F0 + F1, 2026-11-05). F2 (plugin) y F3 (calculadora) son fases
-posteriores y NO entran en esta spec.
+**Estado**: F0 + F1 (2026-11-05) en produccion de tema y **F2.5b** (modelo v2: chip
+acumulativo, `navegable` auto, `tope` en celdas, cota `filas`) + **cota exacta**
+(2026-11-07) implementadas. Pendiente: SC-003 en el laboratorio (T022) y las fases
+F2 (plugin) y F3 (calculadora), que NO entran en esta spec. Detalle en `tasks.md`.
 
 ## 1. Contexto y problema
 
@@ -122,6 +124,12 @@ Contrato: [contracts/coleccion.md](./contracts/coleccion.md). Reemplaza "tira + 
   `filas`/`alto` fijan tambien el ALTO del marco
   (`filas*altoCelda + (filas-1)*gap`, con `alto` como maximo) y el **pie** se resta siempre:
   el marco nunca desborda el bloque (`MU.puro.ventana`, contrato C9).
+  **La fila la manda la cota** (D24bis): cuando la cota existe, la linea publica
+  `data-cota` + `--fila-alto` (alto de celda **real**, medido tras insertar la linea, y
+  re-medido cuando asienta la fuente del tema) y el CSS fija `grid-auto-rows` con ese
+  numero: la celda OBEDECE (`max-height` + `overflow`), asi `filas*alto + gaps` es exacto
+  y el grid no puede desbordar ni abrir scroll interno. Sin cota las filas crecen con el
+  contenido (comportamiento historico).
 
 - **FR-024** `MU.coleccion(el, opciones)` con `layout` (fila/grilla), `navegable`
   (`auto`/true/false; alias `deslizable`), `tamano`, `gap`, `filas`, `columnas`, `alto`.
@@ -170,7 +178,9 @@ Contrato: [contracts/coleccion.md](./contracts/coleccion.md). Reemplaza "tira + 
 - **FR-016** `modo: 'auto'` resuelve por `clientWidth` del contenedor (D13) y se repinta
   con `ResizeObserver` sin perder `scrollLeft` ni el foco.
 - **FR-017** `filas` limita el alto de la grilla (`--filas`; 2 filas = `max-height` de
-  146 px) y lo que no entra se resume en el `+N`.
+  146 px) y lo que no entra se resume en el `+N`. Con cota la fila mide el alto de celda
+  real (`--fila-alto`) y el marco se calcula con ese numero: `scrollHeight` nunca excede
+  `max-height` (D24bis).
 - **FR-018** `min` dibuja `min - items.length` ranuras vacias accesibles
   (`aria-label="Agregar imagen N de M"`) que llaman `onRanura(indice)`; `contador` muestra
   "1 de 3".
