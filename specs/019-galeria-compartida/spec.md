@@ -1,9 +1,12 @@
 # Spec 019 — Galeria compartida del tema (MUGaleria)
 
-**Estado**: F0 + F1 (2026-11-05) en produccion de tema y **F2.5b** (modelo v2: chip
-acumulativo, `navegable` auto, `tope` en celdas, cota `filas`) + **cota exacta**
-(2026-11-07) implementadas. Pendiente: SC-003 en el laboratorio (T022) y las fases
-F2 (plugin) y F3 (calculadora), que NO entran en esta spec. Detalle en `tasks.md`.
+**Estado**: F0 + F1 (2026-11-05) en produccion de tema, **F2.5b** (modelo v2: chip
+acumulativo, `navegable` auto, `tope` en celdas, cota `filas`), **cota exacta** y
+**V0 del visor** (2026-11-07: playground propio en `tests/galeria-demo.html`, puerta
+`tests/visor.browser.js` en 32/32 y fix del foco inicial) implementadas. Pendiente:
+SC-003 en el laboratorio (T022), las fases V1…V5 del visor (veredicto medido en
+`visor-evaluacion.md`) y las fases F2 (plugin) y F3 (calculadora), que NO entran en esta
+spec. Detalle en `tasks.md`.
 
 ## 1. Contexto y problema
 

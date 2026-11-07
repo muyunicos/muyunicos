@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MU.coleccion — playground (spec 019)</title>
+<title>MU.coleccion y MU.visor — playground (spec 019)</title>
 <!--
   Playground de la galeria (ambito 1). UNA sola galeria, configurable en vivo:
   layout, tamano, navegable, alto, tope, min, capacidad, preset y slots.
@@ -111,7 +111,7 @@
 </head>
 <body>
 
-<h1 style="margin:0 0 4px;font-size:19px">MU.coleccion — playground</h1>
+<h1 style="margin:0 0 4px;font-size:19px">MU.coleccion y MU.visor — playground</h1>
 <p class="pg-ayuda">
     Una sola galeria, configurable en vivo. El panel de la izquierda es el contrato
     <code>coleccion.md</code>: cada control es una opcion de <code>MU.coleccion</code>.
@@ -229,7 +229,63 @@
             </div>
         </section>
 
-        <div class="pg-acciones">
+        <section class="pg-grupo">
+            <h3>Visor (ambito 2)</h3>
+            <div class="pg-campo">
+                <label for="pgv-tono">Tono</label>
+                <select id="pgv-tono">
+                    <option value="claro" selected>claro</option>
+                    <option value="oscuro">oscuro</option>
+                </select>
+            </div>
+            <div class="pg-campo">
+                <label for="pgv-titulo">Titulo</label>
+                <input type="text" id="pgv-titulo" value="Galeria">
+            </div>
+            <div class="pg-campo">
+                <label for="pgv-items">Items (0 = los de la galeria)</label>
+                <input type="number" id="pgv-items" min="0" max="40" value="0">
+            </div>
+            <div class="pg-campo">
+                <label for="pgv-indice">Indice</label>
+                <input type="number" id="pgv-indice" min="0" max="39" value="0">
+            </div>
+            <div class="pg-campo">
+                <label><input type="checkbox" id="pgv-listado" checked> listado inferior</label>
+            </div>
+            <div class="pg-campo">
+                <label for="pgv-segmentos">Segmentos</label>
+                <input type="number" id="pgv-segmentos" min="0" max="3" value="0">
+            </div>
+            <div class="pg-campo">
+                <label for="pgv-meta">Meta</label>
+                <select id="pgv-meta">
+                    <option value="sin">sin meta</option>
+                    <option value="simple" selected>simple</option>
+                    <option value="rica">rica (precio + badge)</option>
+                    <option value="larga">larga (texto de 600 letras)</option>
+                    <option value="item">por item (solo la 2da)</option>
+                </select>
+            </div>
+            <div class="pg-campo">
+                <label for="pgv-acciones">Acciones</label>
+                <input type="number" id="pgv-acciones" min="0" max="4" value="1">
+            </div>
+            <div class="pg-campo">
+                <label><input type="checkbox" id="pgv-roto"> imagenes rotas</label>
+            </div>
+            <p class="pg-ayuda" style="margin:6px 0 0">
+                <strong>Pendiente</strong> (el visor no lo acepta hoy): contador opcional,
+                ancho de caja, flechas superpuestas, marco solido, segundo precio,
+                nota al pie, icono en acciones, contenido libre y aviso de imagen
+                rota. Veredicto: <code>visor-evaluacion.md</code>.
+            </p>
+            <div class="pg-acciones" style="margin-top:6px">
+                <button type="button" class="pg-boton" id="pgv-abrir">Abrir con esto</button>
+            </div>
+        </section>
+
+<div class="pg-acciones">
             <button type="button" class="pg-boton" id="pg-visor">Abrir visor</button>
             <button type="button" class="pg-boton" id="pg-reset">Reset</button>
         </div>
@@ -240,6 +296,8 @@
                 style="margin-top:6px;width:100%">Aplicar JSON</button>
         <p class="pg-ayuda" style="margin:6px 0 0">
             Editá el JSON (por ejemplo <code>items</code>) y tocalo para aplicarlo.
+            Tambien acepta <code>visor:{tono,meta,items,listado,segmentos,acciones,roto}</code>
+            para fijar un escenario del modal de un pegado.
         </p>
     </aside>
 
@@ -431,6 +489,138 @@
         return out;
     }
 
+    /* ---------- visor (ambito 2): estado + opciones ----------
+       Cada clave es una opcion REAL de `MU.visor` (contrato C1). Lo que el visor
+       no acepta hoy (contador, ancho, flechas superpuestas, segundo precio, nota,
+       icono) NO se ofrece como control: se documenta como pendiente en el panel. */
+    var VISOR = {
+        tono: 'claro',
+        titulo: 'Galeria',
+        items: 0,           // 0 = los items de la galeria (lo real); >0 = propios
+        indice: 0,
+        listado: true,
+        segmentos: 0,
+        meta: 'simple',     // sin | simple | rica | larga | item
+        acciones: 1,
+        roto: false
+    };
+
+    /** Items propios del visor: `n` los fabrica; `roto` rompe las urls a proposito. */
+    function itemsDelVisor(n) {
+        var out = [];
+        for (var i = 0; i < n; i++) {
+            var base = UNIVERSO[i % UNIVERSO.length];
+            out.push({
+                id: base.id,
+                url: VISOR.roto ? ('no-existe-' + (i + 1) + '.png') : svg(i),
+                thumb: VISOR.roto ? ('no-existe-mini-' + (i + 1) + '.png') : svgMini(i),
+                etiqueta: base.etiqueta
+            });
+        }
+        return out;
+    }
+
+    /** Meta del visor segun el panel (los 5 estados que el contrato soporta). */
+    function metaDelVisor() {
+        if (VISOR.meta === 'sin') { return null; }
+        if (VISOR.meta === 'simple') { return { titulo: 'Vinilo circular 3cm' }; }
+        if (VISOR.meta === 'rica') {
+            return {
+                badge: '31% OFF',
+                titulo: 'Formas personalizadas 4cm',
+                descripcion: 'Vinilo impermeable con doble corte.',
+                precio: { valor: 153, anterior: 180 }
+            };
+        }
+        if (VISOR.meta === 'larga') {
+            return {
+                badge: '31% OFF',
+                titulo: 'Formas personalizadas 4cm',
+                descripcion: 'Vinilo impermeable con doble corte. Ideal para termos, celulares y '
+                    + 'notebooks. Se pega en cualquier superficie lisa y se retira sin dejar '
+                    + 'residuo. Pedido minimo 10 unidades. Produccion en 72 horas habiles. '
+                    + 'Envio a todo el pais. Cada pieza se corta con plotter de precision: no '
+                    + 'se deforma ni se estira. Apto lavavajillas. Colores a eleccion sobre '
+                    + 'muestra. Garantia de 30 dias por defecto de fabricacion. El precio '
+                    + 'incluye preparacion de archivo y prueba digital. Consulta por mayoristas '
+                    + 'y revendedores: hay precio por cantidad a partir de 50 unidades.',
+                precio: { valor: 153, anterior: 180, aviso: true }
+            };
+        }
+        return null;
+    }
+
+    /** Acciones del visor: la primera cierra (como "Elegir" en la tienda). */
+    function accionesVisor() {
+        var nombres = ['Elegir', 'Comparar', 'Comprar', 'Eliminar'];
+        var out = [];
+        for (var i = 0; i < VISOR.acciones; i++) {
+            var nombre = nombres[i % nombres.length];
+            out.push({
+                etiqueta: nombre,
+                clase: (nombre === 'Eliminar') ? 'mu-gal-peligro' : '',
+                onAccion: (function (n) {
+                    return function (pos) { avisar('Accion "' + n + '" sobre la imagen ' + (pos + 1)); };
+                }(nombre))
+            });
+        }
+        if (out.length) {
+            out[0].onAccion = function (pos) {
+                avisar('Elegida la imagen ' + (pos + 1));
+                window.MU.cerrar();
+            };
+        }
+        return out;
+    }
+
+    /** Segmentos (filtros del consumidor): informativos, el consumidor recarga. */
+    function segmentosVisor(n) {
+        var nombres = ['Fotos', 'Disenos', 'Formas'];
+        var out = [];
+        for (var i = 0; i < n; i++) {
+            out.push({
+                etiqueta: nombres[i % nombres.length],
+                activo: i === 0,
+                onElegir: (function (t) {
+                    return function () { avisar('Segmento "' + t + '" (el consumidor recarga)'); };
+                }(nombres[i % nombres.length]))
+            });
+        }
+        return out;
+    }
+
+    /** Opciones completas para `MU.visor` (items, indice acotado, meta, acciones). */
+    function opcionesVisor(indice) {
+        var items = (VISOR.items > 0) ? itemsDelVisor(VISOR.items) : itemsActuales();
+        if (VISOR.meta === 'item') {
+            // La meta del ITEM manda sobre la global: solo la 2da la trae.
+            items = items.map(function (it, i) {
+                var copia = {};
+                for (var k in it) { if (it.hasOwnProperty(k)) { copia[k] = it[k]; } }
+                if (i === 1) { copia.meta = { badge: 'Solo la 2da', titulo: 'Meta del ITEM' }; }
+                return copia;
+            });
+        }
+        var n = items.length;
+        var pos = Math.max(0, Math.min(n - 1, parseInt(indice, 10) || 0));
+        var o = {
+            items: items,
+            indice: pos,
+            titulo: VISOR.titulo,
+            tono: VISOR.tono,
+            meta: (VISOR.meta === 'item') ? null : metaDelVisor(),
+            acciones: accionesVisor(),
+            alCerrar: function () { avisar('Visor cerrado'); },
+            alCambiar: function (k) {
+                var el = document.getElementById('pgv-indice');
+                if (el) { el.value = String(k); }
+            }
+        };
+        if (VISOR.listado) { o.listado = 'abajo'; }
+        if (VISOR.segmentos > 0) { o.segmentos = segmentosVisor(VISOR.segmentos); }
+        return o;
+    }
+
     /* ---------- render ---------- */
     function opciones() {
         return {
@@ -545,6 +735,7 @@
         set('pg-min', ESTADO.min);
         set('pg-capacidad', ESTADO.capacidad);
         set('pg-sustantivo', ESTADO.sustantivo);
+        sincronizarVisor();
         marcarRadio('pg-layout', ESTADO.layout);
         marcarRadio('pg-navega', ESTADO.navegable);
         sincronizarSlots();
@@ -574,6 +765,20 @@
             avisar('JSON invalido: se espera un objeto');
             return;
         }
+        if (datos.visor && typeof datos.visor === 'object') {
+            var dv = datos.visor;
+            if (dv.tono !== undefined) { VISOR.tono = String(dv.tono); }
+            if (dv.titulo !== undefined) { VISOR.titulo = String(dv.titulo); }
+            if (dv.meta !== undefined) { VISOR.meta = String(dv.meta); }
+            if (dv.listado !== undefined) { VISOR.listado = !!dv.listado; }
+            if (dv.roto !== undefined) { VISOR.roto = !!dv.roto; }
+            ['items', 'indice', 'segmentos', 'acciones'].forEach(function (k) {
+                if (dv[k] !== undefined) {
+                    VISOR[k] = Math.max(0, parseInt(dv[k], 10) || 0);
+                }
+            });
+            sincronizarVisor();
+        }
         if (datos.preset !== undefined) { ESTADO.preset = String(datos.preset); }
         if (datos.layout !== undefined) { ESTADO.layout = String(datos.layout); }
         if (datos.tamano !== undefined) { ESTADO.tamano = String(datos.tamano); }
@@ -599,20 +804,9 @@
     }
 
     function abrirVisor(indice) {
-        // Listado inferior (F2): la banda de miniaturas sincronizada con la imagen grande.
-        window.MU.visor({
-            listado: 'abajo',
-            items: itemsActuales(),
-            indice: indice || 0,
-            titulo: 'Galeria',
-            tono: 'claro',
-            acciones: [{
-                etiqueta: 'Elegir', clase: '', onAccion: function (n) {
-                    avisar('Elegida la imagen ' + (n + 1));
-                    window.MU.cerrar();
-                }
-            }]
-        });
+        // Las opciones salen del panel "Visor": items (de la galeria o propios),
+        // indice acotado, tono, meta, acciones, segmentos y listado.
+        window.MU.visor(opcionesVisor(indice));
     }
 
     /* ---------- controles ---------- */
@@ -680,6 +874,73 @@
     ].forEach(function (par) {
         enlazar(par[0], 'change', function (e) { ESTADO.datos[par[1]] = e.target.checked; render(); });
     });
+
+    /* ---------- controles del visor ---------- */
+    function valorDe(id) {
+        var el = document.getElementById(id);
+        return el ? el.value : '';
+    }
+    function enteroDe(id) {
+        var v = parseInt(valorDe(id), 10);
+        return isNaN(v) ? 0 : Math.max(0, v);
+    }
+
+    /** Vuelca VISOR a los controles (arranque, hash y JSON aplicado). */
+    function sincronizarVisor() {
+        var set = function (id, v) {
+            var el = document.getElementById(id);
+            if (el) { el.value = v; }
+        };
+        set('pgv-tono', VISOR.tono);
+        set('pgv-titulo', VISOR.titulo);
+        set('pgv-items', VISOR.items);
+        set('pgv-indice', VISOR.indice);
+        set('pgv-segmentos', VISOR.segmentos);
+        set('pgv-meta', VISOR.meta);
+        set('pgv-acciones', VISOR.acciones);
+        var l = document.getElementById('pgv-listado');
+        if (l) { l.checked = !!VISOR.listado; }
+        var r = document.getElementById('pgv-roto');
+        if (r) { r.checked = !!VISOR.roto; }
+    }
+
+    // Sin `MU.visor.actualizar()` el modal es una foto: cada cambio se ve al reabrir.
+    enlazar('pgv-tono', 'change', function (e) {
+        VISOR.tono = String(e.target.value || 'claro');
+        avisar('Tono ' + VISOR.tono + ' (reabri el visor)');
+    });
+    enlazar('pgv-titulo', 'input', function (e) {
+        VISOR.titulo = String(e.target.value || 'Galeria');
+    });
+    enlazar('pgv-items', 'input', function () {
+        VISOR.items = Math.min(40, enteroDe('pgv-items'));
+        avisar('Items del visor: ' + (VISOR.items || 'los de la galeria'));
+    });
+    enlazar('pgv-indice', 'input', function () {
+        VISOR.indice = enteroDe('pgv-indice');
+        if (document.querySelector('.mu-gal-visor')) { window.MU.ir(VISOR.indice); }
+    });
+    enlazar('pgv-listado', 'change', function (e) {
+        VISOR.listado = !!e.target.checked;
+        avisar('Listado ' + (VISOR.listado ? 'abajo' : 'off') + ' (reabri el visor)');
+    });
+    enlazar('pgv-segmentos', 'input', function () {
+        VISOR.segmentos = Math.min(3, enteroDe('pgv-segmentos'));
+    });
+    enlazar('pgv-meta', 'change', function (e) {
+        VISOR.meta = String(e.target.value || 'simple');
+        avisar('Meta ' + VISOR.meta + ' (reabri el visor)');
+    });
+    enlazar('pgv-acciones', 'input', function () {
+        VISOR.acciones = Math.min(4, enteroDe('pgv-acciones'));
+    });
+    enlazar('pgv-roto', 'change', function (e) {
+        VISOR.roto = !!e.target.checked;
+        if (VISOR.roto && !VISOR.items) { VISOR.items = 4; }
+        sincronizarVisor();
+        avisar('Imagenes ' + (VISOR.roto ? 'rotas' : 'ok') + ' (reabri el visor)');
+    });
+    enlazar('pgv-abrir', 'click', function () { abrirVisor(VISOR.indice); });
 
     enlazar('pg-visor', 'click', function () { abrirVisor(0); });
     enlazar('pg-json-aplicar', 'click', aplicarJson);
@@ -939,10 +1200,36 @@
         }
     }
 
-    // QA: visor con listado inferior (F2); `#visor3` ademas prueba `MU.ir(3)`.
-    if (window.location.hash === '#visor' || window.location.hash === '#visor3') {
-        abrirVisor(0);
-        if (window.location.hash === '#visor3') { window.MU.ir(3); }
+    // Cada hash del visor fija UN escenario completo (misma idea que los hashes de la
+    // coleccion): recargar = mismo estado. `#visor3` queda como ALIAS deprecado de
+    // `#visor?indice=3`: no agrega comportamiento propio.
+    var VISTAS_VISOR = {
+        '#visor': {},
+        '#visor-oscuro': { tono: 'oscuro' },
+        '#visor-1': { items: 1, listado: false },
+        '#visor-meta-rica': { meta: 'rica' },
+        '#visor-meta-larga': { meta: 'larga' },
+        '#visor-meta-item': { meta: 'item' },
+        '#visor-40': { items: 40 },
+        '#visor-roto': { items: 4, roto: true },
+        '#visor-sin-lista': { listado: false },
+        '#visor-segmentos': { segmentos: 2 },
+        '#visor-todo': { tono: 'oscuro', meta: 'larga', segmentos: 3, acciones: 3, items: 12 }
+    };
+    var vistaVisor = VISTAS_VISOR[window.location.hash];
+    if (vistaVisor || window.location.hash === '#visor3') {
+        if (vistaVisor) {
+            for (var kv in vistaVisor) {
+                if (vistaVisor.hasOwnProperty(kv)) { VISOR[kv] = vistaVisor[kv]; }
+            }
+        }
+        var mIndice = /[?&]indice=(\d+)/.exec(window.location.search);
+        var indiceVisor = mIndice
+            ? parseInt(mIndice[1], 10)
+            : (window.location.hash === '#visor3' ? 3 : 0);
+        VISOR.indice = Math.max(0, indiceVisor || 0);
+        sincronizarVisor();
+        abrirVisor(VISOR.indice);
     }
 
     // Cada hash describe la vista COMPLETA: cambiar solo el fragmento no recarga el

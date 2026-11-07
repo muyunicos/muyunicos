@@ -107,6 +107,31 @@ puertas de geometria— Playwright sobre el demo (`scrollHeight == clientHeight`
       celda de su fila), `+1` inexistente con 16 items, el `tope` en filas completas y la
       regresion de la cota (`#grilla-f2` sin desborde) y de las vistas sin cota.
 
+## Fase V0 — Playground y puerta del visor (2026-11-07)
+
+- [X] T028 `tests/galeria-demo.html`: grupo **"Visor (ambito 2)"** con las opciones REALES
+      del visor (tono, titulo, items propios o los de la galeria, indice, listado,
+      segmentos, meta con 5 estados, acciones 0-4, imagenes rotas) + **11 hashes** de
+      escenario (`#visor`, `-oscuro`, `-1`, `-meta-rica`, `-meta-larga`, `-meta-item`,
+      `-40`, `-roto`, `-sin-lista`, `-segmentos`, `-todo`) y `#visor3` degradado a alias
+      de `#visor?indice=3` (el `abrirVisor` ya no lleva opciones fijas y el JSON acepta
+      `visor:{...}`). Un comentario del panel lista lo PENDIENTE (lo que el visor NO
+      acepta hoy): no se ofrece como control para no mentir.
+- [X] T029 `tests/visor.browser.js` (Playwright + Chrome real): **VISOR OK (32/32 checks,
+      3 hallazgos)**. Mide apertura/`aria-modal`, foco, scroll-lock, contador, flechas,
+      banda sincronizada (celda 5 -> `5 / 40`), meta por item, 40 items, imagen rota,
+      segmentos, `ArrowLeft/Right`, trampa de foco con 10 `Tab`, `Escape` + foco devuelto,
+      movil 390x844 y el recorte del pie. Los hallazgos (contador de 1 item, imagen rota
+      sin mensaje, banda con scroll horizontal) se **reportan sin romper** la puerta.
+- [X] T030 `specs/019-galeria-compartida/visor-evaluacion.md`: tablero de decision con lo
+      medido, el inventario **falta / sobra / de mas / necesario** (con archivo:linea) y el
+      orden propuesto para V1…V5.
+- [X] T031 Fix medido del visor: el foco inicial **no entraba** al abrir por click. Causa:
+      `.mu-modal-overlay` arranca en `visibility: hidden` y su `transition` mantiene el
+      valor computado en `hidden`, y Chromium ignora `.focus()` en silencio. Ahora el foco
+      entra despues de `is-visible` con reintento acotado (8 x 50 ms) y sin robar el foco
+      si ya hay uno dentro del modal.
+
 ## Fuera de esta spec (fases posteriores)
 
 - [ ] T900 F2 — migrar `PMUVisor` (plugin) y la biblioteca del comprador a `MU.coleccion` /

@@ -50,7 +50,7 @@ function check(nombre, cond, detalle) {
 
 /* ==================== 1. API publica ==================== */
 console.log('== API ==');
-check('expone version', gal.version === '1.0.0', 'version=' + gal.version);
+check('expone version', gal.version === '1.0.1', 'version=' + gal.version);
 ['visor', 'cerrar', 'estaAbierto', 'tira', 'tarjeta', 'desdeWoo', 'desdeEnlaces',
     'autoInit', 'arrastrar', 'navegarWoo'].forEach((fn) => {
     check('expone ' + fn, typeof gal[fn] === 'function');

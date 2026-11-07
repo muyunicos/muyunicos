@@ -18,7 +18,7 @@
  *   - Consume los tokens del tema (`--primario`, `--mu-radius-*`), nunca los redefine.
  *
  * API: window.MUGaleria (ver specs/019-galeria-compartida/contracts/galeria.md).
- * Version: 1.0.0
+ * Version: 1.0.1
  */
 (function (global) {
     'use strict';
@@ -756,13 +756,29 @@
 
         bloquearScroll(doc, true);
         pintarVisor();
-        try { botonCerrar.focus(); } catch (eFoco) { /* sin foco programatico */ }
+        // El foco va en el frame que agrega `is-visible`. Con el overlay aun invisible
+        // (`visibility: hidden` en el modal base del tema) el navegador IGNORA
+        // `.focus()`: el visor abria sin foco y `Tab` se escapaba del modal.
+        // Medido en tests/visor.browser.js (V0, spec 019).
         // La transicion del tema corre al agregar `is-visible` en el frame siguiente.
         setTimeout(function () {
-            if (estado.raiz === overlay) {
-                overlay.className += ' is-visible';
-                overlay.setAttribute('aria-hidden', 'false');
-            }
+            if (estado.raiz !== overlay) { return; }
+            overlay.className += ' is-visible';
+            overlay.setAttribute('aria-hidden', 'false');
+            // `transition: visibility` mantiene el valor computado en `hidden` un
+            // rato, y el navegador IGNORA `.focus()` en silencio: abriendo por click
+            // el modal quedaba sin foco y `Tab` se escapaba (medido en
+            // tests/visor.browser.js). Se reintenta hasta que entre, sin robarlo si
+            // el foco ya esta dentro del modal.
+            var intentos = 0;
+            var enfocar = function () {
+                if (estado.raiz !== overlay) { return; }
+                if (overlay.contains(doc.activeElement)) { return; }
+                try { botonCerrar.focus(); } catch (eFoco) { /* sin foco programatico */ }
+                intentos += 1;
+                if (intentos < 8) { setTimeout(enfocar, 50); }
+            };
+            enfocar();
         }, 16);
         return true;
     }
@@ -1893,7 +1909,7 @@
         puro: { acotar: acotar, preCargar: preCargar, orden: orden,
             formatearPrecio: formatearPrecio, celdas: celdas, pie: pie, caben: caben,
         carga: carga, topeEnFilas: topeEnFilas, navegableDe: navegableDe, ventana: ventana },
-        version: '1.0.0'
+        version: '1.0.1'
     };
 
     global.MUGaleria = api;
