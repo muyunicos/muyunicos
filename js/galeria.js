@@ -18,7 +18,7 @@
  *   - Consume los tokens del tema (`--primario`, `--mu-radius-*`), nunca los redefine.
  *
  * API: window.MUGaleria (ver specs/019-galeria-compartida/contracts/galeria.md).
- * Version: 1.3.0
+ * Version: 1.4.0
  */
 (function (global) {
     'use strict';
@@ -261,6 +261,10 @@
             aW = aspecto * aH;
         } else {
             aW = maxW;
+            // Sin medidas: 4:3 y el ancho NO se toma a ciegas. Si el alto manda (ventana
+            // apaisada o baja) el lienzo sale de `maxH * aspecto`; `contener()` recortaba
+            // a lo mismo, pero explicito ata el resultado a la VENTANA (C1.1, V4).
+            aW = Math.min(aW, maxH * aspecto);
             aH = aW / aspecto;
         }
 
@@ -633,6 +637,8 @@
     var CAJA_TOPE_AMPLIO = 1400;
     /** Cromo lateral de la caja: 2 flechas de 44 px + gaps + paddings del cuerpo. */
     var CROMO_LATERAL = 140;
+    /** Suelo del alto del lienzo: por debajo el marco no se lee (C1.1, V4). */
+    var ALTO_MINIMO = 120;
 
     /** Ventana adaptativa (`<= 600px`): manda el `@media` a pantalla completa. */
     function esAdaptativo() {
@@ -671,11 +677,16 @@
         var vh = global.innerHeight || doc.documentElement.clientHeight || 0;
         var topeAncho = Math.min(vw * (amplio ? 0.96 : 0.92),
             amplio ? CAJA_TOPE_AMPLIO : CAJA_TOPE);
+        // La caja ENTERA tiene que caber en 92vh (su `max-height`): el alto del lienzo es la
+        // ventana menos el cromo VERTICAL medido (C1.1, V4). Antes era `vh * 0.62` a ojo:
+        // en ventanas de 768 px la caja desbordaba, el marco empujaba la banda y la meta
+        // fuera de la caja y el `overflow: hidden` las cortaba.
+        var altoLienzo = Math.min(Math.max(ALTO_MINIMO, (vh * 0.92) - cromoVertical(caja)), 720);
         var l = lienzo(estado.medidas, {
             ancho: topeAncho - CROMO_LATERAL,
-            alto: Math.min(vh * 0.62, 720),
+            alto: altoLienzo,
             minimoAncho: 320,
-            minimoAlto: 220,
+            minimoAlto: Math.min(220, altoLienzo),
             llenar: amplio
         });
         caja.style.setProperty('--mu-gal-lienzo-w', l.w + 'px');
@@ -735,6 +746,54 @@
             acciones.appendChild(b);
         });
         caja.appendChild(acciones);
+    }
+
+    /**
+     * Cromo VERTICAL de la caja: todo lo que NO es el marco (contrato C1.1, V4).
+     *
+     * Suma lo que ocupa alto FUERA del marco: cabecera, segmentos, padding vertical
+     * del cuerpo, el pie (banda + meta) con su alto NATURAL, acciones, gaps entre
+     * hijos y bordes. El pie entra a proposito: si el lienzo se quedara con todo el
+     * espacio, en ventanas de 768 px el scroll medía 0 px y la banda y la meta
+     * desaparecian (medido).
+     *
+     * Se mide por PARTES (`caja - marco` dependeria del lienzo vigente) para que el
+     * resultado sea el mismo input -> mismo output y no entre en bucle.
+     *
+     * @param {Element} caja contenedor `.mu-gal-caja`
+     * @returns {number} px a restar de la ventana para el alto del lienzo (0 sin DOM)
+     */
+    function cromoVertical(caja) {
+        var doc = global.document;
+        if (!caja || !doc || typeof global.getComputedStyle !== 'function') { return 0; }
+        var alto = 0;
+        var suma = function (sel) {
+            var el = caja.querySelector(sel);
+            if (!el) { return; }
+            // `offsetHeight` y no `getBoundingClientRect`: la animacion de apertura del modal
+            // escala la caja (0.97 -> 1) y un rect medido a mitad mentiria (chrome corto).
+            alto += el.offsetHeight || 0;
+        };
+        suma('.mu-gal-cabecera');
+        suma('.mu-gal-segs');
+        suma('.mu-gal-acciones');
+        var scroll = caja.querySelector('.mu-gal-scroll');
+        // Alto NATURAL del pie (`scrollHeight`): no depende de lo comprimido que este.
+        if (scroll) { alto += scroll.scrollHeight; }
+        var cuerpo = caja.querySelector('.mu-gal-cuerpo');
+        var cs = cuerpo ? global.getComputedStyle(cuerpo) : null;
+        if (cs) {
+            alto += (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+        }
+        var cc = global.getComputedStyle(caja);
+        if (cc) {
+            var gap = parseFloat(cc.rowGap);
+            if (!(gap >= 0)) { gap = 0; }
+            // Hijos flex de la caja: cabecera, segmentos, cuerpo, scroll y acciones.
+            alto += gap * Math.max(0, caja.children.length - 1);
+            alto += (parseFloat(cc.borderTopWidth) || 0) + (parseFloat(cc.borderBottomWidth) || 0);
+        }
+        return Math.round(alto);
     }
 
     var estado = {
@@ -2479,7 +2538,7 @@
             filtrar: filtrar, valoresFiltro: valoresFiltro,
             celdas: celdas, pie: pie, caben: caben,
         carga: carga, topeEnFilas: topeEnFilas, navegableDe: navegableDe, ventana: ventana },
-        version: '1.3.0'
+        version: '1.4.0'
     };
 
     // `MU.visor.actualizar(parcial)` (V2, T044): se cuelga de la MISMA funcion `visor`, asi

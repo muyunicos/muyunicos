@@ -547,6 +547,7 @@ async function ir(page, hash) {
             const b = el.getBoundingClientRect();
             return {
                 l: Math.round(b.left), r: Math.round(b.right),
+                    t: Math.round(b.top), b: Math.round(b.bottom),
                 w: Math.round(b.width), h: Math.round(b.height)
             };
         };
@@ -565,12 +566,16 @@ async function ir(page, hash) {
             abierto: true,
             caja: uno(caja),
             fija: /mu-gal-caja--fija/.test(caja.className),
+            cabecera: uno(q('.mu-gal-cabecera')),
             cuerpo: uno(q('.mu-gal-cuerpo')),
             marco: uno(q('.mu-gal-marco')),
+            meta: uno(q('.mu-gal-meta')),
+            scroll: uno(q('.mu-gal-scroll')),
             img: uno(q('.mu-gal-img')),
             prev: uno(q('.mu-gal-prev')),
             next: uno(q('.mu-gal-next')),
             linea: uno(linea),
+            lista: uno(lista),
             lineaPrev: linea ? unoFlecha(linea.querySelector('.mu-gal-prev')) : null,
             lineaNext: linea ? unoFlecha(linea.querySelector('.mu-gal-next')) : null,
             bordes: [estilo('.mu-gal-cabecera', 'borderBottomWidth'),
@@ -638,6 +643,37 @@ async function ir(page, hash) {
     chk('en 811px (franja reportada) navegar tampoco mueve la caja',
         b1.caja.w === b2.caja.w && b1.marco.w === b2.marco.w && b1.prev.l === b2.prev.l,
         'antes=' + b1.caja.w + '/' + b1.marco.w + ' despues=' + b2.caja.w + '/' + b2.marco.w);
+
+    /* ------- 12quater. alto de la caja: cabe en 92vh y nada se solapa ------- */
+    console.log('== ventanas de 768 px: la caja entera cabe y el marco no se escapa ==');
+
+    for (const [wv, hv] of [[820, 768], [1000, 768]]) {
+        await page.setViewportSize({ width: wv, height: hv });
+        await ir(page, '#visor-todo');
+        const v = await medirResponsive();
+        const etq = ' (' + wv + 'x' + hv + ')';
+        const tope = hv * 0.92;
+        chk('la caja entera cabe en el 92vh de la ventana' + etq,
+            v.caja.h <= tope + 1, 'caja.h=' + v.caja.h + ' tope=' + Math.round(tope));
+        chk('el marco cabe DENTRO del cuerpo (vertical)' + etq,
+            v.marco.t >= v.cuerpo.t - 1 && v.marco.b <= v.cuerpo.b + 1,
+            'cuerpo=' + JSON.stringify(v.cuerpo) + ' marco=' + JSON.stringify(v.marco));
+        chk('la cabecera y el cuerpo no se pisan' + etq,
+            v.cuerpo.t >= v.cabecera.b - 1 && v.cuerpo.b <= v.caja.b + 1,
+            'cabecera=' + JSON.stringify(v.cabecera) + ' cuerpo=' + JSON.stringify(v.cuerpo)
+                + ' caja=' + JSON.stringify(v.caja));
+        if (v.lista && v.meta) {
+            chk('banda y meta van debajo del marco y el scroll no se sale de la caja' + etq,
+                v.lista.t >= v.marco.b - 1 && v.meta.t >= v.marco.b - 1
+                && v.scroll.b <= v.caja.b + 1,
+                'marco.b=' + v.marco.b + ' meta=' + JSON.stringify(v.meta)
+                    + ' lista=' + JSON.stringify(v.lista) + ' scroll=' + JSON.stringify(v.scroll));
+        }
+        chk('la banda queda con alto util (el pie no desaparece)' + etq,
+            !!v.scroll && v.scroll.h > 40, 'scroll.h=' + (v.scroll ? v.scroll.h : 'sin scroll'));
+        console.log('  datos' + etq + ': caja=' + v.caja.w + 'x' + v.caja.h
+            + ' marco=' + v.marco.w + 'x' + v.marco.h);
+    }
 
     await page.setViewportSize({ width: 520, height: 900 });
     await ir(page, '#visor');

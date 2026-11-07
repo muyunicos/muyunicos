@@ -65,12 +65,22 @@ antes era `fit-content` y cada foto re-dimensionaba la caja (el `mu-gal-cuerpo` 
   promedio: `aspecto` = media de `w/h`, `area` = media de `w*h` y el rectangulo
   representativo es `h = sqrt(area / aspecto)`, `w = aspecto * h` (media **geometrica**:
   respeta tamano y forma). Se acota a lo disponible con `contain` (nunca deforma) y
-  respeta minimos de escritorio. Sin medidas cae al clasico **4:3**.
+  respeta minimos de escritorio. Sin medidas cae al clasico **4:3**, acotado por el ancho
+  **y** por el alto disponibles (`min(maxW, maxH * aspecto)`).
 - El JS publica `--mu-gal-lienzo-w/h` en la caja; el **marco** toma ese tamano **fijo** y
   la imagen se encaja dentro con `object-fit: contain`. Navegar solo cambia el `src`.
 - `ancho` deja de ser un tamano: `'auto'` (default) usa el item promedio;
   `'completo'` **llena** el espacio disponible (`llenar: true`, tope `min(96vw, 1400px)`)
   conservando el aspecto promedio. Un numero en px ya **no** tiene efecto.
+- **Alto**: la caja **entera** cabe en `92vh` (su `max-height`). El alto del lienzo es
+  `min(92vh - cromo, 720)`, con el cromo **medido en el DOM** al aplicar: cabecera,
+  segmentos, padding vertical del cuerpo, **el pie con su alto natural** (banda + meta,
+  `scroll.scrollHeight`), acciones, gaps y bordes; suelo de **120 px**. El pie entra en la
+  cuenta a proposito: sin el, en ventanas de 768 px el scroll quedaba en **0 px** y la
+  banda y la meta desaparecian (medido). Si aun asi no entra, `.mu-gal-caja--fija
+  .mu-gal-cuerpo` (`flex: 0 0 auto` + `overflow: hidden`) **no encoge** y
+  `.mu-gal-caja--fija .mu-gal-scroll` (`flex: 1 1 auto`, `min-height: 0`) absorbe y
+  scrollea: el marco **nunca** se escapa de la caja.
 - Se recalcula al montar, al redimensionar la ventana y cuando `actualizar()` cambia
   `items`/`ancho`. **Nunca** al navegar.
 

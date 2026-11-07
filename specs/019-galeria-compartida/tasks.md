@@ -211,6 +211,25 @@ uno suma checks a `tests/visor.browser.js` y, si toca los puros, a `tests/galeri
 - [X] T048 Docs: `contracts/galeria.md` C1.1 reescrito (dos modos) y bump `MU.version`
       a 1.3.0 + `Version:` de `style.css` (cache-bust, D12).
 
+- [X] T049 CSS (C1.1, V4): `.mu-gal-caja--fija .mu-gal-cuerpo` pasa a `flex: 0 0 auto`
+      + `overflow: hidden` y `.mu-gal-caja--fija .mu-gal-scroll` a `flex: 1 1 auto` +
+      `min-height: 0`: el marco nunca se escapa de la caja y el scroll absorbe lo que
+      queda. El comentario de `.mu-gal-scroll` decia que el cuerpo scrolleaba (falso
+      desde F2): corregido.
+- [X] T050 `aplicarLienzo()` mide el cromo VERTICAL (`cromoVertical()`: cabecera,
+      segmentos, padding del cuerpo, **pie natural** con `scroll.scrollHeight`, acciones,
+      gaps y bordes) y el alto del lienzo pasa a `min(92vh - cromo, 720)` con suelo
+      `ALTO_MINIMO = 120`; `minimoAlto` se acota al alto disponible. Sin medidas, el 4:3
+      se acota tambien por el alto (D25). Medido: con el cromo SIN el pie, a 1000x768 el
+      scroll quedaba en 0 px (banda y meta invisibles) -> el pie entra en la cuenta.
+- [X] T051 Puertas: `visor.browser.js` (`medirResponsive` con `t`/`b` + `cabecera`,
+      `meta`, `scroll` y `lista`) afirma a **820x768** y **1000x768** que la caja cabe en
+      92vh, que el marco cabe en el cuerpo, que nada se solapa y que la banda conserva
+      alto util; `galeria.test.js` afirma el CSS del cuerpo/scroll, el `vh * 0.92` (ya sin
+      `vh * 0.62`) y la rama sin medidas con el alto mandando. Docs: `contracts/galeria.md`
+      C1.1, `spec.md` D25 y `visor-evaluacion.md` fila 30; bump `MU.version` a 1.4.0 +
+      `Version:` de `style.css` (cache-bust, D12).
+
 - [ ] T900 F2 — migrar `PMUVisor` (plugin) y la biblioteca del comprador a `MU.coleccion` /
       `MU.visor` (D11: dependencia BLANDA, el plugin no puede exigir el tema).
 - [ ] T901 F3 — la calculadora de `muyunicos` como consumidor de la coleccion.

@@ -78,6 +78,7 @@ regresiones).
 | 27 | **Activo de la banda feo** (reportado) | `outline` externo recortado por `overflow: hidden` + borde del item = doble marco | **CORREGIDO en V3** (T047): anillo interno + `aria-current` |
 | 28 | **Flechas de la fila sobresalen** (reportado) | `left/right: -6px` fuera del bloque | **CORREGIDO en V3** (T047): `0` + la fila reserva el ancho |
 | 29 | **Lineas divisorias** (reportado) | cuatro rayas apiladas (cabecera, meta, acciones, banda) | **CORREGIDO en V3** (T047): cero lineas, separacion por espacio |
+| 30 | **La caja se escapa del 92vh con 768 px de ventana** (medido) | el alto del lienzo era `vh * 0.62` a ojo: la caja pasaba de su `max-height` y el marco empujaba la banda y la meta fuera (el `overflow: hidden` las cortaba) | **CORREGIDO en V4** (T049/T050): alto = 92vh - cromo VERTICAL medido; el cuerpo no encoge y el scroll absorbe |
 | 23 | Contenido libre (`bloque`) | no existe | **Decidir** (no es requisito de la V2) |
 | 24 | Instancia | `visor.actualizar()` cambia el contenido con el modal abierto y sin recrear el DOM | **RESUELTO en V2** (T044) |
 
@@ -90,6 +91,17 @@ laboratorio (T022/T023), que necesita `C:\wp-lab` corriendo.
 **V3 (2026-11-07 bis)** cierra las cinco correcciones que reporto el mantenedor (filas 25-29) y
 reescribe el modelo de tamano (D19): la puerta queda en **VISOR OK (97/97, 0 hallazgos)** +
 **GALERIA OK (245 checks)**. El pendiente de laboratorio sigue siendo el mismo (SC-003).
+
+**V4 (2026-11-07 ter)** corrige el ALTO de la caja (fila 30): el lienzo deja de salir de
+`vh * 0.62` a ojo y pasa a `min(92vh - cromo, 720)`, con el cromo VERTICAL medido en el
+DOM (cabecera, segmentos, padding del cuerpo, **pie natural** con `scroll.scrollHeight`,
+acciones, gaps y bordes); el cuerpo no encoge y `.mu-gal-scroll` absorbe. Medido con
+`#visor-todo`: a **1000x768** caja 567x707 / marco 427x320 / banda con 180 px utiles; a
+**820x768** caja 541x707 / marco 401x301; a **1440x960** el pie entra exacto (0 px de
+scroll interno). En 768 px de alto el pie conserva ~180 px utiles y puede quedar con
+20-30 px de scroll dentro de `.mu-gal-scroll` (el lienzo mas chico ensancha el texto de la
+meta: nunca se recorta). Puertas: **VISOR OK (107/107 checks, 0 hallazgos)** + **GALERIA
+OK (249 checks)**.
 
 ## 3. Inventario: qué falta, qué sobra, qué está de más
 

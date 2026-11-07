@@ -163,7 +163,7 @@
     font-weight: 600;
 }
 
-/* Cuerpo + banda + meta scrollean JUNTOS: la cabecera y las acciones quedan fijas.
+/* La banda y la meta scrollean juntas: la cabecera, la imagen y las acciones quedan fijas.
    Antes la caja recortaba (`overflow: hidden`) y la meta larga se perdia abajo. */
 .mu-gal-scroll {
     display: flex;
@@ -811,7 +811,12 @@ button.mu-gal-mini--vacia {
         max-width: 92vw;
     }
 
-    .mu-gal-caja--fija .mu-gal-cuerpo { padding: 12px 8px; }
+    /* El marco NUNCA se escapa de la caja (C1.1, V4): el cuerpo conserva su alto (no
+       encoge) y el scroll absorbe lo que queda. Antes el cuerpo se comprimia, el marco
+       desbordaba y las flechas y la banda se salian de la caja en ventanas bajas. */
+    .mu-gal-caja--fija .mu-gal-cuerpo { padding: 12px 8px; flex: 0 0 auto; overflow: hidden; }
+
+    .mu-gal-caja--fija .mu-gal-scroll { flex: 1 1 auto; min-height: 0; }
 
     .mu-gal-caja--fija .mu-gal-marco {
         flex: 0 0 auto;

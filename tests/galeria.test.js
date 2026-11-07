@@ -602,6 +602,12 @@ const nm = gal.puro.normalizarMeta;
     check('sin medidas usa el ancho disponible sin recortar de mas',
         sin.acotado === false, JSON.stringify(sin));
 
+    // C1.1 (V4): sin medidas y con el ALTO mandando (ventana apaisada o baja) el lienzo
+    // sale del alto, no del ancho maximo a ciegas.
+    const apaisado = L([], { ancho: 1200, alto: 400 });
+    check('sin medidas y con el alto mandando, el lienzo sale del alto',
+        apaisado.w === 533 && apaisado.h === 400, JSON.stringify(apaisado));
+
     const mixto = L([{ w: 800, h: 400 }, { url: 'x' }], ancho);
     check('los items sin w/h no ensucian el promedio', mixto.medidas === 1
         && mixto.w === 740, JSON.stringify(mixto));
@@ -636,6 +642,16 @@ check('el activo de la banda es un anillo INTERNO (sin outline recortado)',
 check('las flechas de la fila ya no sobresalen del bloque',
     !/\.mu-gal-caja-linea \.mu-nav-btn\.prev \{ left: -/.test(cssCodigo)
     && /mu-gal-caja-linea--flechas/.test(cssCodigo));
+
+/* --- C1.1 (V4): la caja ENTERA cabe en 92vh, el cuerpo no encoge y el scroll absorbe --- */
+check('el marco no se escapa: el cuerpo conserva su alto y el scroll absorbe',
+    /\.mu-gal-caja--fija \.mu-gal-cuerpo \{[^}]*flex: 0 0 auto/.test(cssCodigo)
+    && /\.mu-gal-caja--fija \.mu-gal-cuerpo \{[^}]*overflow: hidden/.test(cssCodigo)
+    && /\.mu-gal-caja--fija \.mu-gal-scroll \{[^}]*flex: 1 1 auto/.test(cssCodigo));
+check('el alto del lienzo sale de la ventana menos el cromo vertical (no a ojo)',
+    /cromoVertical/.test(jsCodigo) && /vh \* 0\.92/.test(jsCodigo)
+    && !/vh \* 0\.62/.test(jsCodigo));
+check('la caja declara el tope de 92vh que el JS respeta', /max-height: 92vh/.test(cssCodigo));
 
 /* ==================== Resultado ==================== */
 console.log('');

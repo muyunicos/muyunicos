@@ -159,6 +159,18 @@ Contrato: [contracts/coleccion.md](./contracts/coleccion.md). Reemplaza "tira + 
   chip `+1` no existe**: si queda un solo item oculto y el `tope` lo deja entrar, se muestra;
   el `+1` solo queda cuando el `tope` de celdas lo impide, y ahi abre el visor.
 
+- **D25 — La caja entera cabe en 92vh: el alto del lienzo se MIDE** (2026-11-07): el alto
+  del marco era `min(vh * 0.62, 720)` a ojo, asi que con 768 px de ventana la caja se
+  pasaba de su `max-height: 92vh`, el marco empujaba la banda y la meta fuera del area
+  visible y el `overflow: hidden` las cortaba. Ahora `aplicarLienzo()` mide el **cromo
+  vertical** en el DOM (cabecera, segmentos, padding del cuerpo, **pie natural** con
+  `scroll.scrollHeight`, acciones, gaps y bordes) y calcula `min(92vh - cromo, 720)` con
+  suelo de 120 px. El cuerpo **no encoge** (`flex: 0 0 auto` + `overflow: hidden`) y
+  `.mu-gal-scroll` absorbe: el marco nunca se escapa y el pie nunca desaparece (con el
+  cromo sin el pie, a 1000x768 el scroll media 0 px: probado y descartado). Sin medidas,
+  el 4:3 tambien se acota por el alto (`min(maxW, maxH * aspecto)`). Se re-mide al montar
+  y al redimensionar, **nunca** al navegar (D19).
+
 - **FR-024** `MU.coleccion(el, opciones)` con `layout` (fila/grilla), `navegable`
   (`auto`/true/false; alias `deslizable`), `tamano`, `gap`, `filas`, `columnas`, `alto`.
 - **FR-025** `MU.puro.celdas()` decide `visiblesItems`, `huecos` y `chip` (D21).
