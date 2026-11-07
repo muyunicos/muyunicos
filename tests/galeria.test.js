@@ -547,6 +547,36 @@ check('sin cota las filas siguen automaticas',
 check('la celda obedece el alto de la fila',
     /\[data-cota\][^{]*>\s*\.mu-gal-celda\s*\{[^}]*max-height:\s*var\(--fila-alto/.test(cssCodigo));
 
+/* ==================== Meta normalizada (spec 019 V2, T043) ==================== */
+console.log('== Meta (normalizarMeta) ==');
+const nm = gal.puro.normalizarMeta;
+{
+    const vieja = nm({ badge: '31% OFF', badgeTipo: 'oferta', precio: { valor: 100, anterior: 130 } });
+    check('la forma vieja da badge con tono y un precio',
+        vieja.badge.texto === '31% OFF' && vieja.badge.tono === 'oferta'
+        && vieja.precios.length === 1 && vieja.precios[0].anterior === 130);
+    check('el badge string sin badgeTipo cae al tono tienda',
+        nm({ badge: 'Nuevo' }).badge.tono === 'tienda');
+    const nueva = nm({
+        badge: { texto: 'Nuevo', tono: 'nuevo' },
+        precios: [{ etiqueta: 'Regular', valor: 1 }, { etiqueta: 'Mayor', valor: 2, anterior: 3 }],
+        nota: 'x'
+    });
+    check('la forma nueva: badge objeto, dos precios con etiqueta y nota',
+        nueva.badge.tono === 'nuevo' && nueva.precios.length === 2
+        && nueva.precios[0].etiqueta === 'Regular' && nueva.precios[1].anterior === 3
+        && nueva.nota === 'x');
+    check('un precio sin valor se descarta',
+        nm({ precios: [{ etiqueta: 'x' }, { valor: 5 }] }).precios.length === 1);
+    check('una meta vacia o ausente devuelve null',
+        nm(null) === null && nm(undefined) === null && nm({}) !== null);
+    check('un tono desconocido cae al tono tienda',
+        nm({ badge: { texto: 'x', tono: 'turquesa' } }).badge.tono === 'tienda');
+    check('guardada y comprada se conservan (las usa la biblioteca del plugin)',
+        nm({ badge: 'x', badgeTipo: 'guardada' }).badge.tono === 'guardada'
+        && nm({ badge: 'x', badgeTipo: 'comprada' }).badge.tono === 'comprada');
+}
+
 /* ==================== Resultado ==================== */
 console.log('');
 if (fallos > 0) {

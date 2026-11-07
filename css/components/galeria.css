@@ -697,6 +697,29 @@ button.mu-gal-mini--vacia {
 .mu-gal-badge--guardada { background: #6c5ce7; }
 .mu-gal-badge--comprada { background: #047857; }
 
+/* Tonos del badge compartidos por el visor y la tarjeta (V2, T043): `tienda` es la base
+   (sin regla propia), y `guardada`/`comprada` los usa la biblioteca del plugin. */
+.mu-gal-badge--nuevo { background: #0f766e; }
+.mu-gal-badge--oferta { background: #b45309; }
+.mu-gal-badge--peligro { background: #b91c1c; }
+
+/* Etiqueta de un precio con nombre (Regular / Mayor) y nota al pie de la meta. */
+.mu-gal-precio-etiqueta {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    opacity: 0.7;
+}
+
+.mu-gal-nota {
+    margin: 6px 0 0;
+    font-size: 11px;
+    color: var(--texto-light);
+}
+
+.mu-gal-visor--oscuro .mu-gal-nota { color: rgb(255 255 255 / 62%); }
+
 .mu-gal-origen {
     font-size: 10px;
     font-weight: 700;

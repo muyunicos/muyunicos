@@ -528,27 +528,80 @@
         }
     }
 
-    /** Bloque de metadatos (titulo, descripcion, badge, precio). */
+    /** Tonos de badge validos (los dos ultimos los usa la biblioteca del plugin). */
+    function tonoBadge(tono) {
+        var t = String(tono || '').toLowerCase();
+        var ok = ['tienda', 'nuevo', 'oferta', 'peligro', 'guardada', 'comprada'];
+        return (ok.indexOf(t) === -1) ? 'tienda' : t;
+    }
+
+    /**
+     * Normaliza la meta a UNA forma (V2, T043), aceptando la forma vieja para no romper a
+     * quien ya llama asi:
+     *   badge: '31% OFF' | {texto, tono}   + badgeTipo    -> {texto, tono}
+     *   precio: {valor, anterior, aviso}                 -> precios: [{etiqueta, valor, anterior, aviso}]
+     * Devuelve `null` si no hay nada que pintar.
+     */
+    function normalizarMeta(meta) {
+        if (!meta || typeof meta !== 'object') { return null; }
+        var out = { badge: null, titulo: '', descripcion: '', precios: [], nota: '' };
+
+        var b = meta.badge;
+        if (b && typeof b === 'object') {
+            out.badge = { texto: String(b.texto || ''), tono: tonoBadge(b.tono) };
+        } else if (b) {
+            out.badge = { texto: String(b), tono: tonoBadge(meta.badgeTipo) };
+        }
+        if (out.badge && !out.badge.texto) { out.badge = null; }
+
+        if (meta.titulo) { out.titulo = String(meta.titulo); }
+        if (meta.descripcion) { out.descripcion = String(meta.descripcion); }
+        if (meta.nota) { out.nota = String(meta.nota); }
+
+        var lista = Array.isArray(meta.precios) ? meta.precios
+            : ((meta.precio && typeof meta.precio === 'object') ? [meta.precio] : []);
+        lista.forEach(function (p) {
+            if (!p || p.valor === undefined || p.valor === null) { return; }
+            out.precios.push({
+                etiqueta: p.etiqueta ? String(p.etiqueta) : '',
+                valor: p.valor,
+                anterior: (p.anterior === undefined) ? null : p.anterior,
+                aviso: p.aviso ? String(p.aviso) : ''
+            });
+        });
+        return out;
+    }
+
+    /** Bloque de metadatos (badge tonal, titulo, descripcion, precios y nota). */
     function pintarMeta(doc, meta) {
         var caja = crear(doc, 'div', 'mu-gal-meta-caja');
-        if (meta.badge) { caja.appendChild(crear(doc, 'span', 'mu-gal-badge', meta.badge)); }
-        if (meta.titulo) { caja.appendChild(crear(doc, 'p', 'mu-gal-meta-titulo', meta.titulo)); }
-        if (meta.descripcion) {
-            caja.appendChild(crear(doc, 'p', 'mu-gal-meta-desc', meta.descripcion));
+        var m = normalizarMeta(meta);
+        if (!m) { return caja; }
+        if (m.badge) {
+            caja.appendChild(crear(doc, 'span',
+                'mu-gal-badge mu-gal-badge--' + m.badge.tono, m.badge.texto));
         }
-        if (meta.precio && meta.precio.valor !== undefined) {
+        if (m.titulo) { caja.appendChild(crear(doc, 'p', 'mu-gal-meta-titulo', m.titulo)); }
+        if (m.descripcion) {
+            caja.appendChild(crear(doc, 'p', 'mu-gal-meta-desc', m.descripcion));
+        }
+        m.precios.forEach(function (p) {
             var fila = crear(doc, 'p', 'mu-gal-precio');
-            if (meta.precio.anterior !== undefined && meta.precio.anterior !== null) {
+            if (p.etiqueta) {
+                fila.appendChild(crear(doc, 'span', 'mu-gal-precio-etiqueta', p.etiqueta));
+            }
+            if (p.anterior !== null) {
                 fila.appendChild(crear(doc, 'span', 'mu-gal-precio-antes',
-                    '$' + formatearPrecio(meta.precio.anterior)));
+                    '$' + formatearPrecio(p.anterior)));
             }
             fila.appendChild(crear(doc, 'strong', 'mu-gal-precio-ya',
-                '$' + formatearPrecio(meta.precio.valor)));
-            if (meta.precio.aviso) {
+                '$' + formatearPrecio(p.valor)));
+            if (p.aviso) {
                 fila.appendChild(crear(doc, 'span', 'mu-gal-precio-aviso', 'actualizado'));
             }
             caja.appendChild(fila);
-        }
+        });
+        if (m.nota) { caja.appendChild(crear(doc, 'p', 'mu-gal-nota', m.nota)); }
         return caja;
     }
 
@@ -631,7 +684,7 @@
             vaciar(caja);
             var meta = item.meta || o.meta || null;
             if (meta) { caja.appendChild(pintarMeta(s.raiz.ownerDocument, meta)); }
-            caja.hidden = !meta;
+            caja.hidden = !caja.firstChild;
         }
 
         // Precarga de vecinos: la MISMA url que la miniatura, cero peticiones extra.
@@ -1321,9 +1374,12 @@
         img.setAttribute('src', String(item.thumb || item.url || ''));
         cajaImg.appendChild(img);
 
-        if (item.badge) {
-            var tipo = String(item.badgeTipo || 'tienda').toLowerCase();
-            cajaImg.appendChild(crear(doc, 'span', 'mu-gal-badge mu-gal-badge--' + tipo, item.badge));
+        // El badge de la tarjeta pasa por el MISMO normalizador que el del visor (T043):
+        // asi `badge` string + `badgeTipo` y `badge:{texto,tono}` valen en los dos.
+        var metaTarjeta = normalizarMeta(item);
+        if (metaTarjeta && metaTarjeta.badge) {
+            cajaImg.appendChild(crear(doc, 'span',
+                'mu-gal-badge mu-gal-badge--' + metaTarjeta.badge.tono, metaTarjeta.badge.texto));
         }
         if (typeof o.onEstrella === 'function') {
             var est = crear(doc, 'button', 'mu-gal-estrella', item.favorito ? '\u2605' : '\u2606');
@@ -2174,7 +2230,8 @@
         navegarWoo: navegarWoo,
         coleccion: coleccion,
         puro: { acotar: acotar, preCargar: preCargar, orden: orden,
-            formatearPrecio: formatearPrecio, filtrar: filtrar, valoresFiltro: valoresFiltro,
+            formatearPrecio: formatearPrecio, normalizarMeta: normalizarMeta, tonoBadge: tonoBadge,
+            filtrar: filtrar, valoresFiltro: valoresFiltro,
             celdas: celdas, pie: pie, caben: caben,
         carga: carga, topeEnFilas: topeEnFilas, navegableDe: navegableDe, ventana: ventana },
         version: '1.1.0'

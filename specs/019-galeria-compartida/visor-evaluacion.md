@@ -2,7 +2,7 @@
 
 **Estado**: **V1** (2026-11-07). El visor se prueba **en vivo** en
 `tests/galeria-demo.html` (panel "Visor (ambito 2)") y tiene puerta propia:
-`node tests/visor.browser.js` → **VISOR OK (61/61 checks, 0 hallazgos)**.
+`node tests/visor.browser.js` → **VISOR OK (64/64 checks, 0 hallazgos)**.
 Complementa `spec.md` §3 (FR-024…FR-030) y `contracts/galeria.md` (API del visor).
 
 Este documento es el **tablero de decisión**: lo medido, lo que falta, lo que sobra y lo
@@ -62,13 +62,13 @@ regresiones).
 | 9 | Imagen rota | mensaje + **Reintentar** (`?r=<ts>`) y la rota oculta (`mu-gal-img--roto`) | **RESUELTO en V2** (T041) |
 | 10 | Meta larga | cuerpo/banda/meta viven en `.mu-gal-scroll` (`overflow-y:auto`): no recorta | **RESUELTO en V1** |
 | 11 | 390 px | flechas superpuestas sobre el marco; la imagen usa >82% del ancho | **RESUELTO en V1** |
-| 12 | Precios | solo `precio{valor,anterior,aviso}` en `pintarMeta` | **Falta** `precios[]` (Regular/Mayor), `nota` y `badge{texto,tono}` (**T043**) |
+| 12 | Precios | `pintarMeta` pasa por `normalizarMeta`: `precios[]` con etiqueta y `nota` | **RESUELTO en V2** (T043) |
 | 13 | Damero permanente | se veia detras de TODA foto opaca (bandas grises) | **RESUELTO en V1**: damero solo con `item.transparente` |
 | 14 | Ancho fijo 880 | una foto vertical dejaba aire a los lados | **RESUELTO en V1**: `ancho` auto o completo (T034) |
 | 15 | Segmentos | prometian filtros y no filtraban | **RESUELTO en V1**: son pestañas informativas; los filtros viven en la coleccion (C10) |
 | 16 | Borde y separadores | 3px dorado (casi invisible) vs grises frios vs punteado azul | **RESUELTO en V1**: 1px con `--mu-gal-sep` unico |
 | 17 | Contraste en oscuro | precio `#047857` sobre `#111827` (~3:1) | **RESUELTO en V1**: `#34d399` |
-| 18 | Badge tonal | sin variantes tonales | **Falta** `badge{texto,tono}` (**T043**) |
+| 18 | Badge tonal | `normalizarMeta` acepta `badge{texto,tono}` y la forma vieja; el tono va a la clase | **RESUELTO en V2** (T043) |
 | 19 | Acciones | solo `etiqueta` + `clase` en `visor()` | **RESUELTO en V2** (T042): `icono` de la familia local + `aria` |
 | 20 | Marco de la foto (`tono:'foto'`) | el damero ya es opt-in (V1); falta un marco oscuro propio para fotos | **Decidir** (no es requisito de la V2) |
 | 21 | Ancho de la caja | era 880 px fijo | **RESUELTO en V1**: `ancho` auto o `completo` (T034) |
@@ -77,8 +77,9 @@ regresiones).
 | 24 | Instancia | `visor()` crea el DOM y `cerrar()` lo retira | **Falta** singleton + `MU.visor.actualizar()` (**T044**) |
 
 Desde la V2 la banda inferior en 390 px **afirma** que scrollea (es un carrusel por diseno): dejo de
-ser un aviso y paso a check. La imagen rota ya tiene estado propio (fila 9) y las acciones su
-icono (fila 19), asi que la puerta queda en **61/61 con 0 hallazgos**.
+ser un aviso y paso a check. La imagen rota ya tiene estado propio (fila 9), las acciones su
+icono (fila 19) y la meta su forma unica (filas 12 y 18): la puerta queda en **64/64 con 0
+hallazgos**.
 
 ## 3. Inventario: qué falta, qué sobra, qué está de más
 
@@ -159,7 +160,7 @@ Cada punto, con su check nuevo en `tests/visor.browser.js` y `GALERIA OK`:
 
 1. ~~Estado de error de imagen (mensaje + reintento).~~ **hecho** (T041).
 2. ~~`acciones[].icono` + variantes tonales.~~ **hecho** (T042: familia local, sin set del tema).
-3. `precios[]` + `nota` + `badge{texto,tono}`, unificando con `MU.tarjeta`.
+3. ~~`precios[]` + `nota` + `badge{texto,tono}`, unificando con `MU.tarjeta`.~~ **hecho** (T043).
 4. Singleton + `MU.visor.actualizar()` + `[data-mu-galeria-visor]` declarativo.
 
 Orden de implementacion: **T041** (error de imagen) -> **T042** (`icono`) -> **T043** (meta rica) ->

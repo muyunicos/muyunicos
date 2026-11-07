@@ -36,7 +36,10 @@ MUGaleria.visor({
   ancho: 'auto' | 'completo' | 880,             // default 'auto' (ver C1.1)
   segmentos: [ { etiqueta, activo, onElegir() } ],   // pestañas: NO filtran (ver C1.2)
   acciones:  [ { etiqueta, icono, aria, clase, onAccion(indice) } ],
-  meta:      { titulo, descripcion, badge, precio: { valor, anterior, aviso } },
+  meta:      { titulo, descripcion, nota,
+                badge: '31% OFF' | { texto, tono },              // + badgeTipo (forma vieja)
+                precios: [ { etiqueta, valor, anterior, aviso } ],  // o precio: {...} (vieja)
+              },
   listado:   'abajo' | false,                   // banda de miniaturas (default false)
   alCambiar: function (indice) {},
   alCerrar:  function () {}
@@ -84,6 +87,13 @@ sincronizada dos vias con la imagen grande (`MU.ir(i)`): ver `coleccion.md` C8.
   asi no se ve el icono del navegador. El estado vive en el DOM del **marco**: al cambiar de
   imagen el `src` nuevo lo limpia solo, sin estado extra. El marco reserva `min-height: 220px`
   (`mu-gal-marco--error`) para que el mensaje no colapse cuando no hay alto natural.
+- **Meta normalizada** (V2, T043): `MU.puro.normalizarMeta(meta)` deja **una** forma y acepta la
+  vieja (retrocompatible, no rompe llamadores): `badge` string + `badgeTipo` -> `{texto, tono}`, y
+  `precio:{valor, anterior, aviso}` -> `precios:[{etiqueta, valor, anterior, aviso}]`. Tonos:
+  `tienda` (default), `nuevo`, `oferta`, `peligro`, `guardada` y `comprada` (los dos ultimos los usa
+  la biblioteca del plugin); un tono desconocido cae a `tienda`. `precios[]` pinta **una fila por
+  precio** con su `etiqueta` (Regular/Mayor) y `nota` va al pie de la meta. **El mismo normalizador
+  pinta el badge de la tarjeta**, asi no quedan dos formatos de badge en el sistema.
 - **Acciones con icono** (V2, T042): `acciones[].icono` acepta `usar`, `descargar`, `corazon` o
   `basura`. **No es un set del tema**: son cuatro SVG de la familia del chevron, creados con
   `createElementNS` (el componente no usa `innerHTML`) y decorativos (`aria-hidden`), asi que el

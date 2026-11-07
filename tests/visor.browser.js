@@ -61,6 +61,11 @@ async function leer(page) {
             nextHidden: !!(raiz.querySelector('.mu-gal-next') || {}).hidden,
             metaVisible: meta ? !meta.hidden : false,
             badge: (raiz.querySelector('.mu-gal-badge') || {}).textContent || '',
+            badgeClases: (raiz.querySelector('.mu-gal-badge') || {}).className || '',
+            preciosFilas: raiz.querySelectorAll('.mu-gal-precio').length,
+            precioEtiquetas: Array.from(raiz.querySelectorAll('.mu-gal-precio-etiqueta'))
+                .map((e) => e.textContent).join('|'),
+            nota: (raiz.querySelector('.mu-gal-nota') || {}).textContent || '',
             precioYa: (raiz.querySelector('.mu-gal-precio-ya') || {}).textContent || '',
             precioAntes: (raiz.querySelector('.mu-gal-precio-antes') || {}).textContent || '',
             imgNatural: img ? img.naturalWidth : -1,
@@ -380,6 +385,20 @@ async function ir(page, hash) {
         r.accionPeligro === 1, 'peligro=' + r.accionPeligro);
     chk('una accion solo-icono conserva su nombre accesible (aria-label)',
         r.accionSoloIconoAria.length > 3, 'aria-label="' + r.accionSoloIconoAria + '"');
+    chk('la forma VIEJA del badge (string + badgeTipo) sigue dando su tono',
+        /mu-gal-badge--oferta/.test(r.badgeClases) && r.badge === '31% OFF',
+        'badge=' + r.badge + ' clases="' + r.badgeClases + '"');
+
+    /* ---------------- 8d. meta rica (V2, T043) ---------------- */
+    console.log('== #visor-meta-precios: 2 precios + badge con tono + nota ==');
+    await ir(page, '#visor-meta-precios');
+    r = await leer(page);
+    chk('2 precios, cada uno con su etiqueta (Regular / Mayor)',
+        r.preciosFilas === 2 && r.precioEtiquetas === 'Regular|Mayor',
+        'filas=' + r.preciosFilas + ' etiquetas="' + r.precioEtiquetas + '"');
+    chk('el badge objeto trae su tono y la nota se pinta',
+        /mu-gal-badge--nuevo/.test(r.badgeClases) && r.badge === 'Nuevo' && r.nota.length > 10,
+        'badge=' + r.badge + ' clases="' + r.badgeClases + '" nota=' + r.nota.length);
 
 /* ---------------- 9. sin listado y segmentos ---------------- */
     console.log('== #visor-sin-lista y #visor-segmentos ==');

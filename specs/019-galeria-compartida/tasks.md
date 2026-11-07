@@ -180,7 +180,7 @@ uno suma checks a `tests/visor.browser.js` y, si toca los puros, a `tests/galeri
 - [X] T042 `acciones[].icono` con el mapa LOCAL `ICONOS` (`usar`/`descargar`/`corazon`/
       `basura`, familia del chevron: `createElementNS`, sin `innerHTML`) y clase buena
       `mu-gal-peligro` (`pmu-visor-peligro` se conserva como puente hasta T900).
-- [ ] T043 Meta rica: `MU.puro.normalizarMeta()` (retrocompatible con `badge` string y
+- [X] T043 Meta rica: `MU.puro.normalizarMeta()` (retrocompatible con `badge` string y
       `precio{valor,anterior,aviso}`) -> `badge{texto,tono}`, `precios[]` y `nota`; lo usan
       `pintarMeta` del visor y `MU.tarjeta`, para no tener dos formatos.
 - [ ] T044 Singleton + `MU.visor.actualizar(parcial)` (items/meta/titulo/acciones/pos sobre

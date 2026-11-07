@@ -3,7 +3,7 @@
 **Estado**: F0 + F1 (2026-11-05) en produccion de tema, **F2.5b** (modelo v2: chip
 acumulativo, `navegable` auto, `tope` en celdas, cota `filas`), **cota exacta** y
 **V1 del visor** (2026-11-07: playground propio en `tests/galeria-demo.html`, puerta
-`tests/visor.browser.js` en 61/61 con 0 hallazgos y fix
+`tests/visor.browser.js` en 64/64 con 0 hallazgos y fix
 del foco inicial) implementadas. En curso la **V2 del visor** (error de imagen, iconos de
 accion, meta rica y singleton + `actualizar()`). Pendiente: SC-003 en el laboratorio (T022)
 y las fases F2 (plugin) y F3 (calculadora), que NO entran en esta spec. Detalle en

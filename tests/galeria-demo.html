@@ -291,6 +291,7 @@
                     <option value="sin">sin meta</option>
                     <option value="simple" selected>simple</option>
                     <option value="rica">rica (precio + badge)</option>
+                    <option value="precios">2 precios + badge con tono + nota</option>
                     <option value="larga">larga (texto de 600 letras)</option>
                     <option value="item">por item (solo la 2da)</option>
                 </select>
@@ -587,7 +588,20 @@
                     + 'muestra. Garantia de 30 dias por defecto de fabricacion. El precio '
                     + 'incluye preparacion de archivo y prueba digital. Consulta por mayoristas '
                     + 'y revendedores: hay precio por cantidad a partir de 50 unidades.',
-                precio: { valor: 153, anterior: 180, aviso: true }
+                precio: { valor: 153, anterior: 180, aviso: true },
+                badgeTipo: 'oferta'   /* forma VIEJA del tono: debe seguir valiendo */
+            };
+        }
+        if (VISOR.meta === 'precios') {
+            /* Forma NUEVA (V2, T043): badge con tono, dos precios con nombre y nota al pie. */
+            return {
+                badge: { texto: 'Nuevo', tono: 'nuevo' },
+                titulo: 'Vinilo holografico 5cm',
+                precios: [
+                    { etiqueta: 'Regular', valor: 120 },
+                    { etiqueta: 'Mayor', valor: 96, anterior: 120 }
+                ],
+                nota: 'Precio por unidad. Desde 50 unidades no se aplica el recargo.'
             };
         }
         return null;
@@ -1331,6 +1345,7 @@
         '#visor-roto': { items: 4, roto: true },
         '#visor-roto-mixto': { items: 4, rotoHasta: 2 },
         '#visor-sin-lista': { listado: false },
+        '#visor-meta-precios': { meta: 'precios' },
         '#visor-segmentos': { segmentos: 2 },
         '#visor-todo': { tono: 'oscuro', meta: 'larga', segmentos: 3, acciones: 4, items: 12 }
     };
