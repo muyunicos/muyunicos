@@ -90,6 +90,21 @@ colores, radios, sombras y transiciones. La galeria unica debe vivir aqui.
   `scrollLeft`: la flecha se enciende **solo si el track desborda y queda recorrido en ese
   extremo**. Antes la visibilidad era una media query por ancho de pantalla.
 
+### Enmienda 2026-11-07 (bis) — dos modos de tamano del visor
+
+- **D19 — El visor tiene DOS modos y la caja NO cambia al navegar**: `adaptive`
+  (`<= 600 px`, pantalla completa) y `responsive` (`> 600 px`) dimensionado por el
+  **item PROMEDIO** (`MU.puro.lienzo`: media geometrica de aspecto y area, acotada con
+  `contain`). Retira `fit-content`, `ajustarFlechas()` y las clases
+  `--auto`/`--completo`/`--justo`. `ancho:'completo'` pasa a significar "llenar el
+  espacio disponible" y un numero en px ya no tiene efecto. Motivo medido: la caja media
+  su `min-content` (el modal base es `width: 100%`), el marco desbordaba y las flechas se
+  salian de la caja en la franja **811–820 px**.
+- **D20 — El acabado no lleva rayas**: el visor no tiene lineas divisorias internas
+  (cabecera, meta, acciones y banda se separan con **espacio**) y el activo de la banda es
+  un anillo **interno** + `aria-current`, no un `outline` externo (la banda lo recortaba y
+  se sumaba al borde del item = doble marco).
+
 ### Enmienda 2026-11-05 (bis) — flechas del sistema
 
 - **D18** (arriba) reemplaza el media query de `.mu-nav-btn.prev/.next`: `display: flex` solo

@@ -301,10 +301,10 @@
                 <input type="number" id="pgv-acciones" min="0" max="4" value="1">
             </div>
             <div class="pg-campo">
-                <label for="pgv-ancho">Ancho de la caja</label>
+                <label for="pgv-ancho">Modo de la caja</label>
                 <select id="pgv-ancho">
-                    <option value="auto" selected>auto (al contenido)</option>
-                    <option value="completo">pantalla completa</option>
+                    <option value="auto" selected>auto (lienzo del item promedio)</option>
+                    <option value="completo">completo (llenar el espacio)</option>
                 </select>
             </div>
             <div class="pg-campo">
@@ -544,7 +544,7 @@
         acciones: 1,
         roto: false,
         rotoHasta: 0,       // N: rompe solo los primeros N items (0 = ninguna)
-        ancho: 'auto',      // 'auto' = al contenido (default) | 'completo' = casi pantalla
+        ancho: 'auto',      // 'auto' = lienzo del item promedio (default) | 'completo' = llenar
     };
 
     /** Items propios del visor: `n` los fabrica; `roto` rompe las urls a proposito. */

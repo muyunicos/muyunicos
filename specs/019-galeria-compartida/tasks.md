@@ -148,11 +148,14 @@ Decisiones del usuario en `visor-evaluacion.md` §7. Puerta al cierre: **VISOR O
 - [X] T034 `contador:'auto'|true|false` (default `auto`: oculto con 1 item) y
       `ancho:'auto'|'completo'|n` (`auto` = la caja se ajusta al contenido en escritorio).
       Checks: `1 item` sin contador, `auto` <= 880px, `completo` > 880px.
+      **SUPERADO por T046**: `auto` ya no ajusta al contenido (lienzo del item promedio).
 - [X] T035 Scroll del cuerpo: cabecera y acciones fijas, cuerpo/banda/meta en
       `.mu-gal-scroll` (`overflow-y:auto`). La meta larga ya no se recorta (check en movil).
 - [X] T036 Flechas **superpuestas automaticas** (decision del componente, no opcion):
       `ajustarFlechas()` mide el ancho y marca `mu-gal-cuerpo--justo`; en movil quedan sobre
       el marco a media altura y la imagen usa >82% del ancho. Se recalcula al redimensionar.
+      **SUPERADO por T046**: `ajustarFlechas()` se retira; en `responsive` las flechas van
+      siempre al costado porque el lienzo ya se acota, y en `adaptive` lo hace el `@media`.
 - [X] T037 `MU.coleccion` **filtros** (contrato C10): `filtros:'campo'|[campos]` +
       `filtroActivo`; valores derivados de los datos, solo campos con slot visible, "Todos"
       primero, `<select>` con 8+ valores, reseteo de tanda y chip/pie/min sobre lo filtrado.
@@ -191,7 +194,22 @@ uno suma checks a `tests/visor.browser.js` y, si toca los puros, a `tests/galeri
       `visor-evaluacion.md` (§2 y §6 cerrados) y bump de `MU.version` a 1.2.0 +
       `Version:` de `style.css` (cache-bust, D12).
 
-## Fuera de esta spec (fases posteriores)
+- [X] T046 **Dos modos de tamano** (C1.1 v3): `adaptive` (<=600 px, pantalla completa) y
+      `responsive` (>600 px) con el **lienzo del item PROMEDIO**. Puro nuevo
+      `MU.puro.lienzo()` (media geometrica de aspecto/area + `contain` + minimos + `llenar`
+      para `completo`); `medirItems()` completa `w`/`h` desde `naturalWidth` de una `<img>`
+      del DOM con la misma url. El JS publica `--mu-gal-lienzo-w/h` y retira `fit-content`,
+      `ajustarFlechas()` y las clases `--auto`/`--completo`/`--justo`: el lienzo queda FIJO
+      y navegar no mueve la caja. Checks: 8 anchos (601/700/768/811/815/820/900/1200) x
+      (caja fija + flechas dentro + marco dentro del cuerpo) + estabilidad al navegar a
+      900 px y en la franja reportada de 811 + modo `adaptive` a 520 px.
+- [X] T047 Acabado del visor: activo de la banda con anillo INTERNO (`box-shadow` inset) +
+      `aria-current` y sin el `outline` externo que recortaba la banda; flechas de
+      `mu-gal-caja-linea` dentro del bloque (`left/right: 0`) con la fila reservandoles el
+      ancho; y **cero** lineas divisorias (cabecera/meta/acciones/banda se separan con
+      espacio, no con rayas).
+- [X] T048 Docs: `contracts/galeria.md` C1.1 reescrito (dos modos) y bump `MU.version`
+      a 1.3.0 + `Version:` de `style.css` (cache-bust, D12).
 
 - [ ] T900 F2 — migrar `PMUVisor` (plugin) y la biblioteca del comprador a `MU.coleccion` /
       `MU.visor` (D11: dependencia BLANDA, el plugin no puede exigir el tema).

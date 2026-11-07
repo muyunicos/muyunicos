@@ -60,7 +60,7 @@ check('expone visor.actualizar (V2, T044)', typeof gal.visor.actualizar === 'fun
     check('expone ' + fn, typeof gal[fn] === 'function');
 });
 ['acotar', 'preCargar', 'orden', 'formatearPrecio', 'filtrar', 'valoresFiltro', 'celdas',
-    'pie', 'caben', 'carga', 'navegableDe', 'ventana'].forEach((fn) => {
+    'pie', 'caben', 'lienzo', 'carga', 'navegableDe', 'ventana'].forEach((fn) => {
     check('expone puro.' + fn, typeof gal.puro[fn] === 'function');
 });
 
@@ -577,6 +577,65 @@ const nm = gal.puro.normalizarMeta;
         nm({ badge: 'x', badgeTipo: 'guardada' }).badge.tono === 'guardada'
         && nm({ badge: 'x', badgeTipo: 'comprada' }).badge.tono === 'comprada');
 }
+
+/* --- Lienzo del visor (contrato C1.1: los dos modos) --- */
+{
+    const L = gal.puro.lienzo;
+    const ancho = { ancho: 740, alto: 600 };
+    // Dos apaisados identicos 800x400: area media 320000, aspecto 2 ->
+    // h = sqrt(320000 / 2) = 400, w = 800 -> acotado a 740 por 592.
+    const dos = L([{ w: 800, h: 400 }, { w: 800, h: 400 }], ancho);
+    check('el lienzo sale del item promedio (area x aspecto)',
+        dos.w === 740 && dos.h === 370 && dos.medidas === 2,
+        JSON.stringify(dos));
+    check('el lienzo conserva el aspecto promedio (no deforma)',
+        Math.abs((dos.w / dos.h) - 2) < 0.02, 'aspecto=' + (dos.w / dos.h));
+
+    // Un vertical 400x800: area 320000, aspecto 0.5 -> 800 de alto, acotado a 600.
+    const vert = L([{ w: 400, h: 800 }], ancho);
+    check('un vertical se acota al alto disponible', vert.w === 300 && vert.h === 600,
+        JSON.stringify(vert));
+
+    const sin = L([], ancho);
+    check('sin medidas cae al 4:3 y usa el ancho disponible',
+        sin.w === 740 && sin.h === 555 && sin.medidas === 0, JSON.stringify(sin));
+    check('sin medidas usa el ancho disponible sin recortar de mas',
+        sin.acotado === false, JSON.stringify(sin));
+
+    const mixto = L([{ w: 800, h: 400 }, { url: 'x' }], ancho);
+    check('los items sin w/h no ensucian el promedio', mixto.medidas === 1
+        && mixto.w === 740, JSON.stringify(mixto));
+
+    const chico = L([{ w: 10, h: 10 }], Object.assign({}, ancho,
+        { minimoAncho: 320, minimoAlto: 220 }));
+    check('respeta los minimos de escritorio', chico.w >= 320 && chico.h >= 220,
+        JSON.stringify(chico));
+
+    const uno = L([{ w: 800, h: 400 }], ancho);
+    const otro = L([{ w: 800, h: 400 }], ancho);
+    check('es determinista (mismo input, mismo lienzo)',
+        uno.w === otro.w && uno.h === otro.h);
+
+    const enorme = L([{ w: 4000, h: 4000 }], { ancho: 300, alto: 200 });
+    check('nunca desborda lo disponible', enorme.w <= 300 && enorme.h <= 200,
+        JSON.stringify(enorme));
+}
+
+/* --- CSS acoplado a los dos modos (una regresion aca se ve en el navegador) --- */
+check('la caja toma el lienzo y ya no es `fit-content`',
+    /mu-gal-caja--fija/.test(cssCodigo) && /--mu-gal-lienzo-w/.test(cssCodigo)
+    && !/fit-content/.test(cssCodigo.replace(/Antes la caja era `fit-content`.+/g, '')));
+check('el lienzo queda FIJO por apertura (no se recalcula al navegar)',
+    /aplicarLienzo/.test(jsCodigo) && !/ajustarFlechas/.test(jsCodigo));
+check('el visor ya no tiene lineas divisorias internas',
+    !/border-top: 1px solid var\(--mu-gal-sep\)/i.test(cssCodigo)
+    && !/border-bottom: 1px solid var\(--mu-gal-sep\)/i.test(cssCodigo));
+check('el activo de la banda es un anillo INTERNO (sin outline recortado)',
+    /\.mu-gal-visor-lista \.mu-gal-celda--activa \{ outline: 0/.test(cssCodigo)
+    && /\.mu-gal-visor-lista \.mu-gal-celda--activa \.mu-gal-item \{/.test(cssCodigo));
+check('las flechas de la fila ya no sobresalen del bloque',
+    !/\.mu-gal-caja-linea \.mu-nav-btn\.prev \{ left: -/.test(cssCodigo)
+    && /mu-gal-caja-linea--flechas/.test(cssCodigo));
 
 /* ==================== Resultado ==================== */
 console.log('');

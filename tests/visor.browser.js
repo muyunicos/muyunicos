@@ -98,6 +98,12 @@ async function leer(page) {
             celdas: celdas.length,
             activa: activa ? celdas.indexOf(activa) : -1,
             listaScrollX: lista ? (lista.scrollWidth - lista.clientWidth) : 0,
+            // El scroll real de la banda vive en la FILA (la banda puede tener flechas
+            // a los costados y reservarles ancho): medir la lista daba 0.
+            lineaScrollX: (function () {
+                const l = raiz.querySelector('.mu-gal-linea');
+                return l ? (l.scrollWidth - l.clientWidth) : 0;
+            })(),
             segs: raiz.querySelectorAll('.mu-gal-seg').length,
             segActivo: (raiz.querySelector('.mu-gal-seg[aria-pressed="true"]') || {}).textContent || '',
             acciones: raiz.querySelectorAll('.mu-gal-accion').length,
@@ -160,8 +166,9 @@ async function ir(page, hash) {
     chk('en escritorio las flechas van AL COSTADO del marco',
         r.flechasAlCostado === true && r.cuerpoJusto === false,
         'costado=' + r.flechasAlCostado + ' justo=' + r.cuerpoJusto);
-    chk('`ancho: auto` (default) no pasa de 880px', /mu-gal-caja--auto/.test(r.cajaClases)
-        && r.cajaAncho <= 880, 'clases=' + r.cajaClases + ' ancho=' + r.cajaAncho);
+    chk('modo responsive: la caja toma el lienzo del item promedio y no pasa de 880px',
+        /mu-gal-caja--fija/.test(r.cajaClases) && r.cajaAncho <= 880,
+        'clases=' + r.cajaClases + ' ancho=' + r.cajaAncho);
     chk('la caja usa un borde fino (1px), sin el dorado de 3px', r.cajaBorder === '1px',
         'border=' + r.cajaBorder);
     chk('banda inferior con 9 miniaturas y la 1ra activa',
@@ -210,8 +217,8 @@ async function ir(page, hash) {
     console.log('== #visor-completo: ancho de caja a pantalla ==');
     await ir(page, '#visor-completo');
     r = await leer(page);
-    chk('`ancho: completo` ensancha la caja mas alla de 880px',
-        /mu-gal-caja--completo/.test(r.cajaClases) && r.cajaAncho > 880,
+    chk('`ancho: completo` sube el tope y la caja pasa los 880px',
+        /mu-gal-caja--fija/.test(r.cajaClases) && r.cajaAncho > 880,
         'clases=' + r.cajaClases + ' ancho=' + r.cajaAncho);
 
     console.log('== #filtro-etiqueta: los filtros son de la galeria (C10) ==');
@@ -503,14 +510,14 @@ async function ir(page, hash) {
     chk('la imagen no desborda el ancho del viewport', r.imgAncho <= 390,
         'imgAncho=' + r.imgAncho);
     chk('en 390 las flechas se SUPERponen al marco (decision del componente)',
-        r.cuerpoJusto === true && r.flechasSuperpuestas === true,
-        'justo=' + r.cuerpoJusto + ' superpuestas=' + r.flechasSuperpuestas);
+        r.flechasSuperpuestas === true,
+        'superpuestas=' + r.flechasSuperpuestas);
     chk('la imagen usa casi todo el ancho de la caja', (r.imgAncho / r.cajaAncho) > 0.82,
         'imgAncho=' + r.imgAncho + ' cajaAncho=' + r.cajaAncho);
     // La banda es un carrusel por diseno: que scrollee NO es un defecto, pero si es
     // una propiedad observable del componente en movil, asi que se afirma.
     chk('en 390 px la banda inferior es un carrusel y scrollea en horizontal',
-        r.listaScrollX > 1, 'scroll horizontal=' + r.listaScrollX + 'px');
+        r.lineaScrollX > 1, 'scroll horizontal=' + r.lineaScrollX + 'px');
     // La caja es max-height 92vh + overflow:hidden: en movil es donde el pie se aprieta.
     await ir(page, '#visor-meta-larga');
     r = await leer(page);
@@ -525,6 +532,120 @@ async function ir(page, hash) {
             + ' scrollH=' + r.scrollH + ' clientH=' + r.scrollClientH);
 
     await page.screenshot({ path: path.join(process.env.TEMP, 'qa-visor-390.png') });
+    await page.setViewportSize({ width: 1440, height: 960 });
+
+    /* ------- 12bis. modo responsive: tamanos, flechas y acabado del visor ------- */
+    console.log('== modo responsive (601-1200px): la caja NO cambia y nada se sale ==');
+
+    const medirResponsive = async () => page.evaluate(() => {
+        const raiz = document.querySelector('.mu-gal-visor');
+        if (!raiz) { return { abierto: false }; }
+        const caja = raiz.querySelector('.mu-gal-caja');
+        const cajaR = caja.getBoundingClientRect();
+        const uno = (el) => {
+            if (!el) { return null; }
+            const b = el.getBoundingClientRect();
+            return {
+                l: Math.round(b.left), r: Math.round(b.right),
+                w: Math.round(b.width), h: Math.round(b.height)
+            };
+        };
+        // Una flecha oculta no ocupa lugar: no se puede juzgar su desborde.
+        const unoFlecha = (el) => (el && !el.hidden && el.getBoundingClientRect().width > 0)
+            ? uno(el) : null;
+        const q = (s) => raiz.querySelector(s);
+        const estilo = (s, prop) => {
+            const e = q(s);
+            return e ? getComputedStyle(e)[prop] : '';
+        };
+        const lista = q('.mu-gal-visor-lista');
+        const activa = lista ? lista.querySelector('.mu-gal-celda--activa') : null;
+        const linea = q('.mu-gal-caja-linea');
+        return {
+            abierto: true,
+            caja: uno(caja),
+            fija: /mu-gal-caja--fija/.test(caja.className),
+            cuerpo: uno(q('.mu-gal-cuerpo')),
+            marco: uno(q('.mu-gal-marco')),
+            img: uno(q('.mu-gal-img')),
+            prev: uno(q('.mu-gal-prev')),
+            next: uno(q('.mu-gal-next')),
+            linea: uno(linea),
+            lineaPrev: linea ? unoFlecha(linea.querySelector('.mu-gal-prev')) : null,
+            lineaNext: linea ? unoFlecha(linea.querySelector('.mu-gal-next')) : null,
+            bordes: [estilo('.mu-gal-cabecera', 'borderBottomWidth'),
+                estilo('.mu-gal-cabecera', 'borderTopWidth'),
+                estilo('.mu-gal-meta-caja', 'borderTopWidth'),
+                estilo('.mu-gal-acciones', 'borderTopWidth'),
+                estilo('.mu-gal-visor-lista', 'borderTopWidth')],
+            activaOutline: activa ? getComputedStyle(activa).outlineWidth : '',
+            activaAria: activa ? activa.getAttribute('aria-current') : '',
+            activaSombra: activa ? getComputedStyle(activa.querySelector('.mu-gal-item')).boxShadow : ''
+        };
+    });
+
+    for (const w of [601, 700, 768, 811, 815, 820, 900, 1200]) {
+        await page.setViewportSize({ width: w, height: 900 });
+        await ir(page, '#visor');
+        const m = await medirResponsive();
+        const etq = ' (' + w + 'px)';
+        const dentro = (b) => !!b && m.caja.l <= b.l + 1 && b.r <= m.caja.r + 1;
+        chk('la caja toma el lienzo fijo' + etq, m.fija === true,
+            'fija=' + m.fija + ' ancho=' + m.caja.w);
+        chk('las flechas quedan DENTRO de la caja' + etq, dentro(m.prev) && dentro(m.next),
+            'caja=' + JSON.stringify(m.caja) + ' prev=' + JSON.stringify(m.prev)
+                + ' next=' + JSON.stringify(m.next));
+        chk('el marco no desborda el cuerpo' + etq,
+            m.marco.l >= m.cuerpo.l - 1 && m.marco.r <= m.cuerpo.r + 1,
+            'cuerpo=' + JSON.stringify(m.cuerpo) + ' marco=' + JSON.stringify(m.marco));
+        if (m.lineaPrev && m.lineaNext) {
+            chk('las flechas de la FILA no sobresalen' + etq,
+                m.lineaPrev.l >= m.linea.l - 1 && m.lineaNext.r <= m.linea.r + 1,
+                'linea=' + JSON.stringify(m.linea) + ' prev=' + JSON.stringify(m.lineaPrev)
+                    + ' next=' + JSON.stringify(m.lineaNext));
+        }
+    }
+
+    /* Acabado: sin lineas divisorias, activo integrado y estabilidad al navegar. */
+    await page.setViewportSize({ width: 900, height: 900 });
+    await ir(page, '#visor');
+    let mr = await medirResponsive();
+    const bordes = mr.bordes.filter((b) => b !== '');
+    chk('el visor no tiene lineas divisorias (cabecera/meta/acciones/banda)',
+        bordes.length >= 3 && bordes.every((b) => b === '0px'),
+        'bordes=' + JSON.stringify(mr.bordes));
+    chk('la celda activa de la banda no usa outline externo', mr.activaOutline === '0px',
+        'outline=' + mr.activaOutline);
+    chk('la mini activa lo declara con `aria-current`', mr.activaAria === 'true',
+        'aria-current=' + mr.activaAria);
+    chk('la mini activa se marca con un anillo INTERNO', mr.activaSombra !== 'none',
+        'box-shadow=' + mr.activaSombra);
+
+    const antes = { caja: mr.caja.w, marco: mr.marco.w + 'x' + mr.marco.h };
+    await page.evaluate(() => { window.MU.ir(3); window.MU.ir(7); });
+    await page.waitForTimeout(150);
+    mr = await medirResponsive();
+    chk('navegar NO cambia el tamano de la caja (900px)',
+        mr.caja.w === antes.caja && (mr.marco.w + 'x' + mr.marco.h) === antes.marco,
+        'antes=' + JSON.stringify(antes) + ' despues=' + mr.caja.w + '/' + mr.marco.w + 'x' + mr.marco.h);
+
+    await page.setViewportSize({ width: 811, height: 900 });
+    await ir(page, '#visor');
+    const b1 = await medirResponsive();
+    await page.evaluate(() => window.MU.ir(5));
+    await page.waitForTimeout(150);
+    const b2 = await medirResponsive();
+    chk('en 811px (franja reportada) navegar tampoco mueve la caja',
+        b1.caja.w === b2.caja.w && b1.marco.w === b2.marco.w && b1.prev.l === b2.prev.l,
+        'antes=' + b1.caja.w + '/' + b1.marco.w + ' despues=' + b2.caja.w + '/' + b2.marco.w);
+
+    await page.setViewportSize({ width: 520, height: 900 });
+    await ir(page, '#visor');
+    const adapt = await medirResponsive();
+    chk('modo adaptive (<600px): sin lienzo fijo y caja a pantalla',
+        adapt.fija === false && adapt.caja.w >= 500,
+        'fija=' + adapt.fija + ' ancho=' + adapt.caja.w);
+
     await page.setViewportSize({ width: 1440, height: 960 });
 
     /* ---------------- 12. sin errores de JS ---------------- */

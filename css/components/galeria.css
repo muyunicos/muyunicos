@@ -45,8 +45,8 @@
 }
 
 /* Tokens LOCALES del visor (prefijo propio: el componente NO redefine los del tema).
-   `--mu-gal-sep` unifica cabecera, meta, banda y acciones (antes convivian gris frio,
-   punteado azul y dorado).
+   `--mu-gal-sep` queda para el borde de la CAJA y las miniaturas de la banda: las lineas
+   INTERNAS se retiraron en V3 (D20: el visor se separa con espacio, no con rayas).
    `--mu-gal-lienzo` es el fondo del marco; el damero queda para imagenes que pueden
    ser transparentes, porque con una foto opaca son bandas grises alrededor. */
 .mu-gal-visor {
@@ -88,14 +88,11 @@
     display: flex;
     align-items: center;
     gap: var(--mu-space-sm);
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--mu-gal-sep);
+    padding: 12px 16px 8px;
     min-width: 0;
 }
 
-.mu-gal-visor--oscuro .mu-gal-cabecera {
-    border-bottom-color: var(--mu-gal-sep);
-}
+/* Cabecera sin borde: la separacion es de espacio, no de linea (ver `.mu-gal-meta-caja`). */
 
 .mu-gal-titulo {
     margin: 0;
@@ -298,27 +295,9 @@
 
 .mu-gal-cuerpo .mu-nav-btn[hidden] { display: none; }
 
-/* Flechas SUPERPUESTAS cuando el ancho no da. Es una DECISION del componente, no una
-   opcion: el JS marca `mu-gal-cuerpo--justo` si el marco quedaria por debajo del
-   minimo util, y ahi las flechas van SOBRE el marco, a media altura. Al costado
-   consumian 84px en un telefono (dos de 44 + gaps) y se comian la imagen. */
-.mu-gal-cuerpo--justo {
-    position: relative;
-    padding-left: 8px;
-    padding-right: 8px;
-}
-
-.mu-gal-cuerpo--justo .mu-nav-btn.prev,
-.mu-gal-cuerpo--justo .mu-nav-btn.next {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 3;
-    box-shadow: 0 4px 14px rgb(15 23 42 / 28%);
-}
-
-.mu-gal-cuerpo--justo .mu-nav-btn.prev { left: 12px; }
-.mu-gal-cuerpo--justo .mu-nav-btn.next { right: 12px; }
+/* En modo `responsive` las flechas van SIEMPRE al costado: el lienzo ya se acoto para
+   que entren (caja = lienzo + cromo). La superposicion existe solo en `adaptive`, y la
+   aplica el `@media` de abajo. Es una DECISION del componente, no una opcion. */
 
 /* Respaldo sin JS (SSR / impresion): en pantallas angostas, siempre superpuestas. */
 @media (max-width: 600px) {
@@ -351,8 +330,9 @@
     flex-direction: column;
     align-items: flex-start;   /* el badge es un chip: no se estira a todo el ancho */
     gap: 6px;
-    border-top: 1px solid var(--mu-gal-sep);
-    padding-top: 10px;
+    /* Sin linea sobre la meta: con cabecera + acciones + banda eran cuatro rayas
+       apiladas en la misma caja y ensuciaban la vista. El ritmo lo da el espacio. */
+    padding-top: 4px;
 }
 
 .mu-gal-meta-titulo {
@@ -378,13 +358,10 @@
     justify-content: center;
     gap: 10px;
     flex-wrap: wrap;
-    padding: 12px 16px 16px;
-    border-top: 1px solid var(--mu-gal-sep);
+    padding: 8px 16px 16px;
 }
 
-.mu-gal-visor--oscuro .mu-gal-acciones {
-    border-top-color: rgb(255 255 255 / 12%);
-}
+/* Acciones sin borde: mismo criterio que la cabecera y la meta. */
 
 .mu-gal-accion {
     display: inline-flex;
@@ -817,27 +794,39 @@ button.mu-gal-mini--vacia {
     .mu-gal-tarjeta { width: 168px; }
 }
 
-/* `ancho` (contrato C1): en ESCRITORIO la caja se ajusta al contenido (`auto`, el
-   default) en vez de estirarse a 880px dejando aire alrededor de una foto vertical;
-   `completo` la lleva casi a pantalla. En movil manda el @media de abajo (fullscreen). */
+/* --- DOS MODOS (contrato C1.1) ---
+   `adaptive`   (<= 600px): pantalla completa; lo resuelve el `@media` de arriba y el JS
+                            no publica lienzo.
+   `responsive` (> 600px) : la caja y el marco toman el LIENZO del item PROMEDIO que
+                            calcula el JS al abrir (`--mu-gal-lienzo-w/h`) y lo dejan
+                            fijo: al navegar la imagen NO cambia de tamano.
+   Antes la caja era `fit-content`: con el modal base (`width: 100%`) `.mu-gal-cuerpo`
+   media su min-content, el marco desbordaba y las flechas se salian de la caja
+   (franja 811-820 px). Ahora el ancho es una suma explicita y no depende del contenido. */
 @media (min-width: 601px) {
-    .mu-modal-container.mu-gal-caja.mu-gal-caja--auto {
-        width: fit-content;
-        min-width: 420px;
-        max-width: min(92vw, 880px);
+    .mu-modal-container.mu-gal-caja.mu-gal-caja--fija {
+        /* Lienzo + cromo lateral: 2 flechas de 44 px, gaps y paddings del cuerpo. */
+        width: calc(var(--mu-gal-lienzo-w, 620px) + var(--mu-gal-cromo, 140px));
+        min-width: 0;
+        max-width: 92vw;
     }
 
-    .mu-gal-caja--auto .mu-gal-marco { flex: 0 0 auto; max-width: 100%; }
-    .mu-gal-caja--auto .mu-gal-img { width: auto; max-width: 100%; }
+    .mu-gal-caja--fija .mu-gal-cuerpo { padding: 12px 8px; }
 
-    .mu-modal-container.mu-gal-caja.mu-gal-caja--completo {
-        width: min(96vw, 1400px);
-        max-width: min(96vw, 1400px);
-        max-height: 96vh;
+    .mu-gal-caja--fija .mu-gal-marco {
+        flex: 0 0 auto;
+        width: var(--mu-gal-lienzo-w, 620px);
+        height: var(--mu-gal-lienzo-h, 465px);
+        max-width: 100%;
     }
 
-    /* A pantalla completa la foto manda: se aprovecha el alto disponible. */
-    .mu-gal-caja--completo .mu-gal-img { max-height: calc(92vh - 260px); }
+    /* La imagen se encaja DENTRO del lienzo fijo (contain: nunca deforma ni recorta). */
+    .mu-gal-caja--fija .mu-gal-img {
+        width: 100%;
+        height: 100%;
+        max-height: none;
+        object-fit: contain;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -978,8 +967,17 @@ body.is-scroll-locked { overflow: hidden; }
     z-index: 2;
 }
 
-.mu-gal-caja-linea .mu-nav-btn.prev { left: -6px; }
-.mu-gal-caja-linea .mu-nav-btn.next { right: -6px; }
+/* Dentro del bloque: con `-6px` las flechas sobresalian del contenedor. La fila
+   reserva su ancho (clase que pone el JS) para que no tapen la primera miniatura. */
+.mu-gal-caja-linea--flechas > .mu-gal-linea {
+    margin-left: 40px;
+    margin-right: 40px;
+    scroll-padding-left: 40px;
+    scroll-padding-right: 40px;
+}
+
+.mu-gal-caja-linea .mu-nav-btn.prev { left: 0; }
+.mu-gal-caja-linea .mu-nav-btn.next { right: 0; }
 .mu-gal-caja-linea .mu-nav-btn[hidden] { display: none; }
 .mu-gal-caja-linea .mu-nav-btn svg { width: 18px; height: 18px; }
 
@@ -996,14 +994,25 @@ body.is-scroll-locked { overflow: hidden; }
     border-radius: var(--mu-radius);
 }
 
+/* Celda activa del AMBITO 1 (la que se esta viendo en una galeria embebida). */
 .mu-gal-celda--activa { outline: 2px solid var(--primario); outline-offset: 2px; }
+
+/* En la BANDA del visor el outline externo lo recortaba `overflow: hidden` de la banda y
+   se sumaba al borde del item: doble marco y esquinas sucias. Aca el estado es un anillo
+   INTERNO sobre la miniatura (mismo lenguaje que el chip y el badge), y va con
+   `aria-current` para que no dependa solo del color. */
+.mu-gal-visor-lista .mu-gal-celda--activa { outline: 0; }
+
+.mu-gal-visor-lista .mu-gal-celda--activa .mu-gal-item {
+    border-color: var(--primario);
+    box-shadow: 0 0 0 2px var(--primario) inset;
+}
 
 /* Listado inferior del visor (F2): una banda con la MISMA coleccion en preset mini.
    `padding-bottom` deja respirar el outline del activo. */
 .mu-gal-visor-lista {
     margin: 0 var(--mu-gal-pad);
-    padding: 10px 2px 6px;
-    border-top: 1px solid var(--mu-gal-sep);
+    padding: 8px 2px 6px;
     max-width: 100%;
     overflow: hidden;
 }

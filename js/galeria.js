@@ -18,7 +18,7 @@
  *   - Consume los tokens del tema (`--primario`, `--mu-radius-*`), nunca los redefine.
  *
  * API: window.MUGaleria (ver specs/019-galeria-compartida/contracts/galeria.md).
- * Version: 1.2.0
+ * Version: 1.3.0
  */
 (function (global) {
     'use strict';
@@ -213,6 +213,87 @@
         var c = Math.max(1, parseInt(celda, 10) || 1);
         var g = Math.max(0, parseInt(gap, 10) || 0);
         return Math.max(1, Math.floor((a + g) / (c + g)));
+    }
+
+    /**
+     * Lienzo representativo de una lista de imagenes (contrato `galeria.md`, C1.1).
+     *
+     * El visor de escritorio NO adivina su tamano: mide el item PROMEDIO y lo fija una
+     * vez por apertura. Que la caja cambie de tamano en cada foto es justo lo que se
+     * evita (salta la UI y descoloca las flechas).
+     *
+     * Como se combina: `aspecto` = media de `w/h`; `area` = media de `w*h`. El
+     * rectangulo representativo es `h = sqrt(area / aspecto)`, `w = aspecto * h`: la
+     * media GEOMETRICA respeta tamano y forma (3x4 + 4x3 dan un cuadrado, el promedio
+     * real). Sin medidas se asume el clasico 4:3.
+     *
+     * Se acota a lo DISPONIBLE con `contain` (nunca deforma) y a los minimos de
+     * escritorio. Mismo input -> mismo output: no depende de la foto que se este viendo.
+     *
+     * @param {Array} items items del visor; usan `w`/`h` en px si los declaran
+     * @param {{ancho:number, alto:number, minimoAncho:number, minimoAlto:number}} disponible
+     * @returns {{w:number, h:number, aspecto:number, medidas:number, acotado:boolean}}
+     */
+    function lienzo(items, disponible) {
+        var d = disponible || {};
+        var maxW = Math.max(1, parseInt(d.ancho, 10) || 0);
+        var maxH = Math.max(1, parseInt(d.alto, 10) || 0);
+        var minW = Math.max(0, parseInt(d.minimoAncho, 10) || 0);
+        var minH = Math.max(0, parseInt(d.minimoAlto, 10) || 0);
+
+        var sumaAspecto = 0;
+        var sumaArea = 0;
+        var medidas = 0;
+        (items || []).forEach(function (it) {
+            var w = parseFloat(it && it.w);
+            var h = parseFloat(it && it.h);
+            if (!(w > 0) || !(h > 0)) { return; }
+            sumaAspecto += w / h;
+            sumaArea += w * h;
+            medidas += 1;
+        });
+
+        var aspecto = (medidas > 0) ? (sumaAspecto / medidas) : (4 / 3);
+        var aW;
+        var aH;
+        if (medidas > 0) {
+            aH = Math.sqrt(sumaArea / medidas / aspecto);
+            aW = aspecto * aH;
+        } else {
+            aW = maxW;
+            aH = aW / aspecto;
+        }
+
+        var acotado = false;
+        var contener = function () {
+            if (maxW > 0 && aW > maxW) { aH = aH * (maxW / aW); aW = maxW; acotado = true; }
+            if (maxH > 0 && aH > maxH) { aW = aW * (maxH / aH); aH = maxH; acotado = true; }
+        };
+        contener();
+        // Minimos de escritorio: se respetan salvo que no quepan en lo disponible.
+        if (minH > 0 && aH < minH) { aW = aW * (minH / aH); aH = minH; }
+        if (minW > 0 && aW < minW) { aH = aH * (minW / aW); aW = minW; }
+        contener();
+
+        // `llenar` (modo `completo`): el lienzo CRECE hasta tocar lo disponible
+        // conservando el aspecto promedio, en vez de quedarse en el tamano promedio.
+        if (d.llenar && isFinite(aW) && isFinite(aH) && aW > 0 && aH > 0) {
+            var k = Math.min((maxW > 0 ? maxW / aW : Infinity), (maxH > 0 ? maxH / aH : Infinity));
+            if (isFinite(k) && k > 1) {
+                aW = aW * k;
+                aH = aH * k;
+                acotado = false;
+                contener();
+            }
+        }
+
+        return {
+            w: Math.max(1, Math.round(aW)),
+            h: Math.max(1, Math.round(aH)),
+            aspecto: aspecto,
+            medidas: medidas,
+            acotado: acotado
+        };
     }
 
 /**
@@ -501,22 +582,109 @@
         return svg;
     }
 
+    /**
+     * Mide el tamano de cada item para el lienzo promedio (contrato C1.1).
+     *
+     * Si el item declara `w`/`h` se usan tal cual. Si no, se busca en el DOM una `<img>`
+     * que apunte a la MISMA url y se lee `naturalWidth/naturalHeight`: la galeria de Woo
+     * ya tiene esas imagenes pintadas, asi que medir no cuesta una descarga.
+     * Devuelve una lista paralela a `items` (nunca muta los items del consumidor).
+     */
+    function mismaUrl(srcs, url) {
+        var limpio = function (u) { return String(u || '').split('#')[0].split('?')[0]; };
+        var buscada = limpio(url);
+        if (!buscada) { return false; }
+        for (var i = 0; i < srcs.length; i++) {
+            var s = limpio(srcs[i]);
+            if (!s) { continue; }
+            if (s === buscada) { return true; }
+            // Woo agrega sufijos de recorte (`-300x300`) a la miniatura del MISMO archivo.
+            if (s.indexOf(buscada) === 0 || buscada.indexOf(s) === 0) { return true; }
+        }
+        return false;
+    }
+
+    function medirItems(items) {
+        var doc = global.document;
+        var imgs = (doc && doc.querySelectorAll) ? doc.querySelectorAll('img') : [];
+        return (items || []).map(function (it) {
+            var w = parseFloat(it && it.w);
+            var h = parseFloat(it && it.h);
+            if ((w > 0) && (h > 0)) { return { w: w, h: h }; }
+            var url = String((it && (it.url || it.thumb)) || '');
+            if (!url || !imgs.length) { return null; }
+            for (var i = 0; i < imgs.length; i++) {
+                var im = imgs[i];
+                var srcs = [im.getAttribute('src'), im.getAttribute('data-large_image'),
+                    im.getAttribute('data-src'), im.currentSrc, im.getAttribute('data-thumb')];
+                if (!mismaUrl(srcs, url)) { continue; }
+                if (im.naturalWidth > 0 && im.naturalHeight > 0) {
+                    return { w: im.naturalWidth, h: im.naturalHeight };
+                }
+            }
+            return null;
+        });
+    }
+
     /* ==================== visor (modal del tema) ==================== */
 
-    /** Aplica `ancho` a la caja (C1.1): 'auto' | 'completo' | numero en px (legado). */
-    function aplicarAncho(caja, ancho) {
-        if (!caja) { return; }
-        sinClase(caja, 'mu-gal-caja--completo');
-        sinClase(caja, 'mu-gal-caja--auto');
-        caja.style.maxWidth = '';
-        if (ancho === 'completo') {
-            caja.className += ' mu-gal-caja--completo';
-        } else if (ancho === undefined || ancho === 'auto') {
-            caja.className += ' mu-gal-caja--auto';
-        } else {
-            var anchoPx = parseInt(ancho, 10);
-            if (anchoPx > 0) { caja.style.maxWidth = anchoPx + 'px'; }
+    /** Topes del modo `responsive` (contrato `galeria.md`, C1.1). */
+    var CAJA_TOPE = 880;
+    var CAJA_TOPE_AMPLIO = 1400;
+    /** Cromo lateral de la caja: 2 flechas de 44 px + gaps + paddings del cuerpo. */
+    var CROMO_LATERAL = 140;
+
+    /** Ventana adaptativa (`<= 600px`): manda el `@media` a pantalla completa. */
+    function esAdaptativo() {
+        var doc = global.document;
+        var w = global.innerWidth
+            || (doc && doc.documentElement ? doc.documentElement.clientWidth : 0) || 0;
+        return !(w > 600);
+    }
+
+    /**
+     * Fija el LIENZO del visor de escritorio desde el item PROMEDIO y lo deja fijo
+     * (`--mu-gal-lienzo-w/h` en la caja, contrato C1.1, modo `responsive`).
+     *
+     * Se llama al montar, al cambiar los items y al redimensionar. NUNCA al navegar.
+     * Antes la caja era `fit-content`: el cuerpo media su min-content, el marco
+     * desbordaba y las flechas se salian de la visualizacion (franja 811-820 px).
+     *
+     * @returns {{w:number, h:number}|null} lienzo aplicado (null en modo adaptativo)
+     */
+    function aplicarLienzo() {
+        var r = estado.raiz;
+        if (!r) { return null; }
+        var doc = global.document;
+        var caja = r.querySelector('.mu-gal-caja');
+        if (!caja) { return null; }
+
+        sinClase(caja, 'mu-gal-caja--fija');
+        caja.style.removeProperty('--mu-gal-lienzo-w');
+        caja.style.removeProperty('--mu-gal-lienzo-h');
+        estado.lienzo = null;
+        if (esAdaptativo() || !doc) { return null; }
+
+        var o = estado.opciones || {};
+        var amplio = (o.ancho === 'completo');
+        var vw = global.innerWidth || doc.documentElement.clientWidth || 0;
+        var vh = global.innerHeight || doc.documentElement.clientHeight || 0;
+        var topeAncho = Math.min(vw * (amplio ? 0.96 : 0.92),
+            amplio ? CAJA_TOPE_AMPLIO : CAJA_TOPE);
+        var l = lienzo(estado.medidas, {
+            ancho: topeAncho - CROMO_LATERAL,
+            alto: Math.min(vh * 0.62, 720),
+            minimoAncho: 320,
+            minimoAlto: 220,
+            llenar: amplio
+        });
+        caja.style.setProperty('--mu-gal-lienzo-w', l.w + 'px');
+        caja.style.setProperty('--mu-gal-lienzo-h', l.h + 'px');
+        if (caja.className.indexOf('mu-gal-caja--fija') === -1) {
+            caja.className += ' mu-gal-caja--fija';
         }
+        estado.lienzo = l;
+        return l;
     }
 
     /**
@@ -571,7 +739,7 @@
 
     var estado = {
         raiz: null, items: [], pos: 0, opciones: {}, onKey: null,
-        overflowPrevio: '', focoPrevio: null, onResize: null
+        overflowPrevio: '', focoPrevio: null, onResize: null, medidas: [], lienzo: null
     };
 
     /** Hay un visor abierto. */
@@ -672,23 +840,14 @@
     }
 
     /**
-     * Decide si las flechas van AL COSTADO o SUPERPUESTAS (no es una opcion del
-     * contrato). Al costado consumen 84px (44 x 2) + gaps: si el marco quedaria por
-     * debajo del ancho util, se superponen sobre la imagen a media altura.
+     * Con las flechas al costado, la fila reserva su ancho: sin esto las flechas
+     * ABSOLUTAS de `mu-gal-caja-linea` tapaban la primera y la ultima miniatura.
+     * Los 36 px de la flecha + el `left: 0` se compensan aca, no en la celda.
      */
-    function ajustarFlechas() {
-        var r = estado.raiz;
-        if (!r) { return; }
-        var cuerpo = r.querySelector('.mu-gal-cuerpo');
-        if (!cuerpo) { return; }
-        var ancho = cuerpo.clientWidth || 0;
-        if (!ancho) { return; }                 // sin layout: no se decide a ciegas
-        var libre = ancho - (44 * 2) - (10 * 3) - (16 * 2);
-        var justo = cuerpo.className.indexOf('mu-gal-cuerpo--justo') !== -1;
-        if (libre < 280) {
-            if (!justo) { cuerpo.className += ' mu-gal-cuerpo--justo'; }
-        } else if (justo) {
-            sinClase(cuerpo, 'mu-gal-cuerpo--justo');
+    function marcarFlechasEnLinea(caja) {
+        if (!caja) { return; }
+        if (caja.className.indexOf('mu-gal-caja-linea--flechas') === -1) {
+            caja.className += ' mu-gal-caja-linea--flechas';
         }
     }
 
@@ -765,7 +924,6 @@
         if (typeof o.alCambiar === 'function') { o.alCambiar(s.pos); }
 
         // Sincronizacion dos vias con el listado inferior (F2).
-        ajustarFlechas();
         marcarLista(s.pos);
     }
 
@@ -797,10 +955,12 @@
         var lista = raiz.querySelector('.mu-gal-visor-lista');
         if (!lista) { return; }
         var previa = lista.querySelector('.mu-gal-celda--activa');
-        if (previa) { sinClase(previa, 'mu-gal-celda--activa'); }
+        if (previa) { sinClase(previa, 'mu-gal-celda--activa'); previa.removeAttribute('aria-current'); }
         var celda = lista.querySelector('[data-mu-gal-mini="' + pos + '"]');
         if (!celda) { return; }
         celda.className += ' mu-gal-celda--activa';
+        // El estado va tambien en `aria-current`: el anillo es solo color.
+        celda.setAttribute('aria-current', 'true');
         // Un repintado por resize reusa las opciones guardadas: sin esto volveria
         // a marcar la celda del montaje y se perderia la sincronizacion.
         var est = colecciones ? colecciones.get(lista) : null;
@@ -834,6 +994,8 @@
         s.raiz = null;
         s.items = [];
         s.pos = 0;
+        s.medidas = [];
+        s.lienzo = null;
         if (s.focoPrevio && typeof s.focoPrevio.focus === 'function') {
             try { s.focoPrevio.focus(); } catch (e) { /* el foco previo ya no existe */ }
         }
@@ -857,7 +1019,7 @@
         var p = parcial || {};
         var o = s.opciones || {};
 
-        if (Array.isArray(p.items)) { s.items = p.items.slice(); }
+        if (Array.isArray(p.items)) { s.items = p.items.slice(); s.medidas = medirItems(s.items); }
         if (!s.items.length) { return cerrar(); }
 
         if (p.titulo !== undefined) {
@@ -869,7 +1031,7 @@
         }
         if (p.meta !== undefined) { o.meta = p.meta; }
         if (p.contador !== undefined) { o.contador = p.contador; }
-        if (p.ancho !== undefined) { o.ancho = p.ancho; aplicarAncho(caja, p.ancho); }
+        if (p.ancho !== undefined) { o.ancho = p.ancho; }
         if (p.segmentos !== undefined) {
             o.segmentos = p.segmentos;
             montarSegmentos(doc, caja, o);
@@ -880,6 +1042,8 @@
         }
 
         s.opciones = o;
+        // `ancho` y un cambio de `items` mueven el lienzo: se re-mide una vez.
+        aplicarLienzo();
         s.pos = acotar((p.indice !== undefined) ? p.indice : s.pos, s.items.length);
         pintarVisor();
         return true;
@@ -925,7 +1089,7 @@
         var caja = crear(doc, 'div', 'mu-modal-container mu-gal-caja');
         // `ancho`: 'auto' (default) ajusta la caja al contenido en escritorio;
         // 'completo' la lleva casi a pantalla; un numero fija `max-width` (legado).
-        aplicarAncho(caja, o.ancho);
+        // El lienzo se aplica al FINAL del montaje: necesita `estado.medidas`.
 
         var cab = crear(doc, 'div', 'mu-gal-cabecera');
         cab.appendChild(crear(doc, 'p', 'mu-gal-titulo', o.titulo || 'Galeria'));
@@ -1029,8 +1193,11 @@
 
         estado.raiz = overlay;
         estado.items = items;
+        estado.medidas = medirItems(items);
         estado.pos = acotar(o.indice, items.length);
         estado.opciones = o;
+        // Antes del frame visible: la caja ya tiene que tener su lienzo puesto.
+        aplicarLienzo();
         estado.focoPrevio = doc.activeElement;
 
         botonCerrar.addEventListener('click', cerrar);
@@ -1059,7 +1226,8 @@
         };
         doc.addEventListener('keydown', estado.onKey);
         // El ancho decide las flechas: se recalcula al redimensionar (rotar el telefono).
-        estado.onResize = function () { ajustarFlechas(); };
+        // El lienzo depende de la ventana: se recalcula al redimensionar (rotar el telefono).
+        estado.onResize = function () { aplicarLienzo(); };
         if (global.addEventListener) { global.addEventListener('resize', estado.onResize); }
 
         bloquearScroll(doc, true);
@@ -1072,7 +1240,7 @@
         setTimeout(function () {
             if (estado.raiz !== overlay) { return; }
             overlay.className += ' is-visible';
-            ajustarFlechas();
+            aplicarLienzo();
             overlay.setAttribute('aria-hidden', 'false');
             // `transition: visibility` mantiene el valor computado en `hidden` un
             // rato, y el navegador IGNORA `.focus()` en silencio: abriendo por click
@@ -1554,7 +1722,11 @@
         var celda = crear(doc, 'div', 'mu-gal-celda');
         celda.setAttribute('data-mu-gal-mini', String(i));
         celda.style.setProperty('--mu-gal-tam', tam.ancho + 'px');
-        if (i === activo) { celda.className += ' mu-gal-celda--activa'; }
+        if (i === activo) {
+            celda.className += ' mu-gal-celda--activa';
+            // El estado no depende solo del color: el anillo es visual, esto es semantica.
+            celda.setAttribute('aria-current', 'true');
+        }
 
         var caja = crear(doc, 'div', 'mu-gal-item');
         caja.style.setProperty('--mu-gal-alto', tam.alto + 'px');
@@ -1742,6 +1914,7 @@
         });
         linea.addEventListener('scroll', pintar, { passive: true });
         if (global.addEventListener) { global.addEventListener('resize', pintar); }
+        marcarFlechasEnLinea(caja);
         caja.appendChild(prev);
         caja.appendChild(next);
         pintar();
@@ -2301,12 +2474,12 @@
         arrastrar: arrastrar,
         navegarWoo: navegarWoo,
         coleccion: coleccion,
-        puro: { acotar: acotar, preCargar: preCargar, orden: orden,
+        puro: { acotar: acotar, preCargar: preCargar, orden: orden, lienzo: lienzo,
             formatearPrecio: formatearPrecio, normalizarMeta: normalizarMeta, tonoBadge: tonoBadge,
             filtrar: filtrar, valoresFiltro: valoresFiltro,
             celdas: celdas, pie: pie, caben: caben,
         carga: carga, topeEnFilas: topeEnFilas, navegableDe: navegableDe, ventana: ventana },
-        version: '1.2.0'
+        version: '1.3.0'
     };
 
     // `MU.visor.actualizar(parcial)` (V2, T044): se cuelga de la MISMA funcion `visor`, asi

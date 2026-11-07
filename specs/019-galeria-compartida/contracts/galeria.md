@@ -33,7 +33,8 @@ MUGaleria.visor({
   titulo: 'Ideas',                              // encabezado
   tono: 'claro' | 'oscuro',                     // default 'claro'
   contador: 'auto' | true | false,              // default 'auto': oculto con 1 item
-  ancho: 'auto' | 'completo' | 880,             // default 'auto' (ver C1.1)
+  /* 'auto' (default) = lienzo del item PROMEDIO | 'completo' = ocupa el espacio */
+  ancho: 'auto' | 'completo',                   // ver C1.1 (ya no ajusta al contenido)
   segmentos: [ { etiqueta, activo, onElegir() } ],   // pestañas: NO filtran (ver C1.2)
   acciones:  [ { etiqueta, icono, aria, clase, onAccion(indice) } ],
   meta:      { titulo, descripcion, nota,
@@ -46,13 +47,43 @@ MUGaleria.visor({
 });
 ```
 
-### C1.1 — `ancho` (decision de composicion, no decoracion)
+### C1.1 — DOS MODOS de tamano (no es decoracion: es la estabilidad del visor)
 
-| Valor | Que hace |
-|---|---|
-| `'auto'` (default) | en escritorio la caja se **ajusta al contenido** (`fit-content`, entre 420 y `min(92vw, 880px)`): una foto vertical no deja aire a los lados. En movil manda el `@media` (pantalla completa). |
-| `'completo'` | `min(96vw, 1400px)` y la foto aprovecha el alto (`max-height: calc(92vh - 260px)`). |
-| numero (legado) | fija `max-width` en px, como antes. |
+El visor tiene **dos modos y nada mas**. La caja **nunca** cambia de tamano al navegar:
+antes era `fit-content` y cada foto re-dimensionaba la caja (el `mu-gal-cuerpo` media su
+`min-content`, el marco desbordaba y las flechas se salian, sobre todo en la franja
+**811–820 px**). Ese modelo esta retirado.
+
+| Modo | Cuando | Que hace |
+|---|---|---|
+| `adaptive` | ventana **<= 600 px** | pantalla completa (`@media`): `100vw` x `100dvh`, sin lienzo. |
+| `responsive` | ventana **> 600 px** | la caja se dimensiona con el **item PROMEDIO** (`MU.puro.lienzo`), una vez por apertura. |
+
+**`responsive` en detalle**:
+
+- `MU.puro.lienzo(items, {ancho, alto, minimoAncho, minimoAlto, llenar})` mide el item
+  promedio: `aspecto` = media de `w/h`, `area` = media de `w*h` y el rectangulo
+  representativo es `h = sqrt(area / aspecto)`, `w = aspecto * h` (media **geometrica**:
+  respeta tamano y forma). Se acota a lo disponible con `contain` (nunca deforma) y
+  respeta minimos de escritorio. Sin medidas cae al clasico **4:3**.
+- El JS publica `--mu-gal-lienzo-w/h` en la caja; el **marco** toma ese tamano **fijo** y
+  la imagen se encaja dentro con `object-fit: contain`. Navegar solo cambia el `src`.
+- `ancho` deja de ser un tamano: `'auto'` (default) usa el item promedio;
+  `'completo'` **llena** el espacio disponible (`llenar: true`, tope `min(96vw, 1400px)`)
+  conservando el aspecto promedio. Un numero en px ya **no** tiene efecto.
+- Se recalcula al montar, al redimensionar la ventana y cuando `actualizar()` cambia
+  `items`/`ancho`. **Nunca** al navegar.
+
+**Medidas de donde salen**: `item.w`/`item.h` si el consumidor los declara; si no, se lee
+`naturalWidth/naturalHeight` de una `<img>` del DOM que apunte a la **misma url** (la
+galeria de Woo ya las tiene pintadas: medir no cuesta una descarga). Sin ninguna medida,
+4:3.
+
+**Acabado (mismo bloque de trabajo)**: el activo de la banda es un anillo **interno**
+(`box-shadow` inset) + `aria-current`, sin `outline` externo (el `overflow: hidden` de la
+banda lo recortaba); las flechas de `mu-gal-caja-linea` van **dentro** del bloque
+(`left/right: 0`) y la fila les reserva el ancho; el visor **no** lleva lineas divisorias
+internas (cabecera, meta, acciones y banda se separan con espacio).
 
 ### C1.2 — `segmentos` NO filtra
 

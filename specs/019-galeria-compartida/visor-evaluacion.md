@@ -64,15 +64,20 @@ regresiones).
 | 11 | 390 px | flechas superpuestas sobre el marco; la imagen usa >82% del ancho | **RESUELTO en V1** |
 | 12 | Precios | `pintarMeta` pasa por `normalizarMeta`: `precios[]` con etiqueta y `nota` | **RESUELTO en V2** (T043) |
 | 13 | Damero permanente | se veia detras de TODA foto opaca (bandas grises) | **RESUELTO en V1**: damero solo con `item.transparente` |
-| 14 | Ancho fijo 880 | una foto vertical dejaba aire a los lados | **RESUELTO en V1**: `ancho` auto o completo (T034) |
+| 14 | Ancho fijo 880 | una foto vertical dejaba aire a los lados | **RESUELTO en V1** y **rehecho en V3**: `ancho` auto = item promedio, `completo` = llenar (T046) |
 | 15 | Segmentos | prometian filtros y no filtraban | **RESUELTO en V1**: son pestañas informativas; los filtros viven en la coleccion (C10) |
 | 16 | Borde y separadores | 3px dorado (casi invisible) vs grises frios vs punteado azul | **RESUELTO en V1**: 1px con `--mu-gal-sep` unico |
 | 17 | Contraste en oscuro | precio `#047857` sobre `#111827` (~3:1) | **RESUELTO en V1**: `#34d399` |
 | 18 | Badge tonal | `normalizarMeta` acepta `badge{texto,tono}` y la forma vieja; el tono va a la clase | **RESUELTO en V2** (T043) |
 | 19 | Acciones | solo `etiqueta` + `clase` en `visor()` | **RESUELTO en V2** (T042): `icono` de la familia local + `aria` |
 | 20 | Marco de la foto (`tono:'foto'`) | el damero ya es opt-in (V1); falta un marco oscuro propio para fotos | **Decidir** (no es requisito de la V2) |
-| 21 | Ancho de la caja | era 880 px fijo | **RESUELTO en V1**: `ancho` auto o `completo` (T034) |
-| 22 | Flechas | al costado y superpuestas en movil | **RESUELTO en V1**: automaticas segun el ancho del marco (T036), no es opcion |
+| 21 | Ancho de la caja | era 880 px fijo | **RESUELTO en V1** y **V3**: dos modos por item promedio (T046) |
+| 22 | Flechas | al costado y superpuestas en movil | **RESUELTO en V1** (T036) y **V3**: sin `ajustarFlechas` (T046) |
+| 25 | **Flechas fuera del cuerpo** (reportado) | a 700-820 px `prev.left = -9` y `next` 37 px fuera de la caja | **CORREGIDO en V3** (T046): la caja es `lienzo + cromo`; 8 anchos chequeados |
+| 26 | **Franja 811-820 px "todo mal"** (reportado) | `fit-content` + marco `flex: 1 1 0%` -> cuerpo de 351 px en una caja de 746 | **CORREGIDO en V3** (T046): sin `fit-content` |
+| 27 | **Activo de la banda feo** (reportado) | `outline` externo recortado por `overflow: hidden` + borde del item = doble marco | **CORREGIDO en V3** (T047): anillo interno + `aria-current` |
+| 28 | **Flechas de la fila sobresalen** (reportado) | `left/right: -6px` fuera del bloque | **CORREGIDO en V3** (T047): `0` + la fila reserva el ancho |
+| 29 | **Lineas divisorias** (reportado) | cuatro rayas apiladas (cabecera, meta, acciones, banda) | **CORREGIDO en V3** (T047): cero lineas, separacion por espacio |
 | 23 | Contenido libre (`bloque`) | no existe | **Decidir** (no es requisito de la V2) |
 | 24 | Instancia | `visor.actualizar()` cambia el contenido con el modal abierto y sin recrear el DOM | **RESUELTO en V2** (T044) |
 
@@ -81,6 +86,10 @@ ser un aviso y paso a check. La imagen rota ya tiene estado propio (fila 9), las
 icono (fila 19), la meta su forma unica (filas 12 y 18) y la instancia su `actualizar()` (fila 24):
 la puerta queda en **66/66 con 0 hallazgos**. El **unico** pendiente medido es SC-003 en el
 laboratorio (T022/T023), que necesita `C:\wp-lab` corriendo.
+
+**V3 (2026-11-07 bis)** cierra las cinco correcciones que reporto el mantenedor (filas 25-29) y
+reescribe el modelo de tamano (D19): la puerta queda en **VISOR OK (97/97, 0 hallazgos)** +
+**GALERIA OK (245 checks)**. El pendiente de laboratorio sigue siendo el mismo (SC-003).
 
 ## 3. Inventario: qué falta, qué sobra, qué está de más
 
@@ -93,7 +102,7 @@ laboratorio (T022/T023), que necesita `C:\wp-lab` corriendo.
 | `precios[]` + `nota` + `badge{texto,tono}` | el caso "Regular $153 / Mayor $105 + 31% OFF + nota pie" | `js:458-479` |
 | `acciones[].icono` + variante | el botón "Personalizar" lleva icono | `js:712-719` |
 | `marco:'oscuro'` | fondo sólido detrás de la foto (el damero es solo para transparencia) | `galeria.css:172` |
-| `ancho` | 672 / 880 / 1000 según el consumidor | `galeria.css:52` |
+| `ancho` | **decide el TAMANO del lienzo** (`auto` = item promedio, `completo` = llenar) | `galeria.css:52`, `js:643` |
 | estado de error de imagen | marco vacío sin explicación ni reintento | `js:673-679` |
 | `MU.visor.actualizar()` + singleton | reemplazar un visor **no puede** crear/borrar nodos por apertura | `js:586-588` |
 | `[data-mu-galeria-visor]` declarativo | un consumidor sin JS propio | no existe |
@@ -106,9 +115,10 @@ laboratorio (T022/T023), que necesita `C:\wp-lab` corriendo.
 | zoom/pan | ampliar dentro del marco |
 | `tono:'foto'` | fondo neutro para fotos, distinto de claro/oscuro |
 
-> `flechas:'superpuestas'` **ya no es una opcion** (V1): la posicion la decide el componente
-> midiendo el ancho (`mu-gal-cuerpo--justo`). `marco:'oscuro'`/`marco` solido: **descartado**
-> por el usuario (2026-11-07).
+> `flechas:'superpuestas'` **ya no es una opcion** (V1) y desde la **V3** tampoco hay
+> `mu-gal-cuerpo--justo`: en `responsive` el lienzo se acota y las flechas van siempre al
+> costado; en `adaptive` las superpone el `@media` (D19). `marco:'oscuro'`/`marco` solido:
+> **descartado** por el usuario (2026-11-07).
 
 ### 3.3 Sobra / está de más (candidato a retiro)
 
