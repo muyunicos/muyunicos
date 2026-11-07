@@ -406,7 +406,8 @@ check('el recorte ya visto se conserva entre pintados',
     /!!\(estPrevio && estPrevio\.recorta\)/.test(js)
     && /tandas: tandas, firma: firma, recorta: recorta/.test(js));
 check('la ventana fija el alto del marco (ya sin el pie, sin desbordar)',
-    /linea\.style\.maxHeight = vent\.altoMarco \+ 'px'/.test(js));
+    /linea\.style\.maxHeight = marcoFinal \+ 'px'/.test(js)
+    && /marcoFinal = ajustarAltoFila\(\) \|\| marcoFinal/.test(js));
 check('sin cota no hay chip (caben = todos)',
     js.indexOf('(cabenVista > 0) ? cabenVista : (items.length + huecos)') !== -1);
 check('la raiz reparte pie + marco (flex column)',
@@ -458,6 +459,23 @@ check('product.js conecta la lupa', /navegarWoo/.test(prod));
 check('la spec existe', fs.existsSync(path.join(RAIZ, 'specs/019-galeria-compartida/spec.md')));
 check('el contrato existe',
     fs.existsSync(path.join(RAIZ, 'specs/019-galeria-compartida/contracts/galeria.md')));
+
+/* ==================== 7. Cota exacta (D24bis, C9) ==================== */
+console.log('== Cota exacta ==');
+check('la linea publica data-cota', /setAttribute\('data-cota'/.test(jsCodigo));
+check('la linea publica --fila-alto', /setProperty\('--fila-alto'/.test(jsCodigo));
+check('el alto de la celda es REAL (medido en el DOM)', /querySelector\('\.mu-gal-celda\[data-mu-gal-mini\]'\)/.test(jsCodigo)
+    && /\.offsetHeight/.test(jsCodigo));
+check('el marco se recalcula con la misma funcion pura', /var real = ventana\(\{/.test(jsCodigo));
+check('la fuente del tema se re-mide UNA vez', /function observarFuentes\(/.test(jsCodigo)
+    && /doc\.fonts\.ready\.then/.test(jsCodigo));
+check('el res publicado trae el marco FINAL', /altoMarco: marcoFinal/.test(jsCodigo));
+check('el CSS fija la fila SOLO con cota',
+    /\.mu-gal-linea--grilla\[data-cota\]\s*\{[^}]*grid-auto-rows:\s*var\(--fila-alto/.test(cssCodigo));
+check('sin cota las filas siguen automaticas',
+    !/\.mu-gal-linea--grilla\s*\{[^}]*grid-auto-rows/.test(cssCodigo));
+check('la celda obedece el alto de la fila',
+    /\[data-cota\][^{]*>\s*\.mu-gal-celda\s*\{[^}]*max-height:\s*var\(--fila-alto/.test(cssCodigo));
 
 /* ==================== Resultado ==================== */
 console.log('');

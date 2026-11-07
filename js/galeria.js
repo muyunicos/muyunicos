@@ -1577,9 +1577,48 @@
             nodo.appendChild(linea);
         }
         linea.scrollLeft = scrollPrevio;
+        // Alto REAL de la fila y marco definitivo (los ajusta `ajustarAltoFila`).
+        var altoFila = altoCelda;
+        var marcoFinal = vent ? vent.altoMarco : 0;
+
+        /**
+         * Fija el alto de la FILA al de la celda REAL y recalcula el marco con la misma
+         * funcion pura (`ventana`): la cota deja de depender de la estimacion por slot,
+         * que se queda corta con el cuerpo real (el `precio` mide 28 px, no 16). El
+         * numero se mide aca porque la linea ya esta insertada en el DOM.
+         */
+        function ajustarAltoFila() {
+            if (!vent || !vent.acota) { return 0; }
+            var medida = linea.querySelector('.mu-gal-celda[data-mu-gal-mini]');
+            // El alto REAL manda (la estimacion por slot puede quedarse corta o sobrar);
+            // se redondea hacia ARRIBA para que el grid nunca quede medio pixel corto.
+            var altoReal = 0;
+            if (medida) {
+                altoReal = (typeof medida.getBoundingClientRect === 'function')
+                    ? Math.ceil(medida.getBoundingClientRect().height || 0)
+                    : (medida.offsetHeight || 0);
+            }
+            if (altoReal > 0) { altoFila = altoReal; }
+            if (altoFila <= 0) { return 0; }
+            var real = ventana({
+                alto: altoVista, filas: filas, altoCelda: altoFila, gap: gap,
+                pie: pieAlto, marco: marcoH, acota: vent.acota
+            });
+            linea.setAttribute('data-cota', vent.motivo);
+            linea.style.setProperty('--fila-alto', altoFila + 'px');
+            if (real.altoMarco > 0) {
+                linea.style.maxHeight = real.altoMarco + 'px';
+                linea.style.overflowY = 'auto';
+            }
+            return real.altoMarco;
+        }
+
         // Ventana fija: el marco mide lo que manda la cota (nunca mas que el bloque).
         if (vent && vent.acota && vent.altoMarco > 0) {
-            linea.style.maxHeight = vent.altoMarco + 'px';
+            marcoFinal = ajustarAltoFila() || marcoFinal;
+            if (marcoFinal > 0) { linea.style.maxHeight = marcoFinal + 'px'; }
+            // La fuente del tema cambia el alto del cuerpo (~10 px): re-medir al asentar.
+            observarFuentes(function () { coleccion(nodo, o); });
             linea.style.overflowY = 'auto';
         }
         // Estado publicado para CSS/QA: `navegable` cuando lo revelado no cabe, y la
@@ -1619,7 +1658,7 @@
             revelados: t.revelados, tandas: tandas, capacidad: t.capacidad, paso: t.paso,
             agotado: t.agotado,
             acota: (vent ? vent.acota : true), cota: (vent ? vent.motivo : 'ancho'),
-            altoMarco: (vent ? vent.altoMarco : 0)
+            altoMarco: marcoFinal
         };
         // El componente puede repintarse solo (resize, auto-ajuste de la grilla): el
         // consumidor se entera por `onPintado` y no por el valor de retorno.
@@ -1627,6 +1666,22 @@
             try { o.onPintado(res); } catch (ePintado) { /* el consumidor manda */ }
         }
         return res;
+    }
+
+    /**
+     * Re-mide UNA vez cuando asienta la fuente del tema: el alto del cuerpo cambia y la
+     * firma de la coleccion NO (nadie repintaria, y el marco quedaria corto). La marca
+     * vive en la propia funcion para no agregar estado al modulo.
+     */
+    function observarFuentes(repintar) {
+        var doc = global.document;
+        if (observarFuentes.hecho || !doc || !doc.fonts
+            || typeof doc.fonts.ready === 'undefined') { return; }
+        if (doc.fonts.status !== 'loading') { return; }
+        observarFuentes.hecho = true;
+        try {
+            doc.fonts.ready.then(function () { repintar(); });
+        } catch (eFuentes) { /* el ajuste del momento ya dejo la cota exacta */ }
     }
 
     /** Repinta al cambiar el ancho del contenedor (conserva el estado de scroll). */

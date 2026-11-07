@@ -723,6 +723,19 @@ body.is-scroll-locked { overflow: hidden; }
    sobran columnas y el bloque completo se centra en el contenedor. 0 filas/columnas
    sigue siendo automatico. Las filas crecen con el contenido: con `grid-auto-rows`
    fijo la tarjeta era mas alta que la fila (imagen + cuerpo) y se solapaba. */
+
+/* La cota MANDA (D24bis): cuando el JS publica `data-cota` la fila se fija al alto de
+   celda REAL (`--fila-alto`, medido ya en el DOM, no estimado por slot) y la celda
+   OBEDECE. Asi `filas*alto + gaps` es exacto y el grid no puede desbordar ni abrir
+   scroll interno. Sin `data-cota` (vista libre) las filas crecen con el contenido. */
+.mu-gal-linea--grilla[data-cota] {
+    grid-auto-rows: var(--fila-alto, auto);
+}
+
+.mu-gal-linea--grilla[data-cota] > .mu-gal-celda {
+    max-height: var(--fila-alto, none);
+    overflow: hidden;
+}
 .mu-gal-linea--grilla {
     display: grid;
     grid-template-columns: repeat(auto-fill, var(--mu-gal-tam, 112px));

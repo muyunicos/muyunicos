@@ -316,3 +316,11 @@ MU.puro.ventana({alto, filas, altoCelda, gap, pie, marco, acota})
    medido se guarda en el estado del contenedor: sin eso el siguiente pintado volveria a
    "no acota" y entraria en ciclo.
 6. **`ventana` es puro** y no toca el DOM: se prueba con `node tests/galeria.test.js`.
+7. **La fila la manda la cota** (D24bis): con cota, `MU.coleccion` publica en la LINEA
+   `data-cota` (`vent.motivo`) y `--fila-alto` = alto de celda **REAL** (medido ya en el DOM y
+   redondeado hacia arriba) y recalcula el marco con la MISMA `ventana()` usando ese numero; el
+   CSS fija `grid-auto-rows: var(--fila-alto)` y la celda obedece (`max-height` + `overflow`).
+   Sin cota no se publica nada y las filas crecen con el contenido. La estimacion por slot
+   (`precio` 16 px contra los 28 reales) dejaba el marco 21 px corto y abria scroll interno. Si
+   la fuente del tema asienta despues, se re-mide UNA vez (`document.fonts.ready`).
+   `res.altoMarco` es el marco **FINAL** (con el alto real).

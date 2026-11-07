@@ -64,18 +64,20 @@ puertas de geometria— Playwright sobre el demo (`scrollHeight == clientHeight`
       100.25 de cuerpo + 2 de borde) pero `ventana()` recibe 204 (estimacion por slot:
       `112 + 80 + 12`); el marco queda en 416 y el contenido en 437 ⇒ **21 px** de desborde
       con scroll interno.
-- [X] T018 `js/galeria.js`: publicar `data-cota` y `--fila-alto` en la LINEA (alto de celda
-      REAL, medido despues de insertar la linea en el DOM) y recalcular el marco con la misma
-      funcion pura `ventana()` — sin duplicar aritmetica.
+- [X] T018 `js/galeria.js`: publicar `data-cota` y `--fila-alto` en la LINEA con el alto de
+      celda REAL (medido despues de insertar la linea en el DOM, redondeado hacia ARRIBA para
+      que el grid nunca quede medio pixel corto) y recalcular el marco con la misma funcion
+      pura `ventana()` — sin duplicar aritmetica.
 - [X] T019 `js/galeria.js`: `observarFuentes()` re-mide UNA vez cuando asienta la fuente del
       tema (`document.fonts.ready`), porque el cuerpo cambia de alto ~10 px y la firma no
       cambia (nadie repintaba).
 - [X] T020 `css/components/galeria.css`: `.mu-gal-linea--grilla[data-cota]` fija
       `grid-auto-rows: var(--fila-alto)` y la celda obedece (`max-height` + `overflow:hidden`).
       Sin `data-cota` (vista libre) las filas siguen creciendo con el contenido.
-- [X] T021 Puertas: `GALERIA OK (202 checks)` con 7 checks nuevos de la cota + Playwright
-      `sh == ch` en `#grilla-f2`, `#grilla-pie`, `#grilla-alto`, `#tope`; regresion en
-      `#grilla-auto` (sin `data-cota`).
+- [X] T021 Puertas: `GALERIA OK (204 checks)` con 9 checks nuevos de la cota + Playwright
+      sin desborde (`scrollHeight == clientHeight`, `desborde 0` y `clip 0` en los 12 hashes;
+      `#grilla-f2` paso de 437/416 a 438/438) y regresion en las vistas SIN cota
+      (`#sin-limite`, `#tope`, `#huecos`, `#mini`, `#visor`: sin `data-cota` ni `--fila-alto`).
 
 ## Fase SC-003 — Ficha real en el laboratorio
 
