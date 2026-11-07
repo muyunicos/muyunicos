@@ -268,6 +268,15 @@
      * la galeria pasa a navegable. `agotado` = se alcanzo el `tope` y AUN quedan
      * imagenes: ahi el chip deja de sumar y abre el visor.
      *
+     * El PASO de una tanda es `caben` (la pantalla completa de celdas), no lo que queda
+     * despues de descontar huecos y chip: `caben` es multiplo del numero de columnas, asi
+     * que cada tanda conserva el residuo y el chip cierra fila (`celdas % columnas === 0`).
+     * Un chip "+1" no aporta (ocupa la celda del item que oculta): si el item entra en el
+     * `tope`, se muestra y el chip desaparece.
+     *
+     * El `tope` llega ya materializado en FILAS COMPLETAS por `topeEnFilas`, asi que las
+     * celdas pintadas siguen siendo multiplos del numero de columnas.
+     *
      * El `tope` es de **CELDAS**, igual que en `celdas` (C1): el chip
      * (`mu-gal-celda--chip`) y los huecos (`mu-gal-celda--vacia`) que se ven ocupan
      * lugar dentro de el. Con `tope 4`, 2 huecos y 5 imagenes se ve `1 + 2 + chip = 4`.
@@ -303,18 +312,49 @@
 
         var tandas = Math.max(0, parseInt(o.tandas, 10) || 0);
         var minimo = Math.min(capacidad, topeItems, n);
-        var visibles = Math.min(n, topeItems, Math.max(minimo, capacidad * (1 + tandas)));
+        // El paso de una tanda es una PANTALLA de celdas (`caben`), NO lo que queda
+        // despues de descontar huecos y chip: `caben` es multiplo del numero de
+        // columnas, asi que cada tanda conserva el residuo y el chip cierra fila.
+        var paso = cabenCtx;
+        var visibles = Math.min(n, topeItems, Math.max(minimo, capacidad + paso * tandas));
         var ocultas = Math.max(0, n - visibles);
+        // Un chip "+1" no aporta: reserva la MISMA celda que el item que oculta. Se
+        // muestra el item (solo puede pasar con tandas > 0, o sea que ya hay scroll)
+        // salvo que el `tope` de celdas no lo deje entrar; ahi el chip si hace falta.
+        if (ocultas === 1 && (visibles + 1) <= topeItems) {
+            visibles += 1;
+            ocultas = 0;
+        }
 
         return {
             capacidad: capacidad, tandas: tandas,
             revelados: visibles, visibles: visibles,
-            ocultas: ocultas, paso: capacidad,
-            siguiente: Math.min(topeItems, visibles + capacidad),
+            ocultas: ocultas, paso: paso,
+            siguiente: Math.min(topeItems, visibles + paso),
             navega: (visibles > capacidad),
             agotado: (visibles >= Math.min(topeItems, n) && ocultas > 0),
-            topeCeldas: tope, topeItems: topeItems, hayChip: hayChip
+            topeCeldas: tope, topeItems: topeItems, hayChip: (ocultas > 0)
         };
+    }
+
+    /**
+     * Materializa un `tope` de CELDAS en FILAS COMPLETAS (contrato `coleccion.md`, C1ter).
+     *
+     * Un tope que no es multiplo del numero de columnas deja celdas sueltas: el chip cae a
+     * media fila. Como `caben` en grilla ya es `porFila * porAlto` (multiplo), redondear el
+     * tope hacia abajo garantiza `celdas % porFila === 0` en TODAS las tandas. Si el tope no
+     * alcanza para una fila (`tope < porFila`) se conserva tal cual: redondear hacia arriba
+     * lo excederia y el `tope` es un MAXIMO.
+     *
+     * @param {number} tope    celdas declaradas (0 = sin tope)
+     * @param {number} porFila columnas de la grilla (0 = sin dato)
+     * @returns {number} tope efectivo en celdas
+     */
+    function topeEnFilas(tope, porFila) {
+        var t = Math.max(0, parseInt(tope, 10) || 0);
+        var c = Math.max(0, parseInt(porFila, 10) || 0);
+        if (t === 0 || c <= 0 || t < c) { return t; }
+        return Math.floor(t / c) * c;
     }
 
     /* ==================== helpers de DOM ==================== */
@@ -1402,6 +1442,11 @@
         // Cuantas celdas entran en la VISTA: manda el CONTENEDOR, nunca el viewport.
         var ancho = nodo.clientWidth || 0;
         var cabenLinea = caben(ancho, tam.ancho, gap);
+        // Celdas por FILA: las columnas de la grilla o la linea completa. El `tope` es de
+        // celdas, asi que se materializa en filas completas (`topeEnFilas`) ANTES de
+        // repartirlo: un tope a media fila dejaba el chip en una celda suelta (C1ter).
+        var porFila = (layout === 'grilla' && columnas > 0) ? columnas : cabenLinea;
+        tope = topeEnFilas(tope, porFila);
         var navegable = navegableDe(o);
         var altoVista = Math.max(0, parseInt(o.alto, 10) || 0);
 
@@ -1457,7 +1502,7 @@
         var vent = null;
         if (layout === 'grilla') {
             // Columnas por ANCHO; las filas, por ALTO (`filas` manda sobre `alto`).
-            var porFila = (columnas > 0) ? columnas : cabenLinea;
+            // `porFila` ya se resolvio arriba (lo comparte el redondeo del tope).
             // Alto de la celda: se MIDE la del pintado anterior (exacto); si no hay,
             // se estima con el cuerpo que dibujan los slots (conservador).
             var extras = 0;
@@ -1847,7 +1892,7 @@
         coleccion: coleccion,
         puro: { acotar: acotar, preCargar: preCargar, orden: orden,
             formatearPrecio: formatearPrecio, celdas: celdas, pie: pie, caben: caben,
-        carga: carga, navegableDe: navegableDe, ventana: ventana },
+        carga: carga, topeEnFilas: topeEnFilas, navegableDe: navegableDe, ventana: ventana },
         version: '1.0.0'
     };
 

@@ -334,12 +334,12 @@ const c0 = gal.puro.carga({ items: 12, tope: 0, caben: 4 });
 check('carga · arranca FIJA: 3 visibles (chip reserva celda) y 9 ocultas',
     c0.capacidad === 3 && c0.visibles === 3 && c0.ocultas === 9 && c0.navega === false,
     'visibles=' + c0.visibles + ' ocultas=' + c0.ocultas);
-check('carga · la primera tanda suma una pantalla (3 -> 6)', c0.siguiente === 6);
+check('carga · la primera tanda suma una pantalla (3 -> 7)', c0.siguiente === 7);
 
 const c1 = gal.puro.carga({ items: 12, tope: 0, caben: 4, tandas: 1 });
 check('carga · al sumar una tanda, lo revelado YA no cabe: navega',
-    c1.visibles === 6 && c1.ocultas === 6 && c1.navega === true);
-check('carga · lo revelado NUNCA se oculta (6 de 12, no una ventana)',
+    c1.visibles === 7 && c1.ocultas === 5 && c1.navega === true);
+check('carga · lo revelado NUNCA se oculta (7 de 12, no una ventana)',
     c1.visibles > c0.visibles);
 
 const c2 = gal.puro.carga({ items: 12, tope: 0, caben: 4, tandas: 3 });
@@ -376,6 +376,54 @@ check('tope 0 = sin tope de celdas', gal.puro.carga({ items: 12, caben: 4 }).top
 check('carga · las mismas tandas con otra capacidad se re-ajustan solas',
     gal.puro.carga({ items: 12, caben: 12, tandas: 0 }).visibles === 12
     && gal.puro.carga({ items: 12, caben: 5, tandas: 0 }).visibles === 4);
+
+/* ---------- C1bis: el paso es una PANTALLA (y el chip cierra fila) ---------- */
+
+const cp1 = gal.puro.carga({ items: 14, caben: 6, huecos: 1 });
+check('paso · una tanda revela `caben` celdas, no `capacidad` (4 -> 10)',
+    cp1.capacidad === 4 && cp1.paso === 6 && cp1.siguiente === 10,
+    'capacidad=' + cp1.capacidad + ' paso=' + cp1.paso + ' siguiente=' + cp1.siguiente);
+
+// El caso reportado: 3 columnas x 2 filas, 1 hueco y 14 imagenes. La vista fija deja
+// 4 imagenes + chip; al tocar entran 6 mas (una pantalla) y el chip cierra la fila.
+const cp2 = gal.puro.carga({ items: 14, caben: 6, huecos: 1, tandas: 1 });
+check('paso · 1 hueco + 10 imagenes + chip = 12 celdas (el chip cierra fila)',
+    cp2.visibles === 10 && cp2.ocultas === 4 && (1 + 10 + 1) % 3 === 0,
+    'visibles=' + cp2.visibles + ' ocultas=' + cp2.ocultas);
+
+let alineado = true, detalle = '';
+[3, 4, 6].forEach(function (columnas) {
+    const caben = columnas * 2;              // grilla de 2 filas
+    [0, 1, 2, 3].forEach(function (huecos) {
+        for (let k = 1; k <= 24; k++) {
+            const r = gal.puro.carga({ items: 40, caben: caben, huecos: huecos, tandas: k });
+            const celdas = huecos + r.visibles + (r.hayChip ? 1 : 0);
+            if (r.hayChip && celdas % columnas !== 0) {
+                alineado = false;
+                detalle = 'col=' + columnas + ' huecos=' + huecos + ' tandas=' + k + ' celdas=' + celdas;
+            }
+        }
+    });
+});
+check('paso · con chip, celdas % columnas === 0 en TODAS las tandas', alineado, detalle);
+
+const u1 = gal.puro.carga({ items: 16, caben: 8, tandas: 1 });
+check('sin "+1" · un solo oculto que cabe se muestra (16 de 16, sin chip)',
+    u1.visibles === 16 && u1.ocultas === 0 && u1.hayChip === false,
+    'visibles=' + u1.visibles + ' ocultas=' + u1.ocultas);
+const u2 = gal.puro.carga({ items: 16, tope: 16, caben: 8, tandas: 1 });
+check('con tope · el "+1" SI queda cuando el tope de celdas no lo deja entrar',
+    u2.visibles === 15 && u2.ocultas === 1 && u2.hayChip === true && u2.agotado === true,
+    'visibles=' + u2.visibles + ' topeItems=' + u2.topeItems);
+
+check('topeEnFilas · materializa el tope en filas completas',
+    gal.puro.topeEnFilas(9, 6) === 6 && gal.puro.topeEnFilas(10, 4) === 8
+    && gal.puro.topeEnFilas(12, 6) === 12 && gal.puro.topeEnFilas(4, 9) === 4
+    && gal.puro.topeEnFilas(0, 6) === 0 && gal.puro.topeEnFilas(5, 0) === 5,
+    'g(9,6)=' + gal.puro.topeEnFilas(9, 6) + ' g(10,4)=' + gal.puro.topeEnFilas(10, 4));
+check('coleccion · el tope entra a `carga` ya en filas completas',
+    /tope = topeEnFilas\(tope, porFila\);/.test(js)
+    && /var porFila = \(layout === 'grilla' && columnas > 0\) \? columnas : cabenLinea;/.test(js));
 
 const c4 = gal.puro.carga({ items: 5, tope: 0, caben: 6 });
 check('carga · si todo cabe no hay chip ni navegacion',

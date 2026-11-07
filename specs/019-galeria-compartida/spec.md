@@ -131,6 +131,16 @@ Contrato: [contracts/coleccion.md](./contracts/coleccion.md). Reemplaza "tira + 
   y el grid no puede desbordar ni abrir scroll interno. Sin cota las filas crecen con el
   contenido (comportamiento historico).
 
+- **D24ter — El chip carga una PANTALLA y cierra fila** (2026-11-07): el paso de una tanda es
+  `caben` (una pantalla de celdas), **no** `capacidad`. `capacidad` descuenta los huecos y la
+  celda del chip, asi que usarlo de paso corria el residuo `mod columnas` y el chip terminaba
+  solo en una fila nueva (con 3 columnas, 1 hueco y 14 imagenes revelaba 4 en vez de 6 y dejaba
+  un `[+6]` suelto). Como `caben` en grilla es `porFila * porAlto`, el residuo se conserva y el
+  chip cierra fila **siempre**: `(huecos + visibles + 1) % porFila === 0` en todas las tandas.
+  El `tope` se materializa en filas completas (`MU.puro.topeEnFilas`, contrato C1ter) y **el
+  chip `+1` no existe**: si queda un solo item oculto y el `tope` lo deja entrar, se muestra;
+  el `+1` solo queda cuando el `tope` de celdas lo impide, y ahi abre el visor.
+
 - **FR-024** `MU.coleccion(el, opciones)` con `layout` (fila/grilla), `navegable`
   (`auto`/true/false; alias `deslizable`), `tamano`, `gap`, `filas`, `columnas`, `alto`.
 - **FR-025** `MU.puro.celdas()` decide `visiblesItems`, `huecos` y `chip` (D21).
@@ -140,6 +150,10 @@ Contrato: [contracts/coleccion.md](./contracts/coleccion.md). Reemplaza "tira + 
 - **FR-028** El chip es una **celda** de la linea (`mu-gal-celda--chip`), nunca algo que
   flota fuera y se recorta.
 - **FR-029** `MU.visor` monta la coleccion como listado inferior y sincroniza `activo` (F2).
+- **FR-030** `MU.puro.carga()` suma **una pantalla** (`caben`) por tanda, nunca `capacidad`, y
+  `MU.puro.topeEnFilas()` materializa el `tope` en filas completas: con chip,
+  `(huecos + visibles + 1) % columnas === 0` y el chip es la ultima celda de su fila. Un item
+  oculto que entra en el `tope` se muestra (nunca un chip `+1`).
 
 ## 3. Requisitos funcionales
 

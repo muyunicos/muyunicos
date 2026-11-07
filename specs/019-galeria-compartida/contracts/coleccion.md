@@ -58,16 +58,19 @@ La **carga** decide `chipAccion:'auto'`: cuantas imagenes se ven, cuanto **SUMA*
 cuando deja de sumar para **abrir el visor**. Es **acumulativa**: lo revelado nunca se oculta.
 
 ```
-topeC     = tope                                       // 0 = sin tope
+topeC     = topeEnFilas(tope, porFila)                  // 0 = sin tope (C1ter)
 capBase   = max(1, caben - huecos)                      // celdas de IMAGEN sin contar chip
-topeBase  = tope > 0 ? max(0, tope - huecos) : Infinity
+topeBase  = topeC > 0 ? max(0, topeC - huecos) : Infinity
 hayChip   = items > min(capBase, topeBase)              // quedaran imagenes ocultas
 capacidad = max(1, capBase - (hayChip ? 1 : 0))          // una "pantalla" FIJA
-topeItems = tope > 0 ? max(0, topeBase - (hayChip ? 1 : 0)) : Infinity
+topeItems = topeC > 0 ? max(0, topeBase - (hayChip ? 1 : 0)) : Infinity
+paso      = caben                                       // una PANTALLA de celdas
 visibles  = min(items, topeItems, max(min(capacidad, topeItems, items),
-                                      capacidad * (1 + tandas)))
+                                      capacidad + paso * tandas))
 ocultas   = max(0, items - visibles)
-siguiente = min(topeItems, visibles + capacidad)
+// Un "+1" no aporta: ocupa la celda del item que oculta. Si el item entra, se muestra.
+si (ocultas == 1 && visibles + 1 <= topeItems) { visibles += 1; ocultas = 0 }
+siguiente = min(topeItems, visibles + paso)
 navega    = visibles > capacidad                        // DERIVADO
 agotado   = visibles >= min(topeItems, items) && ocultas > 0   // el chip ABRE el visor
 ```
@@ -85,6 +88,16 @@ Reglas:
    de el. Con `tope 4`, 2 huecos y 5 imagenes: `1 imagen + 2 huecos + chip = 4 celdas`.
 2. Si el chip aparece, **ocupa una celda** de la vista fija (`capacidad`) y del `tope`
    (`topeItems`). Con 2 celdas y chip se ve 1 imagen, no 2.
+2bis. **El paso de una tanda es una PANTALLA (`caben`), no `capacidad`.** `capacidad` es la
+   vista FIJA (descuenta huecos y la celda del chip); el **paso** no los descuenta. Con
+   `paso = capacidad` cada tanda corria el residuo `mod columnas` y el chip terminaba solo en
+   una fila nueva. Como `caben` en grilla es `porFila * porAlto`, el residuo se conserva.
+2ter. **El chip cierra fila.** Con chip, `(huecos + visibles + 1) % porFila === 0` en TODAS
+   las tandas (verificado en la puerta): el chip es la ultima celda de su fila, nunca una
+   celda suelta a media fila. La ultima tanda puede quedar incompleta porque ya no hay chip.
+2quater. **No existe el chip `+1` inutil.** Si queda **un** item oculto y el `tope` lo deja
+   entrar, se muestra y el chip desaparece (ocuparia la misma celda que el item). El `+1`
+   solo aparece cuando el `tope` de celdas lo impide; ahi el chip abre el visor (`agotado`).
 3. **`navega` es DERIVADO, no una opcion**: en cuanto `visibles > capacidad` la galeria pasa a
    navegable (scroll + flechas) sola. En la vista fija no hay scroll.
 4. El estado que se conserva es **`tandas`** (cuantas pantallas pidio el usuario), **no** un
@@ -100,11 +113,11 @@ Reglas:
 
 Tabla de referencia (`items 12`, `caben 4` -> `capacidad 3`):
 
-| Tandas | Ve | Chip | Accion del chip | Estado |
-|---|---|---|---|---|
-| 0 (arranque) | 3 (0..2) | `+9` | revelar (suma 3) | fija |
-| 1 | 6 (0..5) | `+6` | revelar (suma 3) | **navegable** |
-| 3 | 12 (0..11) | — | — | navegable |
+| Tandas | Ve | Chip | Accion del chip | Celdas (4 columnas) | Estado |
+|---|---|---|---|---|---|
+| 0 (arranque) | 3 (0..2) | `+9` | revelar (suma la pantalla: 4) | 4 | fija |
+| 1 | 7 (0..6) | `+5` | revelar (suma 4) | 8 | **navegable** |
+| 2 | 12 (0..11) | — (el unico oculto se muestra) | — | 12 | navegable |
 
 Que celdas entran en el `tope` (`caben 6`, `items 12`):
 
@@ -118,6 +131,22 @@ Que celdas entran en el `tope` (`caben 6`, `items 12`):
 
 Con `tope 6` (celdas) y `caben 4`: `topeItems 5`, asi que a las 2 tandas ve 5 y el chip pasa
 a **abrir visor** (`+7`, `agotado`) — 5 imagenes + chip = 6 celdas.
+
+## C1ter — `MU.puro.topeEnFilas(tope, porFila)`
+
+El `tope` es de CELDAS, pero un tope que no es multiplo de las columnas deja celdas sueltas (el
+chip cae a media fila). `coleccion` lo materializa en FILAS COMPLETAS antes de repartirlo:
+
+```
+topeEnFilas(tope, porFila)
+  tope == 0 || porFila <= 0 || tope < porFila  ->  tope    // sin tope, sin dato o no llega a una fila
+  resto                                        ->  floor(tope / porFila) * porFila
+```
+
+`topeEnFilas(9, 6) === 6`, `topeEnFilas(10, 4) === 8`, `topeEnFilas(12, 6) === 12` y
+`topeEnFilas(4, 9) === 4` (redondear hacia arriba lo excederia: el `tope` es un MAXIMO).
+`porFila` es `columnas` cuando la grilla las declara, si no `cabenLinea` (la linea completa en
+`layout:'fila'`). Las tablas de C1bis suponen `porFila >= tope`.
 
 **`chipAccion:'auto'`** (default): `navegable === false` -> `'abrir'` (no acumula);
 `agotado` -> `'abrir'`; si no, `'revelar'`. `'abrir'` abre siempre; `'cargar'` delega en

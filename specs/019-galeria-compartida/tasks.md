@@ -87,6 +87,26 @@ puertas de geometria— Playwright sobre el demo (`scrollHeight == clientHeight`
       Photoswipe y `galeria.js` ausente fuera de `is_product()`.
 - [ ] T023 Registrar la corrida en `spec.md` §4 (SC-003) con el numero de comprobaciones.
 
+## Fase C1bis — El chip carga una pantalla y cierra fila (2026-11-07)
+
+- [X] T024 `js/galeria.js`: `MU.puro.carga()` toma el paso de `caben` (una PANTALLA de celdas)
+      en vez de `capacidad`, y `siguiente` suma ese paso. Nuevo `MU.puro.topeEnFilas(tope,
+      porFila)`; `coleccion` resuelve `porFila` (columnas o la linea completa) y le pasa a
+      `carga` el `tope` ya materializado en filas completas (C1ter).
+- [X] T025 `js/galeria.js`: el chip `+1` desaparece cuando el item entra en el `tope`
+      (`ocultas === 1 && visibles + 1 <= topeItems` -> se muestra) y `hayChip` devuelve
+      `ocultas > 0` (el chip de AHORA, no el potencial).
+- [X] T026 Puertas: `GALERIA OK (211 checks)` con 7 checks nuevos (paso = pantalla, el caso
+      1 hueco / 14 imagenes / 3 columnas, alineacion `(huecos + visibles + 1) % columnas === 0`
+      para 3/4/6 columnas y 0..3 huecos en 24 tandas, el `+1` que desaparece y el que el `tope`
+      conserva, `topeEnFilas` + su cableado) y `tests/galeria-demo.html` con `#carga-huecos` y
+      `#grilla-f2x` (`#carga` pasa a `tope 12` = 2 filas de 6), mas recarga por `hashchange`
+      para que cada hash sea una vista COMPLETA.
+- [X] T027 Playwright con Chrome real (`CHIP OK (26/26)`): el caso del reporte (1 hueco +
+      4 imagenes + `+10` -> al tocar 10 + `+4` en 12 celdas = 3 filas, con el chip en la ULTIMA
+      celda de su fila), `+1` inexistente con 16 items, el `tope` en filas completas y la
+      regresion de la cota (`#grilla-f2` sin desborde) y de las vistas sin cota.
+
 ## Fuera de esta spec (fases posteriores)
 
 - [ ] T900 F2 — migrar `PMUVisor` (plugin) y la biblioteca del comprador a `MU.coleccion` /

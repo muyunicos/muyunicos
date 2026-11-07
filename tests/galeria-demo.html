@@ -323,7 +323,7 @@
     /* Universo de items: los datos completos. Los toggles de "Datos" deciden
        que se le pasa a la galeria (contrato C5, slots de datos). */
     var UNIVERSO = [];
-    for (var u = 0; u < 14; u++) {
+    for (var u = 0; u < 20; u++) {
         UNIVERSO.push({
             id: u + 1,
             url: svg(u),
@@ -796,16 +796,16 @@
         document.getElementById('pg-alto-out').textContent = '360';
     }
     if (window.location.hash === '#pagina' || window.location.hash === '#carga') {
-        ESTADO.layout = 'grilla';       // QA: chip que SUMA por tandas (tope 9)
+        ESTADO.layout = 'grilla';       // QA: chip que SUMA por tandas (tope 12 = 2 filas)
         ESTADO.alto = 360;
         ESTADO.cantidad = 14;
-        ESTADO.tope = 9;
+        ESTADO.tope = 12;
         marcarRadio('pg-layout', 'grilla');
         document.getElementById('pg-alto').value = '360';
         document.getElementById('pg-alto-out').textContent = '360';
         document.getElementById('pg-cantidad').value = '14';
         document.getElementById('pg-cantidad-out').textContent = '14';
-        document.getElementById('pg-tope').value = '9';
+        document.getElementById('pg-tope').value = '12';
     }
     if (window.location.hash === '#tope') {
         ESTADO.layout = 'fila';         // QA: tope 3 = 3 CELDAS (imagen + chip)
@@ -855,6 +855,41 @@
         document.getElementById('pg-min').value = '12';
         document.getElementById('pg-cantidad').value = '9';
         document.getElementById('pg-cantidad-out').textContent = '9';
+    }
+    if (window.location.hash === '#carga-huecos') {
+        // QA (C1bis): el caso del reporte. 3 columnas x 2 filas, 14 imagenes y 1 hueco:
+        // la vista fija deja 4 + chip; al tocar entran 6 mas (una pantalla) y el chip
+        // queda en la ULTIMA celda de su fila (antes se corria una celda por tanda).
+        ESTADO.layout = 'grilla';
+        ESTADO.filas = 2;
+        ESTADO.columnas = 3;
+        ESTADO.alto = 560;
+        ESTADO.cantidad = 14;
+        ESTADO.min = 15;                // 14 cargadas -> 1 hueco obligatorio
+        marcarRadio('pg-layout', 'grilla');
+        document.getElementById('pg-filas').value = '2';
+        document.getElementById('pg-columnas').value = '3';
+        document.getElementById('pg-alto').value = '560';
+        document.getElementById('pg-alto-out').textContent = '560';
+        document.getElementById('pg-cantidad').value = '14';
+        document.getElementById('pg-cantidad-out').textContent = '14';
+        document.getElementById('pg-min').value = '15';
+    }
+    if (window.location.hash === '#grilla-f2x') {
+        // QA (C1bis): 16 imagenes en 4 columnas x 2 filas. Al tocar el chip entra la
+        // ULTIMA (no existe "+1") y la grilla queda completa, sin chip.
+        ESTADO.layout = 'grilla';
+        ESTADO.filas = 2;
+        ESTADO.columnas = 4;
+        ESTADO.alto = 560;
+        ESTADO.cantidad = 16;
+        marcarRadio('pg-layout', 'grilla');
+        document.getElementById('pg-filas').value = '2';
+        document.getElementById('pg-columnas').value = '4';
+        document.getElementById('pg-alto').value = '560';
+        document.getElementById('pg-alto-out').textContent = '560';
+        document.getElementById('pg-cantidad').value = '16';
+        document.getElementById('pg-cantidad-out').textContent = '16';
     }
     if (window.location.hash === '#sin-limite'
         || /^#sin-limite-f[1-9]$/.test(window.location.hash)) {
@@ -909,6 +944,10 @@
         abrirVisor(0);
         if (window.location.hash === '#visor3') { window.MU.ir(3); }
     }
+
+    // Cada hash describe la vista COMPLETA: cambiar solo el fragmento no recarga el
+    // documento, asi que sin esto la URL y lo pintado quedaban desincronizados (QA).
+    window.addEventListener('hashchange', function () { window.location.reload(); });
 }());
 </script>
 <script src="../js/global-ui.js"></script>
