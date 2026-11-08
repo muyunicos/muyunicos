@@ -8,6 +8,10 @@ las acciones, meta rica normalizada y `MU.visor.actualizar()`) implementadas. Pe
 SC-003 en el laboratorio (T022) y las fases F2 (plugin) y F3 (calculadora), que NO entran en
 esta spec. Detalle en `tasks.md`.
 
+**F5 (temas visuales, filtros del visor y cotizador versionado)** vive en
+[`specs/020-temas-galeria`](../020-temas-galeria/spec.md): un tema es **CSS** (no toca
+opciones ni datos), los filtros del visor reusan C10 y el cotizador se versiona en el tema.
+
 ## 1. Contexto y problema
 
 Hoy conviven **cuatro** formas distintas de "galeria" en el ecosistema, cada una con su
