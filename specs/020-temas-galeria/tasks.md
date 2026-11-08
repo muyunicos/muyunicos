@@ -53,7 +53,11 @@ Estados: `[ ]` pendiente, `[X]` hecho, `[~]` hecho parcial (se aclara).
 
 ## F6 — Retiro del rastro viejo (despues de F5 y del deploy)
 
-- [ ] T013 **Tema**: borrar `MU.tira`, `MU.tarjeta`, `MU.desdeWoo`, `MU.desdeEnlaces`, su CSS
+- [~] T013 **Tema**: borrar la v1. **Hecho (2026-11-08)**: `MU.tarjeta` + `.mu-gal-tarjeta*`
+      retirados (JS, CSS, checks y C0/C7 del contrato). **Pendiente**: `tira`/`pintarTira` +
+      helpers `.mu-gal-mini*` y su CSS; **`desdeWoo`/`desdeEnlaces` NO se borran**: los usa
+      el modo declarativo (`itemsDe`) y `navegarWoo` (corrige el alcance original de este
+      task).
       (`.mu-gal-tira*`, `.mu-gal-tarjeta*`, `.mu-gal-mini*`) y los checks de la v1; actualizar
       `coleccion.md` C0 y el demo.
 - [ ] T014 **Plugin**: retirar `cpmu-visor` (fallback del cargador, inalcanzable desde la

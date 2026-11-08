@@ -12,7 +12,8 @@ Contrato v2 (enmienda 2026-11-05). Reemplaza el modelo de "tira + tarjeta": ahor
 | 2 | **`MU.visor(opciones)`** | modal de ampliacion; puede montar una coleccion abajo |
 
 `window.MU` agrupa: `coleccion`, `visor`, `arrastrar`, `navegarWoo`, `puro`, `version`.
-`window.MUGaleria` queda como **alias** una release (`tira`/`tarjeta` -> `coleccion`).
+`window.MUGaleria` es un **alias deprecado** de `window.MU` (`tira`/`tarjeta` se retiraron
+en la spec 020, T013).
 
 ## C1 — `MU.puro.celdas({cargadas, min, capacidad, tope})`
 
@@ -292,8 +293,8 @@ Un item se dibuja con **slots** (que se ve) y **preset** (atajo):
 - Mezclar `min`/`capacidad` con `tope` para "estirar" la fila: **gana `tope`** (C1.5).
 - Contar huecos en el chip: los huecos son del `pie`.
 - Decidir el layout por media query o por el viewport: se mide el **contenedor**.
-- Duplicar el render: `tira` y `tarjeta` pasan a ser **adaptadores** de `coleccion`
-  (retiro del codigo viejo en F3).
+- Duplicar el render: la v1 (`tira`/`tarjeta`) **ya no existe** (retirada en la spec 020,
+  T013): el catalogo se hace con `coleccion` + `preset:'tarjeta'`.
 - Usar `innerHTML` con datos del usuario: todo va por `textContent` / `createElementNS`.
 
 ## C8 — Relacion con el visor (ambito 2)

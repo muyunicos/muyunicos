@@ -22,7 +22,7 @@
    mismo HTML se vea igual en la tienda, en la cuenta y en el cotizador. */
 .mu-gal-img,
 .mu-gal-mini-abrir img,
-.mu-gal-tarjeta-img img,
+.mu-gal-celda .mu-gal-item-abrir img,
 .mu-gal-marco img {
     border: 0;
     outline: 0;
@@ -643,60 +643,8 @@ button.mu-gal-mini--vacia {
     margin: 0 0 6px;
 }
 
-/* ============================================
-   TARJETA (catalogo)
-   ============================================ */
-
-.mu-gal-tarjeta {
-    box-sizing: border-box;
-    width: 190px;
-    flex: 0 0 auto;
-    display: flex;
-    flex-direction: column;
-    border: 1px solid #e2e8f0;
-    border-radius: var(--mu-radius);
-    background: var(--blanco);
-    overflow: hidden;
-    transition: var(--mu-transition);
-}
-
-.mu-gal-tarjeta:hover {
-    box-shadow: var(--mu-shadow-md);
-    transform: translateY(-2px);
-}
-
-.mu-gal-tarjeta-img { position: relative; height: 120px; background: #f1f5f9; }
-
-.mu-gal-tarjeta-img img {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.mu-gal-tarjeta-cuerpo {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 8px;
-}
-
-.mu-gal-tarjeta-titulo {
-    margin: 0;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--texto);
-    line-height: 1.3;
-}
-
-.mu-gal-tarjeta-desc {
-    margin: 0;
-    font-size: 11px;
-    color: var(--texto-light);
-    line-height: 1.3;
-}
-
-.mu-gal-tarjeta-acciones { display: flex; gap: 6px; padding-top: 4px; }
+/* (v1 retirada en la spec 020, T013/F6: la TARJETA la pinta `MU.coleccion` con
+   `preset:'tarjeta'`. `.mu-gal-badge` sigue compartiendose con el visor.) */
 
 .mu-gal-badge {
     display: inline-flex;
@@ -712,7 +660,6 @@ button.mu-gal-mini--vacia {
     color: var(--blanco);
 }
 
-.mu-gal-tarjeta-img .mu-gal-badge { position: absolute; left: 6px; top: 6px; }
 .mu-gal-badge--guardada { background: #6c5ce7; }
 .mu-gal-badge--comprada { background: #047857; }
 
@@ -833,7 +780,6 @@ button.mu-gal-mini--vacia {
     .mu-gal-cuerpo { padding: 8px 6px; gap: 6px; }
     .mu-gal-cabecera,
     .mu-gal-acciones { padding-left: 10px; padding-right: 10px; }
-    .mu-gal-tarjeta { width: 168px; }
 }
 
 /* --- DOS MODOS (contrato C1.1) ---
@@ -880,13 +826,11 @@ button.mu-gal-mini--vacia {
     .mu-gal-img,
     .mu-gal-cuerpo .mu-nav-btn,
     .mu-gal-mini,
-    .mu-gal-tarjeta,
     .mu-gal-accion,
     .mu-gal-estrella,
     .mu-gal-btn { transition: none; }
     .mu-gal-nav:hover,
     .mu-gal-mini:hover,
-    .mu-gal-tarjeta:hover,
     .mu-gal-accion:hover { transform: none; }
     .mu-gal-tira--linea { scroll-behavior: auto; }
 }

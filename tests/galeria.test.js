@@ -56,7 +56,7 @@ console.log('== API ==');
 // numero concreto, para no acoplar tres fuentes que se bumbean por motivos distintos.
 check('expone version', typeof gal.version === 'string' && /^\d+\.\d+\.\d+$/.test(gal.version), 'version=' + gal.version);
 check('expone visor.actualizar (V2, T044)', typeof gal.visor.actualizar === 'function');
-['visor', 'cerrar', 'estaAbierto', 'tira', 'tarjeta', 'desdeWoo', 'desdeEnlaces',
+['visor', 'cerrar', 'estaAbierto', 'tira', 'desdeWoo', 'desdeEnlaces',
     'autoInit', 'arrastrar', 'navegarWoo'].forEach((fn) => {
     check('expone ' + fn, typeof gal[fn] === 'function');
 });

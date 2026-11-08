@@ -4,7 +4,7 @@
  * UN solo componente de galeria para todo el sitio. Tres piezas:
  *   - visor   : modal accesible (reusa `.mu-modal-overlay` / `.mu-modal-container`, D2)
  *   - tira    : miniaturas con carrusel/snap o grilla (el aspecto de css/product.css, D6)
- *   - tarjeta : pieza de catalogo con badge, precio, estrella y acciones
+ *   - coleccion: la galeria embebida (ambito 1) reemplaza a la vieja v1 (tira/tarjeta)
  *
  * Mas dos adaptadores que leen el DOM existente, sin pedir datos (D4/D10):
  *   - desdeWoo(raiz)      : `.woocommerce-product-gallery` (data-large_image)
@@ -18,7 +18,7 @@
  *   - Consume los tokens del tema (`--primario`, `--mu-radius-*`), nunca los redefine.
  *
  * API: window.MUGaleria (ver specs/019-galeria-compartida/contracts/galeria.md).
- * Version: 1.8.0
+ * Version: 1.9.0
  */
 (function (global) {
     'use strict';
@@ -1812,83 +1812,8 @@
         return 1;
     }
 
-    /* ==================== tarjeta (catalogo) ==================== */
-
-    /**
-     * Devuelve un `article.mu-gal-tarjeta` (contrato C3). NO lo inserta: lo inserta el
-     * llamador. Sin `onBorrar` no hay boton de borrar (solo las ideas propias).
-     */
-    function tarjeta(item, opciones) {
-        var doc = global.document;
-        var o = opciones || {};
-        item = item || {};
-        if (!doc) { return null; }
-
-        var art = crear(doc, 'article', 'mu-gal-tarjeta');
-        var cajaImg = crear(doc, 'div', 'mu-gal-tarjeta-img');
-        var img = crear(doc, 'img');
-        img.setAttribute('loading', 'lazy');
-        img.setAttribute('alt', String(item.titulo || ''));
-        img.setAttribute('src', String(item.thumb || item.url || ''));
-        cajaImg.appendChild(img);
-
-        // El badge de la tarjeta pasa por el MISMO normalizador que el del visor (T043):
-        // asi `badge` string + `badgeTipo` y `badge:{texto,tono}` valen en los dos.
-        var metaTarjeta = normalizarMeta(item);
-        if (metaTarjeta && metaTarjeta.badge) {
-            cajaImg.appendChild(crear(doc, 'span',
-                'mu-gal-badge mu-gal-badge--' + metaTarjeta.badge.tono, metaTarjeta.badge.texto));
-        }
-        if (typeof o.onEstrella === 'function') {
-            var est = crear(doc, 'button', 'mu-gal-estrella', item.favorito ? '\u2605' : '\u2606');
-            est.type = 'button';
-            est.setAttribute('aria-pressed', item.favorito ? 'true' : 'false');
-            est.setAttribute('aria-label', item.favorito ? 'Quitar de favoritos' : 'Marcar como favorito');
-            est.addEventListener('click', function () {
-                if (typeof o.onEstrella === 'function') { o.onEstrella(!item.favorito); }
-            });
-            cajaImg.appendChild(est);
-        }
-        art.appendChild(cajaImg);
-
-        var cuerpo = crear(doc, 'div', 'mu-gal-tarjeta-cuerpo');
-        if (item.origen) { cuerpo.appendChild(crear(doc, 'span', 'mu-gal-origen', item.origen)); }
-        if (item.titulo) { cuerpo.appendChild(crear(doc, 'p', 'mu-gal-tarjeta-titulo', item.titulo)); }
-        if (item.descripcion) {
-            cuerpo.appendChild(crear(doc, 'p', 'mu-gal-tarjeta-desc', item.descripcion));
-        }
-        if (item.precio && item.precio.valor !== undefined) {
-            var fila = crear(doc, 'p', 'mu-gal-precio');
-            fila.appendChild(crear(doc, 'strong', 'mu-gal-precio-ya',
-                '$' + formatearPrecio(item.precio.valor) + ' c/u'));
-            if (item.precio.aviso) {
-                fila.appendChild(crear(doc, 'span', 'mu-gal-precio-aviso', 'actualizado'));
-            }
-            cuerpo.appendChild(fila);
-        }
-
-        var acciones = crear(doc, 'div', 'mu-gal-tarjeta-acciones');
-        if (typeof o.onUsar === 'function') {
-            var usar = crear(doc, 'button', 'mu-gal-btn mu-gal-btn--usar', o.textoUsar || 'Usar');
-            usar.type = 'button';
-            usar.addEventListener('click', function () {
-                if (typeof o.onUsar === 'function') { o.onUsar(); }
-            });
-            acciones.appendChild(usar);
-        }
-        if (typeof o.onBorrar === 'function') {
-            var borrar = crear(doc, 'button', 'mu-gal-btn mu-gal-btn--borrar', o.textoBorrar || 'Borrar');
-            borrar.type = 'button';
-            borrar.setAttribute('aria-label', 'Borrar');
-            borrar.addEventListener('click', function () {
-                if (typeof o.onBorrar === 'function') { o.onBorrar(); }
-            });
-            acciones.appendChild(borrar);
-        }
-        if (acciones.firstChild) { cuerpo.appendChild(acciones); }
-        art.appendChild(cuerpo);
-        return art;
-    }
+    /* (v1 retirada en la spec 020, T013/F6: `MU.tarjeta` la reemplaza `MU.coleccion` con
+       `preset:'tarjeta'`; el catalogo se hace con la celda v2.) */
 
     /* ==================== coleccion v2 (ambito 1) ==================== */
 
@@ -2727,7 +2652,6 @@
         cerrar: cerrar,
         estaAbierto: estaAbierto,
         tira: tira,
-        tarjeta: tarjeta,
         desdeWoo: desdeWoo,
         desdeEnlaces: desdeEnlaces,
         autoInit: autoInit,
@@ -2739,7 +2663,7 @@
             filtrar: filtrar, valoresFiltro: valoresFiltro,
             celdas: celdas, pie: pie, caben: caben,
         carga: carga, topeEnFilas: topeEnFilas, navegableDe: navegableDe, ventana: ventana },
-        version: '1.8.0'
+        version: '1.9.0'
     };
 
     // `MU.visor.actualizar(parcial)` (V2, T044): se cuelga de la MISMA funcion `visor`, asi
