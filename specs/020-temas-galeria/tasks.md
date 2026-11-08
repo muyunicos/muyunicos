@@ -44,10 +44,12 @@ Estados: `[ ]` pendiente, `[X]` hecho, `[~]` hecho parcial (se aclara).
       `cotizador` publicada; verificar `window.MU`, el widget montado y
       `cotizador-pedido.browser.js` con `PMU_COTIZADOR_URL`. Retirar el
       `mu_galeria_encolar()` que se agrego al plugin del carrito (queda en el shortcode).
-- [ ] T012 **Calculadora nativa**: tira con `MU.coleccion` en un contenedor `data-mu-tema`
-      y visor `MU.visor({tono:'claro', filtros:'estado', acciones:'Personalizar'})`; se
-      retiran `MiniGallery.tsx`/`ImageLightbox.tsx` como galeria. Bundle + `npm test` +
-      `typecheck`.
+- [X] T012 **Calculadora nativa**: la tira de `MiniGallery` se monta con `MU.coleccion`
+      (`preset:'producto'` + precio compacto del tema) y el visor es
+      `MU.visor({tono:'claro'})` con la accion "Personalizar"; sin motor queda la tira
+      propia (blanda). `TiraIdeas`/`ImageLightbox` quedan como UI de negocio del cotizador
+      (no son galeria de lista). Verificado en `/cotizador/` del laboratorio: 4 celdas del
+      motor, meta en grilla, 2 precios, badge junto al valor y acciones alineadas.
 
 ## F6 — Retiro del rastro viejo (despues de F5 y del deploy)
 
