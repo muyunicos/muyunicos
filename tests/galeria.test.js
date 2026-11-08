@@ -22,6 +22,7 @@ const lee = (rel) => fs.readFileSync(path.join(RAIZ, rel), 'utf8');
 const gal = require(path.join(RAIZ, 'js/galeria.js'));
 const js = lee('js/galeria.js');
 const css = lee('css/components/galeria.css');
+const temas = lee('css/components/galeria-temas.css');
 const php = lee('inc/galeria.php');
 const prod = lee('js/product.js');
 const func = lee('functions.php');
@@ -675,6 +676,26 @@ check('el cerrar del visor ya no depende de .mu-modal-close (autosuficiente)',
 check('las acciones ganan a .button/.button-primary de WordPress',
     /\.mu-gal-acciones \.mu-gal-accion \{/.test(cssCodigo)
     && !/^\.mu-gal-accion \{/m.test(cssCodigo));
+
+/* --- Spec 020: tema `cotizador` (CSS puro) y cromo sin elementos fuera de flujo --- */
+const temasCodigo = temas.replace(/\/\*[\s\S]*?\*\//g, '');
+check('el tema cotizador pone los precios en DOS columnas con jerarquia',
+    /\[data-mu-tema="cotizador"\] \.mu-gal-meta-caja[^{]*\{[^}]*display: grid/
+        .test(temasCodigo)
+    && /\.mu-gal-precio-ya \{ font-size: 20px/.test(temasCodigo)
+    && /\.mu-gal-precio-etiqueta \{ font-size: 10px/.test(temasCodigo));
+check('el tema cotizador ubica el badge (% OFF) junto al valor',
+    /\[data-mu-tema="cotizador"\] \.mu-gal-badge \{[^}]*grid-column: 3/.test(temasCodigo));
+check('el tema cotizador saca las acciones del flujo y el cromo NO las cuenta',
+    /\.mu-gal-visor\[data-mu-tema="cotizador"\] \.mu-gal-acciones \{[^}]*position: absolute/
+        .test(temasCodigo)
+    && /csEl\.position === 'absolute'/.test(jsCodigo));
+check('el tema cotizador trae zoom, velo y precio compacto',
+    /\.mu-gal-item:hover \.mu-gal-item-abrir img \{ transform: scale\(1\.05\)/.test(temasCodigo)
+    && /\.mu-gal-item-etiqueta \{[^}]*linear-gradient/.test(temasCodigo)
+    && /content: ' c\/u'/i.test(temas.replace(/\s+/g, ' ')));
+check('el CSS de temas se registra y se encola con la galeria',
+    /mu-galeria-temas/.test(php) && /galeria-temas\.css/.test(php));
 
 /* ==================== Resultado ==================== */
 console.log('');

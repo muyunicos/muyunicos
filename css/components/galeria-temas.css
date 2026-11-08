@@ -1,0 +1,128 @@
+/* ============================================
+   TEMAS VISUALES (spec 020) — SOLO presentacion
+   ============================================
+   Un tema es un bloque de CSS que se activa con `data-mu-tema` en el contenedor (o en
+   cualquier ancestro) y cubre los DOS ambitos: la tira (ambito 1) y el visor (ambito 2).
+   No agrega opciones, no cambia datos ni el DOM (D1/D4). Sin atributo, o con un nombre
+   desconocido, el tema es `base` = el aspecto historico (este archivo no lo toca).
+
+   Contrato: specs/020-temas-galeria/contracts/temas.md
+   ============================================ */
+
+/* ---------- Tema `cotizador` ---------- */
+
+/* 1) Precios en DOS COLUMNAS con jerarquia (etiqueta chica arriba, valor grande y el
+   "c/u" al lado) y el badge `% OFF` en la TERCERA columna, junto al valor: es lo que
+   mostraba el lightbox original de la calculadora. El badge va ANTES del titulo en el
+   DOM, asi que se ubica con `order` + `grid-row` explicitos. */
+[data-mu-tema="cotizador"] .mu-gal-meta-caja,
+.mu-gal-visor[data-mu-tema="cotizador"] .mu-gal-meta-caja {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    align-items: end;
+    column-gap: 18px;
+    row-gap: 4px;
+    width: 100%;
+}
+
+[data-mu-tema="cotizador"] .mu-gal-meta-titulo { grid-column: 1 / -1; grid-row: 1; }
+[data-mu-tema="cotizador"] .mu-gal-meta-desc { grid-column: 1 / -1; grid-row: 2; }
+
+[data-mu-tema="cotizador"] .mu-gal-badge {
+    grid-column: 3;
+    grid-row: 3;
+    order: 3;
+    align-self: center;
+    justify-self: end;
+}
+
+[data-mu-tema="cotizador"] .mu-gal-precio {
+    grid-row: 3;
+    order: 2;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+}
+
+[data-mu-tema="cotizador"] .mu-gal-nota {
+    grid-column: 1 / -1;
+    grid-row: 4;
+    order: 4;
+}
+
+/* Jerarquia de tamanos: etiqueta 10px uppercase, valor grande, "c/u" y tachado chicos. */
+[data-mu-tema="cotizador"] .mu-gal-precio-etiqueta { font-size: 10px; opacity: 0.65; }
+
+[data-mu-tema="cotizador"] .mu-gal-precio-ya { font-size: 20px; line-height: 1.1; }
+
+[data-mu-tema="cotizador"] .mu-gal-precio-antes { font-size: 11px; }
+
+[data-mu-tema="cotizador"] .mu-gal-precio-ya::after {
+    content: ' c/u';
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--texto-light);
+}
+
+/* 2) Acciones en la MISMA zona que los precios (variante b de la spec 020: el motor no
+   mueve nodos; el tema las saca del flujo y las ancla al borde inferior de la caja).
+   La meta reserva el ancho para que los botones no tapen el texto. */
+.mu-gal-visor[data-mu-tema="cotizador"] .mu-gal-caja { position: relative; }
+
+.mu-gal-visor[data-mu-tema="cotizador"] .mu-gal-acciones {
+    position: absolute;
+    right: 16px;
+    bottom: 14px;
+    padding: 0;
+    justify-content: flex-end;
+    z-index: 2;
+}
+
+.mu-gal-visor[data-mu-tema="cotizador"] .mu-gal-meta { padding-right: 168px; }
+
+/* 3) Zoom suave en hover sobre la miniatura. */
+[data-mu-tema="cotizador"] .mu-gal-item-abrir img { transition: transform 0.25s ease; }
+
+[data-mu-tema="cotizador"] .mu-gal-item:hover .mu-gal-item-abrir img { transform: scale(1.05); }
+
+@media (prefers-reduced-motion: reduce) {
+    [data-mu-tema="cotizador"] .mu-gal-item:hover .mu-gal-item-abrir img { transform: none; }
+}
+
+/* 4) Etiqueta/descripcion SOBRE la foto, abajo y con velo (en vez del chip arriba). */
+[data-mu-tema="cotizador"] .mu-gal-item-etiqueta {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 14px 6px 4px;
+    border-radius: 0;
+    background: linear-gradient(to top, rgb(0 0 0 / 60%), rgb(0 0 0 / 0%));
+    color: #ffffff;
+    font-size: 10px;
+    line-height: 1.2;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 5) Precio COMPACTO en la tira: `$antes ~ $ya c/u` en una linea. */
+[data-mu-tema="cotizador"] .mu-gal-item-precio { font-size: 11px; }
+
+[data-mu-tema="cotizador"] .mu-gal-item-antes { font-size: 10px; }
+
+[data-mu-tema="cotizador"] .mu-gal-item-antes::after {
+    content: ' ~';
+    color: var(--texto-light);
+    text-decoration: none;
+}
+
+[data-mu-tema="cotizador"] .mu-gal-item-ya { font-size: 12px; }
+
+[data-mu-tema="cotizador"] .mu-gal-item-ya::after {
+    content: ' c/u';
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--texto-light);
+}

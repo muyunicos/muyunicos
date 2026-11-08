@@ -37,6 +37,7 @@ if ( ! function_exists( 'mu_galeria_registrar' ) ) {
         $uri = get_stylesheet_directory_uri();
 
         wp_register_style( 'mu-galeria', $uri . '/css/components/galeria.css', array( 'mu-base' ), $ver );
+	wp_register_style( 'mu-galeria-temas', $uri . '/css/components/galeria-temas.css', array( 'mu-galeria' ), $ver );
         wp_register_script( 'mu-galeria', $uri . '/js/galeria.js', array(), $ver, true );
     }
     add_action( 'wp_enqueue_scripts', 'mu_galeria_registrar', 998 );
@@ -75,6 +76,7 @@ if ( ! function_exists( 'mu_galeria_encolar' ) ) {
             mu_galeria_registrar();
         }
         wp_enqueue_style( 'mu-galeria' );
+	wp_enqueue_style( 'mu-galeria-temas' );
         wp_enqueue_script( 'mu-galeria' );
 
         if ( did_action( 'wp_head' ) > 0 && did_action( 'wp_footer' ) === 0 ) {

@@ -18,7 +18,7 @@
  *   - Consume los tokens del tema (`--primario`, `--mu-radius-*`), nunca los redefine.
  *
  * API: window.MUGaleria (ver specs/019-galeria-compartida/contracts/galeria.md).
- * Version: 1.6.0
+ * Version: 1.7.0
  */
 (function (global) {
     'use strict';
@@ -788,6 +788,10 @@
         var suma = function (sel) {
             var el = caja.querySelector(sel);
             if (!el) { return; }
+            // Un elemento FUERA de flujo no ocupa alto en el cromo: un tema puede sacar
+            // las acciones con `position:absolute` (spec 020, tema `cotizador`).
+            var csEl = global.getComputedStyle ? global.getComputedStyle(el) : null;
+            if (csEl && csEl.position === 'absolute') { return; }
             // `offsetHeight` y no `getBoundingClientRect`: la animacion de apertura del modal
             // escala la caja (0.97 -> 1) y un rect medido a mitad mentiria (chrome corto).
             alto += el.offsetHeight || 0;
@@ -2602,7 +2606,7 @@
             filtrar: filtrar, valoresFiltro: valoresFiltro,
             celdas: celdas, pie: pie, caben: caben,
         carga: carga, topeEnFilas: topeEnFilas, navegableDe: navegableDe, ventana: ventana },
-        version: '1.6.0'
+        version: '1.7.0'
     };
 
     // `MU.visor.actualizar(parcial)` (V2, T044): se cuelga de la MISMA funcion `visor`, asi

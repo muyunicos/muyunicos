@@ -7,11 +7,13 @@ Estados: `[ ]` pendiente, `[X]` hecho, `[~]` hecho parcial (se aclara).
 - [X] T001 **`data-mu-tema` en el motor**: resolver con `closest('[data-mu-tema]')` en
       `MU.coleccion` (no pisa un atributo propio), publicarlo en la raiz de la coleccion y en
       el overlay del visor; `opts.tema` como atajo. Contrato: `contracts/temas.md` T1-T3.
-- [ ] T002 **`css/components/galeria-temas.css`** (nuevo) encolado desde `inc/galeria.php`
+- [X] T002 **`css/components/galeria-temas.css`** (nuevo) encolado desde `inc/galeria.php`
       con la `$ver` del tema y dependencia `mu-galeria`. Bloque `cotizador`: precios en 2
       columnas con jerarquia, `% OFF` junto al valor, zoom en hover (respeta
       `prefers-reduced-motion`), etiqueta con velo, precio compacto. Contrato: T7.
-- [ ] T003 **`.mu-gal-pie`**: el motor envuelve `.mu-gal-meta-caja` + `.mu-gal-acciones`;
+- [X] T003 **`.mu-gal-pie`**: variante **B** aprobada (2026-11-07): el motor NO mueve
+      nodos; el tema `cotizador` saca las acciones del flujo con `position:absolute` y el
+      cromo ya no las cuenta (`csEl.position === 'absolute'`). `base` queda intacto.
       `base` los apila (aspecto de hoy) y `cotizador` los pone en fila. Contrato: T6.
 - [X] T004 **Auditoria del CSS prestado**: el visor deja de usar `.mu-modal-close`
       (`mu-gal-cerrar` autosuficiente) y `.mu-gal-acciones .mu-gal-accion` gana a
