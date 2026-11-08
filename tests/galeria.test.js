@@ -662,6 +662,20 @@ check('el CSS aplica el piso a la raiz de la coleccion',
 check('el piso se mide con el alto NATURAL de la celda (no con el recortado)',
     /Math\.max\(celdaPiso\.offsetHeight \|\| 0, celdaPiso\.scrollHeight \|\| 0\)/.test(jsCodigo));
 
+/* --- Spec 020: temas visuales (CSS) y auditoria del CSS prestado --- */
+check('el tema se resuelve por atributo y se publica en la raiz',
+    /function temaDe\(el, opts\)/.test(jsCodigo) && /closest\('\[data-mu-tema\]'\)/.test(jsCodigo)
+    && /nodo\.setAttribute\('data-mu-tema', temaDe\(nodo, o\)\)/.test(jsCodigo));
+check('el visor hereda el tema del contexto que lo abrio',
+    /overlay\.setAttribute\('data-mu-tema', temaDe\(doc\.activeElement \|\| null, o\)\)/.test(jsCodigo));
+check('el cerrar del visor ya no depende de .mu-modal-close (autosuficiente)',
+    !/mu-modal-close mu-gal-cerrar/.test(jsCodigo)
+    && /\.mu-gal-cerrar \{[^}]*background: transparent/.test(cssCodigo)
+    && /\.mu-gal-cerrar \{[^}]*width: 32px/.test(cssCodigo));
+check('las acciones ganan a .button/.button-primary de WordPress',
+    /\.mu-gal-acciones \.mu-gal-accion \{/.test(cssCodigo)
+    && !/^\.mu-gal-accion \{/m.test(cssCodigo));
+
 /* ==================== Resultado ==================== */
 console.log('');
 if (fallos > 0) {

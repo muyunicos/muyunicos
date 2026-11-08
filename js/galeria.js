@@ -18,7 +18,7 @@
  *   - Consume los tokens del tema (`--primario`, `--mu-radius-*`), nunca los redefine.
  *
  * API: window.MUGaleria (ver specs/019-galeria-compartida/contracts/galeria.md).
- * Version: 1.5.0
+ * Version: 1.6.0
  */
 (function (global) {
     'use strict';
@@ -632,6 +632,24 @@
 
     /* ==================== visor (modal del tema) ==================== */
 
+    /**
+     * Tema visual del contexto (spec 020, D2): `opts.tema` -> `closest('[data-mu-tema]')`
+     * -> `base`. Es **solo presentacion**: el tema vive en `galeria-temas.css` y no
+     * agrega opciones ni datos (D1/D4).
+     *
+     * @param {Element|null} el elemento desde el que se hereda (contenedor o activo)
+     * @param {Object} [opts] opciones del consumidor (atajo `tema`)
+     * @returns {string} nombre del tema, nunca vacio
+     */
+    function temaDe(el, opts) {
+        if (opts && opts.tema) { return String(opts.tema); }
+        if (el && typeof el.closest === 'function') {
+            var c = el.closest('[data-mu-tema]');
+            if (c) { return String(c.getAttribute('data-mu-tema') || 'base'); }
+        }
+        return 'base';
+    }
+
     /** Topes del modo `responsive` (contrato `galeria.md`, C1.1). */
     var CAJA_TOPE = 880;
     var CAJA_TOPE_AMPLIO = 1400;
@@ -1144,6 +1162,10 @@
         overlay.setAttribute('role', 'dialog');
         overlay.setAttribute('aria-modal', 'true');
         overlay.setAttribute('aria-label', String(o.titulo || 'Galeria de imagenes'));
+        // El visor hereda el tema del contexto que lo abrio (el boton de la miniatura
+        // esta DENTRO del contenedor con `data-mu-tema`), asi tira y visor comparten
+        // aspecto (spec 020, D3). `opts.tema` manda cuando se abre programaticamente.
+        overlay.setAttribute('data-mu-tema', temaDe(doc.activeElement || null, o));
 
         var caja = crear(doc, 'div', 'mu-modal-container mu-gal-caja');
         // `ancho`: 'auto' (default) ajusta la caja al contenido en escritorio;
@@ -1153,7 +1175,7 @@
         var cab = crear(doc, 'div', 'mu-gal-cabecera');
         cab.appendChild(crear(doc, 'p', 'mu-gal-titulo', o.titulo || 'Galeria'));
         cab.appendChild(crear(doc, 'p', 'mu-gal-contador', ''));
-        var botonCerrar = crear(doc, 'button', 'mu-modal-close mu-gal-cerrar', '\u00d7');
+        var botonCerrar = crear(doc, 'button', 'mu-gal-cerrar', '\u00d7');
         botonCerrar.type = 'button';
         botonCerrar.setAttribute('aria-label', 'Cerrar');
         cab.appendChild(botonCerrar);
@@ -2127,6 +2149,11 @@
             nodo.appendChild(fila);
         });
         nodo.setAttribute('data-mu-gal-layout', layout);
+        // Tema visual del contexto (spec 020, D2): se respeta el que declare el
+        // consumidor y, si no hay, se resuelve desde el ancestro mas cercano.
+        if (!nodo.getAttribute('data-mu-tema')) {
+            nodo.setAttribute('data-mu-tema', temaDe(nodo, o));
+        }
         var pieAlto = 0;
         if (pieTxt) {
             var p = crear(doc, 'p', 'mu-gal-pie', pieTxt);
@@ -2575,7 +2602,7 @@
             filtrar: filtrar, valoresFiltro: valoresFiltro,
             celdas: celdas, pie: pie, caben: caben,
         carga: carga, topeEnFilas: topeEnFilas, navegableDe: navegableDe, ventana: ventana },
-        version: '1.5.0'
+        version: '1.6.0'
     };
 
     // `MU.visor.actualizar(parcial)` (V2, T044): se cuelga de la MISMA funcion `visor`, asi

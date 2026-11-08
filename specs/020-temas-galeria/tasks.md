@@ -4,7 +4,7 @@ Estados: `[ ]` pendiente, `[X]` hecho, `[~]` hecho parcial (se aclara).
 
 ## F5a — Motor (tema `muyunicos`)
 
-- [ ] T001 **`data-mu-tema` en el motor**: resolver con `closest('[data-mu-tema]')` en
+- [X] T001 **`data-mu-tema` en el motor**: resolver con `closest('[data-mu-tema]')` en
       `MU.coleccion` (no pisa un atributo propio), publicarlo en la raiz de la coleccion y en
       el overlay del visor; `opts.tema` como atajo. Contrato: `contracts/temas.md` T1-T3.
 - [ ] T002 **`css/components/galeria-temas.css`** (nuevo) encolado desde `inc/galeria.php`
@@ -13,7 +13,7 @@ Estados: `[ ]` pendiente, `[X]` hecho, `[~]` hecho parcial (se aclara).
       `prefers-reduced-motion`), etiqueta con velo, precio compacto. Contrato: T7.
 - [ ] T003 **`.mu-gal-pie`**: el motor envuelve `.mu-gal-meta-caja` + `.mu-gal-acciones`;
       `base` los apila (aspecto de hoy) y `cotizador` los pone en fila. Contrato: T6.
-- [ ] T004 **Auditoria del CSS prestado**: el visor deja de usar `.mu-modal-close`
+- [X] T004 **Auditoria del CSS prestado**: el visor deja de usar `.mu-modal-close`
       (`mu-gal-cerrar` autosuficiente) y `.mu-gal-acciones .mu-gal-accion` gana a
       `.button`/`.button-primary`. Contrato: T5.
 - [ ] T005 **Filtros del visor**: `filtros`/`filtroActivo`/`onFiltrar` reusando

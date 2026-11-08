@@ -122,12 +122,36 @@
 /* `contador: 'auto'` (default) lo oculta con un solo item; `false` siempre. */
 .mu-gal-contador[hidden] { display: none; }
 
+/* El cerrar del visor es AUTOSUFICIENTE (spec 020 D7): antes reusaba `.mu-modal-close`
+   de `global-ui.css` (`position:absolute`, gris, hover claro) y dependia de su orden de
+   carga; en una pagina con otro CSS (Tailwind del cotizador) se pisaba. */
 .mu-gal-cerrar {
     position: static;
     flex: 0 0 auto;
-    font-size: 18px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--texto-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mu-font-base);
+    font-size: 20px;
     line-height: 1;
+    cursor: pointer;
+    transition: var(--mu-transition-fast);
 }
+
+.mu-gal-cerrar:hover { background: rgb(15 23 42 / 8%); color: var(--texto); }
+
+.mu-gal-cerrar:focus-visible { outline: 3px solid var(--secundario); outline-offset: 2px; }
+
+.mu-gal-visor--oscuro .mu-gal-cerrar { color: #f8fafc; }
+
+.mu-gal-visor--oscuro .mu-gal-cerrar:hover { background: rgb(255 255 255 / 15%); }
 
 /* --- Segmentos (dos fuentes de imagenes) --- */
 .mu-gal-segs {
@@ -363,7 +387,7 @@
 
 /* Acciones sin borde: mismo criterio que la cabecera y la meta. */
 
-.mu-gal-accion {
+.mu-gal-acciones .mu-gal-accion {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -381,20 +405,20 @@
     transition: var(--mu-transition-fast);
 }
 
-.mu-gal-accion:hover {
+.mu-gal-acciones .mu-gal-accion:hover {
     background: var(--resaltado);
     border-color: var(--resaltado);
     transform: translateY(-1px);
     box-shadow: var(--mu-shadow);
 }
 
-.mu-gal-accion:focus-visible {
+.mu-gal-acciones .mu-gal-accion:focus-visible {
     outline: 3px solid var(--secundario);
     outline-offset: 2px;
 }
 
 /* El icono de la accion (V2, T042) va del tamaño del texto y no se comprime. */
-.mu-gal-accion svg {
+.mu-gal-acciones .mu-gal-accion svg {
     width: 18px;
     height: 18px;
     flex: 0 0 auto;
@@ -403,14 +427,14 @@
 /* Cuando el consumidor pide una accion destructiva (ej: Borrar del plugin).
    `mu-gal-peligro` es la clase BUENA; `pmu-visor-peligro` se conserva como PUENTE porque
    hoy la usa el plugin (otro repo): se retira con F2/T900, no antes. */
-.mu-gal-accion.mu-gal-peligro,
-.mu-gal-accion.pmu-visor-peligro {
+.mu-gal-acciones .mu-gal-accion.mu-gal-peligro,
+.mu-gal-acciones .mu-gal-accion.pmu-visor-peligro {
     background: #d63638;
     border-color: #d63638;
 }
 
-.mu-gal-accion.mu-gal-peligro:hover,
-.mu-gal-accion.pmu-visor-peligro:hover {
+.mu-gal-acciones .mu-gal-accion.mu-gal-peligro:hover,
+.mu-gal-acciones .mu-gal-accion.pmu-visor-peligro:hover {
     background: #b32d2e;
     border-color: #b32d2e;
 }
