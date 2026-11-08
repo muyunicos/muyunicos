@@ -61,3 +61,9 @@ Estados: `[ ]` pendiente, `[X]` hecho, `[~]` hecho parcial (se aclara).
       `specs/030-biblioteca-imagenes/tasks.md`.
 - [ ] T015 **Barrido final**: `docs/errores.md`, `docs/inventario-repo.md`, `AGENTS.md` de
       ambos repos y `specs/INDICE.md` del plugin.
+- [X] T016 **Publicacion de artefactos (2026-11-08)**: `npm run pub:tema` en el repo
+      `calculadora` (`scripts/publicar-tema.ps1`) copia los 4 artefactos al repo del tema
+      con SHA256 verificado y exige que el bundle no sea mas viejo que `src/`; la puerta
+      `node tests/cotizador-assets.js` compara los hashes tema↔calculadora (pendiente si no
+      hay repo al lado) y verifica `inc/cotizador.php`. **Nunca** se copian assets al
+      servidor por FTP/panel: deja archivos untracked y el `pull` del deploy aborta.

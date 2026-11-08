@@ -55,6 +55,11 @@ sacar el motor de los consumidores: la calculadora se rehace nativa y el cotizad
   textual del usuario y solo agrega encolado/deps/atributo.
 - **Datos del cotizador**: `datos_config.json` es del admin. Mitigacion: fuera de git y
   semilla solo para el lab.
+- **Artefactos en DOS repos (2026-11-08)**: el bundle, el CSS y los dos PHP viven en
+  `calculadora` (fuente) y en el tema (desplegable). Mitigacion: `npm run pub:tema` los
+  publica con SHA256 verificado y `node tests/cotizador-assets.js` falla si difieren.
+  **Nunca** se copian al servidor por FTP: deja archivos *untracked* y el `git pull` del
+  deploy ABORTA (paso el 2026-11-08: el tema no se actualizo y la calculadora desaparecio).
 - **Bundle de la calculadora con trabajo ajeno sin commitear**: el repo `calculadora` tiene la
   spec 037 en curso; el build arrastra eso. Mitigacion: commitear por separado (T012) o
   regenerar despues de ese commit.
