@@ -173,58 +173,11 @@ sincronizada dos vias con la imagen grande (`MU.ir(i)`): ver `coleccion.md` C8.
 - Precarga de vecinos: `VECINOS = 1` a cada lado, con `new Image()`.
 - Reabrir con otro `items` **reemplaza** el contenido (un unico modal en el documento).
 
-## C2 — `MUGaleria.tira(el, opciones)`
+## C2 — (retirado) `MUGaleria.tira`
 
-```js
-MUGaleria.tira(el, {
-  items: [ { url, thumb, etiqueta } ],
-  modo: 'auto' | 'linea' | 'grilla',  // default 'auto' (mide el CONTENEDOR, D13)
-  filas: 2,                 // solo 'grilla': tope de filas (0/ausente = todas)
-  tope: 10,                 // cuantas fotos reales antes del "+N" (0/ausente = todas)
-  min: 3,                   // ranuras a llenar: dibuja (min - items.length) vacias
-  mas: true,                // "+N" con las que FALTAN
-  activo: -1,               // indice marcado; -1/ausente = ninguna (FR-020)
-  forma: 'cuadrada' | 'circulo',
-  borrar: true,             // tachito por miniatura (requiere onBorrar)
-  confirmar: true,          // true = confirm() nativo | false = directo | fn
-  contador: true,           // "1 de 3" cuando hay `min`
-  onAbrir:  function (indice) {},
-  onBorrar: function (indice, item) {},   // quitar esa imagen
-  onRanura: function (indice) {},         // tocar una ranura vacia
-  onMas:    function (desde) {}           // el "+N" (sin onMas -> onAbrir)
-});
-```
-
-- Devuelve **cuantas dibujo** (fotos reales + ranuras).
-- Limpia `el` y dibuja `mu-gal-tira--linea` o `--grilla` segun `modo`.
-- **`+N` = las que faltan** (`items.length - tope`), no el total. Con `filas` se agrega
-  **automaticamente** aunque no se pida `mas` (si no, el usuario no sabe que hay mas).
-- Con `min` y `contador` antepone "N de min".
-- **No** pide nada al servidor. Repintar es seguro e idempotente.
-
-### C2.1 — Modo `auto` (D13)
-
-1. Si `tope + ranuras` caben en una linea (`n * 70 + (n - 1) * 6 <= el.clientWidth`) -> `linea`.
-2. Si no caben y `el.clientWidth >= 480` -> `grilla`.
-3. Si no caben y es mas angosto -> `linea` con scroll (nunca inaccesible).
-
-Se recalcula con un `ResizeObserver` compartido **solo si `modo` es `auto`**, y repinta
-conservando `scrollLeft` y el foco de la miniatura. `el` expone `data-mu-gal-modo`.
-
-### C2.2 — DOM de la miniatura (D14)
-
-```html
-<div class="mu-gal-mini mu-gal-mini--activa" data-mu-gal-mini="0">
-  <button class="mu-gal-mini-abrir" aria-label="Imagen 1"><img src="..." alt=""></button>
-  <button class="mu-gal-mini-borrar" aria-label="Quitar imagen 1">&times;</button>
-</div>
-
-<!-- ranura a llenar (min) -->
-<button class="mu-gal-mini mu-gal-mini--vacia" data-mu-gal-ranura="1"
-        aria-label="Agregar imagen 2 de 3"><span class="mu-gal-mini-mas">+</span></button>
-```
-
-**Nunca** un `<button>` dentro de otro (C7). El chip `+N` es `button.mu-gal-mas`.
+La TIRA de miniaturas v1 (`modo` auto/linea/grilla, `min`, `mas`, `+N`, ranuras y tachito)
+**se retiro en la spec 020 (T013)**: el ambito 1 es `MU.coleccion` (contrato `coleccion.md`).
+Lo que sobrevive de este contrato es el **gesto** (C2b) y la **ficha** (C2c).
 
 ## C2b — `MUGaleria.arrastrar(el)`
 
@@ -304,8 +257,8 @@ MUGaleria.tarjeta(
 
 ## C6 — Puros (Node, sin DOM)
 
-API completa: `visor`, `cerrar`, `estaAbierto`, `tira`, `tarjeta`, `desdeWoo`,
-`desdeEnlaces`, `autoInit`, `arrastrar`, `navegarWoo`, `puro`, `version`.
+API completa: `visor`, `cerrar`, `estaAbierto`, `desdeWoo`,
+`desdeEnlaces`, `autoInit`, `arrastrar`, `navegarWoo`, `coleccion`, `puro`, `version`.
 
 ```js
 MUGaleria.puro.acotar(indice, total)      // posicion valida

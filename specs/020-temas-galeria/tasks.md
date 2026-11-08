@@ -53,11 +53,13 @@ Estados: `[ ]` pendiente, `[X]` hecho, `[~]` hecho parcial (se aclara).
 
 ## F6 — Retiro del rastro viejo (despues de F5 y del deploy)
 
-- [~] T013 **Tema**: borrar la v1. **Hecho (2026-11-08)**: `MU.tarjeta` + `.mu-gal-tarjeta*`
-      retirados (JS, CSS, checks y C0/C7 del contrato). **Pendiente**: `tira`/`pintarTira` +
-      helpers `.mu-gal-mini*` y su CSS; **`desdeWoo`/`desdeEnlaces` NO se borran**: los usa
-      el modo declarativo (`itemsDe`) y `navegarWoo` (corrige el alcance original de este
-      task).
+- [X] T013 **Tema**: borrar la v1. **Hecho (2026-11-08)**: `MU.tarjeta` y `MU.tira` retirados
+      con TODO su codigo (`pintarTira`, `observarTira`, `construirMini`, `construirRanura`,
+      `modoEfectivo`, `cabenEnLinea`, mapa `tiras`, constantes `ANCHO_*`/`HUECO_*`), su CSS
+      (`.mu-gal-tira*`, `.mu-gal-mini*`, `.mu-gal-mas*`, `.mu-gal-cuenta` + media queries +
+      reduced-motion + neutralizacion) y sus 20 checks de "Tira v1.1". **`desdeWoo` y
+      `desdeEnlaces` se QUEDAN**: los usa el declarativo (`itemsDe`) y `navegarWoo`. El
+      contrato `galeria.md` marca C2 como retirado y actualiza la lista de API.
       (`.mu-gal-tira*`, `.mu-gal-tarjeta*`, `.mu-gal-mini*`) y los checks de la v1; actualizar
       `coleccion.md` C0 y el demo.
 - [ ] T014 **Plugin**: retirar `cpmu-visor` (fallback del cargador, inalcanzable desde la

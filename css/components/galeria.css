@@ -21,7 +21,6 @@
    tarjetas. Dentro de la galeria manda el componente: se neutraliza para que el
    mismo HTML se vea igual en la tienda, en la cuenta y en el cotizador. */
 .mu-gal-img,
-.mu-gal-mini-abrir img,
 .mu-gal-celda .mu-gal-item-abrir img,
 .mu-gal-marco img {
     border: 0;
@@ -457,191 +456,10 @@
     border-color: #b32d2e;
 }
 
-/* ============================================
-   TIRA (miniaturas) — criterio compartido con css/product.css
-   ============================================ */
+/* (v1 retirada en la spec 020, T013/F6: la TIRA de miniaturas y su chip "+N".
+   El ambito 1 se pinta con `.mu-gal-celda` de `MU.coleccion`.) */
 
-.mu-gal-tira {
-    display: flex;
-    gap: 6px;
-    margin: 0;
-    padding: 0;
-}
-
-/* Una linea con scroll. Se aplica SIEMPRE que el modo resuelto sea linea: el
-   criterio ya no mira el viewport (eso dejaba tiras angostas sin scroll). */
-.mu-gal-tira--linea {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-}
-
-.mu-gal-tira--linea::-webkit-scrollbar { display: none; }
-.mu-gal-tira--linea .mu-gal-mini { scroll-snap-align: start; }
-
-/* Grilla (cuenta del cliente). `--filas` lo pone el JS: 2 = tope de 2 filas. */
-.mu-gal-tira--grilla {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
-    grid-auto-rows: 70px;
-    gap: 6px;
-    overflow: hidden;
-}
-
-.mu-gal-tira--grilla[data-filas] {
-    max-height: calc(var(--filas, 1) * 76px - 6px);
-}
-
-/* La miniatura es un CONTENEDOR (contrato C2 v1.1): los botones van dentro. */
-.mu-gal-mini {
-    position: relative;
-    box-sizing: border-box;
-    flex: 0 0 auto;
-    width: 70px;
-    height: 70px;
-    margin: 0;
-    padding: 0;
-    border: 0;
-    border-radius: var(--mu-radius);
-    background: transparent;
-}
-
-.mu-gal-mini--circulo { border-radius: 50%; }
-
-.mu-gal-mini-abrir {
-    display: block;
-    box-sizing: border-box;
-    width: 100%;
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    border: 2px solid transparent;
-    border-radius: inherit;
-    background: repeating-conic-gradient(#f1f5f9 0 25%, #ffffff 0 50%) 0 / 12px 12px;
-    cursor: pointer;
-    overflow: hidden;
-    opacity: 0.6;
-    transition: var(--mu-transition);
-}
-
-.mu-gal-mini-abrir img {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.mu-gal-mini:hover .mu-gal-mini-abrir {
-    opacity: 1;
-    transform: translateY(-2px);
-}
-
-.mu-gal-mini--activa .mu-gal-mini-abrir {
-    opacity: 1;
-    border-color: var(--primario);
-    box-shadow: var(--mu-shadow);
-}
-
-.mu-gal-mini-abrir:focus-visible {
-    outline: 3px solid var(--primario);
-    outline-offset: 2px;
-}
-
-/* Tachito: en tactil SIEMPRE visible; con puntero fino, en hover o foco. */
-.mu-gal-mini-borrar {
-    position: absolute;
-    top: 2px;
-    right: 2px;
-    z-index: 2;
-    width: 20px;
-    height: 20px;
-    padding: 0;
-    border: 2px solid var(--blanco);
-    border-radius: 50%;
-    background: #d63638;
-    color: var(--blanco);
-    font-size: 12px;
-    line-height: 1;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: var(--mu-shadow-sm);
-    opacity: 0;
-    transition: var(--mu-transition-fast);
-}
-
-.mu-gal-mini:hover .mu-gal-mini-borrar,
-.mu-gal-mini:focus-within .mu-gal-mini-borrar { opacity: 1; }
-.mu-gal-mini-borrar:hover { background: #b32d2e; }
-.mu-gal-mini-borrar:focus-visible {
-    outline: 3px solid var(--secundario);
-    outline-offset: 1px;
-}
-
-@media (hover: none) {
-    .mu-gal-mini-borrar { opacity: 1; }
-}
-
-/* Chip "+N" (las que FALTAN) y ranura a llenar (`min`). */
-.mu-gal-mas {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 13px;
-    color: var(--primario);
-    border: 2px dashed #cbd5e1;
-    background: #f8fafc;
-    cursor: pointer;
-}
-
-/* Cuando la grilla con `filas` recorta, el chip sale FUERA del contenedor
-   recortado: adentro lo taparia el `overflow: hidden`. */
-.mu-gal-mas--fuera {
-    width: auto;
-    height: auto;
-    min-height: 32px;
-    margin-top: 6px;
-    padding: 4px 12px;
-    border-radius: var(--mu-radius);
-}
-
-button.mu-gal-mini--vacia {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    border: 2px dashed #cbd5e1;
-    background: #f8fafc;
-    cursor: pointer;
-}
-
-.mu-gal-mini--vacia:hover {
-    border-color: var(--primario);
-    background: rgb(43 159 207 / 8%);
-}
-
-.mu-gal-mini--vacia:focus-visible {
-    outline: 3px solid var(--primario);
-    outline-offset: 2px;
-}
-
-.mu-gal-mini-mas {
-    font-size: 20px;
-    font-weight: 700;
-    color: var(--primario);
-    line-height: 1;
-}
-
-.mu-gal-cuenta {
-    font-size: 12px;
-    color: var(--texto-light);
-    margin: 0 0 6px;
-}
+/* (v1 retirada: tachito, chip "+N" y ranuras de la tira.) */
 
 /* (v1 retirada en la spec 020, T013/F6: la TARJETA la pinta `MU.coleccion` con
    `preset:'tarjeta'`. `.mu-gal-badge` sigue compartiendose con el visor.) */
@@ -825,14 +643,11 @@ button.mu-gal-mini--vacia {
 @media (prefers-reduced-motion: reduce) {
     .mu-gal-img,
     .mu-gal-cuerpo .mu-nav-btn,
-    .mu-gal-mini,
     .mu-gal-accion,
     .mu-gal-estrella,
     .mu-gal-btn { transition: none; }
     .mu-gal-nav:hover,
-    .mu-gal-mini:hover,
     .mu-gal-accion:hover { transform: none; }
-    .mu-gal-tira--linea { scroll-behavior: auto; }
 }
 
 /* Respaldo del bloqueo de scroll (el JS ya pone `overflow:hidden` en linea). */

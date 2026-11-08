@@ -3,7 +3,7 @@
  *
  * UN solo componente de galeria para todo el sitio. Tres piezas:
  *   - visor   : modal accesible (reusa `.mu-modal-overlay` / `.mu-modal-container`, D2)
- *   - tira    : miniaturas con carrusel/snap o grilla (el aspecto de css/product.css, D6)
+ *   - (la TIRA v1 se retiro en la spec 020, T013: su ambito es `MU.coleccion`)
  *   - coleccion: la galeria embebida (ambito 1) reemplaza a la vieja v1 (tira/tarjeta)
  *
  * Mas dos adaptadores que leen el DOM existente, sin pedir datos (D4/D10):
@@ -18,7 +18,7 @@
  *   - Consume los tokens del tema (`--primario`, `--mu-radius-*`), nunca los redefine.
  *
  * API: window.MUGaleria (ver specs/019-galeria-compartida/contracts/galeria.md).
- * Version: 1.9.0
+ * Version: 1.10.0
  */
 (function (global) {
     'use strict';
@@ -1478,229 +1478,12 @@
         return true;
     }
 
-    /* ==================== tira (miniaturas) ==================== */
+    /* (v1 retirada en la spec 020, T013/F6: la TIRA de miniaturas v1 ya no existe; el
+       ambito 1 es `MU.coleccion`.) */
 
-    /** Ancho de cada miniatura y separacion (espejo del CSS). */
-    var ANCHO_MINI = 70;
-    var HUECO_MINI = 6;
-    /** A partir de este ancho de CONTENEDOR se prefiere grilla antes que carrusel. */
-    var ANCHO_GRILLA = 480;
-    /** Estado por contenedor (items/opciones) para repintar al cambiar el ancho. */
-    var tiras = (typeof WeakMap === 'function') ? new WeakMap() : null;
-    var observadorTiras = null;
+    /* (v1 retirada: `pintarTira`/`observarTira` ya no existen.) */
 
-    /** Entran `cuantas` miniaturas en una sola linea del contenedor? */
-    function cabenEnLinea(nodo, cuantas, anchoMini, hueco) {
-        var ancho = nodo.clientWidth || 0;
-        if (!ancho) { return true; }   // sin layout (oculto): no degradar a carrusel
-        return (cuantas * anchoMini + (cuantas - 1) * hueco) <= ancho;
-    }
-
-    /**
-     * Modo efectivo de la tira (contrato C2 v1.1). `auto` mira el ANCHO DEL
-     * CONTENEDOR (no el viewport, que era el error del criterio anterior):
-     *   - todo cabe en una linea -> linea
-     *   - no cabe y el contenedor es ancho -> grilla
-     *   - no cabe y el contenedor es angosto -> linea con scroll (nunca inaccesible)
-     */
-    function modoEfectivo(nodo, total, o) {
-        var modo = (o.modo === 'grilla' || o.modo === 'linea') ? o.modo : 'auto';
-        if (modo !== 'auto') { return modo; }
-        if (cabenEnLinea(nodo, total, ANCHO_MINI, HUECO_MINI)) { return 'linea'; }
-        return ((nodo.clientWidth || 0) >= ANCHO_GRILLA) ? 'grilla' : 'linea';
-    }
-
-    /**
-     * Una miniatura (contrato C2 v1.1): CONTENEDOR con dos botones, nunca un boton
-     * con un boton dentro (HTML invalido).
-     */
-    function construirMini(doc, item, i, o, activo) {
-        var caja = crear(doc, 'div', 'mu-gal-mini');
-        caja.setAttribute('data-mu-gal-mini', String(i));
-        if (o.forma === 'circulo') { caja.className += ' mu-gal-mini--circulo'; }
-        if (i === activo) { caja.className += ' mu-gal-mini--activa'; }
-
-        var abrir = crear(doc, 'button', 'mu-gal-mini-abrir');
-        abrir.type = 'button';
-        abrir.setAttribute('aria-label', String(item.etiqueta || ('Imagen ' + (i + 1))));
-        var img = crear(doc, 'img');
-        img.setAttribute('loading', 'lazy');
-        img.setAttribute('alt', '');
-        img.setAttribute('src', String(item.thumb || item.url || ''));
-        abrir.appendChild(img);
-        abrir.addEventListener('click', function () {
-            if (typeof o.onAbrir === 'function') { o.onAbrir(i); }
-        });
-        caja.appendChild(abrir);
-
-        if (o.borrar && typeof o.onBorrar === 'function') {
-            var borrar = crear(doc, 'button', 'mu-gal-mini-borrar', '\u00d7');
-            borrar.type = 'button';
-            borrar.setAttribute('aria-label',
-                'Quitar ' + (item.etiqueta || ('imagen ' + (i + 1))));
-            borrar.addEventListener('click', function (e) {
-                if (e.stopPropagation) { e.stopPropagation(); }
-                var seguir = true;
-                if (typeof o.confirmar === 'function') {
-                    seguir = !!o.confirmar(i, item);
-                } else if (o.confirmar !== false && typeof global.confirm === 'function') {
-                    seguir = global.confirm('Quitar esta imagen?');
-                }
-                if (seguir) { o.onBorrar(i, item); }
-            });
-            caja.appendChild(borrar);
-        }
-        return caja;
-    }
-
-    /** Una ranura a llenar (campo con minimo de imagenes). */
-    function construirRanura(doc, i, total, o) {
-        var b = crear(doc, 'button', 'mu-gal-mini mu-gal-mini--vacia');
-        b.type = 'button';
-        b.setAttribute('data-mu-gal-ranura', String(i));
-        b.setAttribute('aria-label', 'Agregar imagen ' + (i + 1) + ' de ' + total);
-        b.appendChild(crear(doc, 'span', 'mu-gal-mini-mas', '+'));
-        b.addEventListener('click', function () {
-            if (typeof o.onRanura === 'function') { o.onRanura(i); }
-        });
-        return b;
-    }
-
-    /**
-     * Dibuja (o repinta) la tira. Conserva el scroll y el foco del contenedor al
-     * repintar (resize), para que el repintado no "salte" al inicio.
-     */
-    function pintarTira(nodo, o, items) {
-        var doc = global.document;
-        var tope = parseInt(o.tope, 10);
-        if (!(tope > 0) || tope > items.length) { tope = items.length; }
-        var visibles = items.slice(0, tope);
-        var filas = parseInt(o.filas, 10) || 0;
-
-        // Con `filas` la grilla recorta: el tope efectivo es lo que cabe (filas x
-        // columnas del contenedor) y el resto se resume en el "+N" (FR-017).
-        var recortado = false;
-        if (o.modo === 'grilla' && filas > 0 && nodo.clientWidth) {
-            var porFila = Math.max(1, Math.floor((nodo.clientWidth + HUECO_MINI) / (ANCHO_MINI + HUECO_MINI)));
-            var caben = porFila * filas;
-            if (caben < visibles.length) {
-                visibles = visibles.slice(0, caben);
-                recortado = true;
-            }
-        }
-
-        var min = Math.max(0, parseInt(o.min, 10) || 0);
-        var ranuras = Math.max(0, min - items.length);
-        var activo = (o.activo === undefined) ? -1 : (parseInt(o.activo, 10) || 0);
-        var total = visibles.length + ranuras;
-        var modo = modoEfectivo(nodo, total, o);
-
-        var scrollPrevio = nodo.scrollLeft || 0;
-        var focoPrevio = null;
-        if (doc.activeElement && nodo.contains && nodo.contains(doc.activeElement)
-            && doc.activeElement.closest) {
-            var cajaFoco = doc.activeElement.closest('[data-mu-gal-mini]');
-            if (cajaFoco) { focoPrevio = cajaFoco.getAttribute('data-mu-gal-mini'); }
-        }
-
-        vaciar(nodo);
-        nodo.setAttribute('data-mu-gal-modo', modo);
-
-        if (o.contador && min > 0) {
-            nodo.appendChild(crear(doc, 'p', 'mu-gal-cuenta',
-                Math.min(items.length, min) + ' de ' + min));
-        }
-
-        var cont = crear(doc, 'div', 'mu-gal-tira mu-gal-tira--' + modo);
-        if (modo === 'grilla' && filas > 0) {
-            cont.setAttribute('data-filas', String(filas));
-            cont.style.setProperty('--filas', String(filas));
-        }
-
-        visibles.forEach(function (item, i) {
-            cont.appendChild(construirMini(doc, item, i, o, activo));
-        });
-
-        // "+N" = las que FALTAN (antes decia el total, que se leia mal).
-        var faltan = items.length - visibles.length;
-        var chipFuera = null;
-        // Con `filas` el "+N" es AUTOMATICO: si recortamos, hay que avisar (FR-017).
-        if ((o.mas || recortado) && faltan > 0) {
-            var mas = crear(doc, 'button', 'mu-gal-mini mu-gal-mas', '+' + faltan);
-            mas.type = 'button';
-            mas.title = 'Ver ' + faltan + ' imagenes mas';
-            mas.setAttribute('aria-label',
-                'Ver ' + faltan + ' imagenes mas (' + items.length + ' en total)');
-            mas.addEventListener('click', function () {
-                if (typeof o.onMas === 'function') {
-                    o.onMas(visibles.length);
-                } else if (typeof o.onAbrir === 'function') {
-                    o.onAbrir(visibles.length);
-                }
-            });
-            if (recortado) { chipFuera = mas; } else { cont.appendChild(mas); }
-        }
-
-        for (var r = 0; r < ranuras; r++) {
-            cont.appendChild(construirRanura(doc, visibles.length + r, min, o));
-        }
-
-        nodo.appendChild(cont);
-        // Si la grilla recorto, el chip va FUERA del contenedor recortado o no se ve.
-        if (chipFuera) {
-            chipFuera.className += ' mu-gal-mas--fuera';
-            nodo.appendChild(chipFuera);
-        }
-        nodo.scrollLeft = scrollPrevio;
-        if (focoPrevio !== null) {
-            var destino = cont.querySelector('[data-mu-gal-mini="' + focoPrevio + '"] .mu-gal-mini-abrir');
-            if (destino) { try { destino.focus(); } catch (eFoco2) { /* sin foco */ } }
-        }
-        return { modo: modo, total: total, dibujadas: total, faltan: faltan };
-    }
-
-    /** Repinta al cambiar el ANCHO del contenedor (solo en modo `auto`). */
-    function observarTira(nodo) {
-        if (!tiras || !nodo) { return; }
-        var est = tiras.get(nodo);
-        if (!est) { return; }
-        if (est.opciones.modo === 'linea' || est.opciones.modo === 'grilla') { return; }
-        if (typeof global.ResizeObserver !== 'function') { return; }
-        if (!observadorTiras) {
-            observadorTiras = new global.ResizeObserver(function (entradas) {
-                for (var i = 0; i < entradas.length; i++) {
-                    var destino = entradas[i].target;
-                    var s = tiras.get(destino);
-                    if (!s) { continue; }
-                    if (s.opciones.modo === 'linea' || s.opciones.modo === 'grilla') { continue; }
-                    if (modoEfectivo(destino, s.total, s.opciones) === s.modo) { continue; }
-                    var r = pintarTira(destino, s.opciones, s.items);
-                    s.modo = r.modo;
-                    s.total = r.total;
-                }
-            });
-        }
-        observadorTiras.observe(nodo);
-    }
-
-    /**
-     * Dibuja una tira de miniaturas en `nodo` (contrato C2 v1.1). Idempotente: limpia
-     * y repinta. `modo: 'auto'` decide por el ANCHO DEL CONTENEDOR; `min` dibuja
-     * ranuras a llenar; `borrar` agrega el tachito con confirmacion.
-     * @returns {number} cuantas dibujo (fotos reales + ranuras).
-     */
-    function tira(nodo, opciones) {
-        var doc = global.document;
-        if (!doc || !nodo) { return 0; }
-        var o = opciones || {};
-        var items = Array.isArray(o.items) ? o.items : [];
-        var res = pintarTira(nodo, o, items);
-        if (tiras) {
-            tiras.set(nodo, { items: items, opciones: o, modo: res.modo, total: res.total });
-        }
-        observarTira(nodo);
-        return res.dibujadas;
-    }
+    /* (v1 retirada: `tira` ya no existe; el ambito 1 es `MU.coleccion`.) */
 
     /**
      * Drag-to-scroll reutilizable (contrato C2b): la UNICA implementacion del gesto
@@ -2651,7 +2434,6 @@
         visor: visor,
         cerrar: cerrar,
         estaAbierto: estaAbierto,
-        tira: tira,
         desdeWoo: desdeWoo,
         desdeEnlaces: desdeEnlaces,
         autoInit: autoInit,
@@ -2663,7 +2445,7 @@
             filtrar: filtrar, valoresFiltro: valoresFiltro,
             celdas: celdas, pie: pie, caben: caben,
         carga: carga, topeEnFilas: topeEnFilas, navegableDe: navegableDe, ventana: ventana },
-        version: '1.9.0'
+        version: '1.10.0'
     };
 
     // `MU.visor.actualizar(parcial)` (V2, T044): se cuelga de la MISMA funcion `visor`, asi
