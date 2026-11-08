@@ -17,6 +17,7 @@
 <link rel="stylesheet" href="../style.css">
 <link rel="stylesheet" href="../css/components/global-ui.css">
 <link rel="stylesheet" href="../css/components/galeria.css">
+<link rel="stylesheet" href="../css/components/galeria-temas.css">
 <style>
     body { padding: 18px; }
     .pg { display: flex; gap: 20px; align-items: flex-start; }
@@ -545,6 +546,9 @@
         roto: false,
         rotoHasta: 0,       // N: rompe solo los primeros N items (0 = ninguna)
         ancho: 'auto',      // 'auto' = lienzo del item promedio (default) | 'completo' = llenar
+        // Spec 020: filtros del visor (pills que RECORTAN) y tema visual del contexto.
+        filtros: null,      // null | 'estado' | 'etiqueta'
+        tema: ''            // '' = base | 'cotizador' | ...
     };
 
     /** Items propios del visor: `n` los fabrica; `roto` rompe las urls a proposito. */
@@ -558,7 +562,9 @@
                 url: caida ? ('no-existe-' + (i + 1) + '.png') : svg(i),
                 thumb: caida ? ('no-existe-mini-' + (i + 1) + '.png') : svgMini(i),
                 transparente: !!VISOR.transparente,
-                etiqueta: base.etiqueta
+                etiqueta: base.etiqueta,
+                // Spec 020: estado para los FILTROS del visor (TODOS/Comprados/Guardados).
+                estado: (i % 2 === 0) ? 'Comprados' : 'Guardados'
             });
         }
         return out;
@@ -568,6 +574,19 @@
     function metaDelVisor() {
         if (VISOR.meta === 'sin') { return null; }
         if (VISOR.meta === 'simple') { return { titulo: 'Vinilo circular 3cm' }; }
+        // Spec 020: el caso del cotizador (badge + DOS precios) para el tema `cotizador`.
+        if (VISOR.meta === 'cotizador') {
+            return {
+                badge: { texto: '31% OFF', tono: 'tienda' },
+                titulo: 'Sticker circular 6 cm',
+                descripcion: 'Vinilo blanco con corte de contorno.',
+                precios: [
+                    { etiqueta: 'Regular', valor: 120 },
+                    { etiqueta: 'Por mayor', valor: 96, anterior: 120 }
+                ],
+                nota: 'Comprando 25 planchas (~2000 u): $ 192.000'
+            };
+        }
         if (VISOR.meta === 'rica') {
             return {
                 badge: '31% OFF',
@@ -687,6 +706,8 @@
             }
         };
         if (VISOR.listado) { o.listado = 'abajo'; }
+        if (VISOR.filtros) { o.filtros = VISOR.filtros; }
+        if (VISOR.tema) { o.tema = VISOR.tema; }
         if (VISOR.segmentos > 0) { o.segmentos = segmentosVisor(VISOR.segmentos); }
         return o;
     }
@@ -1347,7 +1368,10 @@
         '#visor-sin-lista': { listado: false },
         '#visor-meta-precios': { meta: 'precios' },
         '#visor-segmentos': { segmentos: 2 },
-        '#visor-todo': { tono: 'oscuro', meta: 'larga', segmentos: 3, acciones: 4, items: 12 }
+        '#visor-todo': { tono: 'oscuro', meta: 'larga', segmentos: 3, acciones: 4, items: 12 },
+        // Spec 020: pills que recortan y tema visual del contexto.
+        '#visor-filtros': { items: 12, filtros: 'estado', listado: true, meta: 'rica' },
+        '#tema-cotizador': { items: 9, tema: 'cotizador', meta: 'cotizador', listado: true, acciones: 1 }
     };
     var vistaVisor = VISTAS_VISOR[window.location.hash];
     if (vistaVisor || window.location.hash === '#visor3') {

@@ -99,6 +99,11 @@ banda lo recortaba); las flechas de `mu-gal-caja-linea` van **dentro** del bloqu
 (`left/right: 0`) y la fila les reserva el ancho; el visor **no** lleva lineas divisorias
 internas (cabecera, meta, acciones y banda se separan con espacio).
 
+**Temas y filtros (spec 020)**: el ASPECTO se elige declarando `data-mu-tema` en el contenedor
+(`base` = este contrato, `cotizador` = precios en dos columnas) y el visor puede **filtrar** con
+`filtros`/`filtroActivo` (pills TODOS/…). Contratos:
+`specs/020-temas-galeria/contracts/{temas,visor-filtros}.md`.
+
 ### C1.2 — `segmentos` NO filtra
 
 Las pestañas de la cabecera solo **avisan** al consumidor (`onElegir`): el visor nunca recorta

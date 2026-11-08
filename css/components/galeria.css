@@ -153,6 +153,24 @@
 
 .mu-gal-visor--oscuro .mu-gal-cerrar:hover { background: rgb(255 255 255 / 15%); }
 
+/* --- Filtros del visor (spec 020 D6, contrato `visor-filtros.md`) ---
+   Pills que RECORTAN (a diferencia de `.mu-gal-segs`, que solo avisan). Reusan el estilo
+   de los segmentos; solo se separa el contenedor para no borrarse entre si. */
+.mu-gal-filtros {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+    padding: 8px var(--mu-gal-pad) 0;
+}
+
+.mu-gal-filtros-fila {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
 /* --- Segmentos (dos fuentes de imagenes) --- */
 .mu-gal-segs {
     display: flex;

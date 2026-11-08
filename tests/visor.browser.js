@@ -746,6 +746,107 @@ async function ir(page, hash) {
     chk('en un contenedor corto la celda conserva su alto (ambito 1)',
         !!a1 && a1.celda >= a1.natural - 1 && a1.celda > 40, JSON.stringify(a1));
 
+    /* ------- 12septies. spec 020: tema cotizador (CSS) y filtros del visor ------- */
+    console.log('== spec 020: tema cotizador y filtros del visor ==');
+
+    await page.setViewportSize({ width: 1200, height: 900 });
+    await ir(page, '#tema-cotizador');
+    const tema = await page.evaluate(() => {
+        const raiz = document.querySelector('.mu-gal-visor');
+        const meta = raiz.querySelector('.mu-gal-meta-caja');
+        const precios = [...raiz.querySelectorAll('.mu-gal-precio')];
+        const badge = raiz.querySelector('.mu-gal-badge');
+        const acc = raiz.querySelector('.mu-gal-acciones');
+        const ya = raiz.querySelector('.mu-gal-precio-ya');
+        const caja = raiz.querySelector('.mu-gal-caja');
+        const cs = (el, prop) => (el ? getComputedStyle(el)[prop] : '');
+        return {
+            tema: raiz.getAttribute('data-mu-tema'),
+            display: cs(meta, 'display'),
+            filas: precios.map((p) => cs(p, 'gridRowStart')),
+            cols: precios.map((p) => Math.round(p.getBoundingClientRect().left)),
+            badgeCol: cs(badge, 'gridColumnStart'),
+            badgeRow: cs(badge, 'gridRowStart'),
+            valor: cs(ya, 'fontSize'),
+            accPos: cs(acc, 'position'),
+            accRight: acc ? Math.round(acc.getBoundingClientRect().right) : 0,
+            accTop: acc ? Math.round(acc.getBoundingClientRect().top) : 0,
+            cajaRight: Math.round(caja.getBoundingClientRect().right),
+            precioTop: precios.length ? Math.round(precios[0].getBoundingClientRect().top) : 0
+        };
+    });
+    chk('el visor hereda el tema del contexto (data-mu-tema)', tema.tema === 'cotizador',
+        'tema=' + tema.tema);
+    chk('el tema cotizador pone la meta en grilla', tema.display === 'grid',
+        'display=' + tema.display);
+    chk('los precios van en DOS columnas (misma fila, distinta columna)',
+        tema.filas.length === 2 && tema.filas[0] === '3' && tema.filas[1] === '3'
+        && tema.cols[0] !== tema.cols[1], JSON.stringify(tema));
+    chk('el badge % OFF queda junto al valor (fila 3, columna 3)',
+        tema.badgeCol === '3' && tema.badgeRow === '3',
+        'col=' + tema.badgeCol + ' row=' + tema.badgeRow);
+    chk('el valor del precio sube de jerarquia (20px)', tema.valor === '20px',
+        'font=' + tema.valor);
+    chk('las acciones quedan fuera del flujo y a la derecha de la caja',
+        tema.accPos === 'absolute' && tema.accRight <= tema.cajaRight
+        && tema.accRight > tema.cajaRight - 40,
+        'pos=' + tema.accPos + ' right=' + tema.accRight + ' caja=' + tema.cajaRight);
+
+    const mini = page.locator('.mu-gal-visor-lista .mu-gal-item-abrir').first();
+    if (await mini.count()) {
+        await mini.hover();
+        await page.waitForTimeout(450);
+        const zoom = await page.evaluate(() => {
+            const img = document.querySelector('.mu-gal-visor-lista .mu-gal-item-abrir img');
+            return img ? getComputedStyle(img).transform : '';
+        });
+        chk('el tema cotizador hace zoom en hover', zoom !== '' && zoom !== 'none',
+            'transform=' + zoom);
+    }
+
+    await ir(page, '#visor-meta-rica');
+    const base = await page.evaluate(() => {
+        const raiz = document.querySelector('.mu-gal-visor');
+        return {
+            tema: raiz.getAttribute('data-mu-tema') || 'base',
+            display: getComputedStyle(raiz.querySelector('.mu-gal-meta-caja')).display,
+            accPos: getComputedStyle(raiz.querySelector('.mu-gal-acciones')).position
+        };
+    });
+    chk('sin tema el aspecto es el historico (meta flexible, acciones al pie)',
+        base.tema === 'base' && base.display === 'flex' && base.accPos === 'static',
+        JSON.stringify(base));
+
+    /* --- filtros del visor: TODOS / Comprados / Guardados --- */
+    await ir(page, '#visor-filtros');
+    const pills = await page.evaluate(() => {
+        const f = document.querySelector('.mu-gal-filtros');
+        return f ? [...f.querySelectorAll('.mu-gal-seg')].map((b) => ({
+            txt: b.textContent.trim(), activo: b.getAttribute('aria-pressed')
+        })) : [];
+    });
+    chk('el visor monta los pills de filtro (Todos + 2 estados) y "Todos" activo',
+        pills.length === 3 && pills[0].txt === 'Todos' && pills[0].activo === 'true',
+        JSON.stringify(pills));
+
+    const contar = async () => page.evaluate(() => ({
+        contador: ((document.querySelector('.mu-gal-contador') || {}).textContent || '').trim(),
+        celdas: document.querySelectorAll('.mu-gal-visor-lista .mu-gal-celda').length
+    }));
+    const todos = await contar();
+    await page.locator('.mu-gal-filtros .mu-gal-seg:has-text("Guardados")').first().click();
+    await page.waitForTimeout(350);
+    const guardados = await contar();
+    chk('filtrar por Guardados RECORTA la banda y el contador',
+        guardados.celdas > 0 && guardados.celdas < todos.celdas
+        && /^1 \/ \d+$/.test(guardados.contador),
+        'todos=' + JSON.stringify(todos) + ' guardados=' + JSON.stringify(guardados));
+    await page.locator('.mu-gal-filtros .mu-gal-seg:has-text("Todos")').first().click();
+    await page.waitForTimeout(350);
+    const vuelta = await contar();
+    chk('"Todos" restaura la lista completa',
+        vuelta.celdas === todos.celdas, 'todos=' + todos.celdas + ' vuelta=' + vuelta.celdas);
+
     /* ---------------- 12. sin errores de JS ---------------- */
     chk('sin errores de JS en la pagina', errores.length === 0, errores.join(' | '));
 

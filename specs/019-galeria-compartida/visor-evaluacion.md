@@ -80,6 +80,7 @@ regresiones).
 | 29 | **Lineas divisorias** (reportado) | cuatro rayas apiladas (cabecera, meta, acciones, banda) | **CORREGIDO en V3** (T047): cero lineas, separacion por espacio |
 | 30 | **La caja se escapa del 92vh con 768 px de ventana** (medido) | el alto del lienzo era `vh * 0.62` a ojo: la caja pasaba de su `max-height` y el marco empujaba la banda y la meta fuera (el `overflow: hidden` las cortaba) | **CORREGIDO en V4** (T049/T050): alto = 92vh - cromo VERTICAL medido; el cuerpo no encoge y el scroll absorbe |
 | 31 | **La banda del visor se aplasta** (reportado) | la mini caia de 74 a 0-62 px: la RAIZ de la coleccion es un flex item encogible y con `overflow: hidden` su minimo automatico pasa a 0 | **CORREGIDO en V5** (T052): piso de la raiz en el AMBITO 1 (`--mu-gal-alto-min` = alto de la celda MAS ALTA), no en el visor |
+| 32 | **El visor perdio el aspecto del cotizador** (reportado) | precios apilados, `% OFF` suelto arriba y acciones en fila aparte; ademas abria en tono oscuro | **CORREGIDO en V6** (spec 020): tema `cotizador` por CSS (`data-mu-tema`) con precios en 2 columnas, badge junto al valor, zoom/velo y acciones alineadas; `tono` sigue siendo opcion |
 | 23 | Contenido libre (`bloque`) | no existe | **Decidir** (no es requisito de la V2) |
 | 24 | Instancia | `visor.actualizar()` cambia el contenido con el modal abierto y sin recrear el DOM | **RESUELTO en V2** (T044) |
 
@@ -114,6 +115,13 @@ marco 323x242; a 820x768: caja 437x707, marco 297x223) y el pie se ve entero: lo
 la V4 quedan superados. Tambien se corrigio `recorta` en la puerta: un pie que **scrollea**
 ya no cuenta como recorte (se mide contenido inalcanzable). Puertas: **VISOR OK (141/141
 checks, 0 hallazgos)** + **GALERIA OK (252 checks)**.
+
+**V6 (2026-11-07 quinquies)** abre la spec **020**: los **temas visuales son CSS** (se eligen con
+`data-mu-tema`, sin tocar opciones ni datos) y el visor gana **filtros** (`filtros`/`filtroActivo`,
+reusando C10). El tema `cotizador` devuelve el aspecto del lightbox original: precios en DOS
+columnas con jerarquia, `% OFF` junto al valor, zoom en hover, velo en la miniatura y acciones
+alineadas (fuera del flujo, sin mover el DOM). Medido en la puerta: `VISOR OK (152/152 checks, 0
+hallazgos)` + `GALERIA OK (261 checks)`; el tema `base` queda intacto.
 
 ## 3. Inventario: qué falta, qué sobra, qué está de más
 

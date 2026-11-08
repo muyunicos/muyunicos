@@ -489,8 +489,8 @@ check('la fuente de la cota se publica para QA',
 check('el consumidor se entera de los repintados propios (onPintado)',
     /typeof o\.onPintado === 'function'/.test(js) && /o\.onPintado\(res\)/.test(js));
 check('el listado del visor revela todo (navegable:true, sin chip)',
-    /navegable: true,/.test(js)
-    && js.indexOf('navegable: true,') > js.indexOf("o.listado === 'abajo'"));
+    /function montarListado\(/.test(js) && /o\.listado !== 'abajo'/.test(js)
+    && /navegable: true,/.test(js) && /tope: 0,/.test(js));
 
 /* ==================== 4g. Visor con listado inferior (F2) ==================== */
 console.log('== Visor con listado ==');

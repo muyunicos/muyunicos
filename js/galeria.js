@@ -18,7 +18,7 @@
  *   - Consume los tokens del tema (`--primario`, `--mu-radius-*`), nunca los redefine.
  *
  * API: window.MUGaleria (ver specs/019-galeria-compartida/contracts/galeria.md).
- * Version: 1.7.0
+ * Version: 1.8.0
  */
 (function (global) {
     'use strict';
@@ -818,9 +818,128 @@
         return Math.round(alto);
     }
 
+    /** Campos de filtro pedidos (`o.filtros`: string o lista). Vacio = sin pills. */
+    function camposFiltro(o) {
+        var f = (o && o.filtros) ? o.filtros : null;
+        if (!f) { return []; }
+        return Array.isArray(f) ? f.slice() : [f];
+    }
+
+    /** Estado inicial de filtros (`filtroActivo`: string o `{campo: valor}`). */
+    function normalizarFiltro(o) {
+        var out = {};
+        var fa = (o && o.filtroActivo) ? o.filtroActivo : null;
+        var campos = camposFiltro(o);
+        if (fa && typeof fa === 'object') {
+            for (var k in fa) { if (fa.hasOwnProperty(k)) { out[k] = String(fa[k]); } }
+        } else if (fa && campos.length === 1) {
+            out[campos[0]] = String(fa);
+        }
+        return out;
+    }
+
+    /** Lista del visor con los filtros aplicados (no muta la del consumidor). */
+    function vistaFiltrada() {
+        var lista = estado.todos || [];
+        camposFiltro(estado.opciones || {}).forEach(function (campo) {
+            var valor = (estado.filtro || {})[campo];
+            if (valor && String(valor) !== 'todos') {
+                lista = filtrar(lista, campo, valor);
+            }
+        });
+        return lista;
+    }
+
+    /**
+     * Pills de FILTRO arriba del cuerpo (spec 020 D6, contrato `visor-filtros.md`).
+     * A diferencia de `segmentos`, que solo avisan (C1.2), estos RECORTAN la lista.
+     */
+    function montarFiltros(doc, caja, o) {
+        var previo = caja.querySelector('.mu-gal-filtros');
+        if (previo && previo.parentNode) { previo.parentNode.removeChild(previo); }
+        var campos = camposFiltro(o);
+        if (!campos.length) { return; }
+        var cajaF = crear(doc, 'div', 'mu-gal-filtros');
+        var montados = 0;
+        campos.forEach(function (campo) {
+            var valores = valoresFiltro(estado.todos || [], campo);
+            if (valores.length < 2) { return; }
+            var fila = crear(doc, 'div', 'mu-gal-filtros-fila');
+            fila.setAttribute('data-mu-gal-filtro', campo);
+            ['todos'].concat(valores).forEach(function (v) {
+                var b = crear(doc, 'button', 'mu-gal-seg', (v === 'todos') ? 'Todos' : v);
+                b.type = 'button';
+                b.setAttribute('data-mu-gal-valor', String(v));
+                var activo = String((estado.filtro || {})[campo] || 'todos') === String(v);
+                b.setAttribute('aria-pressed', activo ? 'true' : 'false');
+                b.addEventListener('click', function () { aplicarFiltroVisor(campo, v); });
+                fila.appendChild(b);
+            });
+            cajaF.appendChild(fila);
+            montados += 1;
+        });
+        if (!montados) { return; }
+        var cuerpo = caja.querySelector('.mu-gal-cuerpo');
+        if (cuerpo) { caja.insertBefore(cajaF, cuerpo); } else { caja.appendChild(cajaF); }
+    }
+
+    /** (Re)monta la banda de miniaturas con la lista dada (se usa al filtrar). */
+    function montarListado(doc, scroll, items, o, activo) {
+        var previa = scroll.querySelector('.mu-gal-visor-lista');
+        if (previa && previa.parentNode) { previa.parentNode.removeChild(previa); }
+        if (o.listado !== 'abajo' || items.length <= 1) { return; }
+        var lista = crear(doc, 'div', 'mu-gal-visor-lista');
+        if (scroll.firstChild) { scroll.insertBefore(lista, scroll.firstChild); }
+        else { scroll.appendChild(lista); }
+        coleccion(lista, {
+            items: items.map(function (it) {
+                return { url: it.thumb || it.url, etiqueta: it.etiqueta || '' };
+            }),
+            layout: 'fila',
+            preset: 'mini',
+            tamano: 'chico',
+            navegable: true,
+            activo: acotar(activo, items.length),
+            pie: false,
+            tope: 0,
+            onAbrir: function (i) { ir(i); }
+        });
+    }
+
+    /**
+     * Aplica un filtro del visor: recalcula la vista, acota el indice, re-monta la banda
+     * y los pills y repinta. `onFiltrar(campo, valor, res)` avisa al consumidor.
+     * @returns {boolean} true si cambio el filtro
+     */
+    function aplicarFiltroVisor(campo, valor) {
+        var s = estado;
+        if (!s.raiz) { return false; }
+        s.filtro = s.filtro || {};
+        if (String(s.filtro[campo] || 'todos') === String(valor)) { return false; }
+        s.filtro[campo] = String(valor);
+        var doc = global.document;
+        var caja = s.raiz.querySelector('.mu-gal-caja');
+        var scroll = s.raiz.querySelector('.mu-gal-scroll');
+        var vista = vistaFiltrada();
+        s.items = vista;
+        s.medidas = medirItems(vista);
+        s.pos = 0;
+        if (doc && caja) { montarFiltros(doc, caja, s.opciones || {}); }
+        if (doc && scroll) { montarListado(doc, scroll, vista, s.opciones || {}, 0); }
+        aplicarLienzo();
+        pintarVisor();
+        var o = s.opciones || {};
+        if (typeof o.onFiltrar === 'function') {
+            try { o.onFiltrar(campo, String(valor), { items: vista.length, indice: 0 }); }
+            catch (eFiltro) { /* manda el consumidor */ }
+        }
+        return true;
+    }
+
     var estado = {
         raiz: null, items: [], pos: 0, opciones: {}, onKey: null,
-        overflowPrevio: '', focoPrevio: null, onResize: null, medidas: [], lienzo: null
+        overflowPrevio: '', focoPrevio: null, onResize: null, medidas: [], lienzo: null,
+        todos: [], filtro: {}
     };
 
     /** Hay un visor abierto. */
@@ -1100,7 +1219,12 @@
         var p = parcial || {};
         var o = s.opciones || {};
 
-        if (Array.isArray(p.items)) { s.items = p.items.slice(); s.medidas = medirItems(s.items); }
+        if (Array.isArray(p.items)) {
+            // El consumidor manda la lista COMPLETA: los filtros se re-aplican encima.
+            s.todos = p.items.slice();
+            s.items = vistaFiltrada();
+            s.medidas = medirItems(s.items);
+        }
         if (!s.items.length) { return cerrar(); }
 
         if (p.titulo !== undefined) {
@@ -1277,10 +1401,19 @@
         doc.body.appendChild(overlay);
 
         estado.raiz = overlay;
-        estado.items = items;
-        estado.medidas = medirItems(items);
-        estado.pos = acotar(o.indice, items.length);
+        // Filtros del visor (spec 020 D6): el estado guarda la lista COMPLETA y la vista
+        // filtrada; la banda y la navegacion trabajan con la vista.
+        estado.todos = items;
         estado.opciones = o;
+        estado.filtro = normalizarFiltro(o);
+        var vistaInicial = vistaFiltrada();
+        estado.items = vistaInicial;
+        estado.medidas = medirItems(vistaInicial);
+        estado.pos = acotar(o.indice, vistaInicial.length);
+        if (vistaInicial.length !== items.length) {
+            montarListado(doc, scroll, vistaInicial, o, estado.pos);
+        }
+        montarFiltros(doc, caja, o);
         // Antes del frame visible: la caja ya tiene que tener su lienzo puesto.
         aplicarLienzo();
         estado.focoPrevio = doc.activeElement;
@@ -2606,7 +2739,7 @@
             filtrar: filtrar, valoresFiltro: valoresFiltro,
             celdas: celdas, pie: pie, caben: caben,
         carga: carga, topeEnFilas: topeEnFilas, navegableDe: navegableDe, ventana: ventana },
-        version: '1.7.0'
+        version: '1.8.0'
     };
 
     // `MU.visor.actualizar(parcial)` (V2, T044): se cuelga de la MISMA funcion `visor`, asi

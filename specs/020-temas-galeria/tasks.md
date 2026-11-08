@@ -18,12 +18,12 @@ Estados: `[ ]` pendiente, `[X]` hecho, `[~]` hecho parcial (se aclara).
 - [X] T004 **Auditoria del CSS prestado**: el visor deja de usar `.mu-modal-close`
       (`mu-gal-cerrar` autosuficiente) y `.mu-gal-acciones .mu-gal-accion` gana a
       `.button`/`.button-primary`. Contrato: T5.
-- [ ] T005 **Filtros del visor**: `filtros`/`filtroActivo`/`onFiltrar` reusando
+- [X] T005 **Filtros del visor**: `filtros`/`filtroActivo`/`onFiltrar` reusando
       `MU.puro.valoresFiltro/filtrar`; pills en `.mu-gal-segs`; acota indice, contador, banda
       y precarga. Contrato: `contracts/visor-filtros.md`.
-- [ ] T006 **Demo**: escenario `#visor-filtros` (3 estados) + `#tema-cotizador` y controles
+- [X] T006 **Demo**: escenario `#visor-filtros` (3 estados) + `#tema-cotizador` y controles
       del playground para el atributo del tema.
-- [ ] T007 **Puertas**: `galeria.test.js` (atributo, un bloque por tema, `.mu-gal-pie`,
+- [X] T007 **Puertas**: `galeria.test.js` (atributo, un bloque por tema, `.mu-gal-pie`,
       `.mu-gal-cerrar` sin `.mu-modal-close`, especificidad de acciones, filtros) y
       `visor.browser.js` (2 columnas, badge junto al valor, acciones en la fila, zoom/velo,
       filtros que recortan). `base` intacto.
