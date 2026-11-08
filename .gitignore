@@ -64,3 +64,8 @@ _scratch/
 *.orig
 *.rej
 MERGE_HEAD
+
+# --- Datos del cotizador (spec 020 D8) ---
+# `datos_config.json` lo administra el ADMIN del cotizador: no se versiona. El bundle lo
+# lee por `assets/datos_config_etag.php` y el admin guarda por `assets/guardar_datos.php`.
+assets/datos_config.json

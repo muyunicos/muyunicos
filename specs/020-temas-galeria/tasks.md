@@ -33,14 +33,14 @@ Estados: `[ ]` pendiente, `[X]` hecho, `[~]` hecho parcial (se aclara).
 
 ## F5b — Cotizador versionado y calculadora nativa
 
-- [ ] T009 **`inc/cotizador.php`** en el tema: `mu_sticker_calculator_shortcode()` con el
+- [X] T009 **`inc/cotizador.php`** en el tema: `mu_sticker_calculator_shortcode()` con el
       mismo id/URLs/`filemtime`, `mu_galeria_encolar()` adentro, `data-mu-tema="cotizador"` y
       `deps: ['mu-galeria']` en el script; `require_once` en `functions.php`. Contrato: spec
       D8.
-- [ ] T010 **Assets al tema**: `assets/js/calculadora_stickers.js`,
+- [X] T010 **Assets al tema**: `assets/js/calculadora_stickers.js`,
       `assets/css/calculadora_stickers.css`, `assets/datos_config_etag.php`,
       `assets/guardar_datos.php`. `datos_config.json` fuera de git (semilla para el lab).
-- [ ] T011 **Laboratorio**: plugin del carrito instalado/activo, assets por junction y pagina
+- [X] T011 **Laboratorio**: plugin del carrito instalado/activo, assets por junction y pagina
       `cotizador` publicada; verificar `window.MU`, el widget montado y
       `cotizador-pedido.browser.js` con `PMU_COTIZADOR_URL`. Retirar el
       `mu_galeria_encolar()` que se agrego al plugin del carrito (queda en el shortcode).

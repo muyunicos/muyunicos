@@ -388,3 +388,4 @@ mu_load_module( 'products-core' );       // Productos Personalizados Core v2.1
 mu_load_module( 'addon-nombre' );        // Addon Nombre v3.0 (campo nombre personalizado)
 mu_load_module( 'addon-etiquetas' );     // Addon Etiquetas v3.0 (builder de etiquetas)
 mu_load_module( 'galeria' );             // Galeria compartida del tema (spec 019): MUGaleria
+mu_load_module( 'cotizador' );            // Cotizador de stickers (spec 020 T009): shortcode + assets versionados
