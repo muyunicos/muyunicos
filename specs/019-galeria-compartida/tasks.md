@@ -239,6 +239,17 @@ uno suma checks a `tests/visor.browser.js` y, si toca los puros, a `tests/galeri
       ambito 1 + `recorta` pasa a significar "contenido inalcanzable" (un pie que scrollea
       no es un recorte); 3 checks en `galeria.test.js`.
 
-- [ ] T900 F2 — migrar `PMUVisor` (plugin) y la biblioteca del comprador a `MU.coleccion` /
+- [X] T900 F2 — migrar `PMUVisor` (plugin) y la biblioteca del comprador a `MU.coleccion` /
       `MU.visor` (D11: dependencia BLANDA, el plugin no puede exigir el tema).
-- [ ] T901 F3 — la calculadora de `muyunicos` como consumidor de la coleccion.
+      **Hecho 2026-11-07** (commits `3d2fedd`, `5133b71`, `ef78c37`, `0d7ddcf`): `visor-pmu.js`
+      delega en `MU.visor` (con `pmu-visor--sobre` para pasar por encima del modal del plugin y
+      fallback propio), `biblioteca-pmu.js` delega la tira en `MU.coleccion`, y el visor PROPIO del
+      cargador (`cpmu-visor`) **retirado** (si falta `PMUVisor` se avisa con causa). Puertas:
+      `biblioteca-contrato` (48), `selector-contrato`, `ficha-pedido` **52/52** en el laboratorio.
+- [X] T901 F3 — la calculadora de `muyunicos` (repo `calculadora`) como consumidor de la coleccion.
+      **Hecho 2026-11-07**: `MiniGallery` monta la TIRA con `MU.coleccion` (preset del tema
+      `cotizador`) y abre `MU.visor({tono:'claro'})` con meta de precios y accion "Personalizar"; el
+      shortcode del cotizador queda **versionado en el tema** (`inc/cotizador.php`, spec 020 D8) con
+      `mu_galeria_encolar()`. Puertas: `npm test` (28) + `typecheck` y `/cotizador/` verificado en el
+      sitio (`MU 1.10.0`, tira del motor con 4 celdas, visor con tema). `ImageLightbox`/`TiraIdeas`
+      quedan como UI de negocio del cotizador (no son galeria de lista).
