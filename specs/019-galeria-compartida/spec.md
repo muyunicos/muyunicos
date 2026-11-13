@@ -261,8 +261,11 @@ Contrato: [contracts/coleccion.md](./contracts/coleccion.md). Reemplaza "tira + 
   las acciones sin errores de consola.
 - **SC-002** `node tests/galeria.test.js` en verde (API completa, puros, prefijo de clases,
   sin `innerHTML` con datos del usuario, flechas del sistema).
-- **SC-003** En el laboratorio, la ficha de producto: thumbs con arrastre (una sola
-  implementacion), trigger abre `MUGaleria`, zoom de Woo no abre Photoswipe.
+- **SC-003** En el laboratorio, la ficha de producto: `tests/galeria.browser.js` (**9/9**). El
+  **ARRASTRE** queda **conectado** en el slider real (`data-mu-gal-arrastre="1"`, aunque Woo
+  repinte la galeria tras `DOMContentLoaded`), la **lupa abre el VISOR COMPARTIDO** (`MU.visor`)
+  y **no** Photoswipe, recorrer el visor no pide red y no hay errores. Con el grid actual (11
+  miniaturas en 3 filas) **no hay desborde horizontal**: la puerta lo **declara**.
 - **SC-004** El resto del sitio no cambia el peso de sus paginas (registro + encolado
   condicional).
 - **SC-005** El plugin y la calculadora **no se tocan** en esta spec y sus puertas siguen

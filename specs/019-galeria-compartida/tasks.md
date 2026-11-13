@@ -81,11 +81,15 @@ puertas de geometria— Playwright sobre el demo (`scrollHeight == clientHeight`
 
 ## Fase SC-003 — Ficha real en el laboratorio
 
-- [ ] T022 `tests/galeria.browser.js`: ficha real (`C:\wp-lab`) con las thumbs (un solo gesto
+- [X] T022 `tests/galeria.browser.js`: ficha real (`C:\wp-lab`) con las thumbs (un solo gesto
       de arrastre), `.woocommerce-product-gallery__trigger` abriendo `MU.visor` con TODAS las
       fotos en la activa, `Escape` cerrando y restauracion del scroll, zoom de Woo sin abrir
       Photoswipe y `galeria.js` ausente fuera de `is_product()`.
-- [ ] T023 Registrar la corrida en `spec.md` §4 (SC-003) con el numero de comprobaciones.
+- [X] T023 Registrar la corrida en `spec.md` §4 (SC-003) con el numero de comprobaciones.
+      **Hecho (2026-11-07)**: `GALERIA FICHA OK (9/9)` (enganche del arrastre, miniaturas con
+      imagen, desborde declarado, lupa -> visor del tema sin Photoswipe, 0 peticiones al
+      recorrer y 0 errores). Fix de `js/product.js`: el enganche del arrastre pasa de un nodo
+      (que Woo repintaba) a reintentos + `MutationObserver`.
 
 ## Fase C1bis — El chip carga una pantalla y cierra fila (2026-11-07)
 
