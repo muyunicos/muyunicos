@@ -91,10 +91,16 @@
 
 /* 4) Etiqueta/descripcion SOBRE la foto, abajo y con velo (en vez del chip arriba). */
 [data-mu-tema="cotizador"] .mu-gal-item-etiqueta {
-    top: auto;
+    /* El velo va DENTRO del area de la imagen: la etiqueta es HERMANA de
+       `.mu-gal-item-abrir` (que mide `--mu-gal-alto`), asi que se limita a esa caja.
+       Con `bottom: 0` caia sobre `.mu-gal-item-cuerpo` y los textos se encimaban. */
+    top: 0;
     left: 0;
     right: 0;
-    bottom: 0;
+    bottom: auto;
+    height: var(--mu-gal-alto, 112px);
+    display: flex;
+    align-items: flex-end;
     padding: 14px 6px 4px;
     border-radius: 0;
     background: linear-gradient(to top, rgb(0 0 0 / 60%), rgb(0 0 0 / 0%));

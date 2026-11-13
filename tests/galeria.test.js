@@ -666,6 +666,11 @@ check('el tema cotizador trae zoom, velo y precio compacto',
     && /content: ' c\/u'/i.test(temas.replace(/\s+/g, ' ')));
 check('el CSS de temas se registra y se encola con la galeria',
     /mu-galeria-temas/.test(php) && /galeria-temas\.css/.test(php));
+check('desdeWoo deduplica por archivo (Woo repite la imagen con sufijos de recorte)',
+    /function desdeWoo\(raiz\)/.test(jsCodigo) && /-\\d+x\\d+/.test(jsCodigo)
+    && /vistos\[clave\] = 1/.test(jsCodigo));
+check('el velo del tema cotizador se limita al alto de la imagen',
+    /--mu-gal-alto, 112px/.test(temasCodigo) && /align-items: flex-end/.test(temasCodigo));
 
 /* ==================== Resultado ==================== */
 console.log('');

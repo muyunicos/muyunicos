@@ -18,7 +18,7 @@
  *   - Consume los tokens del tema (`--primario`, `--mu-radius-*`), nunca los redefine.
  *
  * API: window.MUGaleria (ver specs/019-galeria-compartida/contracts/galeria.md).
- * Version: 1.10.0
+ * Version: 1.11.0
  */
 (function (global) {
     'use strict';
@@ -2311,25 +2311,31 @@
         var cont = raiz || (doc && doc.querySelector('.woocommerce-product-gallery'));
         var out = [];
         if (!cont) { return out; }
+        // Dedupe por ARCHIVO (spec 020, C11 del visor): Woo repite la imagen principal en
+        // cada slide y agrega sufijos de recorte (`-100x100`), asi que el visor contaba 10
+        // con 5 miniaturas y la banda repetia fotos. Se compara la URL base, sin sufijo.
+        var vistos = {};
+        var agregar = function (url, thumb, etiqueta) {
+            var base = String(url || '').split('#')[0].split('?')[0];
+            if (!base) { return; }
+            var clave = base.replace(/-\d+x\d+(\.(png|jpe?g|webp|gif))?$/i, '$1');
+            if (vistos[clave]) { return; }
+            vistos[clave] = 1;
+            out.push({ url: url, thumb: thumb || url, etiqueta: etiqueta || '' });
+        };
         var slides = cont.querySelectorAll('.woocommerce-product-gallery__image img');
         for (var i = 0; i < slides.length; i++) {
             var s = slides[i];
-            var url = s.getAttribute('data-large_image') || s.getAttribute('data-src')
-                || s.getAttribute('src') || '';
-            if (!url) { continue; }
-            out.push({
-                url: url,
-                thumb: s.getAttribute('data-thumb') || s.getAttribute('src') || url,
-                etiqueta: s.getAttribute('alt') || ''
-            });
+            var urlS = s.getAttribute('data-large_image') || s.getAttribute('data-src') || s.getAttribute('src') || '';
+            if (!urlS) { continue; }
+            agregar(urlS, s.getAttribute('data-src') || s.getAttribute('src') || urlS, s.getAttribute('alt'));
         }
-        if (out.length) { return out; }
         var thumbs = cont.querySelectorAll('.flex-control-thumbs img');
         for (var j = 0; j < thumbs.length; j++) {
             var t = thumbs[j];
-            var u = t.getAttribute('data-large_image') || t.getAttribute('src') || '';
-            if (!u) { continue; }
-            out.push({ url: u, thumb: t.getAttribute('src') || u, etiqueta: t.getAttribute('alt') || '' });
+            var urlT = t.getAttribute('data-large_image') || t.getAttribute('src') || '';
+            if (!urlT) { continue; }
+            agregar(urlT, t.getAttribute('src') || urlT, t.getAttribute('alt'));
         }
         return out;
     }
@@ -2445,7 +2451,7 @@
             filtrar: filtrar, valoresFiltro: valoresFiltro,
             celdas: celdas, pie: pie, caben: caben,
         carga: carga, topeEnFilas: topeEnFilas, navegableDe: navegableDe, ventana: ventana },
-        version: '1.10.0'
+        version: '1.11.0'
     };
 
     // `MU.visor.actualizar(parcial)` (V2, T044): se cuelga de la MISMA funcion `visor`, asi
