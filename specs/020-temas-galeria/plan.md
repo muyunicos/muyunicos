@@ -1,5 +1,10 @@
 # Plan — Spec 020
 
+> **Estado (2026-11-07)**: **F5a cerrada** (motor, temas CSS, `.mu-gal-pie` y filtros del visor;
+  `VISOR 152/152` + `GALERIA 240`, `MU 1.10.0`). **F5b cerrada** (cotizador versionado en el
+  tema + calculadora nativa; `/cotizador/` verificado en produccion). **F6 en curso**: retirados
+  la v1 del tema y `cpmu-visor`; falta `docs/errores.md` del plugin (T015 parcial).
+
 ## Por que existe
 
 La 019 dejo el MOTOR unico pero un solo ASPECTO. Este plan agrega **temas (CSS)**, **filtros
@@ -11,7 +16,7 @@ sacar el motor de los consumidores: la calculadora se rehace nativa y el cotizad
 
 | Fase | Alcance | Puertas |
 |---|---|---|
-| **F5a** | motor: `data-mu-tema`, `galeria-temas.css`, `.mu-gal-pie`, auditoria CSS, filtros del visor | `galeria.test.js`, `visor.browser.js`, `ficha-pedido` 52/52 |
+| **F5a** ✅ | motor: `data-mu-tema`, `galeria-temas.css`, `.mu-gal-pie`, auditoria CSS, filtros del visor | `galeria.test.js`, `visor.browser.js`, `ficha-pedido` 52/52 |
 | **F5b** | cotizador versionado + instalacion en el lab + calculadora nativa | `php -l`, `100`/`200` del lab, `cotizador-pedido.browser.js`, `npm test`/`typecheck` |
 | **F6** | retiro de la v1 del tema y de `cpmu-visor` | todas las suites + recorridos |
 

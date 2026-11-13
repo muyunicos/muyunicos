@@ -1,6 +1,6 @@
 # Spec 020 — Temas visuales de la galeria, filtros del visor y cotizador versionado
 
-**Estado**: en curso (2026-11-07). Nace de la spec **019** (motor unico: `MU.coleccion` =
+**Estado**: **implementada (2026-11-07, V4)** y desplegada. Nace de la spec **019** (motor unico: `MU.coleccion` =
 ambito 1, `MU.visor` = ambito 2), que queda cerrada ahi. Detalle de tareas en `tasks.md` y de
 fases en `plan.md`.
 

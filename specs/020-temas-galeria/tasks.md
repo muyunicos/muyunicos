@@ -27,9 +27,12 @@ Estados: `[ ]` pendiente, `[X]` hecho, `[~]` hecho parcial (se aclara).
       `.mu-gal-cerrar` sin `.mu-modal-close`, especificidad de acciones, filtros) y
       `visor.browser.js` (2 columnas, badge junto al valor, acciones en la fila, zoom/velo,
       filtros que recortan). `base` intacto.
-- [ ] T008 **Docs**: `contracts/coleccion.md` (C12 temas + C4 con `filtros` tambien en el
+- [X] T008 **Docs**: `contracts/coleccion.md` (C12 temas + C4 con `filtros` tambien en el
       visor), `contracts/galeria.md` (C1.3 + puntero a la enmienda de C1.2),
       `visor-evaluacion.md` fila 32 + V6, `MU.version` 1.6.0 y `Version:` de `style.css`.
+      **Hecho (2026-11-07)**: `contracts/temas.md` + `contracts/visor-filtros.md` creados,
+      C0/C7 de `coleccion.md` actualizados y fila 32 + V6 en `visor-evaluacion.md`;
+      `MU.version` llegó a **1.10.0** y `Version:` de `style.css` con cada bump.
 
 ## F5b — Cotizador versionado y calculadora nativa
 
@@ -62,11 +65,18 @@ Estados: `[ ]` pendiente, `[X]` hecho, `[~]` hecho parcial (se aclara).
       contrato `galeria.md` marca C2 como retirado y actualiza la lista de API.
       (`.mu-gal-tira*`, `.mu-gal-tarjeta*`, `.mu-gal-mini*`) y los checks de la v1; actualizar
       `coleccion.md` C0 y el demo.
-- [ ] T014 **Plugin**: retirar `cpmu-visor` (fallback del cargador, inalcanzable desde la
-      spec 030 D28) y el puente `pmu-visor-peligro` si ya nadie lo pasa; anotarlo en
-      `specs/030-biblioteca-imagenes/tasks.md`.
-- [ ] T015 **Barrido final**: `docs/errores.md`, `docs/inventario-repo.md`, `AGENTS.md` de
+- [X] T014 **Plugin**: retirar `cpmu-visor` (fallback del cargador, inalcanzable desde la
+      spec 030 D28). **Hecho (2026-11-07, commit `0d7ddcf`)**: fuera `_abrirVisor`,
+      `_cablearVisor`, `_cerrarVisor`, sus estilos inline y las dos llamadas de reemplazo
+      (ahora van a `_abrirVisorCompartido`); si falta `PMUVisor`/`urlDe` se avisa con causa.
+      El puente `pmu-visor-peligro` **se queda**: la biblioteca del plugin lo sigue pasando
+      (D28) y el motor lo reconoce.
+- [~] T015 **Barrido final**: `docs/errores.md`, `docs/inventario-repo.md`, `AGENTS.md` de
       ambos repos y `specs/INDICE.md` del plugin.
+      **Parcial (2026-11-07)**: hecho el barrido del **plugin** (`AGENTS.md`, `specs/INDICE.md`,
+      `docs/decisiones.md`) y regenerado `docs/inventario-repo.md` (0 archivos sin referencia,
+      0 includes sin resolver). **Falta**: `docs/errores.md` del plugin y el repaso final de
+      ambos `AGENTS.md` cuando se cierren F5b/F6.
 - [X] T016 **Publicacion de artefactos (2026-11-08)**: `npm run pub:tema` en el repo
       `calculadora` (`scripts/publicar-tema.ps1`) copia los 4 artefactos al repo del tema
       con SHA256 verificado y exige que el bundle no sea mas viejo que `src/`; la puerta
