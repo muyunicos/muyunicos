@@ -637,8 +637,10 @@ check('el piso se mide con el alto NATURAL de la celda (no con el recortado)',
 check('el tema se resuelve por atributo y se publica en la raiz',
     /function temaDe\(el, opts\)/.test(jsCodigo) && /closest\('\[data-mu-tema\]'\)/.test(jsCodigo)
     && /nodo\.setAttribute\('data-mu-tema', temaDe\(nodo, o\)\)/.test(jsCodigo));
-check('el visor hereda el tema del contexto que lo abrio',
-    /overlay\.setAttribute\('data-mu-tema', temaDe\(doc\.activeElement \|\| null, o\)\)/.test(jsCodigo));
+check('el visor hereda el tema del contexto (incluido el de la coleccion montada)',
+    /var temaVisor = temaDe\(doc\.activeElement \|\| null, o\)/.test(jsCodigo)
+    && /estado\.temaColeccion/.test(jsCodigo)
+    && /overlay\.setAttribute\('data-mu-tema', temaVisor\)/.test(jsCodigo));
 check('el cerrar del visor ya no depende de .mu-modal-close (autosuficiente)',
     !/mu-modal-close mu-gal-cerrar/.test(jsCodigo)
     && /\.mu-gal-cerrar \{[^}]*background: transparent/.test(cssCodigo)
@@ -667,8 +669,12 @@ check('el tema cotizador trae zoom, velo y precio compacto',
 check('el CSS de temas se registra y se encola con la galeria',
     /mu-galeria-temas/.test(php) && /galeria-temas\.css/.test(php));
 check('desdeWoo deduplica por archivo (Woo repite la imagen con sufijos de recorte)',
+    js.indexOf('function desdeWoo(raiz)') !== -1
+    && js.indexOf('clave = base.replace') !== -1
+    && js.indexOf('vistos[clave] = 1') !== -1);
+/* (check viejo comentado: dependia del strip de comentarios)
     /function desdeWoo\(raiz\)/.test(jsCodigo) && /-\\d+x\\d+/.test(jsCodigo)
-    && /vistos\[clave\] = 1/.test(jsCodigo));
+    */
 check('el velo del tema cotizador se limita al alto de la imagen',
     /--mu-gal-alto, 112px/.test(temasCodigo) && /align-items: flex-end/.test(temasCodigo));
 

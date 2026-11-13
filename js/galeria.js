@@ -939,7 +939,7 @@
     var estado = {
         raiz: null, items: [], pos: 0, opciones: {}, onKey: null,
         overflowPrevio: '', focoPrevio: null, onResize: null, medidas: [], lienzo: null,
-        todos: [], filtro: {}
+        todos: [], filtro: {}, temaColeccion: null
     };
 
     /** Hay un visor abierto. */
@@ -1293,7 +1293,9 @@
         // El visor hereda el tema del contexto que lo abrio (el boton de la miniatura
         // esta DENTRO del contenedor con `data-mu-tema`), asi tira y visor comparten
         // aspecto (spec 020, D3). `opts.tema` manda cuando se abre programaticamente.
-        overlay.setAttribute('data-mu-tema', temaDe(doc.activeElement || null, o));
+        var temaVisor = temaDe(doc.activeElement || null, o);
+        if (temaVisor === 'base' && estado.temaColeccion) { temaVisor = estado.temaColeccion; }
+        overlay.setAttribute('data-mu-tema', temaVisor);
 
         var caja = crear(doc, 'div', 'mu-modal-container mu-gal-caja');
         // `ancho`: 'auto' (default) ajusta la caja al contenido en escritorio;
@@ -1999,6 +2001,9 @@
         if (!nodo.getAttribute('data-mu-tema')) {
             nodo.setAttribute('data-mu-tema', temaDe(nodo, o));
         }
+        // El visor abierto despues (sin foco en la tira) hereda este tema: es la unica
+        // forma de que el ambito 2 vea el mismo aspecto que el 1 (spec 020 D3).
+        estado.temaColeccion = nodo.getAttribute('data-mu-tema') || 'base';
         var pieAlto = 0;
         if (pieTxt) {
             var p = crear(doc, 'p', 'mu-gal-pie', pieTxt);
