@@ -600,6 +600,29 @@
     .mu-gal-acciones { padding-left: 10px; padding-right: 10px; }
 }
 
+/* --- Flechas del slider de miniaturas de la ficha (spec 020) ---
+   Reutilizan `.mu-nav-btn` del tema y se posan sobre el slider (que el JS envuelve en
+   `.mu-gal-thumbs`); el JS las muestra solo si hay desborde en X. */
+.mu-gal-thumbs { position: relative; }
+
+.mu-gal-thumbs .mu-nav-btn {
+    position: absolute;
+    /* El tema las trae `display:none` y las enciende con `.is-visible`: aca van siempre. */
+    display: flex !important;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 3;
+    width: 36px;
+    height: 36px;
+}
+
+.mu-gal-thumbs .mu-gal-thumbs-prev { left: 0; }
+.mu-gal-thumbs .mu-gal-thumbs-next { right: 0; }
+
+.mu-gal-thumbs .mu-nav-btn[hidden] { display: none; }
+
+.mu-gal-visor--oscuro .mu-gal-thumbs .mu-nav-btn { background: rgb(255 255 255 / 18%); }
+
 /* --- DOS MODOS (contrato C1.1) ---
    `adaptive`   (<= 600px): pantalla completa; lo resuelve el `@media` de arriba y el JS
                             no publica lienzo.

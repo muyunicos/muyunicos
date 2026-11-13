@@ -39,6 +39,76 @@
             if (intentos < 20) { setTimeout(reintentar, 150); }
         }());
 
+        /**
+     * Flechas del slider de miniaturas (spec 020): reutiliza `.mu-nav-btn` del tema y
+         * aparecen SOLO si el slider desborda en X. En el grid de Woo no hay scroll, asi
+         * que se ocultan (no estorban).
+         */
+        var intentosFlechas = 0;
+        function ponerFlechas() {
+            var slider = document.querySelector('.woocommerce-product-gallery .flex-control-thumbs');
+            if (!slider || !window.MUGaleria) {
+                // El slider de Woo puede pintarse despues de DOMContentLoaded: reintento
+                // acotado (3 s) como el enganche del arrastre.
+                if (intentosFlechas < 20) { intentosFlechas += 1; setTimeout(ponerFlechas, 150); }
+                return;
+            }
+            var caja = slider.parentNode;
+            if (!caja || !caja.classList) { return; }
+            var prev = caja.querySelector(':scope > .mu-gal-thumbs-prev');
+            if (prev) { return; }                       // ya montadas
+            var envoltura = document.createElement('div');
+            envoltura.className = 'mu-gal-thumbs';
+            caja.insertBefore(envoltura, slider);
+            envoltura.appendChild(slider);
+
+            var svg = function (dir) {
+                var s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                s.setAttribute('viewBox', '0 0 24 24');
+                s.setAttribute('fill', 'none');
+                s.setAttribute('stroke', 'currentColor');
+                s.setAttribute('stroke-width', '2');
+                s.setAttribute('width', '18');
+                s.setAttribute('height', '18');
+                s.setAttribute('aria-hidden', 'true');
+                var p = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+                p.setAttribute('points', dir === 'prev' ? '15 18 9 12 15 6' : '9 18 15 12 9 6');
+                s.appendChild(p);
+                return s;
+            };
+            var mk = function (dir) {
+                var b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'mu-nav-btn ' + dir + ' mu-gal-thumbs-' + dir;
+                b.setAttribute('aria-label', dir === 'prev' ? 'Anterior' : 'Siguiente');
+                b.appendChild(svg(dir));
+                return b;
+            };
+            var btnPrev = mk('prev');
+            var btnNext = mk('next');
+            envoltura.appendChild(btnPrev);
+            envoltura.appendChild(btnNext);
+
+            var paso = function () {
+                var ancho = slider.querySelector('.mu-gal-celda, li');
+                var w = ancho ? ancho.getBoundingClientRect().width + 8 : 80;
+                slider.scrollBy({ left: w, behavior: 'smooth' });
+            };
+            btnPrev.addEventListener('click', function () { slider.scrollBy({ left: -9999, behavior: 'smooth' }); });
+            btnNext.addEventListener('click', paso);
+            var actualizar = function () {
+                var desborda = slider.scrollWidth - slider.clientWidth > 4;
+                var alInicio = slider.scrollLeft <= 2;
+                var alFinal = slider.scrollLeft + slider.clientWidth >= slider.scrollWidth - 2;
+                btnPrev.hidden = !desborda || alInicio;
+                btnNext.hidden = !desborda || alFinal;
+            };
+            slider.addEventListener('scroll', actualizar, { passive: true });
+            window.addEventListener('resize', actualizar);
+            setTimeout(actualizar, 60);
+        };
+        ponerFlechas();
+
         // 2) Si la galeria se REEMPLAZA despues, el observer vuelve a enganchar (debounce).
         if (typeof MutationObserver === 'function') {
             var raizGal = document.querySelector('.woocommerce-product-gallery') || document.body;
