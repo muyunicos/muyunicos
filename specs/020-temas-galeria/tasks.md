@@ -71,6 +71,7 @@ Estados: `[ ]` pendiente, `[X]` hecho, `[~]` hecho parcial (se aclara).
       (ahora van a `_abrirVisorCompartido`); si falta `PMUVisor`/`urlDe` se avisa con causa.
       El puente `pmu-visor-peligro` **se queda**: la biblioteca del plugin lo sigue pasando
       (D28) y el motor lo reconoce.
+- [X] T017 **Flechas del slider de miniaturas de la ficha** (pedido del mantenedor): el tema reutiliza .mu-nav-btn + chevron, product.js envuelve el slider en .mu-gal-thumbs y reintenta 3 s; se muestran sólo si hay desborde en X y ocultan el extremo (medido: el click desplaza 148 px).
 - [~] T015 **Barrido final**: `docs/errores.md`, `docs/inventario-repo.md`, `AGENTS.md` de
       ambos repos y `specs/INDICE.md` del plugin.
       **Parcial (2026-11-07)**: hecho el barrido del **plugin** (`AGENTS.md`, `specs/INDICE.md`,
