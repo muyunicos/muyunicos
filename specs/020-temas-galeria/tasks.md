@@ -80,6 +80,14 @@ Estados: `[ ]` pendiente, `[X]` hecho, `[~]` hecho parcial (se aclara).
       AUTOMATICA (`vinilo · circulares · 6,0 cm`, derivada del codigo del pedido), el precio
       por UNIDADES (`30 u x $6.935` en su propia linea) y el badge de descuento (`23% OFF`).
       Puertas: `GALERIA 245`, `VISOR 152/152`, `npm test 34`, click real verificado.
+- [X] T019 **Celda del cotizador: totales del lote** (pedido del mantenedor,
+      2026-11-13): la celda pasa de precio unitario a **total del lote**. Layout medido:
+      linea 1 = `30 u` + badge `-23%` (ambos pills esmeralda, centro 594 px), linea 2 =
+      `$9.063` (tachado) + `$6.935` (final), 3 lineas de descripcion con puntos.
+      El motor ahora emite `unidades`+`promo` en su PROPIA fila (`p.mu-gal-item-lote`)
+      antes del precio; el tema solo ajusta el aspecto (`order` no bastaba: el wrap del
+      flex mezclaba las dos filas). Puertas: `GALERIA 245`, `VISOR 152/152`,
+      `npm test 34`, click real verificado.
 - [~] T015 **Barrido final**: `docs/errores.md`, `docs/inventario-repo.md`, `AGENTS.md` de
       ambos repos y `specs/INDICE.md` del plugin.
       **Parcial (2026-11-07)**: hecho el barrido del **plugin** (`AGENTS.md`, `specs/INDICE.md`,

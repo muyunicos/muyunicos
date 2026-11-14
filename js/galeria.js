@@ -1721,9 +1721,18 @@
         if (slots.descripcion && item.descripcion) {
             asegurarCuerpo().appendChild(crear(doc, 'p', 'mu-gal-item-desc', item.descripcion));
         }
-        // Precio por UNIDADES (especifico del tema cotizador, sin tocar el contrato): cuando el
-        // consumidor manda `unidades`+`total`, va "500 u x $16.720" EN LA MISMA LINEA del
-        // precio unitario. Solo lo lee el tema que lo declara.
+        // `unidades` + `promo` (contrato C11, opcional) van en su PROPIA fila, ANTES del precio:
+        // asi "30 u  -23%" queda en una linea y "$9.063  $6.935" en la siguiente, sin que el
+        // wrap del flex los mezcle (el tema solo ajusta el aspecto).
+        if (slots.precio && item.precio && item.unidades) {
+            var tira = crear(doc, 'p', 'mu-gal-item-lote');
+            tira.appendChild(crear(doc, 'span', 'mu-gal-item-unidades',
+                formatearPrecio(item.unidades) + ' u'));
+            if (item.precio.promo) {
+                tira.appendChild(crear(doc, 'span', 'mu-gal-item-promo', item.precio.promo));
+            }
+            asegurarCuerpo().appendChild(tira);
+        }
         if (slots.precio && item.precio && item.precio.valor !== undefined) {
             var fila = crear(doc, 'p', 'mu-gal-item-precio');
             if (item.precio.anterior !== undefined && item.precio.anterior !== null) {
@@ -1732,15 +1741,8 @@
             }
             fila.appendChild(crear(doc, 'strong', 'mu-gal-item-ya',
                 '$' + formatearPrecio(item.precio.valor)));
-            if (item.precio.promo) {
-                fila.appendChild(crear(doc, 'span', 'mu-gal-item-promo', item.precio.promo));
-            }
             if (item.precio.aviso) {
                 fila.appendChild(crear(doc, 'span', 'mu-gal-item-aviso', 'actualizado'));
-            }
-            if (item.unidades && item.precio.total !== undefined) {
-                fila.appendChild(crear(doc, 'span', 'mu-gal-item-lote',
-                    formatearPrecio(item.unidades) + ' u x $' + formatearPrecio(item.precio.total)));
             }
             asegurarCuerpo().appendChild(fila);
         }
