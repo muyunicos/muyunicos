@@ -575,7 +575,11 @@
     color: #ffffff;
 }
 
-.mu-gal-item-cat--promo { background: #047857; color: #ecfdf5; }
+.mu-gal-item-cat--promo {
+    background: var(--mu-gal-oro-bg, #fef3c7);
+    color: var(--mu-gal-oro-texto, #92400e);
+    border: 1px solid var(--mu-gal-oro-borde, #fcd34d);
+}
 .mu-gal-item-cat--guardado { background: #6c5ce7; color: #ffffff; }
 .mu-gal-item-cat--comprado { background: #047857; color: #ffffff; }
 
