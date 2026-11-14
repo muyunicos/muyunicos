@@ -1802,7 +1802,10 @@
             tira.appendChild(crear(doc, 'span', 'mu-gal-item-unidades',
                 formatearPrecio(item.unidades) + ' u'));
             if (item.precio.promo) {
-                tira.appendChild(crear(doc, 'span', 'mu-gal-item-promo', item.precio.promo));
+                // Spec 038 (v6): `promoOro` marca el descuento que viene de la PROMO del admin
+                // (el ahorro por cantidad sigue con el tono base).
+                var clasePromo = 'mu-gal-item-promo' + (item.precio.promoOro ? ' mu-gal-item-promo--oro' : '');
+                tira.appendChild(crear(doc, 'span', clasePromo, item.precio.promo));
             }
             asegurarCuerpo().appendChild(tira);
         }

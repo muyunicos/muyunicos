@@ -200,6 +200,14 @@
     white-space: nowrap;
 }
 
+/* Spec 038 (v6): el descuento de la PROMO del admin es ORO (el ahorro por cantidad sigue
+   esmeralda). Es el beneficio que mas importa, tiene que saltar a la vista. */
+[data-mu-tema="cotizador"] .mu-gal-item-promo--oro {
+    background: var(--mu-gal-oro-bg, #fef3c7);
+    color: var(--mu-gal-oro-texto, #92400e);
+    border: 1px solid var(--mu-gal-oro-borde, #fcd34d);
+}
+
 /* Descripcion automatica (material · forma · medida): hasta 3 lineas y, si no entra, corta
    con puntos suspensivos. Antes era una linea cortada y perdia datos utiles. */
 [data-mu-tema="cotizador"] .mu-gal-item-desc {

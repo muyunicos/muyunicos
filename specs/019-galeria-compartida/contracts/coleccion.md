@@ -240,7 +240,7 @@ Un item se dibuja con **slots** (que se ve) y **preset** (atajo):
 | `eliminar` | tachito con confirmacion | `onEliminar` |
 | `titulo` | titulo | `item.titulo` |
 | `descripcion` | descripcion | `item.descripcion` |
-| `precio` | `$valor` + `anterior` tachado + `promo` + `aviso` | `item.precio` |
+| `precio` | `$valor` + `anterior` tachado + `promo` (`promoOro` lo pinta en oro) + `aviso` | `item.precio` |
 | `acciones` | botones declarados | `item.acciones` |
 | `estado` | chip de estado del item | `item.estado` (si falta: "Elegida" en la celda `activo`) |
 | `categoria` | pastilla sobre la foto (spec 038, D6) | `item.categoria` (`PROMO`/`GUARDADO`/`COMPRADO`; ausente = sin etiqueta) |

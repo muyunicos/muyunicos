@@ -718,6 +718,11 @@ check('la promo se resuelve en el motor (desde + pct)',
     /promoAplicaA/.test(calculadora)
     && /ahorroPct/.test(calculadora)
     && /tono: promo \? 'promo' : 'tienda'/.test(muGaleria));
+check('el descuento de la PROMO del admin se pinta en ORO en la celda',
+    /mu-gal-item-promo--/.test(jsCodigo)
+    && /promoOro/.test(jsCodigo)
+    && /mu-gal-item-promo--oro \{[^}]*--mu-gal-oro-bg/.test(temasCodigo)
+    && /mu-gal-item-cat--promo \{[^}]*--mu-gal-oro-bg/.test(cssCodigo));
 check('el CSS de temas se registra y se encola con la galeria',
     /mu-galeria-temas/.test(php) && /galeria-temas\.css/.test(php));
 check('desdeWoo deduplica por archivo (Woo repite la imagen con sufijos de recorte)',
