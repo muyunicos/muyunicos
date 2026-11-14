@@ -656,9 +656,9 @@ check('el tema cotizador pone el precio del lote y el badge en la misma fila',
         .test(temasCodigo)
     && /\[data-mu-tema="cotizador"\] \.mu-gal-badge \{[^}]*grid-row: 4/
         .test(temasCodigo)
-    && /\[data-mu-tema="cotizador"\] \.mu-gal-precio-ya \{ font-size: 20px/
+    && /\[data-mu-tema="cotizador"\] \.mu-gal-precio-ya \{[^}]*font-size: 20px/
         .test(temasCodigo)
-    && /\[data-mu-tema="cotizador"\] \.mu-gal-precio-antes \{ font-size: 11px/
+    && /\[data-mu-tema="cotizador"\] \.mu-gal-precio-antes \{[^}]*font-size: 11px/
         .test(temasCodigo));
 check('el tema cotizador ubica la nota DEBAJO de la descripcion',
     /\[data-mu-tema="cotizador"\] \.mu-gal-nota \{[^}]*grid-row: 3/
@@ -673,6 +673,16 @@ check('la meta acepta varias descripciones (array) y el motor pinta una linea po
 check('la meta reserva aire abajo (el precio no toca el marco)',
     /\[data-mu-tema="cotizador"\] \.mu-gal-meta \{[^}]*padding-bottom: 14px/
         .test(temasCodigo.replace(/\s+/g, ' ')));
+check('las descripciones van en un bloque propio (no se enciman entre si)',
+    /crear\(doc, 'div', 'mu-gal-meta-descs'\)/.test(jsCodigo)
+    && /\.mu-gal-meta-descs \{[^}]*flex-direction: column/.test(cssCodigo)
+    && /\[data-mu-tema="cotizador"\] \.mu-gal-meta-descs \{[^}]*grid-row: 2/
+        .test(temasCodigo));
+check('los precios no parten (nowrap en valor y tachado)',
+    /\[data-mu-tema="cotizador"\] \.mu-gal-precio-ya \{[^}]*white-space: nowrap/
+        .test(temasCodigo)
+    && /\[data-mu-tema="cotizador"\] \.mu-gal-precio-antes \{[^}]*white-space: nowrap/
+        .test(temasCodigo));
 check('en movil las acciones vuelven al flujo (centradas, no ancladas)',
     /@media \(max-width: 600px\)[\s\S]*\.mu-gal-acciones \{[^}]*position: static/
         .test(temasCodigo));

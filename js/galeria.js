@@ -1025,9 +1025,14 @@
         }
         if (m.titulo) { caja.appendChild(crear(doc, 'p', 'mu-gal-meta-titulo', m.titulo)); }
         if (m.descripcion.length) {
+            // Contenedor propio: asi el tema coloca el BLOQUE de descripciones en una sola fila de la
+            // grilla y las lineas se apilan adentro. Si fueran `<p>` sueltos contra la caja,
+            // dos descripciones compartian fila y se encimaban (medido: mismo rect).
+            var descs = crear(doc, 'div', 'mu-gal-meta-descs');
             m.descripcion.forEach(function (linea) {
-                caja.appendChild(crear(doc, 'p', 'mu-gal-meta-desc', linea));
+                descs.appendChild(crear(doc, 'p', 'mu-gal-meta-desc', linea));
             });
+            caja.appendChild(descs);
         }
         m.precios.forEach(function (p) {
             var fila = crear(doc, 'p', 'mu-gal-precio');

@@ -27,11 +27,10 @@
 
 [data-mu-tema="cotizador"] .mu-gal-meta-titulo { grid-column: 1 / -1; grid-row: 1; }
 
-/* La descripcion puede traer VARIAS lineas (texto del admin + detalle automatico): todas
-   van a la fila 2 y la fila crece con el contenido. */
-[data-mu-tema="cotizador"] .mu-gal-meta-desc { grid-column: 1 / -1; grid-row: 2; }
+/* La descripcion puede traer VARIAS lineas: el bloque va a la fila 2 y apila adentro. */
+[data-mu-tema="cotizador"] .mu-gal-meta-descs { grid-column: 1 / -1; grid-row: 2; }
 
-[data-mu-tema="cotizador"] .mu-gal-meta-desc + .mu-gal-meta-desc { margin-top: -2px; }
+[data-mu-tema="cotizador"] .mu-gal-meta-desc { font-size: 13px; }
 
 /* La nota ("Comprando 5 planchas · 120 u") va DEBAJO de la descripcion, no al pie. */
 [data-mu-tema="cotizador"] .mu-gal-nota {
@@ -63,9 +62,16 @@
 }
 
 /* Jerarquia de tamanos: el valor del lote manda; el tachado es chico. */
-[data-mu-tema="cotizador"] .mu-gal-precio-ya { font-size: 20px; line-height: 1.1; }
+[data-mu-tema="cotizador"] .mu-gal-precio-ya {
+    font-size: 20px;
+    line-height: 1.1;
+    white-space: nowrap;
+}
 
-[data-mu-tema="cotizador"] .mu-gal-precio-antes { font-size: 11px; }
+[data-mu-tema="cotizador"] .mu-gal-precio-antes {
+    font-size: 11px;
+    white-space: nowrap;
+}
 
 /* Es el TOTAL del lote, no un unitario: sin "c/u". */
 [data-mu-tema="cotizador"] .mu-gal-precio-ya::after { content: none; }

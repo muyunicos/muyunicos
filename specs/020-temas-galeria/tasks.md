@@ -106,6 +106,15 @@ Estados: `[ ]` pendiente, `[X]` hecho, `[~]` hecho parcial (se aclara).
       -> 15 px); (c) en `max-width: 600px` las acciones vuelven al **flujo** (centradas,
       a 24 px del precio y desvio 0 del centro de la caja) en vez de quedar ancladas a
       259 px del precio. Puertas: `GALERIA 250`, `VISOR 152/152`, `npm test 34`.
+- [X] T022 **Descripciones encimadas y precios sin partir** (pedido del mantenedor,
+      2026-11-13): (a) las dos lineas de `meta.descripcion` compartian `grid-row: 2` y se
+      encimaban (medido: mismo rect 771-790); ahora el motor las mete en
+      `<div class="mu-gal-meta-descs">` y el tema coloca el BLOQUE en la fila 2 (medido:
+      745-783 y 785-804, sin solape); (b) `white-space: nowrap` en `.mu-gal-precio-ya`,
+      `.mu-gal-precio-antes`, `.mu-gal-item-ya` y `.mu-gal-item-antes` (antes un valor
+      grande partia el numero en dos lineas), y en el `Total Estimado` del resumen
+      (`OrderSummary.tsx`, `whitespace-nowrap`). Puertas: `GALERIA 252`, `VISOR 152/152`,
+      `npm test 34`, `typecheck`.
 - [~] T015 **Barrido final**: `docs/errores.md`, `docs/inventario-repo.md`, `AGENTS.md` de
       ambos repos y `specs/INDICE.md` del plugin.
       **Parcial (2026-11-07)**: hecho el barrido del **plugin** (`AGENTS.md`, `specs/INDICE.md`,

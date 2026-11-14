@@ -407,11 +407,20 @@
     color: var(--texto);
 }
 
+/* Bloque de descripciones (una o varias lineas): las apila el mismo, no la caja. */
+.mu-gal-meta-descs {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
 .mu-gal-meta-desc {
     margin: 0;
     font-size: 13px;
     color: var(--texto-light);
     line-height: 1.45;
+    overflow-wrap: break-word;
 }
 
 .mu-gal-visor--oscuro .mu-gal-meta-titulo { color: #f8fafc; }
@@ -1113,8 +1122,18 @@ body.is-scroll-locked { overflow: hidden; }
     pointer-events: none;
 }
 
-.mu-gal-item-ya { color: #047857; font-weight: 700; }
-.mu-gal-item-antes { color: var(--texto-light); text-decoration: line-through; font-size: 9px; }
+.mu-gal-item-ya {
+    color: #047857;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.mu-gal-item-antes {
+    color: var(--texto-light);
+    text-decoration: line-through;
+    font-size: 9px;
+    white-space: nowrap;
+}
 
 /* Compacidad de la tira: la descripcion (si el consumidor la manda) va en una linea. */
 .mu-gal-item-cuerpo { min-width: 0; }
