@@ -98,6 +98,14 @@ Estados: `[ ]` pendiente, `[X]` hecho, `[~]` hecho parcial (se aclara).
       descripcion (que ahora es la automatica material · forma · medida) y el badge `-N%`
       esmeralda junto al valor. Medido: nota t=910, precio t=930, badge col 3 fila 4.
       Puertas: `GALERIA 247`, `VISOR 152/152`, `npm test 34`.
+- [X] T021 **Visor del cotizador: aire, boton movil y descripcion doble** (pedido del
+      mantenedor, 2026-11-13): (a) `meta.descripcion` acepta **array** (una linea por
+      entrada; enmienda al contrato C11 de `019`) y el visor muestra el texto del admin
+      **y** el detalle automatico (antes el automatico lo pisaba); (b) la meta reserva
+      `padding-bottom: 14px` -> el precio dejo de tocar el marco inferior (medido: 1 px
+      -> 15 px); (c) en `max-width: 600px` las acciones vuelven al **flujo** (centradas,
+      a 24 px del precio y desvio 0 del centro de la caja) en vez de quedar ancladas a
+      259 px del precio. Puertas: `GALERIA 250`, `VISOR 152/152`, `npm test 34`.
 - [~] T015 **Barrido final**: `docs/errores.md`, `docs/inventario-repo.md`, `AGENTS.md` de
       ambos repos y `specs/INDICE.md` del plugin.
       **Parcial (2026-11-07)**: hecho el barrido del **plugin** (`AGENTS.md`, `specs/INDICE.md`,

@@ -26,7 +26,12 @@
 }
 
 [data-mu-tema="cotizador"] .mu-gal-meta-titulo { grid-column: 1 / -1; grid-row: 1; }
+
+/* La descripcion puede traer VARIAS lineas (texto del admin + detalle automatico): todas
+   van a la fila 2 y la fila crece con el contenido. */
 [data-mu-tema="cotizador"] .mu-gal-meta-desc { grid-column: 1 / -1; grid-row: 2; }
+
+[data-mu-tema="cotizador"] .mu-gal-meta-desc + .mu-gal-meta-desc { margin-top: -2px; }
 
 /* La nota ("Comprando 5 planchas · 120 u") va DEBAJO de la descripcion, no al pie. */
 [data-mu-tema="cotizador"] .mu-gal-nota {
@@ -81,7 +86,25 @@
     z-index: 2;
 }
 
-.mu-gal-visor[data-mu-tema="cotizador"] .mu-gal-meta { padding-right: 168px; }
+/* Reserva de ancho para las acciones Y aire abajo: sin el padding el precio quedaba
+   pegado al marco inferior de la caja (medido: 1 px). */
+.mu-gal-visor[data-mu-tema="cotizador"] .mu-gal-meta {
+    padding-right: 168px;
+    padding-bottom: 14px;
+}
+
+/* Movil: la caja es pantalla completa, asi que el boton vuelve al FLUJO (centrado y a lo
+   ancho). Anclado al borde de la ventana quedaba a 259 px del precio, incomodo con el
+   pulgar. */
+@media (max-width: 600px) {
+    .mu-gal-visor[data-mu-tema="cotizador"] .mu-gal-acciones {
+        position: static;
+        justify-content: center;
+        padding: 6px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .mu-gal-visor[data-mu-tema="cotizador"] .mu-gal-meta { padding-right: 16px; }
+}
 
 /* 3) Zoom suave en hover sobre la miniatura. */
 [data-mu-tema="cotizador"] .mu-gal-item-abrir img { transition: transform 0.25s ease; }

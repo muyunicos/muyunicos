@@ -37,7 +37,8 @@ MUGaleria.visor({
   ancho: 'auto' | 'completo',                   // ver C1.1 (ya no ajusta al contenido)
   segmentos: [ { etiqueta, activo, onElegir() } ],   // pestañas: NO filtran (ver C1.2)
   acciones:  [ { etiqueta, icono, aria, clase, onAccion(indice) } ],
-  meta:      { titulo, descripcion, nota,
+  meta:      { titulo, descripcion: string | string[],   // array = una linea por entrada
+                nota,
                 badge: '31% OFF' | { texto, tono },              // + badgeTipo (forma vieja)
                 precios: [ { etiqueta, valor, anterior, aviso } ],  // o precio: {...} (vieja)
               },
@@ -151,8 +152,11 @@ sincronizada dos vias con la imagen grande (`MU.ir(i)`): ver `coleccion.md` C8.
   `precio:{valor, anterior, aviso}` -> `precios:[{etiqueta, valor, anterior, aviso}]`. Tonos:
   `tienda` (default), `nuevo`, `oferta`, `peligro`, `guardada` y `comprada` (los dos ultimos los usa
   la biblioteca del plugin); un tono desconocido cae a `tienda`. `precios[]` pinta **una fila por
-  precio** con su `etiqueta` (Regular/Mayor) y `nota` va al pie de la meta. **El mismo normalizador
-  pinta el badge de la tarjeta**, asi no quedan dos formatos de badge en el sistema.
+  precio** con su `etiqueta` (Regular/Mayor) y `nota` va al pie de la meta. **`descripcion`**
+  admite **varias lineas** (array; la forma vieja `string` sigue valiendo): el motor pinta
+  una `<p class="mu-gal-meta-desc">` por entrada y el **tema** decide el orden y el corte.
+  **El mismo normalizador pinta el badge de la tarjeta**, asi no quedan dos formatos de badge
+  en el sistema.
 - **Acciones con icono** (V2, T042): `acciones[].icono` acepta `usar`, `descargar`, `corazon` o
   `basura`. **No es un set del tema**: son cuatro SVG de la familia del chevron, creados con
   `createElementNS` (el componente no usa `innerHTML`) y decorativos (`aria-hidden`), asi que el

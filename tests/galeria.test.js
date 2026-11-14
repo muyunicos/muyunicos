@@ -666,6 +666,16 @@ check('el tema cotizador ubica la nota DEBAJO de la descripcion',
 check('el tema cotizador ya no rotula el precio como unitario (sin c/u)',
     /\[data-mu-tema="cotizador"\] \.mu-gal-precio-ya::after \{ content: none/
         .test(temasCodigo));
+check('la meta acepta varias descripciones (array) y el motor pinta una linea por entrada',
+    /Array\.isArray\(meta\.descripcion\)/.test(jsCodigo)
+    && /out\.descripcion\.push\(String\(d\)\)/.test(jsCodigo)
+    && /m\.descripcion\.forEach\(function \(linea\)/.test(jsCodigo));
+check('la meta reserva aire abajo (el precio no toca el marco)',
+    /\[data-mu-tema="cotizador"\] \.mu-gal-meta \{[^}]*padding-bottom: 14px/
+        .test(temasCodigo.replace(/\s+/g, ' ')));
+check('en movil las acciones vuelven al flujo (centradas, no ancladas)',
+    /@media \(max-width: 600px\)[\s\S]*\.mu-gal-acciones \{[^}]*position: static/
+        .test(temasCodigo));
 check('el tema cotizador ubica el badge (% OFF) junto al valor',
     /\[data-mu-tema="cotizador"\] \.mu-gal-badge \{[^}]*grid-column: 3/.test(temasCodigo));
 check('el tema cotizador saca las acciones del flujo y el cromo NO las cuenta',

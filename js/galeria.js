@@ -973,12 +973,13 @@
      * Normaliza la meta a UNA forma (V2, T043), aceptando la forma vieja para no romper a
      * quien ya llama asi:
      *   badge: '31% OFF' | {texto, tono}   + badgeTipo    -> {texto, tono}
+     *   descripcion: string | string[]                    -> una linea por entrada
      *   precio: {valor, anterior, aviso}                 -> precios: [{etiqueta, valor, anterior, aviso}]
      * Devuelve `null` si no hay nada que pintar.
      */
     function normalizarMeta(meta) {
         if (!meta || typeof meta !== 'object') { return null; }
-        var out = { badge: null, titulo: '', descripcion: '', precios: [], nota: '' };
+        var out = { badge: null, titulo: '', descripcion: [], precios: [], nota: '' };
 
         var b = meta.badge;
         if (b && typeof b === 'object') {
@@ -989,7 +990,14 @@
         if (out.badge && !out.badge.texto) { out.badge = null; }
 
         if (meta.titulo) { out.titulo = String(meta.titulo); }
-        if (meta.descripcion) { out.descripcion = String(meta.descripcion); }
+        // `descripcion` admite VARIAS lineas (array) o la forma vieja (string): el tema
+        // decide el orden y el corte, el motor solo pinta una linea por entrada.
+        var desc = Array.isArray(meta.descripcion) ? meta.descripcion
+            : (meta.descripcion ? [meta.descripcion] : []);
+        desc.forEach(function (d) {
+            if (d === undefined || d === null || d === '') { return; }
+            out.descripcion.push(String(d));
+        });
         if (meta.nota) { out.nota = String(meta.nota); }
 
         var lista = Array.isArray(meta.precios) ? meta.precios
@@ -1016,8 +1024,10 @@
                 'mu-gal-badge mu-gal-badge--' + m.badge.tono, m.badge.texto));
         }
         if (m.titulo) { caja.appendChild(crear(doc, 'p', 'mu-gal-meta-titulo', m.titulo)); }
-        if (m.descripcion) {
-            caja.appendChild(crear(doc, 'p', 'mu-gal-meta-desc', m.descripcion));
+        if (m.descripcion.length) {
+            m.descripcion.forEach(function (linea) {
+                caja.appendChild(crear(doc, 'p', 'mu-gal-meta-desc', linea));
+            });
         }
         m.precios.forEach(function (p) {
             var fila = crear(doc, 'p', 'mu-gal-precio');
