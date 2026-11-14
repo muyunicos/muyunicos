@@ -22,6 +22,14 @@ function mu_sticker_is_list($value) {
     return is_array($value) && array_values($value) === $value;
 }
 
+/** Texto corto sin etiquetas ni entidades (no depende de WordPress: el arnes corre sin WP). */
+function mu_sticker_texto($value) {
+    $texto = is_scalar($value) ? (string) $value : '';
+    $texto = strip_tags($texto);
+    $texto = html_entity_decode($texto, ENT_QUOTES, 'UTF-8');
+    return trim(preg_replace('/\\s+/', ' ', $texto));
+}
+
 /** Respuesta de error de validación. */
 function mu_sticker_invalid($message) {
     return array(422, array('ok' => false, 'error' => $message));
@@ -98,6 +106,40 @@ function mu_sticker_save_config($raw, $targetFile) {
         $config['calcSalaryMode'] = (bool) $config['calcSalaryMode'];
     }
 
+
+    // --- PROMOS (spec 038, v5): lista con filtros. Se valida fila por fila; una
+    // fila sin descuento valido se descarta (no rompe el guardado del resto).
+    if (array_key_exists('promos', $config) && $config['promos'] !== null) {
+        if (!is_array($config['promos'])) {
+            return mu_sticker_invalid('config.promos debe ser una lista.');
+        }
+        $promos_limpias = array();
+        foreach ($config['promos'] as $index => $promo) {
+            if (!is_array($promo)) {
+                continue;
+            }
+            $pct = isset($promo['pct']) && is_numeric($promo['pct']) ? (float) $promo['pct'] : 0.0;
+            if ($pct <= 0 || $pct > 100) {
+                continue;
+            }
+            $desde = isset($promo['desde']) && is_numeric($promo['desde']) ? max(1, (int) $promo['desde']) : 1;
+            $fila = array(
+                'id' => isset($promo['id']) ? mu_sticker_texto($promo['id']) : ('promo-' . $index),
+                'material' => isset($promo['material']) ? mu_sticker_texto($promo['material']) : 'todos',
+                'forma' => isset($promo['forma']) ? mu_sticker_texto($promo['forma']) : 'todas',
+                'desde' => $desde,
+                'pct' => $pct,
+                'activa' => !isset($promo['activa']) || ((bool) $promo['activa']),
+            );
+            foreach (array('tamMin', 'tamMax') as $lado) {
+                if (isset($promo[$lado]) && is_numeric($promo[$lado]) && (float) $promo[$lado] > 0) {
+                    $fila[$lado] = (float) $promo[$lado];
+                }
+            }
+            $promos_limpias[] = $fila;
+        }
+        $config['promos'] = $promos_limpias;
+    }
     // --- MATERIALES ---
     $materials = array();
     foreach (array_values($data['materials']) as $index => $material) {
