@@ -28,41 +28,44 @@
 [data-mu-tema="cotizador"] .mu-gal-meta-titulo { grid-column: 1 / -1; grid-row: 1; }
 [data-mu-tema="cotizador"] .mu-gal-meta-desc { grid-column: 1 / -1; grid-row: 2; }
 
-[data-mu-tema="cotizador"] .mu-gal-badge {
-    grid-column: 3;
+/* La nota ("Comprando 5 planchas · 120 u") va DEBAJO de la descripcion, no al pie. */
+[data-mu-tema="cotizador"] .mu-gal-nota {
+    grid-column: 1 / -1;
     grid-row: 3;
     order: 3;
+    font-size: 11px;
+    color: var(--texto-light);
+}
+
+[data-mu-tema="cotizador"] .mu-gal-badge {
+    grid-column: 3;
+    grid-row: 4;
+    order: 4;
     align-self: center;
     justify-self: end;
+    /* Mismo tono que el badge de la celda (esmeralda), no el rojo de oferta. */
+    background: #d1fae5;
+    color: #047857;
 }
 
 [data-mu-tema="cotizador"] .mu-gal-precio {
-    grid-row: 3;
-    order: 2;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1px;
-}
-
-[data-mu-tema="cotizador"] .mu-gal-nota {
-    grid-column: 1 / -1;
+    grid-column: 1 / 3;
     grid-row: 4;
     order: 4;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8px;
 }
 
-/* Jerarquia de tamanos: etiqueta 10px uppercase, valor grande, "c/u" y tachado chicos. */
-[data-mu-tema="cotizador"] .mu-gal-precio-etiqueta { font-size: 10px; opacity: 0.65; }
-
+/* Jerarquia de tamanos: el valor del lote manda; el tachado es chico. */
 [data-mu-tema="cotizador"] .mu-gal-precio-ya { font-size: 20px; line-height: 1.1; }
 
 [data-mu-tema="cotizador"] .mu-gal-precio-antes { font-size: 11px; }
 
-[data-mu-tema="cotizador"] .mu-gal-precio-ya::after {
-    content: ' c/u';
-    font-size: 10px;
-    font-weight: 600;
-    color: var(--texto-light);
-}
+/* Es el TOTAL del lote, no un unitario: sin "c/u". */
+[data-mu-tema="cotizador"] .mu-gal-precio-ya::after { content: none; }
+
+[data-mu-tema="cotizador"] .mu-gal-precio-etiqueta { display: none; }
 
 /* 2) Acciones en la MISMA zona que los precios (variante b de la spec 020: el motor no
    mueve nodos; el tema las saca del flujo y las ancla al borde inferior de la caja).
@@ -124,12 +127,10 @@
 }
 
 [data-mu-tema="cotizador"] .mu-gal-item-unidades {
+    /* NO es un badge: texto simple al lado del badge de descuento (que si es pill). */
     font-size: 11px;
     font-weight: 700;
     color: #047857;
-    background: #d1fae5;
-    border-radius: var(--mu-radius-full, 999px);
-    padding: 2px 8px;
     white-space: nowrap;
 }
 

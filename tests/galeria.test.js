@@ -651,11 +651,21 @@ check('las acciones ganan a .button/.button-primary de WordPress',
 
 /* --- Spec 020: tema `cotizador` (CSS puro) y cromo sin elementos fuera de flujo --- */
 const temasCodigo = temas.replace(/\/\*[\s\S]*?\*\//g, '');
-check('el tema cotizador pone los precios en DOS columnas con jerarquia',
-    /\[data-mu-tema="cotizador"\] \.mu-gal-meta-caja[^{]*\{[^}]*display: grid/
+check('el tema cotizador pone el precio del lote y el badge en la misma fila',
+    /\[data-mu-tema="cotizador"\] \.mu-gal-precio \{[^}]*grid-column: 1 \/ 3/
         .test(temasCodigo)
-    && /\.mu-gal-precio-ya \{ font-size: 20px/.test(temasCodigo)
-    && /\.mu-gal-precio-etiqueta \{ font-size: 10px/.test(temasCodigo));
+    && /\[data-mu-tema="cotizador"\] \.mu-gal-badge \{[^}]*grid-row: 4/
+        .test(temasCodigo)
+    && /\[data-mu-tema="cotizador"\] \.mu-gal-precio-ya \{ font-size: 20px/
+        .test(temasCodigo)
+    && /\[data-mu-tema="cotizador"\] \.mu-gal-precio-antes \{ font-size: 11px/
+        .test(temasCodigo));
+check('el tema cotizador ubica la nota DEBAJO de la descripcion',
+    /\[data-mu-tema="cotizador"\] \.mu-gal-nota \{[^}]*grid-row: 3/
+        .test(temasCodigo));
+check('el tema cotizador ya no rotula el precio como unitario (sin c/u)',
+    /\[data-mu-tema="cotizador"\] \.mu-gal-precio-ya::after \{ content: none/
+        .test(temasCodigo));
 check('el tema cotizador ubica el badge (% OFF) junto al valor',
     /\[data-mu-tema="cotizador"\] \.mu-gal-badge \{[^}]*grid-column: 3/.test(temasCodigo));
 check('el tema cotizador saca las acciones del flujo y el cromo NO las cuenta',
@@ -665,7 +675,7 @@ check('el tema cotizador saca las acciones del flujo y el cromo NO las cuenta',
 check('el tema cotizador trae zoom, velo y precio compacto',
     /\.mu-gal-item:hover \.mu-gal-item-abrir img \{ transform: scale\(1\.05\)/.test(temasCodigo)
     && /\.mu-gal-item-etiqueta \{[^}]*linear-gradient/.test(temasCodigo)
-    && /content: ' c\/u'/i.test(temas.replace(/\s+/g, ' ')));
+    && /\.mu-gal-item-precio \{/.test(temasCodigo));
 check('el CSS de temas se registra y se encola con la galeria',
     /mu-galeria-temas/.test(php) && /galeria-temas\.css/.test(php));
 check('desdeWoo deduplica por archivo (Woo repite la imagen con sufijos de recorte)',

@@ -88,6 +88,16 @@ Estados: `[ ]` pendiente, `[X]` hecho, `[~]` hecho parcial (se aclara).
       antes del precio; el tema solo ajusta el aspecto (`order` no bastaba: el wrap del
       flex mezclaba las dos filas). Puertas: `GALERIA 245`, `VISOR 152/152`,
       `npm test 34`, click real verificado.
+- [X] T020 **Pulido del cotizador** (pedido del mantenedor, 2026-11-13):
+      (a) `.mu-gal-item-unidades` deja de parecer badge (sin fondo, radio ni padding: es
+      texto); (b) las flechas del visor ya no se "elevan" al clickear: `transform: none`
+      en `.mu-gal-cuerpo .mu-nav-btn` y su `:active` (el `@media` movil conserva el
+      `translateY(-50%)` del centrado y solo anula el `scale` del tema);
+      (c) la meta del visor pasa a **un solo precio de lote** (`total` con el tachado de
+      `unitario x unidades`), la nota `Comprando N planchas · N u` **debajo** de la
+      descripcion (que ahora es la automatica material · forma · medida) y el badge `-N%`
+      esmeralda junto al valor. Medido: nota t=910, precio t=930, badge col 3 fila 4.
+      Puertas: `GALERIA 247`, `VISOR 152/152`, `npm test 34`.
 - [~] T015 **Barrido final**: `docs/errores.md`, `docs/inventario-repo.md`, `AGENTS.md` de
       ambos repos y `specs/INDICE.md` del plugin.
       **Parcial (2026-11-07)**: hecho el barrido del **plugin** (`AGENTS.md`, `specs/INDICE.md`,

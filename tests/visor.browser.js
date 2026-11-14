@@ -764,7 +764,7 @@ async function ir(page, hash) {
             tema: raiz.getAttribute('data-mu-tema'),
             display: cs(meta, 'display'),
             filas: precios.map((p) => cs(p, 'gridRowStart')),
-            cols: precios.map((p) => Math.round(p.getBoundingClientRect().left)),
+            cols: precios.map((p) => cs(p, 'gridColumnStart')),
             badgeCol: cs(badge, 'gridColumnStart'),
             badgeRow: cs(badge, 'gridRowStart'),
             valor: cs(ya, 'fontSize'),
@@ -779,11 +779,11 @@ async function ir(page, hash) {
         'tema=' + tema.tema);
     chk('el tema cotizador pone la meta en grilla', tema.display === 'grid',
         'display=' + tema.display);
-    chk('los precios van en DOS columnas (misma fila, distinta columna)',
-        tema.filas.length === 2 && tema.filas[0] === '3' && tema.filas[1] === '3'
-        && tema.cols[0] !== tema.cols[1], JSON.stringify(tema));
-    chk('el badge % OFF queda junto al valor (fila 3, columna 3)',
-        tema.badgeCol === '3' && tema.badgeRow === '3',
+    chk('el precio del lote y el badge comparten fila (4), el precio en la columna 1',
+        tema.filas[0] === '4' && tema.cols[0] === '1'
+        && tema.filas[1] === '4', JSON.stringify(tema));
+    chk('el badge de ahorro queda junto al valor (fila 4, columna 3)',
+        tema.badgeCol === '3' && tema.badgeRow === '4',
         'col=' + tema.badgeCol + ' row=' + tema.badgeRow);
     chk('el valor del precio sube de jerarquia (20px)', tema.valor === '20px',
         'font=' + tema.valor);

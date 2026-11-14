@@ -336,6 +336,24 @@
 
 .mu-gal-cuerpo .mu-nav-btn[hidden] { display: none; }
 
+/* Sin la animacion de "elevarse" del tema (`shop.css` pone translateY(-50%) scale(.95) en
+   :active y `global-ui.css` escala el SVG): en el visor la flecha NO se mueve. */
+.mu-gal-cuerpo .mu-nav-btn.prev,
+.mu-gal-cuerpo .mu-nav-btn.next {
+    transition: none;
+    transform: none;
+}
+
+.mu-gal-cuerpo .mu-nav-btn.prev:active,
+.mu-gal-cuerpo .mu-nav-btn.next:active {
+    transform: none;
+}
+
+.mu-gal-cuerpo .mu-nav-btn.prev:active svg,
+.mu-gal-cuerpo .mu-nav-btn.next:active svg {
+    transform: none;
+}
+
 /* En modo `responsive` las flechas van SIEMPRE al costado: el lienzo ya se acoto para
    que entren (caja = lienzo + cromo). La superposicion existe solo en `adaptive`, y la
    aplica el `@media` de abajo. Es una DECISION del componente, no una opcion. */
@@ -354,6 +372,12 @@
 
     .mu-gal-cuerpo .mu-nav-btn.prev { left: 8px; }
     .mu-gal-cuerpo .mu-nav-btn.next { right: 8px; }
+
+    /* Aca la flecha si va centrada con translateY: solo se anula el `:active` del tema. */
+    .mu-gal-cuerpo .mu-nav-btn.prev:active,
+    .mu-gal-cuerpo .mu-nav-btn.next:active {
+        transform: translateY(-50%);
+    }
 }
 
 .mu-gal-cuerpo .mu-nav-btn:focus-visible {
