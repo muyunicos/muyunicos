@@ -1721,6 +1721,9 @@
         if (slots.descripcion && item.descripcion) {
             asegurarCuerpo().appendChild(crear(doc, 'p', 'mu-gal-item-desc', item.descripcion));
         }
+        // Precio por UNIDADES (especifico del tema cotizador, sin tocar el contrato): cuando el
+        // consumidor manda `unidades`+`total`, va "500 u x $16.720" EN LA MISMA LINEA del
+        // precio unitario. Solo lo lee el tema que lo declara.
         if (slots.precio && item.precio && item.precio.valor !== undefined) {
             var fila = crear(doc, 'p', 'mu-gal-item-precio');
             if (item.precio.anterior !== undefined && item.precio.anterior !== null) {
@@ -1734,6 +1737,10 @@
             }
             if (item.precio.aviso) {
                 fila.appendChild(crear(doc, 'span', 'mu-gal-item-aviso', 'actualizado'));
+            }
+            if (item.unidades && item.precio.total !== undefined) {
+                fila.appendChild(crear(doc, 'span', 'mu-gal-item-lote',
+                    formatearPrecio(item.unidades) + ' u x $' + formatearPrecio(item.precio.total)));
             }
             asegurarCuerpo().appendChild(fila);
         }

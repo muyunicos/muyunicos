@@ -1075,6 +1075,8 @@ body.is-scroll-locked { overflow: hidden; }
     font-size: 10px;
     color: var(--texto-light);
     line-height: 1.25;
+    /* Texto de apoyo: puede envolver, nunca se queda con el click de la miniatura. */
+    pointer-events: none;
 }
 
 .mu-gal-item-precio {
@@ -1084,10 +1086,14 @@ body.is-scroll-locked { overflow: hidden; }
     gap: 5px;
     margin: 0;
     font-size: 10px;
+    pointer-events: none;
 }
 
 .mu-gal-item-ya { color: #047857; font-weight: 700; }
 .mu-gal-item-antes { color: var(--texto-light); text-decoration: line-through; font-size: 9px; }
+
+/* Compacidad de la tira: la descripcion (si el consumidor la manda) va en una linea. */
+.mu-gal-item-cuerpo { min-width: 0; }
 
 .mu-gal-item-promo {
     padding: 0 5px;

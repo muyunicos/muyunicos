@@ -108,13 +108,19 @@
     font-size: 10px;
     line-height: 1.2;
     text-align: left;
-    white-space: nowrap;
+    white-space: normal;
     overflow: hidden;
-    text-overflow: ellipsis;
+    /* El velo es DECORATIVO y hermano de `.mu-gal-item-abrir`: sin esto se quedaba con
+       el click (medido en produccion: elementFromPoint daba el velo y el visor no abria). */
+    pointer-events: none;
 }
 
 /* 5) Precio COMPACTO en la tira: `$antes ~ $ya c/u` en una linea. */
-[data-mu-tema="cotizador"] .mu-gal-item-precio { font-size: 11px; }
+[data-mu-tema="cotizador"] .mu-gal-item-precio {
+    font-size: 11px;
+    gap: 4px;
+    align-items: baseline;
+}
 
 [data-mu-tema="cotizador"] .mu-gal-item-antes { font-size: 10px; }
 
@@ -131,4 +137,47 @@
     font-size: 9px;
     font-weight: 600;
     color: var(--texto-light);
+}
+
+/* 5.bis) Precio por UNIDADES ("30 u x $6.935") en su PROPIA linea: el motor lo agrega a
+   la fila de precios y, sin esto, compite por el ancho con el valor y el badge. */
+[data-mu-tema="cotizador"] .mu-gal-item-lote {
+    flex: 0 0 100%;
+    font-size: 9.5px;
+    font-weight: 600;
+    color: var(--texto-light);
+    background: rgb(15 23 42 / 5%);
+    border-radius: var(--mu-radius-full, 999px);
+    padding: 1px 6px;
+    white-space: nowrap;
+}
+
+/* 5.ter) Badge de descuento dentro de la celda: hereda el rojo de `.promo` del motor,
+   pero en el tema va con el tono de oferta y tamano de la tira. */
+[data-mu-tema="cotizador"] .mu-gal-item-promo {
+    background: #b91c1c;
+    color: #ffffff;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: var(--mu-radius-full, 999px);
+    white-space: nowrap;
+}
+
+/* Descripcion automatica (material · forma · medida): una linea, sin ruido. */
+[data-mu-tema="cotizador"] .mu-gal-item-desc {
+    font-size: 9.5px;
+    color: var(--texto-light);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+[data-mu-tema="cotizador"] .mu-gal-item-titulo {
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
 }

@@ -677,6 +677,16 @@ check('desdeWoo deduplica por archivo (Woo repite la imagen con sufijos de recor
     */
 check('el velo del tema cotizador se limita al alto de la imagen',
     /--mu-gal-alto, 112px/.test(temasCodigo) && /align-items: flex-end/.test(temasCodigo));
+check('el velo del tema NO se queda con el click de la miniatura',
+    /pointer-events: none/.test(temasCodigo) && /pointer-events: none/.test(cssCodigo));
+check('la miniatura pinta el precio por unidades (N u x $total)',
+    js.indexOf("formatearPrecio(item.unidades) + ' u x $'") !== -1
+    && /mu-gal-item-lote/.test(jsCodigo));
+check('el tema cotizador da una linea a titulo y descripcion',
+    /\[data-mu-tema="cotizador"\] \.mu-gal-item-titulo \{[^}]*text-overflow: ellipsis/
+        .test(temasCodigo.replace(/\s+/g, ' '))
+    && /\[data-mu-tema="cotizador"\] \.mu-gal-item-desc \{[^}]*text-overflow: ellipsis/
+        .test(temasCodigo.replace(/\s+/g, ' ')));
 
 /* ==================== Resultado ==================== */
 console.log('');

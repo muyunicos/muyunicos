@@ -72,6 +72,14 @@ Estados: `[ ]` pendiente, `[X]` hecho, `[~]` hecho parcial (se aclara).
       El puente `pmu-visor-peligro` **se queda**: la biblioteca del plugin lo sigue pasando
       (D28) y el motor lo reconoce.
 - [X] T017 **Flechas del slider de miniaturas de la ficha** (pedido del mantenedor): el tema reutiliza .mu-nav-btn + chevron, product.js envuelve el slider en .mu-gal-thumbs y reintenta 3 s; se muestran sólo si hay desborde en X y ocultan el extremo (medido: el click desplaza 148 px).
+- [X] T018 **Velo que se comia el click + celda del cotizador** (pedido del mantenedor,
+      2026-11-13, medido en produccion): `elementFromPoint` daba `.mu-gal-item-etiqueta`
+      y el visor no abria. Ahora el velo es DECORATIVO (`pointer-events: none`, igual que
+      `.mu-gal-item-desc` y `.mu-gal-item-precio`) y `white-space: normal` (pide el titulo
+      largo sin cortar). La celda del cotizador pasa a `preset: tarjeta` con descripcion
+      AUTOMATICA (`vinilo · circulares · 6,0 cm`, derivada del codigo del pedido), el precio
+      por UNIDADES (`30 u x $6.935` en su propia linea) y el badge de descuento (`23% OFF`).
+      Puertas: `GALERIA 245`, `VISOR 152/152`, `npm test 34`, click real verificado.
 - [~] T015 **Barrido final**: `docs/errores.md`, `docs/inventario-repo.md`, `AGENTS.md` de
       ambos repos y `specs/INDICE.md` del plugin.
       **Parcial (2026-11-07)**: hecho el barrido del **plugin** (`AGENTS.md`, `specs/INDICE.md`,
