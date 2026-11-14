@@ -47,9 +47,11 @@
     order: 4;
     align-self: center;
     justify-self: end;
-    /* Mismo tono que el badge de la celda (esmeralda), no el rojo de oferta. */
+    /* El tono lo manda el tipo de badge: el ahorro por cantidad es esmeralda y la
+       promo del admin es ORO (spec 038 v5, es el beneficio que mas importa). */
     background: #d1fae5;
     color: #047857;
+    border: 0;
 }
 
 [data-mu-tema="cotizador"] .mu-gal-precio {

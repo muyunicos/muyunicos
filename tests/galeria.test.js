@@ -710,13 +710,14 @@ check('el titulo del item es editable cuando la meta lo pide (D7)',
     /meta\.tituloEditable === true/.test(jsCodigo)
     && /onEditarTitulo\(indice, v\)/.test(jsCodigo)
     && /'mu-gal-titulo-editar'/.test(jsCodigo));
-check('la promo del admin tiene tono propio (badge verde)',
-    /\.mu-gal-badge--promo\s*\{[^}]*background: #047857/.test(cssCodigo)
+check('la promo del admin tiene tono propio (badge ORO)',
+    /\.mu-gal-badge--promo\s*\{[^}]*--mu-gal-oro-bg/.test(cssCodigo)
     && /'promo'/.test(jsCodigo.replace(/[^\x20-\x7e]/g, ' '))
     && /ok = \[[^\]]*'promo'[^\]]*\]/.test(jsCodigo));
 check('la promo se resuelve en el motor (desde + pct)',
-    /resolverPromo/.test(calculadora) && /totalStickers < desde/.test(calculadora)
-    && /Math.max\(cantidadPct, promo.pct\)/.test(muGaleria));
+    /promoAplicaA/.test(calculadora)
+    && /ahorroPct/.test(calculadora)
+    && /tono: promo \? 'promo' : 'tienda'/.test(muGaleria));
 check('el CSS de temas se registra y se encola con la galeria',
     /mu-galeria-temas/.test(php) && /galeria-temas\.css/.test(php));
 check('desdeWoo deduplica por archivo (Woo repite la imagen con sufijos de recorte)',

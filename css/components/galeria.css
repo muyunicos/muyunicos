@@ -546,9 +546,13 @@
 .mu-gal-badge--nuevo { background: #0f766e; }
 .mu-gal-badge--oferta { background: #b45309; }
 .mu-gal-badge--peligro { background: #b91c1c; }
-/* Spec 038 (v4): la promo del admin. Verde intenso para que se distinga del
-   ahorro por cantidad (que es el tono base `tienda`). */
-.mu-gal-badge--promo { background: #047857; color: #ecfdf5; }
+/* Spec 038 (v5): la promo del admin es la mas importante -> ORO, no verde. El
+   verde queda para el ahorro por cantidad (tono base `tienda`). */
+.mu-gal-badge--promo {
+    background: var(--mu-gal-oro-bg, #fef3c7);
+    color: var(--mu-gal-oro-texto, #92400e);
+    border: 1px solid var(--mu-gal-oro-borde, #fcd34d);
+}
 
 /* Spec 038 (D6): categoria del item (PROMO / GUARDADO / COMPRADO). Va sobre la foto,
    arriba a la izquierda, para que no compita con el titulo del velo ni con el precio. */
