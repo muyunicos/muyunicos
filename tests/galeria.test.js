@@ -650,6 +650,8 @@ check('las acciones ganan a .button/.button-primary de WordPress',
     && !/^\.mu-gal-accion \{/m.test(cssCodigo));
 
 /* --- Spec 020: tema `cotizador` (CSS puro) y cromo sin elementos fuera de flujo --- */
+const calculadora = lee('../calculadora/src/core/priceEngine.ts');
+const muGaleria = lee('../calculadora/src/core/muGaleria.ts');
 const temasCodigo = temas.replace(/\/\*[\s\S]*?\*\//g, '');
 check('el tema cotizador pone el precio del lote y el badge en la misma fila',
     /\[data-mu-tema="cotizador"\] \.mu-gal-precio \{[^}]*grid-column: 1 \/ 3/
@@ -696,6 +698,13 @@ check('el tema cotizador trae zoom, velo y precio compacto',
     /\.mu-gal-item:hover \.mu-gal-item-abrir img \{ transform: scale\(1\.05\)/.test(temasCodigo)
     && /\.mu-gal-item-etiqueta \{[^}]*linear-gradient/.test(temasCodigo)
     && /\.mu-gal-item-precio \{/.test(temasCodigo));
+check('la promo del admin tiene tono propio (badge verde)',
+    /\.mu-gal-badge--promo\s*\{[^}]*background: #047857/.test(cssCodigo)
+    && /'promo'/.test(jsCodigo.replace(/[^\x20-\x7e]/g, ' '))
+    && /ok = \[[^\]]*'promo'[^\]]*\]/.test(jsCodigo));
+check('la promo se resuelve en el motor (desde + pct)',
+    /resolverPromo/.test(calculadora) && /totalStickers < desde/.test(calculadora)
+    && /Math.max\(cantidadPct, promo.pct\)/.test(muGaleria));
 check('el CSS de temas se registra y se encola con la galeria',
     /mu-galeria-temas/.test(php) && /galeria-temas\.css/.test(php));
 check('desdeWoo deduplica por archivo (Woo repite la imagen con sufijos de recorte)',

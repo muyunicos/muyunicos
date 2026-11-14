@@ -965,7 +965,7 @@
     /** Tonos de badge validos (los dos ultimos los usa la biblioteca del plugin). */
     function tonoBadge(tono) {
         var t = String(tono || '').toLowerCase();
-        var ok = ['tienda', 'nuevo', 'oferta', 'peligro', 'guardada', 'comprada'];
+        var ok = ['tienda', 'nuevo', 'oferta', 'peligro', 'guardada', 'comprada', 'promo'];
         return (ok.indexOf(t) === -1) ? 'tienda' : t;
     }
 

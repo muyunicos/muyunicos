@@ -519,6 +519,9 @@
 .mu-gal-badge--nuevo { background: #0f766e; }
 .mu-gal-badge--oferta { background: #b45309; }
 .mu-gal-badge--peligro { background: #b91c1c; }
+/* Spec 038 (v4): la promo del admin. Verde intenso para que se distinga del
+   ahorro por cantidad (que es el tono base `tienda`). */
+.mu-gal-badge--promo { background: #047857; color: #ecfdf5; }
 
 /* Etiqueta de un precio con nombre (Regular / Mayor) y nota al pie de la meta. */
 .mu-gal-precio-etiqueta {
