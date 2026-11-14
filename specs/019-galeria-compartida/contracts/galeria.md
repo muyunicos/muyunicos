@@ -102,7 +102,7 @@ internas (cabecera, meta, acciones y banda se separan con espacio).
 
 **Temas y filtros (spec 020)**: el ASPECTO se elige declarando `data-mu-tema` en el contenedor
 (`base` = este contrato, `cotizador` = precios en dos columnas) y el visor puede **filtrar** con
-`filtros`/`filtroActivo` (pills TODOS/…). Contratos:
+`filtros`/`filtroActivo` (un `<select>` con TODOS/…, spec 038 D6). Contratos:
 `specs/020-temas-galeria/contracts/{temas,visor-filtros}.md`.
 
 ### C1.2 — `segmentos` NO filtra

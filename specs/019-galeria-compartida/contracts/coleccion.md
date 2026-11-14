@@ -243,17 +243,26 @@ Un item se dibuja con **slots** (que se ve) y **preset** (atajo):
 | `precio` | `$valor` + `anterior` tachado + `promo` + `aviso` | `item.precio` |
 | `acciones` | botones declarados | `item.acciones` |
 | `estado` | chip de estado del item | `item.estado` (si falta: "Elegida" en la celda `activo`) |
+| `categoria` | pastilla sobre la foto (spec 038, D6) | `item.categoria` (`PROMO`/`GUARDADO`/`COMPRADO`; ausente = sin etiqueta) |
 
 | Preset | Slots |
 |---|---|
 | `mini` | imagen, eliminar |
-| `tarjeta` | imagen, etiqueta, favorito, titulo, descripcion, precio, acciones |
+| `tarjeta` | imagen, etiqueta, categoria, favorito, titulo, descripcion, precio, acciones |
 | `producto` | imagen, etiqueta, titulo, precio |
 | `opcion` | imagen, titulo, estado |
 
 `slots` **pisa** el preset: `{precio: false}` quita el precio; un array reemplaza la lista.
 
-## C6 — DOM
+### C5.1 - `categoria` (spec 038, D6)
+
+Pastilla **sobre la foto** (arriba a la izquierda), independiente del titulo (que va en el
+velo) y del precio. El consumidor la declara en `item.categoria` y el motor pinta
+`mu-gal-item-cat--<cat>`. Valores del cotizador: `PROMO` (automatica: la pone
+`metaDeItem` cuando la promo del admin gana), `GUARDADO` y `COMPRADO`. Una idea comun
+no lleva etiqueta (no saturar).
+
+## C6 - DOM## C6 — DOM
 
 ```html
 <div class="mu-gal-coleccion mu-gal-coleccion--fila|--grilla" data-mu-gal-modo="..."
@@ -378,7 +387,9 @@ MU.coleccion(el, { filtros: 'etiqueta', filtroActivo: 'Oferta', onFiltrar });
    ignora sin aviso.
 3. **Con un solo valor no hay control** (no hay nada que filtrar).
 4. **Con mas de 7 valores** el control pasa a `<select>` solo (misma idea: "cuando lo amerite",
-   sin opcion). Las pills usan `aria-pressed`.
+   sin opcion). **Desde la spec 038 (D6) el control del visor es un `<select>`** (una fila por
+   campo, con rotulo "Ver"): con 4+ categorias las pills ocupaban dos filas y empujaban la
+   foto. En `MU.coleccion` se mantiene el comportamiento de pills por campo.
 5. **Filtrar resetea la tanda acumulada** (la firma incluye `items.length`), conserva el
    scroll horizontal y **acota** lo elegido. El estado del filtro vive en el **contenedor**, no
    en las opciones: el repintado por resize no lo pierde.

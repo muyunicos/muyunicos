@@ -698,6 +698,18 @@ check('el tema cotizador trae zoom, velo y precio compacto',
     /\.mu-gal-item:hover \.mu-gal-item-abrir img \{ transform: scale\(1\.05\)/.test(temasCodigo)
     && /\.mu-gal-item-etiqueta \{[^}]*linear-gradient/.test(temasCodigo)
     && /\.mu-gal-item-precio \{/.test(temasCodigo));
+check('el item trae categoria (pastilla sobre la foto, no en el cuerpo)',
+    /mu-gal-item-cat/.test(jsCodigo) && /categoriaBadge\(doc, caja, item\.categoria\)/.test(jsCodigo)
+    && /\.mu-gal-item-cat \{[^}]*position: absolute/.test(cssCodigo)
+    && /mu-gal-item-cat--/.test(jsCodigo));
+check('el visor filtra con <select> (no pills) por categoria',
+    /crear\(doc, 'select', 'mu-gal-filtro-select'\)/.test(jsCodigo)
+    && /aplicarFiltroVisor\(campo, sel\.value\)/.test(jsCodigo)
+    && /\.mu-gal-filtro-select \{/.test(cssCodigo));
+check('el titulo del item es editable cuando la meta lo pide (D7)',
+    /meta\.tituloEditable === true/.test(jsCodigo)
+    && /onEditarTitulo\(indice, v\)/.test(jsCodigo)
+    && /'mu-gal-titulo-editar'/.test(jsCodigo));
 check('la promo del admin tiene tono propio (badge verde)',
     /\.mu-gal-badge--promo\s*\{[^}]*background: #047857/.test(cssCodigo)
     && /'promo'/.test(jsCodigo.replace(/[^\x20-\x7e]/g, ' '))

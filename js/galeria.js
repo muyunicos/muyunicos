@@ -18,7 +18,7 @@
  *   - Consume los tokens del tema (`--primario`, `--mu-radius-*`), nunca los redefine.
  *
  * API: window.MUGaleria (ver specs/019-galeria-compartida/contracts/galeria.md).
- * Version: 1.11.0
+ * Version: 1.12.0
  */
 (function (global) {
     'use strict';
@@ -864,17 +864,23 @@
         campos.forEach(function (campo) {
             var valores = valoresFiltro(estado.todos || [], campo);
             if (valores.length < 2) { return; }
-            var fila = crear(doc, 'div', 'mu-gal-filtros-fila');
+            // Spec 038 (D6): el filtro es un <select> (no pills): con 4 categorias las
+            // pills ocupaban dos filas y empujaban la foto. Una fila por campo.
+            var fila = crear(doc, 'label', 'mu-gal-filtros-fila');
             fila.setAttribute('data-mu-gal-filtro', campo);
+            fila.appendChild(crear(doc, 'span', 'mu-gal-filtros-rotulo', 'Ver'));
+            var sel = crear(doc, 'select', 'mu-gal-filtro-select');
+            sel.setAttribute('data-mu-gal-campo', campo);
+            sel.setAttribute('aria-label', 'Filtrar por ' + campo);
             ['todos'].concat(valores).forEach(function (v) {
-                var b = crear(doc, 'button', 'mu-gal-seg', (v === 'todos') ? 'Todos' : v);
-                b.type = 'button';
-                b.setAttribute('data-mu-gal-valor', String(v));
-                var activo = String((estado.filtro || {})[campo] || 'todos') === String(v);
-                b.setAttribute('aria-pressed', activo ? 'true' : 'false');
-                b.addEventListener('click', function () { aplicarFiltroVisor(campo, v); });
-                fila.appendChild(b);
+                var op = crear(doc, 'option', '', (v === 'todos') ? 'Todos' : v);
+                op.value = String(v);
+                if (String((estado.filtro || {})[campo] || 'todos') === String(v)) { op.selected = true; }
+                sel.appendChild(op);
             });
+            sel.addEventListener('change', function () { aplicarFiltroVisor(campo, sel.value); });
+            fila.appendChild(sel);
+            cajaF.appendChild(fila);
             cajaF.appendChild(fila);
             montados += 1;
         });
@@ -979,7 +985,7 @@
      */
     function normalizarMeta(meta) {
         if (!meta || typeof meta !== 'object') { return null; }
-        var out = { badge: null, titulo: '', descripcion: [], precios: [], nota: '' };
+        var out = { badge: null, titulo: '', tituloEditable: false, descripcion: [], precios: [], nota: '' };
 
         var b = meta.badge;
         if (b && typeof b === 'object') {
@@ -990,6 +996,7 @@
         if (out.badge && !out.badge.texto) { out.badge = null; }
 
         if (meta.titulo) { out.titulo = String(meta.titulo); }
+        out.tituloEditable = meta.tituloEditable === true;
         // `descripcion` admite VARIAS lineas (array) o la forma vieja (string): el tema
         // decide el orden y el corte, el motor solo pinta una linea por entrada.
         var desc = Array.isArray(meta.descripcion) ? meta.descripcion
@@ -1015,7 +1022,38 @@
     }
 
     /** Bloque de metadatos (badge tonal, titulo, descripcion, precios y nota). */
-    function pintarMeta(doc, meta) {
+    /**
+     * Titulo editable (spec 038, D7): si `meta.tituloEditable` es true, el titulo se
+     * pinta como input de texto y `onEditarTitulo(indice, texto)` avisa al consumidor.
+     * Al perder el foco con un valor vacio se restaura el original (no se borra).
+     */
+    function pintarTitulo(doc, caja, m, indice, o) {
+        var p = crear(doc, 'p', 'mu-gal-meta-titulo');
+        if (!m.tituloEditable || typeof o.onEditarTitulo !== 'function') {
+            p.textContent = m.titulo;
+            caja.appendChild(p);
+            return;
+        }
+        var input = crear(doc, 'input', 'mu-gal-titulo-editar');
+        input.type = 'text';
+        input.value = m.titulo;
+        input.setAttribute('aria-label', 'Nombre de tu diseno');
+        input.setAttribute('maxlength', '60');
+        var original = m.titulo;
+        input.addEventListener('change', function () {
+            var v = String(input.value || '').trim();
+            if (!v) {
+                input.value = original;
+                return;
+            }
+            original = v;
+            o.onEditarTitulo(indice, v);
+        });
+        p.appendChild(input);
+        caja.appendChild(p);
+    }
+
+    function pintarMeta(doc, meta, indice, o) {
         var caja = crear(doc, 'div', 'mu-gal-meta-caja');
         var m = normalizarMeta(meta);
         if (!m) { return caja; }
@@ -1023,7 +1061,7 @@
             caja.appendChild(crear(doc, 'span',
                 'mu-gal-badge mu-gal-badge--' + m.badge.tono, m.badge.texto));
         }
-        if (m.titulo) { caja.appendChild(crear(doc, 'p', 'mu-gal-meta-titulo', m.titulo)); }
+        if (m.titulo) { pintarTitulo(doc, caja, m, indice, o || {}); }
         if (m.descripcion.length) {
             // Contenedor propio: asi el tema coloca el BLOQUE de descripciones en una sola fila de la
             // grilla y las lineas se apilan adentro. Si fueran `<p>` sueltos contra la caja,
@@ -1123,7 +1161,7 @@
         if (caja) {
             vaciar(caja);
             var meta = item.meta || o.meta || null;
-            if (meta) { caja.appendChild(pintarMeta(s.raiz.ownerDocument, meta)); }
+            if (meta) { caja.appendChild(pintarMeta(s.raiz.ownerDocument, meta, s.indice, s.opciones || {})); }
             caja.hidden = !caja.firstChild;
         }
 
@@ -1623,7 +1661,7 @@
     /** Presets de slots (contrato `coleccion.md`, C5). */
     var PRESETS = {
         mini: { imagen: 1, eliminar: 1 },
-        tarjeta: { imagen: 1, etiqueta: 1, favorito: 1, titulo: 1, descripcion: 1, precio: 1, acciones: 1 },
+        tarjeta: { imagen: 1, etiqueta: 1, categoria: 1, favorito: 1, titulo: 1, descripcion: 1, precio: 1, acciones: 1 },
         producto: { imagen: 1, etiqueta: 1, titulo: 1, precio: 1 },
         opcion: { imagen: 1, titulo: 1, estado: 1 }
     };
@@ -1637,6 +1675,20 @@
         }
         var lado = TAMANOS[String(tamano)] || TAMANOS.medio;
         return { ancho: lado, alto: lado };
+    }
+
+    /**
+     * Etiqueta de CATEGORIA del item (spec 038, D6): `PROMO` la pone el motor cuando la
+     * promo del admin gana; `GUARDADO`/`COMPRADO` las pone el consumidor segun el origen.
+     * Va como pastilla arriba a la izquierda de la foto, no en el cuerpo (no compite
+     * con el titulo ni con el precio).
+     */
+    function categoriaBadge(doc, caja, texto) {
+        var cat = String(texto || '').trim();
+        if (!cat) { return; }
+        var b = crear(doc, 'span', 'mu-gal-item-cat mu-gal-item-cat--' + cat.toLowerCase().replace(/[^a-z0-9]+/g, '-'), cat);
+        b.setAttribute('data-mu-gal-categoria', cat);
+        caja.appendChild(b);
     }
 
     /** Slots efectivos: preset + `slots` (objeto de booleanos o lista de nombres). */
@@ -1686,6 +1738,12 @@
             if (typeof o.onAbrir === 'function') { o.onAbrir(i, item); }
         });
         caja.appendChild(abrir);
+
+        // Spec 038 (D6): la categoria es una pastilla sobre la foto, independiente del
+        // titulo (que va en el velo) y del precio.
+        if (slots.categoria) {
+            categoriaBadge(doc, caja, item.categoria);
+        }
 
         if (slots.etiqueta && item.etiqueta) {
             caja.appendChild(crear(doc, 'span', 'mu-gal-item-etiqueta', item.etiqueta));
@@ -2480,7 +2538,7 @@
             filtrar: filtrar, valoresFiltro: valoresFiltro,
             celdas: celdas, pie: pie, caben: caben,
         carga: carga, topeEnFilas: topeEnFilas, navegableDe: navegableDe, ventana: ventana },
-        version: '1.11.0'
+        version: '1.12.0'
     };
 
     // `MU.visor.actualizar(parcial)` (V2, T044): se cuelga de la MISMA funcion `visor`, asi

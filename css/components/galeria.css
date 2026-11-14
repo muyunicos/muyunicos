@@ -170,6 +170,33 @@
     flex-wrap: wrap;
 }
 
+/* Spec 038 (D6): el filtro del visor es un <select> (una fila por campo). */
+.mu-gal-filtros-fila { align-items: center; gap: 6px; }
+
+.mu-gal-filtros-rotulo {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.mu-gal-filtro-select {
+    font: inherit;
+    font-size: 12px;
+    padding: 4px 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: var(--mu-radius-full);
+    background: #ffffff;
+    color: #0f172a;
+    cursor: pointer;
+}
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
 /* --- Segmentos (dos fuentes de imagenes) --- */
 .mu-gal-segs {
     display: flex;
@@ -522,6 +549,47 @@
 /* Spec 038 (v4): la promo del admin. Verde intenso para que se distinga del
    ahorro por cantidad (que es el tono base `tienda`). */
 .mu-gal-badge--promo { background: #047857; color: #ecfdf5; }
+
+/* Spec 038 (D6): categoria del item (PROMO / GUARDADO / COMPRADO). Va sobre la foto,
+   arriba a la izquierda, para que no compita con el titulo del velo ni con el precio. */
+.mu-gal-item-cat {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 7px;
+    border-radius: var(--mu-radius-full);
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    line-height: 1.35;
+    pointer-events: none;
+    background: #0f766e;
+    color: #ffffff;
+}
+
+.mu-gal-item-cat--promo { background: #047857; color: #ecfdf5; }
+.mu-gal-item-cat--guardado { background: #6c5ce7; color: #ffffff; }
+.mu-gal-item-cat--comprado { background: #047857; color: #ffffff; }
+
+/* Spec 038 (D7): titulo editable del item guardado por el cliente. */
+.mu-gal-titulo-editar {
+    font: inherit;
+    width: 100%;
+    padding: 3px 8px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #ffffff;
+    color: inherit;
+}
+
+.mu-gal-titulo-editar:focus {
+    outline: 2px solid #10b981;
+    outline-offset: 1px;
+}
 
 /* Etiqueta de un precio con nombre (Regular / Mayor) y nota al pie de la meta. */
 .mu-gal-precio-etiqueta {

@@ -819,13 +819,13 @@ async function ir(page, hash) {
 
     /* --- filtros del visor: TODOS / Comprados / Guardados --- */
     await ir(page, '#visor-filtros');
+    // Spec 038 (D6): el filtro es un <select> (antes pills), una fila por campo.
     const pills = await page.evaluate(() => {
-        const f = document.querySelector('.mu-gal-filtros');
-        return f ? [...f.querySelectorAll('.mu-gal-seg')].map((b) => ({
-            txt: b.textContent.trim(), activo: b.getAttribute('aria-pressed')
-        })) : [];
+        const s = document.querySelector('.mu-gal-filtro-select');
+        if (!s) return [];
+        return [...s.options].map((o) => ({ txt: o.textContent.trim(), activo: o.selected ? 'true' : 'false' }));
     });
-    chk('el visor monta los pills de filtro (Todos + 2 estados) y "Todos" activo',
+    chk('el visor monta el <select> de filtro (Todos + 2 estados) y Todos activo',
         pills.length === 3 && pills[0].txt === 'Todos' && pills[0].activo === 'true',
         JSON.stringify(pills));
 
@@ -834,14 +834,15 @@ async function ir(page, hash) {
         celdas: document.querySelectorAll('.mu-gal-visor-lista .mu-gal-celda').length
     }));
     const todos = await contar();
-    await page.locator('.mu-gal-filtros .mu-gal-seg:has-text("Guardados")').first().click();
+    // El valor del <select> es el texto del item (contrato C10: salen de los datos).
+    await page.selectOption('.mu-gal-filtro-select', 'Guardados');
     await page.waitForTimeout(350);
     const guardados = await contar();
     chk('filtrar por Guardados RECORTA la banda y el contador',
         guardados.celdas > 0 && guardados.celdas < todos.celdas
         && /^1 \/ \d+$/.test(guardados.contador),
         'todos=' + JSON.stringify(todos) + ' guardados=' + JSON.stringify(guardados));
-    await page.locator('.mu-gal-filtros .mu-gal-seg:has-text("Todos")').first().click();
+    await page.selectOption('.mu-gal-filtro-select', 'todos');
     await page.waitForTimeout(350);
     const vuelta = await contar();
     chk('"Todos" restaura la lista completa',
