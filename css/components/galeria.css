@@ -556,11 +556,27 @@
 
 /* Spec 038 (D6): categoria del item (PROMO / GUARDADO / COMPRADO). Va sobre la foto,
    arriba a la izquierda, para que no compita con el titulo del velo ni con el precio. */
-.mu-gal-item-cat {
+/* Spec 038 (v6): categoria + descuento comparten la MISMA esquina (arriba de la foto).
+   Antes el badge de descuento vivia en el cuerpo y se leia como precio. */
+.mu-gal-item-top {
     position: absolute;
     top: 6px;
     left: 6px;
     z-index: 2;
+    display: inline-flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 4px;
+    max-width: calc(100% - 12px);
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.mu-gal-item-top .mu-gal-item-cat {
+    position: static;
+}
+
+.mu-gal-item-cat {
     display: inline-flex;
     align-items: center;
     padding: 2px 7px;

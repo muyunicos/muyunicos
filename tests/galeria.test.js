@@ -698,9 +698,10 @@ check('el tema cotizador trae zoom, velo y precio compacto',
     /\.mu-gal-item:hover \.mu-gal-item-abrir img \{ transform: scale\(1\.05\)/.test(temasCodigo)
     && /\.mu-gal-item-etiqueta \{[^}]*linear-gradient/.test(temasCodigo)
     && /\.mu-gal-item-precio \{/.test(temasCodigo));
-check('el item trae categoria (pastilla sobre la foto, no en el cuerpo)',
-    /mu-gal-item-cat/.test(jsCodigo) && /categoriaBadge\(doc, caja, item\.categoria\)/.test(jsCodigo)
-    && /\.mu-gal-item-cat \{[^}]*position: absolute/.test(cssCodigo)
+check('el item trae categoria y promo juntas arriba de la foto (no en el cuerpo)',
+    /mu-gal-item-cat/.test(jsCodigo) && /categoriaBadge\(doc, top, item\.categoria\)/.test(jsCodigo)
+    && /mu-gal-item-top/.test(jsCodigo)
+    && /\.mu-gal-item-top \{[^}]*position: absolute/.test(cssCodigo)
     && /mu-gal-item-cat--/.test(jsCodigo));
 check('el visor filtra con <select> (no pills) por categoria',
     /crear\(doc, 'select', 'mu-gal-filtro-select'\)/.test(jsCodigo)
@@ -736,9 +737,10 @@ check('el velo del tema cotizador se limita al alto de la imagen',
     /--mu-gal-alto, 112px/.test(temasCodigo) && /align-items: flex-end/.test(temasCodigo));
 check('el velo del tema NO se queda con el click de la miniatura',
     /pointer-events: none/.test(temasCodigo) && /pointer-events: none/.test(cssCodigo));
-check('la miniatura pinta las unidades del lote (N u, opcional x $total)',
-    js.indexOf("formatearPrecio(item.unidades) + ' u'") !== -1
-    && /mu-gal-item-lote/.test(jsCodigo));
+check('la miniatura pinta las unidades JUNTO al precio (30 u · $X $Y)',
+    /mu-gal-item-unidades/.test(jsCodigo)
+    && /mu-gal-item-sep/.test(jsCodigo)
+    && /item\.unidades/.test(jsCodigo));
 check('el tema cotizador clampa la descripcion a 3 lineas',
     /\[data-mu-tema="cotizador"\] \.mu-gal-item-desc \{[^}]*-webkit-line-clamp: 3/
         .test(temasCodigo.replace(/\s+/g, ' '))

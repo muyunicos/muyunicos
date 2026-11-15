@@ -18,7 +18,7 @@
  *   - Consume los tokens del tema (`--primario`, `--mu-radius-*`), nunca los redefine.
  *
  * API: window.MUGaleria (ver specs/019-galeria-compartida/contracts/galeria.md).
- * Version: 1.12.0
+ * Version: 1.13.0
  */
 (function (global) {
     'use strict';
@@ -1739,11 +1739,21 @@
         });
         caja.appendChild(abrir);
 
-        // Spec 038 (D6): la categoria es una pastilla sobre la foto, independiente del
-        // titulo (que va en el velo) y del precio.
-        if (slots.categoria) {
-            categoriaBadge(doc, caja, item.categoria);
+        // Spec 038 (D6): la categoria y el descuento van JUNTOS arriba de la foto (misma
+        // esquina), asi el cliente ve de un vistazo que es y cuanto ahorra.
+        var top = null;
+        if (slots.categoria && item.categoria) {
+            top = crear(doc, 'div', 'mu-gal-item-top');
+            categoriaBadge(doc, top, item.categoria);
         }
+        if (slots.precio && item.precio && item.precio.promo) {
+  if (!top) { top = crear(doc, 'div', 'mu-gal-item-top'); }
+            // Spec 038 (v6): ORO si el descuento viene de la promo del admin (el ahorro por
+            // cantidad sigue con el tono base).
+            var clasePromo = 'mu-gal-item-promo' + (item.precio.promoOro ? ' mu-gal-item-promo--oro' : '');
+            top.appendChild(crear(doc, 'span', clasePromo, item.precio.promo));
+        }
+        if (top) { caja.appendChild(top); }
 
         if (slots.etiqueta && item.etiqueta) {
             caja.appendChild(crear(doc, 'span', 'mu-gal-item-etiqueta', item.etiqueta));
@@ -1795,22 +1805,15 @@
             asegurarCuerpo().appendChild(crear(doc, 'p', 'mu-gal-item-desc', item.descripcion));
         }
         // `unidades` + `promo` (contrato C11, opcional) van en su PROPIA fila, ANTES del precio:
-        // asi "30 u  -23%" queda en una linea y "$9.063  $6.935" en la siguiente, sin que el
-        // wrap del flex los mezcle (el tema solo ajusta el aspecto).
-        if (slots.precio && item.precio && item.unidades) {
-            var tira = crear(doc, 'p', 'mu-gal-item-lote');
-            tira.appendChild(crear(doc, 'span', 'mu-gal-item-unidades',
-                formatearPrecio(item.unidades) + ' u'));
-            if (item.precio.promo) {
-                // Spec 038 (v6): `promoOro` marca el descuento que viene de la PROMO del admin
-                // (el ahorro por cantidad sigue con el tono base).
-                var clasePromo = 'mu-gal-item-promo' + (item.precio.promoOro ? ' mu-gal-item-promo--oro' : '');
-                tira.appendChild(crear(doc, 'span', clasePromo, item.precio.promo));
-            }
-            asegurarCuerpo().appendChild(tira);
-        }
+// Spec 038 (v6): las UNIDADES van en la MISMA fila que el precio:
+        // "30 u · $9.063  $6.935". El badge de descuento migro arriba (junto a la categoria).
         if (slots.precio && item.precio && item.precio.valor !== undefined) {
             var fila = crear(doc, 'p', 'mu-gal-item-precio');
+            if (item.unidades) {
+                fila.appendChild(crear(doc, 'span', 'mu-gal-item-unidades',
+                    formatearPrecio(item.unidades) + ' u'));
+                fila.appendChild(crear(doc, 'span', 'mu-gal-item-sep', '·'));
+            }
             if (item.precio.anterior !== undefined && item.precio.anterior !== null) {
                 fila.appendChild(crear(doc, 'span', 'mu-gal-item-antes',
                     '$' + formatearPrecio(item.precio.anterior)));
@@ -2541,7 +2544,7 @@
             filtrar: filtrar, valoresFiltro: valoresFiltro,
             celdas: celdas, pie: pie, caben: caben,
         carga: carga, topeEnFilas: topeEnFilas, navegableDe: navegableDe, ventana: ventana },
-        version: '1.12.0'
+        version: '1.13.0'
     };
 
     // `MU.visor.actualizar(parcial)` (V2, T044): se cuelga de la MISMA funcion `visor`, asi

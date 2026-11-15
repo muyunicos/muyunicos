@@ -167,9 +167,21 @@
 
 [data-mu-tema="cotizador"] .mu-gal-item-precio {
     font-size: 11px;
-    gap: 6px;
-    align-items: center;
+    gap: 5px;
+    align-items: baseline;
     flex-wrap: nowrap;
+}
+
+/* Spec 038 (v6): las unidades y el separador viven DENTRO de la fila del precio. */
+[data-mu-tema="cotizador"] .mu-gal-item-precio .mu-gal-item-unidades {
+    font-size: 11px;
+    font-weight: 700;
+    color: #0f766e;
+}
+
+[data-mu-tema="cotizador"] .mu-gal-item-sep {
+    color: #94a3b8;
+    font-weight: 700;
 }
 
 [data-mu-tema="cotizador"] .mu-gal-item-antes {
