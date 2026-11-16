@@ -65,6 +65,32 @@ function mu_cotizador_registrar() {
 add_action( 'wp_enqueue_scripts', 'mu_cotizador_registrar', 998 );
 
 /**
+ * Puente con el plugin Personalizador PDF (spec 038, F1).
+ *
+ * El cotizador CONSUME el plugin para el paso de diseno: sin estos datos
+ * `PMU_DISPONIBLE` es falso y la seccion "Tu diseno" no se renderiza (el
+ * cliente se queda sin poder subir su arte; degrada a WhatsApp, D9).
+ *
+ * Se devuelve `null` si el plugin no esta activo: entonces el bundle no inyecta
+ * `pmu` y degrada limpio en vez de apuntar a un endpoint que no existe.
+ *
+ * @return array<string,string>|null
+ */
+function mu_cotizador_puente() {
+	if (!class_exists('Personalizador_PDF_Plugin')) {
+		return null;
+	}
+	$base = defined('PERSONALIZADOR_PDF_URL') ? PERSONALIZADOR_PDF_URL : plugins_url('personalizador-pdf/');
+	return array(
+		'baseUrl' => $base,
+		'ajaxUrl' => admin_url('admin-ajax.php'),
+		'postUrl' => admin_url('admin-post.php'),
+		// Mismo nonce que `PMU_Cotizador::NONCE`: el que valida `handle_subida`.
+		'nonce'   => wp_create_nonce('personalizador_pdf_vista_previa'),
+	);
+}
+
+/**
  * Shortcode `[calculadora_stickers]` (contrato del bundle, sin cambios).
  *
  * @return string HTML del contenedor donde monta React.
@@ -81,16 +107,18 @@ function mu_sticker_calculator_shortcode() {
 	$is_admin   = current_user_can( 'manage_options' );
 	$assets_url = mu_cotizador_assets_url();
 
-	wp_localize_script(
-		'mu-sticker-calculator-js',
-		'WP_STICKER_DATA',
-		array(
-			'isAdmin'   => $is_admin,
-			'assetsUrl' => $assets_url,
-			'configUrl' => $assets_url . '/datos_config_etag.php',
-			'saveUrl'   => $assets_url . '/guardar_datos.php',
-		)
+	$datos = array(
+		'isAdmin'   => $is_admin,
+		'assetsUrl' => $assets_url,
+		'configUrl' => $assets_url . '/datos_config_etag.php',
+		'saveUrl'   => $assets_url . '/guardar_datos.php',
 	);
+	// Puente con el plugin (spec 038, F1): sin el, el paso de diseno no monta.
+	$puente = mu_cotizador_puente();
+	if ( is_array( $puente ) ) {
+		$datos['pmu'] = $puente;
+	}
+	wp_localize_script( 'mu-sticker-calculator-js', 'WP_STICKER_DATA', $datos );
 
 	// Media Library para el boton de galeria del admin (varios cientos de KB).
 	if ( $is_admin ) {
