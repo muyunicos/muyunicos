@@ -29,6 +29,8 @@ if ( function_exists( 'mu_galeria_encolar' ) ) { mu_galeria_encolar(); }
 ```js
 MUGaleria.visor({
   items: [ { url, thumb, etiqueta, meta, transparente } ],  // obligatorio, >= 1
+  //   `meta` es POR ITEM: al navegar cambia tambien el titulo, la descripcion, los
+  //   precios y el badge (no solo la foto). Si un item no trae, se usa la del visor.
   indice: 0,                                    // posicion inicial (acotada)
   titulo: 'Ideas',                              // encabezado
   tono: 'claro' | 'oscuro',                     // default 'claro'
