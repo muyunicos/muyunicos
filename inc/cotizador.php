@@ -87,6 +87,9 @@ function mu_cotizador_puente() {
 		'postUrl' => admin_url('admin-post.php'),
 		// Mismo nonce que `PMU_Cotizador::NONCE`: el que valida `handle_subida`.
 		'nonce'   => wp_create_nonce('personalizador_pdf_vista_previa'),
+		// Spec 038 (F-RECETA): version del plugin para el cache-bust de los modulos
+		// que el bundle pide por su cuenta (sin esto quedaba JS viejo cacheado).
+		'version' => defined('PERSONALIZADOR_PDF_VERSION') ? (string) PERSONALIZADOR_PDF_VERSION : '0',
 	);
 }
 
