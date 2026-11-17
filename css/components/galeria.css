@@ -599,6 +599,15 @@
 .mu-gal-item-cat--guardado { background: #6c5ce7; color: #ffffff; }
 .mu-gal-item-cat--comprado { background: #047857; color: #ffffff; }
 
+/* Spec 038 (O): el titulo del velo se recorta a 2 lineas (texto largo = puntos). */
+.mu-gal-item-etiqueta-txt {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    max-width: 100%;
+}
+
 /* Spec 038 (D7): titulo editable del item guardado por el cliente. */
 .mu-gal-titulo-editar {
     font: inherit;
@@ -1089,6 +1098,10 @@ body.is-scroll-locked { overflow: hidden; }
 
 .mu-gal-item:hover { box-shadow: var(--mu-shadow); }
 
+/* Spec 038 (O): todas las tarjetas de una fila miden lo MISMO (el grid las estira);
+   sin esto el boton de accion quedaba a distinta altura segun el texto. */
+.mu-gal-item { height: 100%; }
+
 .mu-gal-item-abrir {
     display: block;
     width: 100%;
@@ -1205,6 +1218,14 @@ body.is-scroll-locked { overflow: hidden; }
     line-height: 1.25;
     /* Texto de apoyo: puede envolver, nunca se queda con el click de la miniatura. */
     pointer-events: none;
+    /* Spec 038 (O): SIEMPRE tres renglones (con puntos si no entra): asi el cuerpo
+       mide igual en todas las tarjetas y el boton de accion queda a la misma altura.
+       `min-height` = 3 lineas (1.25 x 10px x 3 = 37,5px). */
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 3.75em;
 }
 
 .mu-gal-item-precio {
@@ -1253,7 +1274,7 @@ body.is-scroll-locked { overflow: hidden; }
     color: var(--resaltado);
 }
 
-.mu-gal-item-acciones { display: flex; gap: 4px; padding-top: 2px; }
+.mu-gal-item-acciones { display: flex; gap: 4px; padding-top: 2px; margin-top: auto; }
 
 .mu-gal-item-btn {
     flex: 1 1 auto;

@@ -241,7 +241,14 @@ check('el hueco es una celda', /mu-gal-celda--vacia/.test(css));
 check('el pie existe y es status', /mu-gal-pie/.test(css) && /'mu-gal-pie'/.test(js) && /'status'/.test(js));
 check('las flechas de la linea son del tema', /mu-gal-caja-linea \.mu-nav-btn/.test(css)
     && /function flechasDeLinea/.test(js));
-check('el tachito es un icono (mismo estilo que la estrella)',
+check('el borrado se puede apagar por item (eliminable: false)',
+    /slots\.eliminar && item\.eliminable !== false/.test(js));
+check('el titulo del velo va en un hijo recortable',
+    /mu-gal-item-etiqueta-txt/.test(js) && /mu-gal-item-etiqueta-txt/.test(css));
+check('la descripcion son 3 lineas fijas (boton a la misma altura)',
+    /-webkit-line-clamp: 3/.test(css) && /min-height: 3\.75em/.test(css)
+    && /\.mu-gal-item \{ height: 100%; \}/.test(css)
+    && /\.mu-gal-item-acciones \{[^}]*margin-top: auto/.test(css));check('el tachito es un icono (mismo estilo que la estrella)',
     /function crearTacho/.test(js) && /mu-gal-item-eliminar svg/.test(css));
 const desdeColeccion = js.indexOf('function coleccion(');
 check('los huecos van primero (primer tab-stop = cargar)',

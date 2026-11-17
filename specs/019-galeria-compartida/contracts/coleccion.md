@@ -238,6 +238,8 @@ Un item se dibuja con **slots** (que se ve) y **preset** (atajo):
 | `etiqueta` | chip corto | `item.etiqueta` |
 | `favorito` | estrella toggle | `item.favorito` + `onFavorito` |
 | `eliminar` | tachito con confirmacion | `onEliminar` |
+| `eliminar` | **oculto** si `item.eliminable === false` (spec 038 O: los items del admin no se borran) | `item.eliminable` |
+| `confirmar` | `(indice, item) => bool`: confirmacion del MOTOR (una sola, con el texto del consumidor) | `confirmar` |
 | `titulo` | titulo | `item.titulo` |
 | `descripcion` | descripcion | `item.descripcion` |
 | `precio` | `$valor` + `anterior` tachado + `promo` (`promoOro` lo pinta en oro) + `aviso` | `item.precio` |

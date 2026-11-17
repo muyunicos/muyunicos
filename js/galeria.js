@@ -1756,7 +1756,12 @@
         if (top) { caja.appendChild(top); }
 
         if (slots.etiqueta && item.etiqueta) {
-            caja.appendChild(crear(doc, 'span', 'mu-gal-item-etiqueta', item.etiqueta));
+            // Spec 038 (O): el texto va en un HIJO para poder recortarlo a 2 lineas
+            // sin romper el centrado flex del velo (un `-webkit-line-clamp` sobre el
+            // propio velo exigiria `display:-webkit-box`).
+            var eti = crear(doc, 'span', 'mu-gal-item-etiqueta');
+            eti.appendChild(crear(doc, 'span', 'mu-gal-item-etiqueta-txt', item.etiqueta));
+            caja.appendChild(eti);
         }
 
         if (slots.favorito) {
@@ -1771,7 +1776,9 @@
             caja.appendChild(est);
         }
 
-        if (slots.eliminar && typeof o.onEliminar === 'function') {
+        // Spec 038 (O): `eliminable: false` retira el boton (los items del admin no se
+        // pueden borrar: solo las ideas que guardo el cliente).
+        if (slots.eliminar && item.eliminable !== false && typeof o.onEliminar === 'function') {
             var del = crear(doc, 'button', 'mu-gal-item-eliminar');
             del.type = 'button';
             del.setAttribute('aria-label', 'Quitar ' + (item.titulo || ('imagen ' + (i + 1))));
