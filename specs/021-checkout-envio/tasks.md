@@ -101,6 +101,9 @@ hacen en el admin de Woo y no las ejecuta el agente.
       AR (`woocommerce_get_country_locale`) y los labels iniciales del PHP;
       `style.css`: bump; `node --check`.
 
+- [X] T032 `js/checkout.js`: restaurar `restaurarEtiquetasAR` (el locale/PHP no
+      alcanzan); `style.css`: bump; `node --check`.
+
 ## F3 — Verificación funcional
 
 - [ ] T015 Lab, check **desmarcado**: producto físico → 4 métodos en carrito y
@@ -161,4 +164,4 @@ hacen en el admin de Woo y no las ejecuta el agente.
 | SC-014 | T028 |
 | SC-015 | T029 |
 | SC-016 | T030 |
-| SC-017 | T031 |
+| SC-017 | T032 |
