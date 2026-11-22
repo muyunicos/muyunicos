@@ -63,6 +63,9 @@ cliente lo marca**; desmarcado no se exige ningún dato de dirección en ninguna
     (si el cliente no elige TDF, aplica la zona país y el local cancela/coordina).
 15. **Métodos de envío amontonados.** El `td` de "Envío" en `#order_review` no tiene
     estilos: los 4 métodos se ven en una lista comprimida en la columna angosta.
+16. **Formulario no regionalizado.** "Población", "Código Postal / ZIP" y
+    "Región / Provincia" son genéricos; en AR son Localidad, Código Postal y
+    Provincia; para físicos el país es solo Argentina.
 
 Evidencia: `inc/checkout.php` (183-215, 226-228, 260-286), `inc/geo.php` (505-599),
 Woo `class-wc-cart.php` (1742-1749), `class-wc-shipping-zones.php` (395-408),
@@ -185,6 +188,9 @@ mantenedor (Nacional: 23 provincias; Resto del mundo: sin métodos).
 - **FR-017**: en el resumen del pedido, los métodos de envío se muestran como tarjetas
   verticales (radio, título y precio; "Gratis" en los de costo 0), con la seleccionada
   resaltada y el bloque a ancho completo; mismo layout en mobile.
+- **FR-018**: en AR, el formulario usa "Localidad", "Provincia", "Código Postal"
+  (sin ZIP), "Dirección" con "Calle y número", "Piso / Depto" y "WhatsApp"; para
+  físicos el país es solo Argentina y el campo de país queda fijo en AR.
 
 ## 6. Criterios de aceptación
 
@@ -214,6 +220,9 @@ mantenedor (Nacional: 23 provincias; Resto del mundo: sin métodos).
 - **SC-013**: en el checkout, los 4 métodos se ven como tarjetas legibles, la
   seleccionada (Retiro) resaltada, "Gratis" en el Retiro, los precios a la derecha y
   el resumen a ancho completo; en mobile se mantiene el mismo layout.
+- **SC-014**: checkout AR físico muestra Localidad/Provincia/Código Postal, sin ZIP,
+  con placeholders AR, país solo Argentina (campo fijo) y WhatsApp opcional; digital
+  conserva los 10 países.
 
 ## 7. Supuestos y decisiones cerradas
 
@@ -241,6 +250,8 @@ mantenedor (Nacional: 23 provincias; Resto del mundo: sin métodos).
 - **Decisión Q7 (2026-11-21)**: los métodos de envío del resumen se muestran como
   tarjetas verticales; "Gratis" en los de costo 0; la seleccionada resaltada; el
   bloque a ancho completo; mismo layout en mobile.
+- **Decisión Q8 (2026-11-21)**: regionalización AR; Localidad, Provincia, Código
+  Postal, Dirección/Calle y número, Piso / Depto, WhatsApp; país fijo AR en físicos.
 
 ## 8. Riesgos y reversibilidad
 

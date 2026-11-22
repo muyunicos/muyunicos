@@ -150,6 +150,10 @@ if ( ! function_exists( 'mu_filter_countries_list' ) ) {
      * @return array Países filtrados.
      */
     function mu_filter_countries_list( $countries ) {
+        if ( function_exists( 'mu_has_physical_products' ) && mu_has_physical_products() ) {
+            return array_intersect_key( $countries, array_flip( [ 'AR' ] ) );
+        }
+
         if ( ! function_exists( 'muyu_get_countries_data' ) ) {
             return $countries;
         }
@@ -206,6 +210,37 @@ if ( ! function_exists( 'mu_filter_shipping_countries' ) ) {
 add_filter( 'woocommerce_checkout_shipping_countries', 'mu_filter_shipping_countries', 10 );
 
 // ============================================
+// REGIONALIZACIÓN ARGENTINA
+// ============================================
+
+if ( ! function_exists( 'mu_regionalizar_locale_ar' ) ) {
+    /**
+     * Regionaliza etiquetas y placeholders del checkout para Argentina.
+     *
+     * @param array $locale Locale de países de WooCommerce.
+     * @return array
+     */
+    function mu_regionalizar_locale_ar( $locale ) {
+        if ( ! isset( $locale['AR'] ) ) return $locale;
+
+        $locale['AR']['city']['label']             = 'Localidad';
+        $locale['AR']['city']['placeholder']       = 'Ej: Mar del Plata';
+        $locale['AR']['postcode']['label']         = 'Código Postal';
+        $locale['AR']['postcode']['placeholder']   = 'Ej: 7600';
+        $locale['AR']['state']['label']            = 'Provincia';
+        $locale['AR']['address_1']['label']        = 'Dirección';
+        $locale['AR']['address_1']['placeholder']  = 'Ej: Av. Luro 1234';
+        $locale['AR']['address_2']['label']        = 'Piso / Depto';
+        $locale['AR']['address_2']['placeholder']  = 'Piso, depto, torre, etc. (opcional)';
+        $locale['AR']['country']['label']          = 'País';
+        $locale['AR']['phone']['label']            = 'WhatsApp';
+
+        return $locale;
+    }
+}
+add_filter( 'woocommerce_get_country_locale', 'mu_regionalizar_locale_ar', 20 );
+
+// ============================================
 // OPTIMIZACIÓN DE CAMPOS
 // ============================================
 
@@ -256,6 +291,35 @@ if ( ! function_exists( 'mu_optimize_checkout_fields' ) ) {
             }
             add_filter( 'woocommerce_cart_needs_shipping', '__return_false' );
         } else {
+            // Regionalización AR: etiquetas y placeholders locales.
+            if ( isset( $fields['billing']['billing_address_1'] ) ) {
+                $fields['billing']['billing_address_1']['label']       = 'Dirección';
+                $fields['billing']['billing_address_1']['placeholder'] = 'Ej: Av. Luro 1234';
+            }
+            if ( isset( $fields['billing']['billing_address_2'] ) ) {
+                $fields['billing']['billing_address_2']['label']       = 'Piso / Depto';
+                $fields['billing']['billing_address_2']['placeholder'] = 'Piso, depto, torre, etc. (opcional)';
+            }
+            if ( isset( $fields['billing']['billing_city'] ) ) {
+                $fields['billing']['billing_city']['label']       = 'Localidad';
+                $fields['billing']['billing_city']['placeholder'] = 'Ej: Mar del Plata';
+            }
+            if ( isset( $fields['billing']['billing_postcode'] ) ) {
+                $fields['billing']['billing_postcode']['label']       = 'Código Postal';
+                $fields['billing']['billing_postcode']['placeholder'] = 'Ej: 7600';
+            }
+            if ( isset( $fields['billing']['billing_state'] ) ) {
+                $fields['billing']['billing_state']['label']   = 'Provincia';
+                $fields['billing']['billing_state']['country'] = 'AR';
+            }
+            if ( isset( $fields['billing']['billing_country'] ) ) {
+                $fields['billing']['billing_country']['type']     = 'hidden';
+                $fields['billing']['billing_country']['required'] = true;
+                $fields['billing']['billing_country']['default']  = 'AR';
+                $fields['billing']['billing_country']['label']    = '';
+                $fields['billing']['billing_country']['class']    = [];
+            }
+
             $fields['billing']['billing_shipping_toggle'] = [
                 'type'     => 'text',
                 'label'    => '',

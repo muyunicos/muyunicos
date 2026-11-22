@@ -84,6 +84,10 @@ seleccionado no hay métodos; sin provincia, la zona país aplica (best-effort).
    método de envío (digital), no se agrega.
 7. **Etiqueta de métodos**: `woocommerce_cart_shipping_method_full_label` agrega
    "Gratis" a los métodos de costo 0 (`mu-ship-free`).
+8. **Regionalización AR**: `woocommerce_get_country_locale` y
+   `mu_optimize_checkout_fields` (Localidad, Provincia, Código Postal, Dirección,
+   Piso / Depto, WhatsApp); en físicos el país queda fijo AR (campo hidden) y los
+   filtros de países devuelven solo AR.
 
 ### `js/checkout.js`
 

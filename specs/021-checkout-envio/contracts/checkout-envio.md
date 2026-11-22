@@ -100,6 +100,8 @@ la facturación para el envío: el pedido guarda envío = facturación.
 - **Resumen del pedido**: los métodos se muestran como tarjetas verticales en
   `#order_review` (radio, título, precio, "Gratis" en costo 0), con la seleccionada
   resaltada y el `td` de "Envío" a ancho completo; mismo layout en mobile.
+- **Regionalización AR**: Localidad, Provincia, Código Postal (sin ZIP), Dirección
+  (Calle y número), Piso / Depto, WhatsApp; país fijo AR en físicos.
 
 ## C7 — Regresión
 
