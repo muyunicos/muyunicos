@@ -195,7 +195,10 @@ Checkout de envío (spec 021, 2026-11-21):
 - **Regionalización AR**: Localidad, Provincia, Código Postal (sin ZIP), Dirección
   (Calle y número), Piso / Depto, WhatsApp; para físicos el país es solo Argentina.
 - **País visible**: el select de país lista los 10 países para el redirect; el envío
-  físico se limita por la zona AR; los labels AR se reaplican por JS.
+  físico se limita por la zona AR; los labels AR se resuelven con el locale y el PHP.
+- **Labels AR**: Localidad, Provincia, Código Postal, Dirección, Piso / Depto,
+  WhatsApp; se resuelven con el locale AR y los labels iniciales del PHP, sin relabel
+  JS.
 - **Ajustes**: "Forzar el envío a la dirección de facturación" (`billing_only`) → sí;
   `shipping_cost_requires_address` puede quedar mientras el Retiro (local pickup) esté
   activo; `shipping_hide_rates_when_free` puede quedar (no hay `free_shipping`). Si se

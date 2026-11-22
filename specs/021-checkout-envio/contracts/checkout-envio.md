@@ -104,6 +104,9 @@ la facturación para el envío: el pedido guarda envío = facturación.
   (Calle y número), Piso / Depto, WhatsApp; país fijo AR en físicos.
 - **País visible**: el select de país lista los 10 países y conserva el redirect al
   subdominio; el envío físico se limita por la zona AR.
+- **Labels AR**: Localidad, Provincia, Código Postal, Dirección, Piso / Depto,
+  WhatsApp; se resuelven con el locale AR y los labels iniciales del PHP, sin relabel
+  JS.
 
 ## C7 — Regresión
 

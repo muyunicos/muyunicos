@@ -71,6 +71,8 @@ cliente lo marca**; desmarcado no se exige ningún dato de dirección en ninguna
     por CSS.
 18. **Select de país oculto.** Se ocultó para forzar AR, pero el select es necesario
     para el redirect multi-país; se vuelve a mostrar con los 10 países.
+19. **Relabel JS redundante.** Con el select de país visible, `address-i18n` aplica
+    el locale AR; se retira el relabel JS para dejar el método oficial.
 
 Evidencia: `inc/checkout.php` (183-215, 226-228, 260-286), `inc/geo.php` (505-599),
 Woo `class-wc-cart.php` (1742-1749), `class-wc-shipping-zones.php` (395-408),
@@ -202,6 +204,9 @@ mantenedor (Nacional: 23 provincias; Resto del mundo: sin métodos).
 - **FR-020**: en el checkout, el select de país muestra los 10 países del proyecto y
   conserva el redirect al subdominio al cambiar; el envío físico sigue limitado a AR
   por la zona, no por el select.
+- **FR-021**: los labels AR de las direcciones se resuelven con el locale
+  (`woocommerce_get_country_locale`) y los labels iniciales del PHP; no se mantiene
+  un relabel JS adicional.
 
 ## 6. Criterios de aceptación
 
@@ -241,6 +246,8 @@ mantenedor (Nacional: 23 provincias; Resto del mundo: sin métodos).
   redirige al subdominio correspondiente; los labels del formulario quedan en AR
   (Dirección, Piso / Depto, Localidad, Código Postal, Provincia) y el envío físico
   sigue AR-only.
+- **SC-017**: el formulario físico muestra Localidad/Provincia/Código Postal sin un
+  relabel JS posterior; el locale AR manda.
 
 ## 7. Supuestos y decisiones cerradas
 
@@ -275,6 +282,8 @@ mantenedor (Nacional: 23 provincias; Resto del mundo: sin métodos).
 - **Decisión Q10 (2026-11-21)**: el select de país se muestra con los 10 países para
   el redirect; el envío físico se limita por la zona AR; los labels AR se reaplican
   por JS después de `address-i18n`.
+- **Decisión Q11 (2026-11-21)**: se retira el parche JS `restaurarEtiquetasAR`; los
+  labels AR quedan en el locale y en los labels iniciales del PHP.
 
 ## 8. Riesgos y reversibilidad
 
