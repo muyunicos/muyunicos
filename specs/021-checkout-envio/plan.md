@@ -96,6 +96,10 @@ seleccionado no hay métodos; sin provincia, la zona país aplica (best-effort).
    `address-i18n` las reponga.
 3. **No** disparar `update_checkout` por el check: los métodos no dependen de la
    dirección. Los campos de dirección ya disparan el update de Woo (keyup, 1 s).
+4. `reordenarCamposContacto()`/`restaurarEtiquetaTelefono()`: después de cada
+   `address-i18n` (ready, country, updated, check) fijar Nombre → País → header →
+   E-Mail → WhatsApp (opcional) → check → Dirección → Apartamento → Población → CP →
+   Provincia; restaurar la etiqueta "WhatsApp" y el `#wa-status-msg`.
 
 ### `css/checkout.css`
 

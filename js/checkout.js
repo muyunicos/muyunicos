@@ -27,7 +27,6 @@ jQuery(document).ready(function ($) {
     const $phoneInput   = $('#billing_phone');
     const $countryInput = $('#billing_country');
     const $phoneWrapper = $('#billing_phone_field');
-    const $statusMsg    = $('#wa-status-msg');
     let valTimer;
 
     // ================================================
@@ -73,14 +72,15 @@ jQuery(document).ready(function ($) {
     function setVisualState(state, text) {
         text = text || '';
         $phoneInput.parent().removeClass('mu-field-valid mu-field-error');
+        const $status = $('#wa-status-msg');
         if (state === 'valid') {
             $phoneInput.parent().addClass('mu-field-valid');
-            $statusMsg.html('<span class="wa-ok">' + text + '</span>');
+            $status.html('<span class="wa-ok">' + text + '</span>');
         } else if (state === 'error') {
             $phoneInput.parent().addClass('mu-field-error');
-            $statusMsg.html('<span class="wa-err">' + text + '</span>');
+            $status.html('<span class="wa-err">' + text + '</span>');
         } else {
-            $statusMsg.text('');
+            $status.text('');
         }
     }
 
@@ -161,6 +161,48 @@ jQuery(document).ready(function ($) {
         $addrFields.find('label .required').remove();
     }
 
+    function reordenarCamposContacto() {
+        const $wrapper = $('.woocommerce-billing-fields__field-wrapper');
+        if (!$wrapper.length) return;
+
+        const orden = {
+            billing_full_name_field: 10,
+            billing_country_field: 20,
+            mu_header_row: 25,
+            billing_email_field: 30,
+            billing_phone_field: 40,
+            mu_toggle_row: 45,
+            billing_address_1_field: 50,
+            billing_address_2_field: 60,
+            billing_city_field: 70,
+            billing_postcode_field: 80,
+            billing_state_field: 90
+        };
+
+        const $rows = $wrapper.children('.form-row').detach();
+        $rows.sort(function (a, b) {
+            const pa = orden[$(a).attr('id')] || 999;
+            const pb = orden[$(b).attr('id')] || 999;
+            return pa - pb;
+        }).appendTo($wrapper);
+    }
+
+    function restaurarEtiquetaTelefono() {
+        const $label = $('label[for="billing_phone"]');
+        if (!$label.length) return;
+
+        const $textNodes = $label.contents().filter(function () { return this.nodeType === 3; });
+        if ($textNodes.length) {
+            $textNodes.first().replaceWith('WhatsApp ');
+        } else {
+            $label.prepend('WhatsApp ');
+        }
+
+        if (!$('#wa-status-msg').length) {
+            $label.append('<span id="wa-status-msg"></span>');
+        }
+    }
+
     function restaurarDireccion() {
         if (!$('#mu-toggle-shipping').is(':checked')) {
             return;
@@ -169,6 +211,10 @@ jQuery(document).ready(function ($) {
             $('#billing_country').val(),
             $('#billing_country').closest('.woocommerce-billing-fields')
         ]);
+        setTimeout(function () {
+            reordenarCamposContacto();
+            restaurarEtiquetaTelefono();
+        }, 0);
     }
 
     $('#mu-toggle-shipping').on('change', function () {
@@ -178,17 +224,29 @@ jQuery(document).ready(function ($) {
         } else {
             $addrFields.slideUp(function () { $(this).addClass('mu-hidden'); });
             sincronizarDireccion();
+            setTimeout(function () {
+                reordenarCamposContacto();
+                restaurarEtiquetaTelefono();
+            }, 0);
         }
     });
     if ($('#mu-toggle-shipping').is(':checked')) {
         $addrFields.removeClass('mu-hidden');
     }
 
-    // address-i18n vuelve a marcar los campos al cambiar país/estado.
+    // address-i18n vuelve a marcar y reordenar los campos al cambiar país/estado.
     $(document.body).on('country_to_state_changing updated_checkout', function () {
-        setTimeout(sincronizarDireccion, 0);
+        setTimeout(function () {
+            sincronizarDireccion();
+            reordenarCamposContacto();
+            restaurarEtiquetaTelefono();
+        }, 0);
     });
-    setTimeout(sincronizarDireccion, 0);
+    setTimeout(function () {
+        sincronizarDireccion();
+        reordenarCamposContacto();
+        restaurarEtiquetaTelefono();
+    }, 0);
 
     // ================================================
     // AJAX EMAIL — solo para guests

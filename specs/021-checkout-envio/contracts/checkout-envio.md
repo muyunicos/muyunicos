@@ -26,6 +26,10 @@ Reglas:
    dependen de la zona y del país/provincia/CP, no del check.
 4. El check **no** se renombra; se agrega un hint debajo:
    "Si lo marcás, te pedimos la dirección; si no, coordinamos el envío por WhatsApp.".
+5. **Orden y etiquetas**: Nombre → País → "Te contactamos por:" → E-Mail → WhatsApp
+   (opcional) → check → Dirección → Apartamento → Población → CP → Provincia. El
+   orden se fija en `js/checkout.js` después de `address-i18n`; el teléfono conserva
+   "WhatsApp" y el `#wa-status-msg`; el teléfono es opcional.
 
 ## C2 — Zonas y métodos
 

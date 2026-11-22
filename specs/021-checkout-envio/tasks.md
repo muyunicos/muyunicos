@@ -75,6 +75,11 @@ hacen en el admin de Woo y no las ejecuta el agente.
 - [X] T013 `style.css`: bump de `Version:` para cache-bust (`?ver=` del tema).
 - [X] T014 Verificación estática: `php -l inc\checkout.php`, `node --check
       js\checkout.js`; `git diff --name-only` sin cambios bajo `Tema-GeneratePress/`.
+- [X] T026 `js/checkout.js`: reordenar los campos después de `address-i18n`
+      (Nombre → País → header → E-Mail → WhatsApp → check → Dirección → Apartamento →
+      Población → CP → Provincia), restaurar la etiqueta "WhatsApp" y el
+      `#wa-status-msg`; el teléfono sigue opcional. `inc/checkout.php`:
+      `data-priority` en las filas custom; `style.css`: bump; `php -l`/`node --check`.
 
 ## F3 — Verificación funcional
 
@@ -107,7 +112,7 @@ hacen en el admin de Woo y no las ejecuta el agente.
       `shipping_cost_requires_address`/`shipping_hide_rates_when_free`; dejar claro
       que los físicos son AR-only ("Físicos (Solo AR)").
 - [X] T022 Actualizar el estado del `spec.md`/`tasks.md` al cerrar la implementación
-      y registrar las decisiones Q1–Q5 del §7.
+      y registrar las decisiones Q1–Q6 del §7.
 
 ## F5 — Cierre
 
@@ -131,3 +136,4 @@ hacen en el admin de Woo y no las ejecuta el agente.
 | SC-008 | T018 |
 | SC-010 | T005, T006, T015, T016 |
 | SC-011 | T005, T006, T015, T016, T019 |
+| SC-012 | T026 |

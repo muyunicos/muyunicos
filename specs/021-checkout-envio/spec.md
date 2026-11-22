@@ -43,10 +43,11 @@ cliente lo marca**; desmarcado no se exige ningún dato de dirección en ninguna
 8. **Validación del tema más estricta que la zona.** Al marcar el check exige
    dirección, ciudad, CP y provincia (270-283), aunque la zona (país AR) no necesita
    CP; el check es el que decide pedir la dirección completa.
-9. **`address-i18n.js` re-marca `validate-required`.** Hoy Woo valida
+9. **`address-i18n.js` re-marca `validate-required` y reordena.** Hoy Woo valida
    `.validate-required:visible`, así que los campos ocultos no bloquean; pero es
    frágil y, al hacerse visibles con el check, Woo exige la dirección completa por
-   encima del `required=false` del PHP.
+   encima del `required=false` del PHP. Además reordena los campos: el teléfono pasa
+   a prioridad 100 y la fila del check (sin `data-priority`) cae al final.
 10. **La etiqueta es ambigua.** "Ingresar datos para envío (Opcional)" no aclara que
     controla la dirección, no la visibilidad de los métodos.
 11. **Sin dirección no hay aviso.** El pedido queda sin dirección y el admin no tiene
@@ -175,6 +176,10 @@ mantenedor (Nacional: 23 provincias; Resto del mundo: sin métodos).
   selecciona TDF (con el check marcado o una dirección guardada), la zona TDF no
   tiene métodos; si no la selecciona, la zona país aplica y el local cancela o
   coordina. No se exige provincia.
+- **FR-016**: el formulario mantiene el orden Nombre → País → "Te contactamos por:" →
+  E-Mail → WhatsApp (opcional) → check → Dirección → Apartamento → Población → CP →
+  Provincia; `address-i18n` no lo desordena; la etiqueta del teléfono es "WhatsApp" y
+  el `#wa-status-msg` sigue visible.
 
 ## 6. Criterios de aceptación
 
@@ -197,6 +202,10 @@ mantenedor (Nacional: 23 provincias; Resto del mundo: sin métodos).
   defecto en carrito y checkout; el calculador no es requisito.
 - **SC-011**: TDF best-effort: con la provincia TDF seleccionada no hay métodos; sin
   provincia, la zona país aplica y el local cancela/coordina; no se exige provincia.
+- **SC-012**: el formulario, cerrado y abierto, mantiene el orden Nombre → País →
+  contacto → E-Mail → WhatsApp (opcional) → check → Dirección → Apartamento →
+  Población → CP → Provincia; el teléfono conserva la etiqueta "WhatsApp" y su estado
+  de validación.
 
 ## 7. Supuestos y decisiones cerradas
 
@@ -217,6 +226,10 @@ mantenedor (Nacional: 23 provincias; Resto del mundo: sin métodos).
   métodos; la zona Nacional (país AR) cubre al resto y a quien no elige provincia.
   La exclusión de TDF es **best-effort**: si el cliente no selecciona TDF, la zona
   país aplica y el local cancela/coordina. No se exige provincia.
+- **Decisión Q6 (2026-11-21)**: el formulario fija el orden Nombre → País →
+  "Te contactamos por:" → E-Mail → WhatsApp (opcional) → check → Dirección →
+  Apartamento → Población → CP → Provincia después de `address-i18n`; restaura la
+  etiqueta "WhatsApp" y el `#wa-status-msg`; el teléfono sigue opcional.
 
 ## 8. Riesgos y reversibilidad
 

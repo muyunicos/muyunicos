@@ -286,10 +286,10 @@ add_filter( 'woocommerce_checkout_fields', 'mu_optimize_checkout_fields', 9999 )
 if ( ! function_exists( 'mu_render_html_fragments' ) ) {
     function mu_render_html_fragments( $field, $key, $args, $value ) {
         if ( $key === 'billing_contact_header' ) {
-            return '<div class="form-row form-row-wide" id="mu_header_row" style="margin-bottom:0;"><div class="mu-contact-header">Te contactamos por:</div><div id="mu-email-exists-notice"></div></div>';
+            return '<div class="form-row form-row-wide" id="mu_header_row" data-priority="25" style="margin-bottom:0;"><div class="mu-contact-header">Te contactamos por:</div><div id="mu-email-exists-notice"></div></div>';
         }
         if ( $key === 'billing_shipping_toggle' ) {
-            return '<div class="form-row form-row-wide" id="mu_toggle_row"><div class="mu-shipping-toggle-wrapper"><label style="cursor:pointer;"><input type="checkbox" id="mu-toggle-shipping" name="mu_shipping_toggle" value="1"> <b>Ingresar datos para envío</b> (Opcional)</label><span class="mu-shipping-toggle-hint">Si lo marcás, te pedimos la dirección; si no, coordinamos el envío por WhatsApp.</span></div></div>';
+            return '<div class="form-row form-row-wide" id="mu_toggle_row" data-priority="45"><div class="mu-shipping-toggle-wrapper"><label style="cursor:pointer;"><input type="checkbox" id="mu-toggle-shipping" name="mu_shipping_toggle" value="1"> <b>Ingresar datos para envío</b> (Opcional)</label><span class="mu-shipping-toggle-hint">Si lo marcás, te pedimos la dirección; si no, coordinamos el envío por WhatsApp.</span></div></div>';
         }
         return $field;
     }
