@@ -118,6 +118,7 @@
 
 .mu-shipping-toggle-wrapper { margin: 10px 0 20px; padding: 12px; background: #f9f9f9; border-radius: var(--mu-radius, 8px); border: 1px solid #e0e0e0; }
 .mu-shipping-toggle-wrapper label { cursor: pointer; }
+.mu-shipping-toggle-hint { display: block; margin-top: 8px; font-size: 0.8rem; color: var(--texto-light, #6C6F7A); line-height: 1.45; }
 
 .mu-smart-field input,
 .mu-contact-field input {

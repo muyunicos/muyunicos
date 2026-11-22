@@ -69,6 +69,71 @@ if ( ! function_exists( 'mu_has_physical_products' ) ) {
 }
 
 // ============================================
+// CHECKOUT CLÁSICO — UNA SOLA DIRECCIÓN
+// ============================================
+
+if ( ! function_exists( 'mu_checkout_es_clasico' ) ) {
+    /**
+     * Indica si la página de checkout usa el formulario clásico.
+     * Con el checkout por bloques el tema no pinta sus campos y no debe
+     * tocar el cálculo de envío.
+     *
+     * @return bool
+     */
+    function mu_checkout_es_clasico() {
+        static $es_clasico = null;
+        if ( null !== $es_clasico ) return $es_clasico;
+
+        $es_clasico = true;
+        $page_id    = function_exists( 'wc_get_page_id' ) ? wc_get_page_id( 'checkout' ) : 0;
+
+        if ( $page_id > 0 && function_exists( 'has_block' ) && has_block( 'woocommerce/checkout', $page_id ) ) {
+            $es_clasico = false;
+        }
+
+        return $es_clasico;
+    }
+}
+
+if ( ! function_exists( 'mu_checkout_contexto' ) ) {
+    /**
+     * Contexto del checkout clásico: página o AJAX propio de Woo.
+     * Excluye order-received y order-pay (el pedido ya existe).
+     *
+     * @return bool
+     */
+    function mu_checkout_contexto() {
+        if ( ! mu_checkout_es_clasico() ) return false;
+        if ( is_admin() && ! wp_doing_ajax() ) return false;
+
+        if ( function_exists( 'is_checkout' ) && is_checkout() ) {
+            if ( function_exists( 'is_wc_endpoint_url' ) && ( is_wc_endpoint_url( 'order-received' ) || is_wc_endpoint_url( 'order-pay' ) ) ) {
+                return false;
+            }
+            return true;
+        }
+
+        $wc_ajax = isset( $_GET['wc-ajax'] ) ? sanitize_key( wp_unslash( $_GET['wc-ajax'] ) ) : '';
+        return in_array( $wc_ajax, [ 'update_order_review', 'checkout' ], true );
+    }
+}
+
+if ( ! function_exists( 'mu_filtrar_needs_shipping_address' ) ) {
+    /**
+     * La dirección de envío ES la de facturación del tema.
+     * Evita la sección nativa "¿Enviar a una dirección diferente?" y que sus
+     * campos se vuelvan obligatorios.
+     *
+     * @param bool $needs Valor original de WooCommerce.
+     * @return bool
+     */
+    function mu_filtrar_needs_shipping_address( $needs ) {
+        return mu_checkout_contexto() ? false : $needs;
+    }
+}
+add_filter( 'woocommerce_cart_needs_shipping_address', 'mu_filtrar_needs_shipping_address', 20 );
+
+// ============================================
 // FILTRO DE PAÍSES EN CHECKOUT
 // Solo muestra los países con subdominio configurado
 // (MX, CO, ES, CL, PE, BR, EC, AR, US, CR).
@@ -224,7 +289,7 @@ if ( ! function_exists( 'mu_render_html_fragments' ) ) {
             return '<div class="form-row form-row-wide" id="mu_header_row" style="margin-bottom:0;"><div class="mu-contact-header">Te contactamos por:</div><div id="mu-email-exists-notice"></div></div>';
         }
         if ( $key === 'billing_shipping_toggle' ) {
-            return '<div class="form-row form-row-wide" id="mu_toggle_row"><div class="mu-shipping-toggle-wrapper"><label style="cursor:pointer;"><input type="checkbox" id="mu-toggle-shipping" name="mu_shipping_toggle" value="1"> <b>Ingresar datos para envío</b> (Opcional)</label></div></div>';
+            return '<div class="form-row form-row-wide" id="mu_toggle_row"><div class="mu-shipping-toggle-wrapper"><label style="cursor:pointer;"><input type="checkbox" id="mu-toggle-shipping" name="mu_shipping_toggle" value="1"> <b>Ingresar datos para envío</b> (Opcional)</label><span class="mu-shipping-toggle-hint">Si lo marcás, te pedimos la dirección; si no, coordinamos el envío por WhatsApp.</span></div></div>';
         }
         return $field;
     }
@@ -284,6 +349,37 @@ if ( ! function_exists( 'mu_validate_checkout' ) ) {
     }
 }
 add_action( 'woocommerce_checkout_process', 'mu_validate_checkout' );
+
+// ============================================
+// NOTA DE PEDIDO — DIRECCIÓN A COORDINAR
+// Se agrega solo si el check está desmarcado, el pedido tiene envío y no
+// hay dirección cargada. Si el cliente ya tenía dirección, no se agrega.
+// ============================================
+
+if ( ! function_exists( 'mu_checkout_nota_direccion' ) ) {
+    /**
+     * Agrega una nota privada cuando el pedido queda sin dirección de envío.
+     *
+     * @param int      $order_id    ID del pedido.
+     * @param array    $posted_data Datos posteados.
+     * @param WC_Order $order       Pedido (WooCommerce 3.0+).
+     */
+    function mu_checkout_nota_direccion( $order_id, $posted_data, $order ) {
+        if ( ! mu_checkout_contexto() ) return;
+        if ( ! empty( $_POST['mu_shipping_toggle'] ) ) return;
+
+        if ( ! $order instanceof WC_Order ) {
+            $order = wc_get_order( $order_id );
+        }
+        if ( ! $order ) return;
+
+        if ( ! $order->get_shipping_method() ) return;
+        if ( '' !== (string) $order->get_shipping_address_1() ) return;
+
+        $order->add_order_note( 'Dirección de envío a coordinar: el cliente no la ingresó (check desmarcado).' );
+    }
+}
+add_action( 'woocommerce_checkout_order_processed', 'mu_checkout_nota_direccion', 20, 3 );
 
 // ============================================
 // AJAX CHECK EMAIL

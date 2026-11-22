@@ -148,19 +148,47 @@ jQuery(document).ready(function ($) {
 
     // ================================================
     // TOGGLE FÍSICO: mostrar/ocultar campos dirección
+    // El check existente es el ÚNICO interruptor de obligatoriedad:
+    // desmarcado = ningún campo de dirección obligatorio.
     // ================================================
     const $addrFields = $('.mu-physical-address-field');
+
+    function sincronizarDireccion() {
+        if ($('#mu-toggle-shipping').is(':checked')) {
+            return;
+        }
+        $addrFields.removeClass('validate-required woocommerce-invalid woocommerce-invalid-required-field');
+        $addrFields.find('label .required').remove();
+    }
+
+    function restaurarDireccion() {
+        if (!$('#mu-toggle-shipping').is(':checked')) {
+            return;
+        }
+        $(document.body).trigger('country_to_state_changing', [
+            $('#billing_country').val(),
+            $('#billing_country').closest('.woocommerce-billing-fields')
+        ]);
+    }
 
     $('#mu-toggle-shipping').on('change', function () {
         if ($(this).is(':checked')) {
             $addrFields.removeClass('mu-hidden').hide().slideDown();
+            setTimeout(restaurarDireccion, 0);
         } else {
             $addrFields.slideUp(function () { $(this).addClass('mu-hidden'); });
+            sincronizarDireccion();
         }
     });
     if ($('#mu-toggle-shipping').is(':checked')) {
         $addrFields.removeClass('mu-hidden');
     }
+
+    // address-i18n vuelve a marcar los campos al cambiar país/estado.
+    $(document.body).on('country_to_state_changing updated_checkout', function () {
+        setTimeout(sincronizarDireccion, 0);
+    });
+    setTimeout(sincronizarDireccion, 0);
 
     // ================================================
     // AJAX EMAIL — solo para guests

@@ -174,6 +174,25 @@ Modelo Híbrido:
     a un país extranjero, se debe bloquear la compra con el aviso: 
     "Este artículo no está disponible en tu ubicación actual".
 
+Checkout de envío (spec 021, 2026-11-21):
+- La zona "Nacional" de WooCommerce debe ser **Argentina (país)**, con los 4 métodos
+  (Retiro, Uber, Andreani sucursal y domicilio) y **"Retiro en Muy Únicos" primero**
+  (`method_order` 1); el calculador del carrito se desactiva
+  (`woocommerce_enable_shipping_calc = no`).
+- **Tierra del Fuego**: zona propia (**estado AR-V**) **sin métodos**; la zona
+  Nacional (país) cubre al resto y a quien no elige provincia. La exclusión es
+  **best-effort**: si el cliente no selecciona TDF, la zona país aplica y el local
+  cancela/coordina.
+- El check "Ingresar datos para envío (Opcional)" es el único interruptor: sin
+  marcar no se exige dirección; marcado se piden los datos. Sin dirección, el pedido
+  se completa y el admin recibe la nota "Dirección de envío a coordinar".
+- **Ajustes**: "Forzar el envío a la dirección de facturación" (`billing_only`) → sí;
+  `shipping_cost_requires_address` puede quedar mientras el Retiro (local pickup) esté
+  activo; `shipping_hide_rates_when_free` puede quedar (no hay `free_shipping`). Si se
+  desactiva el Retiro o se agrega envío gratis, desmarcar el setting.
+- Sin la config de zona (país AR), el checkout no muestra métodos: la sesión solo
+  tiene país y la zona por provincias no matchea.
+
 Rutas y elementos que existen en un solo país (MEDIDO 2026-10-16):
 - El sitio es UNA instalación de WordPress servida en 10 hosts: páginas, menús y bloques
   son globales, y no existe "publicar sólo en Argentina" en wp-admin ni en los plugins
@@ -1264,6 +1283,8 @@ HUECOS Y DECISIONES ABIERTAS (2026-10-16, feature 004-country-scope):
 - [ ] Repositorio de la Calculadora de Stickers: 7 archivos modificados sin commitear, incluido el bundle `calculadora_stickers.js` que se sirve en producción. Mientras no se commiteen, el bundle servido no es reproducible desde su fuente.
 - [ ] `assets/css/main.min.css`: archivo versionado (commit "Add files via upload") que NO está encolado en ningún `wp_enqueue_*` del tema — verificado por grep sobre todo el repo. Es un reset minificado de terceros, así que NO se editó ni se purgó: se excluyó del lint con `files.exclude` en `.vscode/settings.json` para que sus avisos de vendor-prefix no mezclen código propio con código de terceros. Decidir si se borra del repo o se documenta como archivo de respaldo; no se borró por no saber si alguien lo subió a propósito.
 - [ ] `ui.php`: el `href` del botón AFIP sigue en `http://` porque NO se pudo verificar que `qr.afip.gob.ar` sirva HTTPS con certificado válido (el dominio no responde a clientes automatizados). El `src` de la imagen SÍ se migró a `https://` (verificado: responde 200 con `image/jpeg`). Mientras el `href` sea `http://`, el navegador puede avisar "conexión no segura" al navegar a AFIP. Verificar a mano y migrar a `https://` en cuanto se confirme.
+
+- [ ] Zonas de envío (spec 021): la zona "Nacional" debe ser país AR con Retiro primero, la zona TDF (AR-V) sin métodos (best-effort) y el calculador off; es config manual del mantenedor y, sin ella, el checkout no muestra métodos (2026-11-21).
 
 REGISTRO DE EXCEPCIONES (2026-10-02, feature 003-mobile-ui-fixes):
 - Colores --mu-wa-green / --mu-wa-green-hover / --mu-wa-accent: excepción al
