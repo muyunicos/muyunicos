@@ -82,6 +82,8 @@ seleccionado no hay métodos; sin provincia, la zona país aplica (best-effort).
    desmarcado y el pedido tiene método de envío, agregar la nota privada "Dirección
    de envío a coordinar: el cliente no la ingresó (check desmarcado).". Si no hay
    método de envío (digital), no se agrega.
+7. **Etiqueta de métodos**: `woocommerce_cart_shipping_method_full_label` agrega
+   "Gratis" a los métodos de costo 0 (`mu-ship-free`).
 
 ### `js/checkout.js`
 
@@ -105,7 +107,9 @@ seleccionado no hay métodos; sin provincia, la zona país aplica (best-effort).
 
 Estilo del hint del check (texto chico, gris) y, si hace falta, del aviso de
 "dirección a coordinar" en el checkout. No se oculta la sección nativa por CSS: la
-quita el filtro.
+quita el filtro. Además, los métodos de envío de `#order_review` se muestran como
+tarjetas verticales (radio, título, precio, "Gratis"), con el `td` de "Envío" a ancho
+completo y el mismo layout en mobile.
 
 ### `style.css`
 

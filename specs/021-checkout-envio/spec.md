@@ -61,6 +61,8 @@ cliente lo marca**; desmarcado no se exige ningún dato de dirección en ninguna
     "Nacional" por 22 provincias no matchea sin provincia. Se resuelve con la zona
     país AR + una zona TDF (estado AR-V) sin métodos; la exclusión es best-effort
     (si el cliente no elige TDF, aplica la zona país y el local cancela/coordina).
+15. **Métodos de envío amontonados.** El `td` de "Envío" en `#order_review` no tiene
+    estilos: los 4 métodos se ven en una lista comprimida en la columna angosta.
 
 Evidencia: `inc/checkout.php` (183-215, 226-228, 260-286), `inc/geo.php` (505-599),
 Woo `class-wc-cart.php` (1742-1749), `class-wc-shipping-zones.php` (395-408),
@@ -180,6 +182,9 @@ mantenedor (Nacional: 23 provincias; Resto del mundo: sin métodos).
   E-Mail → WhatsApp (opcional) → check → Dirección → Apartamento → Población → CP →
   Provincia; `address-i18n` no lo desordena; la etiqueta del teléfono es "WhatsApp" y
   el `#wa-status-msg` sigue visible.
+- **FR-017**: en el resumen del pedido, los métodos de envío se muestran como tarjetas
+  verticales (radio, título y precio; "Gratis" en los de costo 0), con la seleccionada
+  resaltada y el bloque a ancho completo; mismo layout en mobile.
 
 ## 6. Criterios de aceptación
 
@@ -206,6 +211,9 @@ mantenedor (Nacional: 23 provincias; Resto del mundo: sin métodos).
   contacto → E-Mail → WhatsApp (opcional) → check → Dirección → Apartamento →
   Población → CP → Provincia; el teléfono conserva la etiqueta "WhatsApp" y su estado
   de validación.
+- **SC-013**: en el checkout, los 4 métodos se ven como tarjetas legibles, la
+  seleccionada (Retiro) resaltada, "Gratis" en el Retiro, los precios a la derecha y
+  el resumen a ancho completo; en mobile se mantiene el mismo layout.
 
 ## 7. Supuestos y decisiones cerradas
 
@@ -230,6 +238,9 @@ mantenedor (Nacional: 23 provincias; Resto del mundo: sin métodos).
   "Te contactamos por:" → E-Mail → WhatsApp (opcional) → check → Dirección →
   Apartamento → Población → CP → Provincia después de `address-i18n`; restaura la
   etiqueta "WhatsApp" y el `#wa-status-msg`; el teléfono sigue opcional.
+- **Decisión Q7 (2026-11-21)**: los métodos de envío del resumen se muestran como
+  tarjetas verticales; "Gratis" en los de costo 0; la seleccionada resaltada; el
+  bloque a ancho completo; mismo layout en mobile.
 
 ## 8. Riesgos y reversibilidad
 

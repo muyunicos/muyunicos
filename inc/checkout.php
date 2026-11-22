@@ -382,6 +382,27 @@ if ( ! function_exists( 'mu_checkout_nota_direccion' ) ) {
 add_action( 'woocommerce_checkout_order_processed', 'mu_checkout_nota_direccion', 20, 3 );
 
 // ============================================
+// ETIQUETA DE MÉTODOS DE ENVÍO — GRATIS
+// ============================================
+
+if ( ! function_exists( 'mu_shipping_method_label_gratis' ) ) {
+    /**
+     * Agrega "Gratis" a los métodos de envío sin costo.
+     *
+     * @param string           $label  Etiqueta HTML del método.
+     * @param WC_Shipping_Rate $method Método de envío.
+     * @return string
+     */
+    function mu_shipping_method_label_gratis( $label, $method ) {
+        if ( $method instanceof WC_Shipping_Rate && (float) $method->get_cost() <= 0 ) {
+            $label .= ' <span class="mu-ship-free">Gratis</span>';
+        }
+        return $label;
+    }
+}
+add_filter( 'woocommerce_cart_shipping_method_full_label', 'mu_shipping_method_label_gratis', 10, 2 );
+
+// ============================================
 // AJAX CHECK EMAIL
 // ============================================
 

@@ -189,6 +189,9 @@ Checkout de envío (spec 021, 2026-11-21):
 - **Orden del formulario**: `js/checkout.js` reimpone el orden después de
   `address-i18n` (contacto → WhatsApp opcional → check → dirección; CP antes de
   provincia) y restaura la etiqueta "WhatsApp" del teléfono.
+- **Resumen del pedido**: los métodos de envío de `#order_review` se muestran como
+  tarjetas verticales (radio, título, precio, "Gratis" en costo 0), con la
+  seleccionada resaltada y el `td` de "Envío" a ancho completo.
 - **Ajustes**: "Forzar el envío a la dirección de facturación" (`billing_only`) → sí;
   `shipping_cost_requires_address` puede quedar mientras el Retiro (local pickup) esté
   activo; `shipping_hide_rates_when_free` puede quedar (no hay `free_shipping`). Si se

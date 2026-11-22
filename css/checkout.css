@@ -239,6 +239,73 @@
     border-top: 2px solid var(--primario, #2B9FCF);
 }
 
+/* ============================================
+   5.1 MÉTODOS DE ENVÍO — TARJETAS
+   ============================================ */
+#order_review .woocommerce-shipping-totals,
+#order_review .woocommerce-shipping-totals th,
+#order_review .woocommerce-shipping-totals td {
+    display: block;
+    width: 100%;
+}
+#order_review .woocommerce-shipping-totals th {
+    padding-bottom: 0;
+    border-bottom: 0;
+}
+#order_review .woocommerce-shipping-methods {
+    display: grid;
+    gap: 8px;
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+}
+#order_review .woocommerce-shipping-methods li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: var(--mu-radius, 8px);
+    background: #fff;
+    cursor: pointer;
+}
+#order_review .woocommerce-shipping-methods li:has(input:checked) {
+    border-color: var(--primario, #2B9FCF);
+    background: #f2fbfe;
+    box-shadow: 0 0 0 1px var(--primario, #2B9FCF);
+}
+#order_review .woocommerce-shipping-methods input.shipping_method {
+    margin: 2px 0 0;
+    accent-color: var(--primario, #2B9FCF);
+    flex: 0 0 auto;
+}
+#order_review .woocommerce-shipping-methods label {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    margin: 0;
+    font-weight: 500;
+    line-height: 1.35;
+}
+#order_review .woocommerce-shipping-methods .woocommerce-Price-amount {
+    white-space: nowrap;
+    font-weight: 700;
+}
+#order_review .woocommerce-shipping-methods .mu-ship-free {
+    color: var(--exito, #10b981);
+    font-weight: 700;
+    white-space: nowrap;
+}
+@media (max-width: 1024px) {
+    #order_review .woocommerce-shipping-totals,
+    #order_review .woocommerce-shipping-totals th,
+    #order_review .woocommerce-shipping-totals td {
+        display: block !important;
+        width: 100%;
+    }
+}
+
 #place_order {
     width: 100%; padding: 18px;
     background: var(--primario, #2B9FCF);

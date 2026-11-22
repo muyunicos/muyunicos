@@ -80,6 +80,11 @@ hacen en el admin de Woo y no las ejecuta el agente.
       Población → CP → Provincia), restaurar la etiqueta "WhatsApp" y el
       `#wa-status-msg`; el teléfono sigue opcional. `inc/checkout.php`:
       `data-priority` en las filas custom; `style.css`: bump; `php -l`/`node --check`.
+- [X] T027 `css/checkout.css`: tarjetas de métodos de envío en `#order_review`
+      (radio, título, precio, "Gratis" en costo 0, seleccionada resaltada, ancho
+      completo, mobile); `inc/checkout.php`: filtro
+      `woocommerce_cart_shipping_method_full_label` para "Gratis"; `style.css`: bump;
+      `php -l`/`git diff --check`.
 
 ## F3 — Verificación funcional
 
@@ -112,7 +117,7 @@ hacen en el admin de Woo y no las ejecuta el agente.
       `shipping_cost_requires_address`/`shipping_hide_rates_when_free`; dejar claro
       que los físicos son AR-only ("Físicos (Solo AR)").
 - [X] T022 Actualizar el estado del `spec.md`/`tasks.md` al cerrar la implementación
-      y registrar las decisiones Q1–Q6 del §7.
+      y registrar las decisiones Q1–Q7 del §7.
 
 ## F5 — Cierre
 
@@ -137,3 +142,4 @@ hacen en el admin de Woo y no las ejecuta el agente.
 | SC-010 | T005, T006, T015, T016 |
 | SC-011 | T005, T006, T015, T016, T019 |
 | SC-012 | T026 |
+| SC-013 | T027 |

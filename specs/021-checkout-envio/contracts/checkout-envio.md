@@ -97,6 +97,9 @@ la facturación para el envío: el pedido guarda envío = facturación.
   pickup) esté activo; si se desactiva, desmarcarlo. `shipping_hide_rates_when_free`
   puede quedar (no hay free_shipping); si se agrega, desmarcarlo.
 - El carrito y el checkout deben mostrar los mismos métodos para el mismo destino.
+- **Resumen del pedido**: los métodos se muestran como tarjetas verticales en
+  `#order_review` (radio, título, precio, "Gratis" en costo 0), con la seleccionada
+  resaltada y el `td` de "Envío" a ancho completo; mismo layout en mobile.
 
 ## C7 — Regresión
 
