@@ -189,6 +189,9 @@
 .woocommerce-checkout .form-row { margin-bottom: 15px; width: 100%; float: none; }
 .woocommerce-checkout .form-row label { display: block; margin-bottom: 6px; font-weight: 600; color: var(--texto, #333); font-size: 0.9rem; }
 
+/* País fijo AR: el select queda en el DOM para address-i18n, pero no se muestra. */
+#billing_country_field { display: none !important; }
+
 .woocommerce-checkout input.input-text,
 .woocommerce-checkout select,
 .woocommerce-checkout textarea {

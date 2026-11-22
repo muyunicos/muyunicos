@@ -88,6 +88,8 @@ seleccionado no hay métodos; sin provincia, la zona país aplica (best-effort).
    `mu_optimize_checkout_fields` (Localidad, Provincia, Código Postal, Dirección,
    Piso / Depto, WhatsApp); en físicos el país queda fijo AR (campo hidden) y los
    filtros de países devuelven solo AR.
+9. **País AR**: select de una sola opción AR, oculto por CSS, para que
+   `address-i18n` aplique el locale; una sola dirección.
 
 ### `js/checkout.js`
 

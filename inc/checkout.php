@@ -313,11 +313,10 @@ if ( ! function_exists( 'mu_optimize_checkout_fields' ) ) {
                 $fields['billing']['billing_state']['country'] = 'AR';
             }
             if ( isset( $fields['billing']['billing_country'] ) ) {
-                $fields['billing']['billing_country']['type']     = 'hidden';
+                $fields['billing']['billing_country']['type']     = 'country';
                 $fields['billing']['billing_country']['required'] = true;
-                $fields['billing']['billing_country']['default']  = 'AR';
-                $fields['billing']['billing_country']['label']    = '';
-                $fields['billing']['billing_country']['class']    = [];
+                $fields['billing']['billing_country']['label']    = 'País';
+                $fields['billing']['billing_country']['class']    = [ 'form-row-wide' ];
             }
 
             $fields['billing']['billing_shipping_toggle'] = [

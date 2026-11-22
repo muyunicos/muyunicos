@@ -102,6 +102,8 @@ la facturación para el envío: el pedido guarda envío = facturación.
   resaltada y el `td` de "Envío" a ancho completo; mismo layout en mobile.
 - **Regionalización AR**: Localidad, Provincia, Código Postal (sin ZIP), Dirección
   (Calle y número), Piso / Depto, WhatsApp; país fijo AR en físicos.
+- **País AR**: en físicos, `billing_country` es un select con una sola opción AR,
+  oculto por CSS pero presente en el DOM para `address-i18n`; una sola dirección.
 
 ## C7 — Regresión
 
