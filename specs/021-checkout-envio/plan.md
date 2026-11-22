@@ -88,8 +88,9 @@ seleccionado no hay métodos; sin provincia, la zona país aplica (best-effort).
    `mu_optimize_checkout_fields` (Localidad, Provincia, Código Postal, Dirección,
    Piso / Depto, WhatsApp); en físicos el país queda fijo AR (campo hidden) y los
    filtros de países devuelven solo AR.
-9. **País AR**: select de una sola opción AR, oculto por CSS, para que
-   `address-i18n` aplique el locale; una sola dirección.
+9. **País visible + labels AR**: quitar el AR-only del listado de países; el select
+   muestra los 10 y conserva el redirect; `restaurarEtiquetasAR` reaplica los labels
+   después de `address-i18n`; el envío físico se limita por la zona AR.
 
 ### `js/checkout.js`
 
@@ -104,10 +105,10 @@ seleccionado no hay métodos; sin provincia, la zona país aplica (best-effort).
    `address-i18n` las reponga.
 3. **No** disparar `update_checkout` por el check: los métodos no dependen de la
    dirección. Los campos de dirección ya disparan el update de Woo (keyup, 1 s).
-4. `reordenarCamposContacto()`/`restaurarEtiquetaTelefono()`: después de cada
-   `address-i18n` (ready, country, updated, check) fijar Nombre → País → header →
-   E-Mail → WhatsApp (opcional) → check → Dirección → Apartamento → Población → CP →
-   Provincia; restaurar la etiqueta "WhatsApp" y el `#wa-status-msg`.
+4. `reordenarCamposContacto()`/`restaurarEtiquetaTelefono()`/`restaurarEtiquetasAR()`:
+   después de cada `address-i18n` (ready, country, updated, check) fijar el orden,
+   la etiqueta "WhatsApp" y los labels AR (Dirección, Piso / Depto, Localidad,
+   Código Postal, Provincia).
 
 ### `css/checkout.css`
 

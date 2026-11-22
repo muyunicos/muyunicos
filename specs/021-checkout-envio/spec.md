@@ -69,6 +69,8 @@ cliente lo marca**; desmarcado no se exige ningún dato de dirección en ninguna
 17. **País oculto con `type=hidden`.** Al no haber select de país, `address-i18n`
     usa el locale default y pisa los labels AR. Se resuelve con un select AR oculto
     por CSS.
+18. **Select de país oculto.** Se ocultó para forzar AR, pero el select es necesario
+    para el redirect multi-país; se vuelve a mostrar con los 10 países.
 
 Evidencia: `inc/checkout.php` (183-215, 226-228, 260-286), `inc/geo.php` (505-599),
 Woo `class-wc-cart.php` (1742-1749), `class-wc-shipping-zones.php` (395-408),
@@ -197,6 +199,9 @@ mantenedor (Nacional: 23 provincias; Resto del mundo: sin métodos).
 - **FR-019**: en físicos, el país es un select con una sola opción AR, oculto por CSS
   pero presente en el DOM para que `address-i18n` aplique el locale AR; el envío sigue
   usando la facturación (una sola dirección).
+- **FR-020**: en el checkout, el select de país muestra los 10 países del proyecto y
+  conserva el redirect al subdominio al cambiar; el envío físico sigue limitado a AR
+  por la zona, no por el select.
 
 ## 6. Criterios de aceptación
 
@@ -232,6 +237,10 @@ mantenedor (Nacional: 23 provincias; Resto del mundo: sin métodos).
 - **SC-015**: el checkout físico muestra Localidad/Provincia/Código Postal (sin ZIP) y
   una sola dirección; el select de país AR está en el DOM pero no se ve; el
   `address-i18n` no pisa los labels; el digital mantiene los 10 países.
+- **SC-016**: el select de país está visible, lista los 10 países y al cambiarlo
+  redirige al subdominio correspondiente; los labels del formulario quedan en AR
+  (Dirección, Piso / Depto, Localidad, Código Postal, Provincia) y el envío físico
+  sigue AR-only.
 
 ## 7. Supuestos y decisiones cerradas
 
@@ -263,6 +272,9 @@ mantenedor (Nacional: 23 provincias; Resto del mundo: sin métodos).
   Postal, Dirección/Calle y número, Piso / Depto, WhatsApp; país fijo AR en físicos.
 - **Decisión Q9 (2026-11-21)**: el país en físicos es un select con una sola opción
   AR, oculto por CSS, para que `address-i18n` aplique el locale; una sola dirección.
+- **Decisión Q10 (2026-11-21)**: el select de país se muestra con los 10 países para
+  el redirect; el envío físico se limita por la zona AR; los labels AR se reaplican
+  por JS después de `address-i18n`.
 
 ## 8. Riesgos y reversibilidad
 

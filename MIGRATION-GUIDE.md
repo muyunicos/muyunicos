@@ -194,8 +194,8 @@ Checkout de envío (spec 021, 2026-11-21):
   seleccionada resaltada y el `td` de "Envío" a ancho completo.
 - **Regionalización AR**: Localidad, Provincia, Código Postal (sin ZIP), Dirección
   (Calle y número), Piso / Depto, WhatsApp; para físicos el país es solo Argentina.
-- **País AR**: el select de país queda en el DOM (una sola opción AR) y oculto por CSS
-  para que `address-i18n` aplique el locale; una sola dirección.
+- **País visible**: el select de país lista los 10 países para el redirect; el envío
+  físico se limita por la zona AR; los labels AR se reaplican por JS.
 - **Ajustes**: "Forzar el envío a la dirección de facturación" (`billing_only`) → sí;
   `shipping_cost_requires_address` puede quedar mientras el Retiro (local pickup) esté
   activo; `shipping_hide_rates_when_free` puede quedar (no hay `free_shipping`). Si se

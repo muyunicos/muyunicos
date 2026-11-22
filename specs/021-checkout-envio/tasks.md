@@ -93,6 +93,10 @@ hacen en el admin de Woo y no las ejecuta el agente.
       hidden), label "País"; `css/checkout.css`: ocultar la fila del país manteniendo
       el select en el DOM para `address-i18n`; `style.css`: bump;
       `php -l`/`git diff --check`.
+- [X] T030 `inc/checkout.php`: quitar el filtro AR-only del listado de países (select
+      de 10); `css/checkout.css`: mostrar `billing_country`; `js/checkout.js`:
+      `restaurarEtiquetasAR` después de `address-i18n`; `style.css`: bump; `php -l`,
+      `node --check`, `git diff --check`.
 
 ## F3 — Verificación funcional
 
@@ -125,7 +129,7 @@ hacen en el admin de Woo y no las ejecuta el agente.
       `shipping_cost_requires_address`/`shipping_hide_rates_when_free`; dejar claro
       que los físicos son AR-only ("Físicos (Solo AR)").
 - [X] T022 Actualizar el estado del `spec.md`/`tasks.md` al cerrar la implementación
-      y registrar las decisiones Q1–Q9 del §7.
+      y registrar las decisiones Q1–Q10 del §7.
 
 ## F5 — Cierre
 
@@ -153,3 +157,4 @@ hacen en el admin de Woo y no las ejecuta el agente.
 | SC-013 | T027 |
 | SC-014 | T028 |
 | SC-015 | T029 |
+| SC-016 | T030 |

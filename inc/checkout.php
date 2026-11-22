@@ -150,10 +150,6 @@ if ( ! function_exists( 'mu_filter_countries_list' ) ) {
      * @return array Países filtrados.
      */
     function mu_filter_countries_list( $countries ) {
-        if ( function_exists( 'mu_has_physical_products' ) && mu_has_physical_products() ) {
-            return array_intersect_key( $countries, array_flip( [ 'AR' ] ) );
-        }
-
         if ( ! function_exists( 'muyu_get_countries_data' ) ) {
             return $countries;
         }

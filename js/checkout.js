@@ -203,6 +203,26 @@ jQuery(document).ready(function ($) {
         }
     }
 
+    function restaurarEtiquetasAR() {
+        const etiquetas = {
+            billing_address_1_field: 'Dirección',
+            billing_address_2_field: 'Piso / Depto',
+            billing_city_field: 'Localidad',
+            billing_postcode_field: 'Código Postal',
+            billing_state_field: 'Provincia'
+        };
+
+        Object.keys(etiquetas).forEach(function (id) {
+            const $label = $('#' + id + ' label');
+            if (!$label.length) return;
+
+            const $textNodes = $label.contents().filter(function () { return this.nodeType === 3; });
+            if ($textNodes.length) {
+                $textNodes.first().replaceWith(etiquetas[id] + ' ');
+            }
+        });
+    }
+
     function restaurarDireccion() {
         if (!$('#mu-toggle-shipping').is(':checked')) {
             return;
@@ -214,6 +234,7 @@ jQuery(document).ready(function ($) {
         setTimeout(function () {
             reordenarCamposContacto();
             restaurarEtiquetaTelefono();
+            restaurarEtiquetasAR();
         }, 0);
     }
 
@@ -227,6 +248,7 @@ jQuery(document).ready(function ($) {
             setTimeout(function () {
                 reordenarCamposContacto();
                 restaurarEtiquetaTelefono();
+                restaurarEtiquetasAR();
             }, 0);
         }
     });
@@ -240,12 +262,14 @@ jQuery(document).ready(function ($) {
             sincronizarDireccion();
             reordenarCamposContacto();
             restaurarEtiquetaTelefono();
+            restaurarEtiquetasAR();
         }, 0);
     });
     setTimeout(function () {
         sincronizarDireccion();
         reordenarCamposContacto();
         restaurarEtiquetaTelefono();
+        restaurarEtiquetasAR();
     }, 0);
 
     // ================================================
