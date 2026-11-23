@@ -1883,14 +1883,22 @@
     function construirChip(doc, info, o, tam) {
         var cuantos = Math.max(0, parseInt(info.cuantos, 10) || 0);
         var desde = Math.max(0, parseInt(info.desde, 10) || 0);
-        var b = crear(doc, 'button', 'mu-gal-celda mu-gal-celda--chip', '+' + cuantos);
+        // Spec 046 (U8): con `chipSiempre` el chip dice "Todas (N)" con el TOTAL
+        // (no "+ocultas"): abre el visor con la coleccion completa.
+        var total = Math.max(cuantos, parseInt(info.total, 10) || 0);
+        var etq = (o.chipSiempre === true && info.accion === 'abrir')
+            ? ('Todas (' + total + ')')
+            : ('+' + cuantos);
+        var b = crear(doc, 'button', 'mu-gal-celda mu-gal-celda--chip', etq);
         b.type = 'button';
         b.style.setProperty('--mu-gal-tam', tam.ancho + 'px');
         b.setAttribute('data-mu-gal-chip', String(cuantos));
         b.setAttribute('data-mu-gal-chip-accion', String(info.accion || ''));
         b.setAttribute('aria-label', (info.accion === 'revelar')
             ? ('Ver ' + cuantos + ' mas: muestra ' + (info.muestra || cuantos))
-            : ('Ver las ' + cuantos + ' restantes en el visor'));
+            : ((o.chipSiempre === true)
+                ? ('Ver todas (' + total + ') en el visor')
+                : ('Ver las ' + cuantos + ' restantes en el visor')));
         b.addEventListener('click', function () {
             if (typeof o.onChip === 'function') { o.onChip(cuantos, desde, info); return; }
             if (info.accion === 'cargar' && typeof o.onRanura === 'function') {
@@ -2185,20 +2193,27 @@
         });
 
         // Chip: SUMA una pantalla de celdas; agotado el tope, abre el visor (C1bis).
-        if (t.ocultas > 0) {
+        // Spec 046 (U8): con `chipSiempre` se pinta SIEMPRE (aun sin ocultas) como
+        // "Todas (N)", con la coleccion completa.
+        if (t.ocultas > 0 || (o.chipSiempre === true && items.length > 0)) {
             var accionChip = o.chipAccion;
-            if (!accionChip || accionChip === 'auto') {
-                // `navegable: false` no acumula: el chip lleva al visor.
-                accionChip = (navegable === false) ? 'abrir' : (t.agotado ? 'abrir' : 'revelar');
-            } else if (accionChip === 'paginar') {
-                accionChip = 'revelar';               // 'paginar' era el nombre viejo
+            if (t.ocultas === 0) {
+                accionChip = 'abrir';
+            } else {
+                if (!accionChip || accionChip === 'auto') {
+                    // `navegable: false` no acumula: el chip lleva al visor.
+                    accionChip = (navegable === false) ? 'abrir' : (t.agotado ? 'abrir' : 'revelar');
+                } else if (accionChip === 'paginar') {
+                    accionChip = 'revelar';               // 'paginar' era el nombre viejo
+                }
+                if (accionChip === 'revelar' && t.agotado) { accionChip = 'abrir'; }
             }
-            if (accionChip === 'revelar' && t.agotado) { accionChip = 'abrir'; }
             linea.appendChild(construirChip(doc, {
-                cuantos: t.ocultas,
-                desde: t.visibles,
+                cuantos: (t.ocultas > 0) ? t.ocultas : items.length,
+                desde: (t.ocultas > 0) ? t.visibles : 0,
+                total: items.length,
                 accion: accionChip,
-                muestra: Math.min(t.paso, t.ocultas),
+                muestra: (t.ocultas > 0) ? Math.min(t.paso, t.ocultas) : 0,
                 alPaginar: revelarSiguiente,
                 alRevelar: revelarSiguiente
             }, o, tam));
