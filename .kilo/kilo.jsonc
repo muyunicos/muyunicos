@@ -1,0 +1,37 @@
+{
+  "$schema": "https://app.kilo.ai/config.json",
+  "instructions": [".kilo/rules/*.md"],
+  "permission": {
+    "read": "allow",
+    "glob": "allow",
+    "grep": "allow",
+    "list": "allow",
+    "semantic_search": "allow",
+    "webfetch": "allow",
+    "websearch": "allow",
+    "todowrite": "allow",
+    "todoread": "allow",
+    "task": "allow",
+    "edit": "ask",
+    "external_directory": {
+      "**/personalizador-pdf/**": "allow",
+      "**/textmuy/**": "allow",
+      "**/calculadora/**": "allow",
+      "**/muyunicos/**": "allow",
+      "C:/Users/Jonatan/Documents/GitHub/personalizador-pdf/**": "allow",
+      "C:/Users/Jonatan/Documents/GitHub/calculadora/**": "allow",
+      "C:/Users/Jonatan/Documents/GitHub/muyunicos/**": "allow",
+      "*": "ask"
+    },
+    "bash": {
+      "php -l*": "allow",
+      "node --check*": "allow",
+      "node tests/*": "allow",
+      "npx*": "allow",
+      "git status*": "allow",
+      "git diff*": "allow",
+      "git log*": "allow",
+      "*": "ask"
+    }
+  }
+}
