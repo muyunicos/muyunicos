@@ -612,6 +612,49 @@ if ( ! function_exists( 'mu_apply_country_on_cart_loaded' ) ) {
 add_action( 'woocommerce_cart_loaded_from_session', 'mu_apply_country_on_cart_loaded', 5 );
 
 // ============================================
+// UBICACIÓN POR DEFECTO DEL CLIENTE (PAÍS DEL SUBDOMINIO)
+// ============================================
+
+/**
+ * Fija el país del subdominio en la ubicación por defecto del cliente mediante
+ * los filtros nativos de WooCommerce que WCPBC y WC leen al inicio (antes de
+ * template_redirect). Así el país está correcto antes de calcular/renderizar
+ * precios y el HTML del servidor sale en la moneda local desde el primer
+ * request (sin AJAX, sin flash ARS). mu_apply_country_by_domain() se conserva
+ * como refuerzo de sesión.
+ */
+if ( ! function_exists( 'mu_default_location_string_by_domain' ) ) {
+    /**
+     * Filtro de cadena (p. ej. "MX" o "US:CA") previo a la geolocalización.
+     *
+     * @param string $default_location Ubicación por defecto en texto.
+     * @return string Código de país del subdominio.
+     */
+    function mu_default_location_string_by_domain( $default_location ) {
+        return muyu_get_current_country_from_subdomain();
+    }
+    add_filter( 'woocommerce_customer_default_location', 'mu_default_location_string_by_domain' );
+}
+
+if ( ! function_exists( 'mu_default_location_array_by_domain' ) ) {
+    /**
+     * Filtro de array (country/state) posterior a la geolocalización: manda el
+     * subdominio por encima de la detección por IP.
+     *
+     * @param array $default_location Ubicación por defecto (country/state).
+     * @return array Ubicación con el país del subdominio.
+     */
+    function mu_default_location_array_by_domain( $default_location ) {
+        if ( ! is_array( $default_location ) ) {
+            $default_location = array();
+        }
+        $default_location['country'] = muyu_get_current_country_from_subdomain();
+        return $default_location;
+    }
+    add_filter( 'woocommerce_customer_default_location_array', 'mu_default_location_array_by_domain' );
+}
+
+// ============================================
 // SHORTCODE PAÍS DE FACTURACIÓN
 // ============================================
 
