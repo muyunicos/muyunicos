@@ -185,6 +185,8 @@ if ( ! function_exists( 'mu_schema_org_inject' ) ) {
             return $data;
         }
 
+        $GLOBALS['mu_schema_jsonld_done'] = true;
+
         $has_org = false;
         $has_web = false;
 
@@ -216,4 +218,36 @@ if ( ! function_exists( 'mu_schema_org_inject' ) ) {
         return $data;
     }
     add_filter( 'rank_math/json_ld', 'mu_schema_org_inject', 10, 2 );
+}
+
+if ( ! function_exists( 'mu_schema_org_fallback' ) ) {
+    /**
+     * Fallback: si Rank Math no generó ningún grafo (módulo Schema apagado),
+     * emite el JSON-LD base + AggregateRating/Review por `wp_head`.
+     * Si Rank Math sí lo generó, `mu_schema_org_inject` marcó el flag y no hace nada.
+     */
+    function mu_schema_org_fallback() {
+        if ( is_admin() || is_feed() ) {
+            return;
+        }
+
+        if ( ! empty( $GLOBALS['mu_schema_jsonld_done'] ) ) {
+            return;
+        }
+
+        $graph = [ mu_schema_org_data(), mu_schema_web_data() ];
+
+        // Reusa los filtros (org + rating) para dejar el grafo completo.
+        $graph = apply_filters( 'rank_math/json_ld', $graph );
+
+        $payload = [
+            '@context' => 'https://schema.org',
+            '@graph'   => array_values( (array) $graph ),
+        ];
+
+        echo '<script type="application/ld+json">'
+            . wp_json_encode( $payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE )
+            . '</script>' . "\n";
+    }
+    add_action( 'wp_head', 'mu_schema_org_fallback', 99 );
 }
