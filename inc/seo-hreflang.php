@@ -60,26 +60,43 @@ if ( ! function_exists( 'mu_add_hreflang_tags' ) ) {
         $hreflang_tags = [];
         
         foreach ( $countries as $country_code => $country_data ) {
+            // AR es el x-default (raíz): se emite una sola vez como x-default, no como es-AR.
+            if ( 'AR' === $country_code ) {
+                continue;
+            }
+
             $country_host = $country_data['host'];
             $country_lang = $country_data['lang'];
             
             // Construir URL para este país
             $country_url = str_replace( $current_host, $country_host, $current_url );
             
-            // Agregar prefijo de idioma si es necesario
+            // Agregar prefijo de idioma si es necesario, preservando host y query.
+            // (El str_replace sobre la URL completa corrompía la home: '/' → https:/pt//pt/...)
             $prefix = muyu_country_language_prefix( $country_code );
-            if ( $prefix && strpos( $country_url, $prefix ) === false ) {
-                $path = parse_url( $country_url, PHP_URL_PATH );
-                $country_url = str_replace( $path, $prefix . $path, $country_url );
+            if ( $prefix ) {
+                $parts = parse_url( $country_url );
+                $path  = isset( $parts['path'] ) && '' !== $parts['path'] ? (string) $parts['path'] : '/';
+                if ( 0 !== strpos( $path, $prefix . '/' ) && $path !== $prefix ) {
+                    $nuevo = ( ! empty( $parts['scheme'] ) ? $parts['scheme'] : 'https' ) . '://' . $parts['host'];
+                    if ( ! empty( $parts['port'] ) ) {
+                        $nuevo .= ':' . (int) $parts['port'];
+                    }
+                    $nuevo .= $prefix . $path;
+                    if ( ! empty( $parts['query'] ) ) {
+                        $nuevo .= '?' . $parts['query'];
+                    }
+                    if ( ! empty( $parts['fragment'] ) ) {
+                        $nuevo .= '#' . $parts['fragment'];
+                    }
+                    $country_url = $nuevo;
+                }
             }
             
-            // Generar código de idioma-país para hreflang
-            $hreflang_code = $country_lang . '-' . strtolower( $country_code );
-            
-            // Para español genérico, usar solo 'es'
-            if ( $country_lang === 'es' ) {
-                $hreflang_code = 'es';
-            }
+            // Código hreflang por región: idioma (ISO 639-1) + país (ISO 3166-1 alpha-2),
+            // p. ej. es-MX, es-CO, es-ES, es-CL, es-PE, es-EC, es-CR, pt-BR, en-US.
+            // Debe ser ÚNICO por URL: el 'es' genérico repetido era inválido.
+            $hreflang_code = $country_lang . '-' . $country_code;
             
             $hreflang_tags[] = [
                 'url' => $country_url,
