@@ -94,13 +94,13 @@ ExpiresByType font/woff2 A31557600
 <IfModule mod_rewrite.c>
 	RewriteEngine On
 
-	# BR: raiz -> /pt/
+	# BR: /pt/ -> raiz (evita duplicado; la raiz ya se sirve en pt via idioma-raiz.php)
 	RewriteCond %{HTTP_HOST} ^br\.muyunicos\.com$ [NC]
-	RewriteRule ^$ /pt/ [R=301,L]
+	RewriteRule ^pt/?$ / [R=301,L]
 
-	# US: raiz -> /en/
+	# US: /en/ -> raiz (evita duplicado; la raiz ya se sirve en en via idioma-raiz.php)
 	RewriteCond %{HTTP_HOST} ^us\.muyunicos\.com$ [NC]
-	RewriteRule ^$ /en/ [R=301,L]
+	RewriteRule ^en/?$ / [R=301,L]
 
 	# Paises hispanos: /pt/ y /en/ -> raiz (evita duplicados)
 	RewriteCond %{HTTP_HOST} ^(mexico|co|es|cl|pe|ec|cr)\.muyunicos\.com$ [NC]

@@ -364,6 +364,7 @@ mu_load_module( 'performance-monitor' ); // Performance monitoring system
 mu_load_module( 'coming-soon' );         // Coming Soon override (intercepta template_redirect antes que Hostinger)
 mu_load_module( 'geo' );                 // Multi-country system
 mu_load_module( 'compat-wplingua' );     // wpLingua: conserva el prefijo de idioma en el 301 canónico del core (depende de geo.php)
+mu_load_module( 'idioma-raiz' );         // wpLingua: la raíz de br./us. se sirve en pt/en sin redirect (depende de geo.php y compat-wplingua.php; hook init p0, antes de wplng_ob_start p1)
 mu_load_module( 'compat-wplingua-hreflang' ); // wpLingua: retira su hreflang del <head> (fuente única = inc/seo-hreflang.php)
 mu_load_module( 'country-scope' );       // Alcance por país de rutas y elementos (ej: /envios/ sólo en AR) — depende de geo.php (país), compat-wplingua.php (URI original) y compat-litespeed.php (bots)
 mu_load_module( 'jetpack-search-integration' ); // Jetpack Search: corrige homeUrl para que los resultados apunten al subdominio actual (depende de geo.php)
