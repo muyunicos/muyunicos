@@ -1,0 +1,167 @@
+# BEGIN LSCACHE
+## LITESPEED WP CACHE PLUGIN - Do not edit the contents of this block! ##
+<IfModule mod_rewrite.c>
+RewriteEngine on
+RewriteRule litespeed/debug/.*\.log$ - [F,L]
+RewriteRule (^|/)\.litespeed_conf\. - [F,L]
+</IfModule>
+<IfModule LiteSpeed>
+CacheLookup on
+# Aislamiento de caché por subdominio: el host viaja en cada request (incluido
+# el primero), a diferencia de la cookie _lscache_vary que se fija recién en la
+# respuesta. Se combina con no-autoflush en una sola regla E=Cache-Control para
+# no pisar la directiva previa (dos E=Cache-Control se sobrescriben).
+RewriteRule .* - [E="Cache-Control:no-autoflush,vary=host%{HTTP_HOST}"]
+
+### marker ASYNC start ###
+RewriteCond %{REQUEST_URI} /wp-admin/admin-ajax\.php
+RewriteCond %{QUERY_STRING} action=async_litespeed
+RewriteRule .* - [E=noabort:1]
+### marker ASYNC end ###
+
+### marker REST AUTH start ###
+RewriteCond %{HTTP:Authorization} !^$
+RewriteCond %{REQUEST_URI} /wp\-json(?:/|$) [OR]
+RewriteCond %{QUERY_STRING} (^|&)rest_route=
+RewriteRule .* - [E=Cache-Control:no-cache]
+### marker REST AUTH end ###
+
+### marker POSTPASS start ###
+RewriteCond %{HTTP_COOKIE} (^|;\s*)wp-postpass_2f4eff60b09091db01b3e477dd9c80fe=
+RewriteRule .* - [E=Cache-Control:no-cache]
+### marker POSTPASS end ###
+
+### marker DROPQS start ###
+CacheKeyModify -qs:fbclid
+CacheKeyModify -qs:gclid
+CacheKeyModify -qs:utm*
+CacheKeyModify -qs:_ga
+### marker DROPQS end ###
+
+</IfModule>
+## LITESPEED WP CACHE PLUGIN - Do not edit the contents of this block! ##
+# END LSCACHE
+# BEGIN NON_LSCACHE
+## LITESPEED WP CACHE PLUGIN - Do not edit the contents of this block! ##
+### marker BROWSER CACHE start ###
+<IfModule mod_expires.c>
+ExpiresActive on
+ExpiresByType application/pdf A31557600
+ExpiresByType image/x-icon A31557600
+ExpiresByType image/vnd.microsoft.icon A31557600
+ExpiresByType image/svg+xml A31557600
+
+ExpiresByType image/jpg A31557600
+ExpiresByType image/jpeg A31557600
+ExpiresByType image/png A31557600
+ExpiresByType image/gif A31557600
+ExpiresByType image/webp A31557600
+ExpiresByType image/avif A31557600
+
+ExpiresByType video/ogg A31557600
+ExpiresByType audio/ogg A31557600
+ExpiresByType video/mp4 A31557600
+ExpiresByType video/webm A31557600
+
+ExpiresByType text/css A31557600
+ExpiresByType text/javascript A31557600
+ExpiresByType application/javascript A31557600
+ExpiresByType application/x-javascript A31557600
+
+ExpiresByType application/x-font-ttf A31557600
+ExpiresByType application/x-font-woff A31557600
+ExpiresByType application/font-woff A31557600
+ExpiresByType application/font-woff2 A31557600
+ExpiresByType application/vnd.ms-fontobject A31557600
+ExpiresByType font/ttf A31557600
+ExpiresByType font/otf A31557600
+ExpiresByType font/woff A31557600
+ExpiresByType font/woff2 A31557600
+
+</IfModule>
+### marker BROWSER CACHE end ###
+
+## LITESPEED WP CACHE PLUGIN - Do not edit the contents of this block! ##
+# END NON_LSCACHE
+<IfModule mod_rewrite.c>
+	RewriteEngine On
+	RewriteCond %{HTTP_HOST} ^muyunicos\.com\.ar$ [NC]
+	RewriteRule ^(.*)$ https://muyunicos.com/$1 [R=301,L]
+</IfModule>
+
+
+# === IDIOMA POR PAIS (subdominio -> idioma) ===
+<IfModule mod_rewrite.c>
+	RewriteEngine On
+
+	# BR: raiz -> /pt/
+	RewriteCond %{HTTP_HOST} ^br\.muyunicos\.com$ [NC]
+	RewriteRule ^$ /pt/ [R=301,L]
+
+	# US: raiz -> /en/
+	RewriteCond %{HTTP_HOST} ^us\.muyunicos\.com$ [NC]
+	RewriteRule ^$ /en/ [R=301,L]
+
+	# Paises hispanos: /pt/ y /en/ -> raiz (evita duplicados)
+	RewriteCond %{HTTP_HOST} ^(mexico|co|es|cl|pe|ec|cr)\.muyunicos\.com$ [NC]
+	RewriteRule ^(pt|en)(?:/(.*))?$ /$2 [R=301,L]
+</IfModule>
+
+# BEGIN WordPress
+# Las directivas (líneas) entre «BEGIN WordPress» y «END WordPress» son
+# generadas dinámicamente y solo deberían ser modificadas mediante filtros de WordPress.
+# Cualquier cambio en las directivas que hay entre esos marcadores serán sobrescritas.
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+RewriteBase /
+RewriteRule ^index\.php$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.php [L]
+</IfModule>
+
+# END WordPress
+
+
+
+# BEGIN Really Simple Security Disable directory indexing
+# Las directivas (líneas) entre «BEGIN Really Simple Security Disable directory indexing» y «END Really Simple Security Disable directory indexing» son
+# generadas dinámicamente y solo deberían ser modificadas mediante filtros de WordPress.
+# Cualquier cambio en las directivas que hay entre esos marcadores serán sobrescritas.
+# Disable directory indexing to prevent listing of directory contents
+Options -Indexes
+# END Really Simple Security Disable directory indexing
+
+
+
+# === BLOQUEO XML-RPC (consume recursos innecesarios) ===
+<Files xmlrpc.php>
+	Order Deny,Allow
+	Deny from all
+</Files>
+
+# === BLOQUEO BOTS/CRAWLERS AGRESIVOS (desactivado) ===
+# Se liberan GPTBot, ClaudeBot, anthropic, CCBot, Bytespider (posicionamiento IA)
+# y AhrefsBot, SemrushBot, MJ12, DotBot, DataForSeo, MegaIndex, BLEX, Petal (auditoria SEO).
+# Reactivar solo bots realmente maliciosos si hiciera falta.
+
+# === PROTECCION WP-LOGIN (limite de acceso) ===
+<Files wp-login.php>
+	<LimitExcept GET POST>
+		Order Deny,Allow
+		Deny from all
+	</LimitExcept>
+</Files>
+
+# Wordfence WAF
+<IfModule LiteSpeed>
+	php_value auto_prepend_file '/home/u274449136/domains/muyunicos.com/public_html/wordfence-waf.php'
+</IfModule>
+<IfModule lsapi_module>
+	php_value auto_prepend_file '/home/u274449136/domains/muyunicos.com/public_html/wordfence-waf.php'
+</IfModule>
+
+# END Wordfence WAF
+
+# Options All eliminado: re-activaba Indexes y pisaba Options -Indexes (seguridad + SEO)
