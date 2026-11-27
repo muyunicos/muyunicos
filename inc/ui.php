@@ -1234,7 +1234,7 @@ if ( ! function_exists( 'mu_home_sections_enqueue' ) ) {
         $hero_ver = file_exists( $hero_css ) ? (string) filemtime( $hero_css ) : '1.0.0';
 
         wp_enqueue_style( 'mu-hero-promo', get_stylesheet_directory_uri() . '/css/components/hero-promo.css', [ 'mu-base' ], $hero_ver );
-        wp_enqueue_style( 'mu-home', get_stylesheet_directory_uri() . '/css/home.css', [], '1.1.0' );
+
         wp_enqueue_script( 'mu-hero', get_stylesheet_directory_uri() . '/js/hero.js', [], '1.0.0', true );
     }
     add_action( 'wp_enqueue_scripts', 'mu_home_sections_enqueue' );
@@ -1293,7 +1293,7 @@ if ( ! function_exists( 'mu_bestsellers_section' ) ) {
         ?>
         <section class="mu-bestsellers mu-section">
             <div class="mu-container">
-                <h2 class="mu-section-title">Nuestros Productos Más Vendidos</h2>
+                <h2 class="mu-section-title"><?php echo esc_html__( 'Nuestros Productos Más Vendidos', 'mu' ); ?></h2>
                 <div class="mu-carousel-wrapper">
                     <button class="mu-nav-btn prev" aria-label="Anterior">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><polyline points="15 18 9 12 15 6"></polyline></svg>
@@ -1319,37 +1319,26 @@ if ( ! function_exists( 'mu_bestsellers_section' ) ) {
                                              width="300" height="300" loading="lazy">
                                         <h3 class="mu-product-title"><?php the_title(); ?></h3>
                                         <span class="mu-product-price"><?php echo $product->get_price_html(); ?></span>
-                                        <span class="mu-product-btn">Ver Producto</span>
+                                        <span class="mu-product-btn"><?php echo esc_html__( 'Ver Producto', 'mu' ); ?></span>
                                     </a>
                                 </div>
                             <?php endwhile;
                         else : ?>
-                            <p style="text-align:center;width:100%;">No hay productos destacados por el momento.</p>
+                            <p style="text-align:center;width:100%;"><?php echo esc_html__( 'No hay productos destacados por el momento.', 'mu' ); ?></p>
                         <?php endif;
                         wp_reset_postdata();
                         ?>
                     </div>
                 </div>
                 <div class="mu-bestsellers-footer">
-                    <a href="<?php echo esc_url( add_query_arg( 'orderby', 'popularity', wc_get_page_permalink( 'shop' ) ) ); ?>" class="mu-btn mu-btn-primary">Ver Todos</a>
+                    <a href="<?php echo esc_url( add_query_arg( 'orderby', 'popularity', wc_get_page_permalink( 'shop' ) ) ); ?>" class="mu-btn mu-btn-primary"><?php echo esc_html__( 'Ver Todos', 'mu' ); ?></a>
                 </div>
             </div>
         </section>
         <?php
         $html = ob_get_clean();
         set_transient( $cache_key, $html, 12 * HOUR_IN_SECONDS );
-        
-        // Invalidar caches antiguos para forzar refresh con nuevo sistema
-        delete_transient( 'mu_bestsellers_html' );
-        delete_transient( 'mu_bestsellers_html_AR_all' );
-        delete_transient( 'mu_bestsellers_html_AR_restricted' );
-        delete_transient( 'mu_bestsellers_html_MX_all' );
-        delete_transient( 'mu_bestsellers_html_MX_restricted' );
-        delete_transient( 'mu_bestsellers_html_CO_all' );
-        delete_transient( 'mu_bestsellers_html_CO_restricted' );
-        delete_transient( 'mu_bestsellers_html_ES_all' );
-        delete_transient( 'mu_bestsellers_html_ES_restricted' );
-        
+
         return $html;
     }
     add_shortcode( 'mu_bestsellers_section', 'mu_bestsellers_section' );
@@ -1366,6 +1355,11 @@ if ( ! function_exists( 'mu_popcat_section' ) ) {
         // Verificar si es usuario restringido (no Argentina) para filtrar categorías
         $is_restricted = function_exists( 'muyu_is_restricted_user' ) && muyu_is_restricted_user();
         
+        $current_country = function_exists( 'muyu_get_current_country_from_subdomain' ) ? muyu_get_current_country_from_subdomain() : 'AR';
+        $cache_key = 'mu_popcat_html_' . $current_country . '_' . ( $is_restricted ? 'restricted' : 'all' ) . '_' . filemtime( __FILE__ );
+        $cached = get_transient( $cache_key );
+        if ( $cached ) return $cached;
+
         $all_categories = [
             [ 'href' => '/tienda/escolares/',     'img' => '/wp-content/uploads/2026/02/catescolares.webp', 'alt' => 'Etiquetas Escolares',  'title' => 'Etiquetas Escolares',  'desc' => 'Más de 150 diseños' ],
             [ 'href' => '/tienda/decoracion/',    'img' => '/wp-content/uploads/2026/02/catstickers.webp',  'alt' => 'Stickers Decorativos', 'title' => 'Stickers Decorativos', 'desc' => 'Planchas y packs' ],
@@ -1416,7 +1410,7 @@ if ( ! function_exists( 'mu_popcat_section' ) ) {
         ?>
         <section class="mu-section">
             <div class="mu-container">
-                <h2 class="mu-section-title">Explora Nuestras Categorías</h2>
+                <h2 class="mu-section-title"><?php echo esc_html__( 'Explora Nuestras Categorías', 'mu' ); ?></h2>
                 <div class="mu-carousel-wrapper">
                     <button class="mu-nav-btn prev" aria-label="Anterior">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><polyline points="15 18 9 12 15 6"></polyline></svg>
@@ -1431,7 +1425,7 @@ if ( ! function_exists( 'mu_popcat_section' ) ) {
                                     <a href="<?php echo esc_url( $cat['href'] ); ?>">
                                         <div class="mu-category-image">
                                             <img src="<?php echo esc_url( $cat['img'] ); ?>"
-                                                 alt="<?php echo esc_attr( $cat['alt'] ); ?>" loading="lazy">
+                                                 alt="<?php echo esc_attr( $cat['alt'] ); ?>" width="400" height="300" loading="lazy">
                                         </div>
                                         <div class="mu-category-info">
                                             <h3><?php echo esc_html( $cat['title'] ); ?></h3>
@@ -1446,7 +1440,9 @@ if ( ! function_exists( 'mu_popcat_section' ) ) {
             </div>
         </section>
         <?php
-        return ob_get_clean();
+        $html = ob_get_clean();
+        set_transient( $cache_key, $html, 12 * HOUR_IN_SECONDS );
+        return $html;
     }
     add_shortcode( 'mu_popcat_section', 'mu_popcat_section' );
 }
@@ -1491,13 +1487,18 @@ if ( ! function_exists( 'mu_hero_section' ) ) {
                         ] );   // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML escapado dentro del renderer.
                     }
                     ?>
+                    <?php if ( $total > 1 ) : ?>
+                    <button type="button" class="mu-hero-promo-pause" aria-label="Pausar" aria-pressed="false">
+                        <span class="mu-hero-promo-pause-icon" aria-hidden="true"></span>
+                    </button>
+                    <?php endif; ?>
                 </div>
 
                 <?php if ( $total > 1 ) : ?>
                 <div class="mu-hero-promo-dots" role="tablist" aria-label="Promos">
                     <?php foreach ( $active_promos as $idx => $promo ) : ?>
                     <button class="mu-hero-promo-dot<?php echo 0 === $idx ? ' active' : ''; ?>"
-                            role="tab"
+                            role="tab" aria-controls="muHeroSlider"
                             aria-selected="<?php echo 0 === $idx ? 'true' : 'false'; ?>"
                             aria-label="Promo <?php echo $idx + 1; ?>"
                             data-hero-dot="<?php echo esc_attr( $idx ); ?>"></button>

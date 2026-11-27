@@ -19,7 +19,7 @@
         if (total < 2) return; // Un solo slide: sin lógica
 
         let current = 0;
-        let timer;
+        let timer; let paused = false;
 
         // Ir a un slide específico
         function goTo(index) {
@@ -44,13 +44,15 @@
 
         function resetTimer() {
             clearInterval(timer);
-            timer = setInterval(next, 7000);
+            if (!paused) timer = setInterval(next, 7000);
         }
 
         // Dots — data-index en lugar de onclick inline
         dots.forEach(function (dot, i) {
             dot.addEventListener('click', function () { goTo(i); });
         });
+
+        var tablist = wrapper.querySelector('.mu-hero-promo-dots'); if (tablist) tablist.addEventListener('keydown', function (e) { if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return; e.preventDefault(); var dir = e.key === 'ArrowRight' ? 1 : -1; var ni = (current + dir + total) % total; goTo(ni); if (dots[ni]) dots[ni].focus(); });
 
         // Swipe (touch)
         let touchStartX = 0;
@@ -66,10 +68,10 @@
 
         // Pausa al perder foco (accesibilidad)
         wrapper.addEventListener('mouseenter', function () { clearInterval(timer); });
-        wrapper.addEventListener('mouseleave', resetTimer);
+        wrapper.addEventListener('mouseleave', resetTimer); wrapper.addEventListener('focusin', function () { clearInterval(timer); }); wrapper.addEventListener('focusout', function (e) { if (!wrapper.contains(e.relatedTarget)) resetTimer(); });
 
         // Arranque
-        resetTimer();
+        var pauseBtn = wrapper.querySelector('.mu-hero-promo-pause'); function setPaused(p) { paused = p; clearInterval(timer); if (!paused) resetTimer(); if (pauseBtn) { pauseBtn.setAttribute('aria-pressed', p ? 'true' : 'false'); pauseBtn.setAttribute('aria-label', p ? 'Reproducir' : 'Pausar'); pauseBtn.classList.toggle('is-paused', p); } } if (pauseBtn) pauseBtn.addEventListener('click', function () { setPaused(!paused); }); if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) setPaused(true); document.addEventListener('visibilitychange', function () { if (document.hidden) clearInterval(timer); else if (!paused) resetTimer(); }); resetTimer();
     }
 
     if (document.readyState === 'loading') {

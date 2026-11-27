@@ -1508,13 +1508,16 @@ if ( ! function_exists( 'mu_hero_slide_render' ) ) {
             $badge_text = $badge_defaults['text'];
         }
 
+        $img_id = $imagen !== '' ? attachment_url_to_postid( $imagen ) : 0;
+        $srcset = $img_id ? wp_get_attachment_image_srcset( $img_id, 'full' ) : '';
+
         ob_start();
         ?>
         <div class="mu-hero-promo-slide<?php echo $first ? ' active' : ''; ?>"
              data-slide-index="<?php echo esc_attr( $idx ); ?>">
 
             <div class="mu-hero-promo-bg">
-                <img src="<?php echo esc_url( $imagen ); ?>"
+                <img src="<?php echo esc_url( $imagen ); ?>"<?php if ( $srcset ) : ?> srcset="<?php echo esc_attr( $srcset ); ?>" sizes="100vw"<?php endif; ?>
                      alt="<?php echo esc_attr( strip_tags( $titulo ) ); ?>"
                      width="1280" height="580"
                      loading="<?php echo $first ? 'eager' : 'lazy'; ?>"
