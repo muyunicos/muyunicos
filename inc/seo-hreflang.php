@@ -156,6 +156,74 @@ if ( ! function_exists( 'mu_localize_document_title' ) ) {
     add_filter( 'wp_title', 'mu_localize_document_title', 10 );
 }
 
+// ============================================
+// TITULO DE HOME POR PAIS (general no-AR)
+// ============================================
+
+if ( ! function_exists( 'mu_home_title_general' ) ) {
+    /**
+     * Descriptor general del titulo de la home para paises no-AR.
+     * AR conserva su titulo especifico (Rank Math -> Titulos y metadatos).
+     *
+     * @return string
+     */
+    function mu_home_title_general() {
+        $lang = function_exists( 'muyu_get_current_language' ) ? muyu_get_current_language() : 'es';
+        $map  = [
+            'en' => 'Custom Printed Products',
+            'pt' => 'Personalizados para imprimir',
+            'es' => 'Personalizados para imprimir',
+        ];
+        $base = isset( $map[ $lang ] ) ? $map[ $lang ] : $map['es'];
+
+        return (string) apply_filters( 'mu_home_title_general', $base, $lang );
+    }
+}
+
+if ( ! function_exists( 'mu_home_title_pais' ) ) {
+    /**
+     * Titulo de la home para paises no-AR: general + pais.
+     * Se engancha en `pre_get_document_title` con prioridad muy alta para
+     * imponerse sobre el titulo que arma Rank Math. AR queda intacto.
+     *
+     * @param string $title Titulo previo.
+     * @return string
+     */
+    function mu_home_title_pais( $title ) {
+        if ( is_admin() || ! is_front_page() ) {
+            return $title;
+        }
+
+        $country = function_exists( 'muyu_get_current_country_from_subdomain' )
+            ? muyu_get_current_country_from_subdomain()
+            : 'AR';
+
+        if ( 'AR' === $country ) {
+            return $title;
+        }
+
+        $countries = function_exists( 'muyu_get_countries_data' ) ? muyu_get_countries_data() : [];
+        $name      = isset( $countries[ $country ]['name'] ) ? $countries[ $country ]['name'] : '';
+        $site      = get_bloginfo( 'name' );
+
+        if ( '' === $site ) {
+            $site = 'Muy Únicos';
+        }
+
+        $out = $site . ' — ' . mu_home_title_general();
+
+        if ( '' !== $name ) {
+            $out .= ' | ' . $name;
+        }
+
+        return $out;
+    }
+    add_filter( 'pre_get_document_title', 'mu_home_title_pais', 99999 );
+    // Solo para og:title/twitter:title de Rank Math (si el filtro existe):
+    // mantiene consistencia con el <title>. Inofensivo si Rank Math no lo usa.
+    add_filter( 'rank_math/frontend/title', 'mu_home_title_pais', 99999 );
+}
+
 if ( ! function_exists( 'mu_localize_meta_description' ) ) {
     /**
      * Localiza la meta description según el país
