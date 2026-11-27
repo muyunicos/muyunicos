@@ -2,20 +2,12 @@
 /**
  * Muy Únicos — Compatibilidad LiteSpeed Cache
  *
- * Cubre los tres ajustes de caché de origen que el sitio necesita:
+ * Cubre los dos ajustes de caché de origen que el sitio necesita:
  *
- * 1. mu_litespeed_vary_by_subdomain() — reinforce del aislamiento por subdominio.
- *    NOTA: el aislamiento real lo hace la cookie _lscache_vary que LiteSpeed
- *    emite con dominio .muyunicos.com y cuyo valor es un hash del host. Verificado
- *    que catálogos de muyunicos.com (con productos físicos) y de los subdominios
- *    (solo digitales) sirven HTML distinto. Este filtro queda como refuerzo; no
- *    activarlo a ciegas, porque con el preajuste de caché vigente puede no llegar
- *    a aplicarse y tocar lo que ya funciona es más riesgoso que dejarlo.
- *
- * 2. mu_litespeed_nocache_404() — evita que un 404 transitorio de infraestructura
+ * 1. mu_litespeed_nocache_404() — evita que un 404 transitorio de infraestructura
  *    quede cacheado y se sirva a todos los visitantes durante horas.
  *
- * 3. mu_is_bot() + mu_litespeed_bot_404_fast_exit() — salida instantánea para bots
+ * 2. mu_is_bot() + mu_litespeed_bot_404_fast_exit() — salida instantánea para bots
  *    que piden URLs inexistentes. Es segunda línea de defensa: el CDN de Hostinger
  *    ya responde 429 antes de que la petición llegue a PHP.
  *
@@ -32,41 +24,6 @@
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
-
-/**
- * Refuerza la separación de caché entre subdominios.
- *
- * Por qué importa: el catálogo de muyunicos.com (AR) incluye productos físicos,
- * mientras que el de los subdominios solo incluye digitales. Si ambos compartieran
- * la misma entrada de caché, un subdominio podría servir el catálogo con físicos o
- * la raíz podría servir un catálogo filtrado. Eso rompería a la vez la promesa
- * comercial y las etiquetas hreflang.
- *
- * Mecanismo real: LiteSpeed separa por variante usando la cookie _lscache_vary,
- * emitida con dominio .muyunicos.com y con un valor derivado del host. Se verificó
- * el 2026-10-02 que produce HTML distinto por subdominio: el catálogo de
- * muyunicos.com (con productos físicos) y el de los subdominios (solo digitales)
- * responden con md5 y tamaño diferentes. Este filtro es una segunda línea: el
- * header Vary observado en producción trae solo Accept-Encoding, así que esta regla
- * puede no estar aplicándose con el preajuste de caché vigente.
- *
- * NO tocar sin medir antes: si se rompe el aislamiento, reaparece el problema de
- * productos físicos cruzados entre países.
- *
- * @param array $vary Reglas de variación actuales.
- * @return array Reglas de variación ampliadas.
- */
-if ( ! function_exists( 'mu_litespeed_vary_by_subdomain' ) ) {
-    function mu_litespeed_vary_by_subdomain( $vary ) {
-        if ( isset( $_SERVER['HTTP_HOST'] ) ) {
-            // Limpiamos el host y lo agregamos como regla de variación
-            $host = sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ) );
-            $vary['mu_host'] = $host;
-        }
-        return $vary;
-    }
-    add_filter( 'litespeed_vary', 'mu_litespeed_vary_by_subdomain' );
-}
 
 /**
  * Evita que LiteSpeed Cache almacene páginas 404.
