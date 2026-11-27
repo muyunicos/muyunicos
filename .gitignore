@@ -57,6 +57,8 @@ build/
 raiz-tienda/
 tmp/
 _scratch/
+# Copia de referencia del plugin wpLingua (no es código del tema; no se versiona).
+wplingua/
 
 # --- Sistema de control de versiones ---
 # El .git ya lo gestiona Git; se listan únicamente los archivos de resolución

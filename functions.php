@@ -369,6 +369,7 @@ mu_load_module( 'compat-wplingua-hreflang' ); // wpLingua: retira su hreflang de
 mu_load_module( 'country-scope' );       // Alcance por país de rutas y elementos (ej: /envios/ sólo en AR) — depende de geo.php (país), compat-wplingua.php (URI original) y compat-litespeed.php (bots)
 mu_load_module( 'jetpack-search-integration' ); // Jetpack Search: corrige homeUrl para que los resultados apunten al subdominio actual (depende de geo.php)
 mu_load_module( 'seo-hreflang' );        // SEO Multi-país (hreflang, títulos localizados)
+mu_load_module( 'schema-rating' );       // AggregateRating/Review (Trustindex 4.9/108) sobre el grafo de Rank Math — depende de Rank Math y de mu_reviews_master_db
 mu_load_module( 'feed-google' );         // Feed Google Shopping por país (WCPBC) — depende de geo.php
 mu_load_module( 'digital-restriction' ); // Digital Restriction System
 mu_load_module( 'auth-modal' );          // Authentication modal
