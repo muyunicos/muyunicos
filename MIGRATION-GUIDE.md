@@ -96,15 +96,20 @@ Caché y CDN (LiteSpeed + CDN de Hostinger):
   en la lista se rechaza antes de llegar a PHP.
 
 AISLAMIENTO DE CACHÉ ENTRE SUBDOMINIOS (mecanismo real):
-- LiteSpeed separa por variante con la cookie _lscache_vary, de dominio
-  .muyunicos.com, con un valor derivado del host. Verificado 2026-10-02: el catálogo
-  de muyunicos.com (con productos físicos) y el de los subdominios (solo digitales)
-  sirven HTML distinto (md5 y tamaño diferentes). Los productos físicos
-  desaparecen en los subdominios POR DISEÑO (digital-restriction.php), no es un fallo.
-- El header Vary observado en producción trae solo Accept-Encoding. El filtro
-  litespeed_vary de inc/compat-litespeed.php queda como refuerzo, no como mecanismo
-  principal. NO tocarlo sin medir antes: romperlo reintroduce productos físicos
-  cruzados entre países.
+- LiteSpeed separa por variante con un vary por VALOR de host
+  (`E="Cache-Control:no-autoflush,vary=host%{HTTP_HOST}"` en `.htaccess`, bloque
+  `<IfModule LiteSpeed>`). El host viaja en cada request —incluido el primero— a
+  diferencia de la cookie `_lscache_vary`, que se fija recién en la respuesta y
+  dejaba que el primer hit sirviera la variante AR (ARS) en subdominios.
+- El filtro `litespeed_vary` de inc/compat-litespeed.php fue ELIMINADO (2026-11):
+  convivir con el vary por valor generaba doble entrada de caché. Queda un solo
+  mecanismo (valor por host).
+- Verificado 2026-10-02: el catálogo de muyunicos.com (con productos físicos) y el
+  de los subdominios (solo digitales) sirven HTML distinto (md5 y tamaño
+  diferentes). Los productos físicos desaparecen en los subdominios POR DISEÑO
+  (digital-restriction.php), no es un fallo.
+- Tras desplegar: purgar LiteSpeed; la primera visita de cada subdominio genera su
+  variante.
 
 Object Cache (LiteSpeed):
 - ⚠️ NO confundir con la caché de páginas. Son dos capas distintas:
@@ -123,7 +128,7 @@ Object Cache (LiteSpeed):
   Consecuencia: ningún cambio "a hora exacta" se ve solo antes de 24 h. Los cambios que
   dependen de un borde de fecha programan un evento único en ese borde que purga la home
   (`mu_hero_banner_purge_borde`, feature 012, ver §8). El aislamiento por subdominio sigue
-  intacto: la cookie _lscache_vary es un hash del host.
+  intacto: el vary por host separa la caché en cada request.
 - Caché de objetos: ON (Memcached, prueba de conexión exitosa).
 - Extensión: Memcached (Redis también disponible y activado).
 - Configuración: Método Memcached | Host ::1 | Puerto 11211.
@@ -263,8 +268,9 @@ PLUGINS ACOPLADOS AL TEMA (verificado 2026-10-02 por grep en inc/):
   hook: mu_social_login_url() resuelve la ruta con wp_login_url(), que es la API
   que el plugin modifica. Si se desactivara el plugin, el login seguiría
   funcionando en la ruta por defecto.
-- LiteSpeed Cache → litespeed_vary y litespeed_purge_all
-  (inc/compat-litespeed.php, inc/navigation-chips.php).
+- LiteSpeed Cache → litespeed_purge_all (inc/navigation-chips.php). El filtro
+  litespeed_vary fue eliminado; el aislamiento por subdominio lo hace el vary por
+  host del `.htaccess` (ver §2).
 
 CÓDIGO QUE SE EJECUTA FUERA DEL TEMA (Code Snippets, verificado 2026-10-02):
 - ⚠️ Estos fragmentos NO viven en el repositorio versionado. Se documentan aquí
@@ -316,18 +322,18 @@ muyunicos/ (generatepress-child)
 ├── inc/                    # Módulos PHP — lógica de negocio y hooks
 │   ├── icons.php           # [PRIMERO] mu_get_icon() — repositorio SVG
 │   ├── compat-litespeed.php # [SEGUNDO] Compatibilidad LiteSpeed Cache.
-│   │                        # 1. mu_litespeed_vary_by_subdomain() — refuerzo de la
-│   │                        #    separación por subdominio. El aislamiento real lo
-│   │                        #    hace la cookie _lscache_vary (ver §2).
-│   │                        # 2. mu_litespeed_nocache_404() — evita cachear 404s
+│   │                        # 1. mu_litespeed_nocache_404() — evita cachear 404s
 │   │                        #    causados por errores transitorios de infraestructura.
-│   │                        # 3. mu_is_bot() + mu_litespeed_bot_404_fast_exit() —
+│   │                        # 2. mu_is_bot() + mu_litespeed_bot_404_fast_exit() —
 │   │                        #    salida instantánea (exit) de 404s para bots/indexadores
 │   │                        #    de IA: HTML mínimo sin render de tema ni consultas SQL.
 │   │                        #    Segunda línea de defensa: el CDN de Hostinger ya
 │   │                        #    responde 429 antes de que llegue a PHP.
-│   │                        # 4. mu_litespeed_bot_tag_filter_redirect() — 301 de bots
+│   │                        # 3. mu_litespeed_bot_tag_filter_redirect() — 301 de bots
 │   │                        #    con query product_tag a la URL canónica.
+│   │                        # (Eliminado 2026-11: mu_litespeed_vary_by_subdomain y el
+│   │                        #  filtro litespeed_vary; el aislamiento por subdominio lo
+│   │                        #  hace el vary por host del .htaccess. Ver §2.)
 │   │                        # (Eliminado 2026-10-02: el filtro litespeed_optimize_js_excludes.
 │   │                        #  Ver incidente "wp.i18n is not defined" en §7.)
 │   ├── cdn-cache-bypass.php # Bypass de caché CDN para contenido dinámico
@@ -738,9 +744,9 @@ SATURACIÓN POR RASTREO MASIVO DE BOTS/IA EN URLs INEXISTENTES
     (usa wp_is_bot() del core si existe, fallback regex propio).
   · inc/compat-litespeed.php — mu_litespeed_bot_404_fast_exit() (template_redirect p1):
     si bot + 404 → HTML mínimo (~100 bytes) + exit inmediato, sin render de tema ni SQL.
-    Envía X-LiteSpeed-Cache-Control: public,max-age=86400 para que LiteSpeed cachee el
-    404 y las repeticiones no toquen PHP. El vary mu_host mantiene cachés separadas
-    por subdominio. Envía X-Robots-Tag: noindex,nofollow para desincentivar re-rastreo.
+    NO envía cabeceras de caché pública (fix cache-poisoning, ver Nota). Envía
+    X-Robots-Tag: noindex,nofollow para desincentivar re-rastreo. El aislamiento
+    por subdominio lo mantiene el vary por host del .htaccess.
   · inc/digital-restriction.php — handle_redirects() retorna temprano si mu_is_bot():
     los bots no ejecutan lógica de redirección ni programan rebuilds de índices.
 - Nota: El fast-exit NO envía cabeceras de caché pública (fix cache-poisoning):

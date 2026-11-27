@@ -255,7 +255,9 @@ Reglas no negociables:
 
 - El **object cache** de LiteSpeed (Memcached, `LSMCD`) cachea datos, no páginas.
   El HTML de cada subdominio lo cachea exclusivamente LiteSpeed, separado por
-  `Vary: mu_host` vía `mu_litespeed_vary_by_subdomain()`.
+  valor de host (`E="Cache-Control:no-autoflush,vary=host%{HTTP_HOST}"` en
+  `.htaccess`), que computa la clave en el primer request; el vary por cookie
+  `_lscache_vary` y el filtro `litespeed_vary` quedaron eliminados.
 - **Una sola CDN activa**, configurada por subdominio. El proveedor concreto
   (y sus cabeceras) es configuración del guide §2, no norma: ninguna regla puede
   depender de un proveedor específico, porque cambiarlo no debe invalidar el
