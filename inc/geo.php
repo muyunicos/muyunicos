@@ -849,7 +849,14 @@ if ( ! function_exists( 'render_country_redirect_selector' ) ) {
                     <?php if ( $code !== $current_country_code ) : ?>
                         <?php
                         $prefix = muyu_country_language_prefix( $code );
-                        $target_url = $scheme . '://' . rtrim( $country['host'], '/' ) . muyu_clean_uri( $prefix, $request_path ) . $request_qs;
+                        // En la RAIZ, BR/US ya se sirven en su idioma sin prefijo
+                        // (inc/idioma-raiz.php): apuntar directo a '/' evita el 301
+                        // de /pt/ y /en/ -> raiz. En rutas internas se conserva el
+                        // prefijo (br/tienda/ -> /pt/tienda/).
+                        $target_path = ( '' === trim( $request_path, '/' ) )
+                            ? '/'
+                            : muyu_clean_uri( $prefix, $request_path );
+                        $target_url = $scheme . '://' . rtrim( $country['host'], '/' ) . $target_path . $request_qs;
                         ?>
                         <li>
                             <a href="<?php echo esc_url( $target_url ); ?>">
