@@ -173,7 +173,22 @@ if ( ! function_exists( 'mu_feed_google_link' ) ) {
 
 		$host = isset( $data['host'] ) ? $data['host'] : ( isset( $_SERVER['HTTP_HOST'] ) ? $_SERVER['HTTP_HOST'] : '' );
 		$link = preg_replace( '#^https?://[^/]+#', 'https://' . $host, $permalink );
-		$sep  = ( false !== strpos( $link, '?' ) ) ? '&' : '?';
+
+		$parts = wp_parse_url( $link );
+		$path  = isset( $parts['path'] ) && '' !== $parts['path'] ? (string) $parts['path'] : '/';
+		$query = isset( $parts['query'] ) ? (string) $parts['query'] : '';
+
+		$prefix = function_exists( 'muyu_country_language_prefix' ) ? muyu_country_language_prefix( $country ) : '';
+		if ( '' !== $prefix && 0 !== strpos( $path, $prefix . '/' ) && $path !== $prefix ) {
+			$path = $prefix . $path;
+		}
+
+		$link = 'https://' . $host . $path;
+		if ( '' !== $query ) {
+			$link .= '?' . $query;
+		}
+
+		$sep = ( false !== strpos( $link, '?' ) ) ? '&' : '?';
 
 		return $link . $sep . 'wcpbc-manual-country=' . rawurlencode( $country );
 	}
