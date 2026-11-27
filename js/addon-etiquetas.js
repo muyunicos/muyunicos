@@ -529,9 +529,12 @@
 },
 
         formatMoney: function (n) {
+            var code = (window.muEtiquetasData && typeof window.muEtiquetasData.currencyCode === 'string' && window.muEtiquetasData.currencyCode)
+                ? window.muEtiquetasData.currencyCode
+                : 'ARS';
             return new Intl.NumberFormat('es-AR', {
                 style: 'currency',
-                currency: 'ARS',
+                currency: code,
                 minimumFractionDigits: 0
             }).format(n);
         },

@@ -348,6 +348,7 @@ if ( ! function_exists( 'mu_etiquetas_enqueue_builder_js' ) ) {
             
             wp_localize_script( 'mu-addon-etiquetas', 'muEtiquetasData', [
                 'currencySymbol' => get_woocommerce_currency_symbol(),
+                'currencyCode'   => get_woocommerce_currency(),
             ] );
         }
     }
