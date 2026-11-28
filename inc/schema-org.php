@@ -231,6 +231,15 @@ if ( ! function_exists( 'mu_schema_org_fallback' ) ) {
             return;
         }
 
+        // Si Rank Math tiene el modulo Schema activo, el ya emite el grafo
+        // (enriquecido por schema-org + schema-rating): no duplicar.
+        if ( class_exists( 'RankMath\\Helper\\Module' )
+            && method_exists( 'RankMath\\Helper\\Module', 'is_active' )
+            && \RankMath\Helper\Module::is_active( 'schema' ) ) {
+            return;
+        }
+
+        // Si Rank Math ya aplico el filtro (grafo emitido), no duplicar.
         if ( ! empty( $GLOBALS['mu_schema_jsonld_done'] ) ) {
             return;
         }
