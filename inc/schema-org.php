@@ -227,6 +227,7 @@ if ( ! function_exists( 'mu_schema_org_fallback' ) ) {
      * Si Rank Math sí lo generó, `mu_schema_org_inject` marcó el flag y no hace nada.
      */
     function mu_schema_org_fallback() {
+        echo '<!-- mu-org-fallback-probe -->' . "\n";
         if ( is_admin() || is_feed() ) {
             return;
         }
