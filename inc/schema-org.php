@@ -246,9 +246,11 @@ if ( ! function_exists( 'mu_schema_org_fallback' ) ) {
         }
 
         $graph = [ mu_schema_org_data(), mu_schema_web_data() ];
+        echo '<!-- mu-org-built n=' . count( $graph ) . ' -->' . "\n";
 
         // Reusa los filtros (org + rating) para dejar el grafo completo.
         $graph = apply_filters( 'rank_math/json_ld', $graph );
+        echo '<!-- mu-org-filtered n=' . count( (array) $graph ) . ' -->' . "\n";
 
         $payload = [
             '@context' => 'https://schema.org',
