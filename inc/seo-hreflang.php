@@ -136,7 +136,7 @@ if ( ! function_exists( 'mu_localize_document_title' ) ) {
      * Localiza el título del documento según el país
      */
     function mu_localize_document_title( $title ) {
-        if ( is_admin() ) return $title;
+        if ( is_admin() || is_front_page() ) return $title;
         
         $current_country = muyu_get_current_country_from_subdomain();
         $countries = muyu_get_countries_data();
@@ -169,14 +169,15 @@ if ( ! function_exists( 'mu_home_title_general' ) ) {
      */
     function mu_home_title_general() {
         $lang = function_exists( 'muyu_get_current_language' ) ? muyu_get_current_language() : 'es';
+        $country = function_exists( 'muyu_get_current_country_from_subdomain' ) ? muyu_get_current_country_from_subdomain() : 'AR';
         $map  = [
-            'en' => 'Custom Printed Products',
-            'pt' => 'Personalizados para imprimir',
-            'es' => 'Personalizados para imprimir',
+            'en' => 'Custom Designs to Print',
+            'pt' => 'Desenhos personalizados para imprimir',
+            'es' => 'Diseños personalizados para imprimir',
         ];
         $base = isset( $map[ $lang ] ) ? $map[ $lang ] : $map['es'];
 
-        return (string) apply_filters( 'mu_home_title_general', $base, $lang );
+        return (string) apply_filters( 'mu_home_title_general', $base, $lang, $country );
     }
 }
 
@@ -214,6 +215,11 @@ if ( ! function_exists( 'mu_home_title_pais' ) ) {
 
         if ( '' !== $name ) {
             $out .= ' | ' . $name;
+        }
+
+        $len = function_exists( 'mb_strlen' ) ? mb_strlen( $out, 'UTF-8' ) : strlen( $out );
+        if ( $len > 60 ) {
+            $out = mu_home_title_general() . ( ( '' !== $name ) ? ' | ' . $name : '' );
         }
 
         return $out;
