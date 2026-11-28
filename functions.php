@@ -376,6 +376,7 @@ mu_load_module( 'feed-google' );         // Feed Google Shopping por país (WCPB
 mu_load_module( 'feed-exclusion' );      // Excluye categorías (Wii/Outlet/Stickers) del feed de Google (plugin + feed propio)
 mu_load_module( 'digital-restriction' ); // Digital Restriction System
 mu_load_module( 'auth-modal' );          // Authentication modal
+mu_load_module( 'one-tap' );             // Google One Tap propio (compatible con Nextend Social Login; reutiliza su client_id y tabla social_users)
 mu_load_module( 'login' );               // wp-login.php customization (hooks only fire on login screen)
 mu_load_module( 'checkout' );            // Checkout optimizations
 mu_load_module( 'cart' );               // Cart functionality
