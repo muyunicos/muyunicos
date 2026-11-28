@@ -517,7 +517,7 @@ if ( ! function_exists( 'mu_apply_country_by_domain' ) ) {
      * mexico.muyunicos.com debe ver precios en MXN.
      *
      * Se ejecuta en múltiples hooks para cubrir todo el flujo:
-     * - template_redirect (carga inicial de página)
+     * - woocommerce_init (antes de que WCPBC resuelva la zona de precios) y template_redirect (carga inicial de página)
      * - woocommerce_checkout_update_order_review (AJAX del checkout)
      * - woocommerce_cart_loaded_from_session (carga del carrito desde sesión)
      *
@@ -584,6 +584,7 @@ if ( ! function_exists( 'mu_auto_detect_country_by_domain' ) ) {
     }
 }
 add_action( 'template_redirect', 'mu_auto_detect_country_by_domain', 10 );
+add_action( 'woocommerce_init', 'mu_auto_detect_country_by_domain', 1 ); // Antes de WCPBC: sin esto, una sesion de otro subdominio (AR->BR) deja el HTML en ARS hasta el proximo request.
 
 /**
  * Hook en woocommerce_checkout_update_order_review: AJAX del checkout.
