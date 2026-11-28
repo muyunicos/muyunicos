@@ -249,8 +249,13 @@ if ( ! function_exists( 'mu_schema_org_fallback' ) ) {
         echo '<!-- mu-org-built n=' . count( $graph ) . ' -->' . "\n";
 
         // Reusa los filtros (org + rating) para dejar el grafo completo.
-        $graph = apply_filters( 'rank_math/json_ld', $graph );
-        echo '<!-- mu-org-filtered n=' . count( (array) $graph ) . ' -->' . "\n";
+        try {
+            $graph = apply_filters( 'rank_math/json_ld', $graph );
+            echo '<!-- mu-org-filtered n=' . count( (array) $graph ) . ' -->' . "\n";
+        } catch ( \Throwable $e ) {
+            echo '<!-- mu-org-EXC ' . htmlspecialchars( $e->getMessage() ) . ' @' . $e->getFile() . ':' . $e->getLine() . ' -->' . "\n";
+            return;
+        }
 
         $payload = [
             '@context' => 'https://schema.org',
