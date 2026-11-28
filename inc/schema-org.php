@@ -227,7 +227,7 @@ if ( ! function_exists( 'mu_schema_org_fallback' ) ) {
      * Si Rank Math sí lo generó, `mu_schema_org_inject` marcó el flag y no hace nada.
      */
     function mu_schema_org_fallback() {
-        echo '<!-- mu-org-fallback-probe -->' . "\n";
+        echo '<!-- mu-org-probe admin=' . ( is_admin() ? '1' : '0' ) . ' feed=' . ( is_feed() ? '1' : '0' ) . ' schemaActive=' . ( class_exists( 'RankMath\\Helper\\Module' ) && method_exists( 'RankMath\\Helper\\Module', 'is_active' ) && \RankMath\Helper\Module::is_active( 'schema' ) ? '1' : '0' ) . ' flag=' . ( empty( $GLOBALS['mu_schema_jsonld_done'] ) ? '0' : '1' ) . ' -->' . "\n";
         if ( is_admin() || is_feed() ) {
             return;
         }
