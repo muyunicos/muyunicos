@@ -3,9 +3,11 @@
  * Muy Únicos - Feed Google Shopping por país (WCPBC)
  *
  * Genera un feed RSS 2.0 + namespace g: por país, con el precio de la zona
- * WCPBC que corresponde al subdominio (o a ?wcpbc-manual-country=XX). Se
- * sirve en https://{subdominio}/feed-google.xml sin depender de un flush de
- * reglas (match de REQUEST_URI en template_redirect p0).
+ * WCPBC que corresponde al subdominio (o a ?wcpbc-manual-country=XX) y su
+ * envío (g:shipping) en la MISMA moneda del precio, para que Google no lo
+ * rechace por "La moneda de la información de envío no coincide". Se sirve en
+ * https://{subdominio}/feed-google.xml sin depender de un flush de reglas
+ * (match de REQUEST_URI en template_redirect p0).
  *
  * @package GeneratePress_Child
  * @since 1.4.0
@@ -225,6 +227,44 @@ if ( ! function_exists( 'mu_feed_google_translate' ) ) {
 	}
 }
 
+if ( ! function_exists( 'mu_feed_google_shipping' ) ) {
+	/**
+	 * Bloque g:shipping del item, en la MISMA moneda que su precio.
+	 *
+	 * Motivo: Google rechaza el item con "La moneda de la informacion de envio
+	 * no coincide" cuando el envio de la cuenta (el que auto-genera Google for
+	 * WooCommerce, en ARS) no coincide con la moneda del precio del feed
+	 * (USD/EUR/MXN... segun la zona WCPBC del pais). Al emitir el envio EN EL
+	 * FEED y en la moneda del item, Google usa este valor y descarta el de la
+	 * cuenta, que era el que provocaba el rechazo.
+	 *
+	 * Por defecto es gratis (0), espejo de los servicios "Sin coste" que hoy
+	 * genera el plugin. Se ajusta con `mu_feed_google_shipping_price` y
+	 * `mu_feed_google_shipping_service`; el filtro `mu_feed_google_shipping`
+	 * permite sobrescribir el bloque completo (devolver '' lo desactiva).
+	 *
+	 * @param string $country  Codigo de pais ISO alpha-2.
+	 * @param string $currency Moneda ISO del item.
+	 * @return string XML del bloque (vacio si se desactiva).
+	 */
+	function mu_feed_google_shipping( $country, $currency ) {
+		$custom = apply_filters( 'mu_feed_google_shipping', null, $country, $currency );
+
+		if ( is_string( $custom ) ) {
+			return $custom;
+		}
+
+		$price   = (float) apply_filters( 'mu_feed_google_shipping_price', 0, $country, $currency );
+		$service = (string) apply_filters( 'mu_feed_google_shipping_service', 'Estándar', $country );
+
+		return "\t\t<g:shipping>\n"
+			. "\t\t\t<g:country>" . esc_xml( $country ) . "</g:country>\n"
+			. "\t\t\t<g:service>" . esc_xml( $service ) . "</g:service>\n"
+			. "\t\t\t<g:price>" . esc_xml( number_format( $price, 2, '.', '' ) . ' ' . $currency ) . "</g:price>\n"
+			. "\t\t</g:shipping>\n";
+	}
+}
+
 if ( ! function_exists( 'mu_feed_google_item' ) ) {
 	/**
 	 * Arma el XML de un item del feed.
@@ -274,6 +314,7 @@ if ( ! function_exists( 'mu_feed_google_item' ) ) {
 		$item .= "\t\t<g:description>" . esc_xml( $description ) . "</g:description>\n";
 		$item .= "\t\t<g:link>" . esc_xml( $link ) . "</g:link>\n";
 		$item .= "\t\t<g:price>" . esc_xml( number_format( $price, $decimals, '.', '' ) . ' ' . $currency ) . "</g:price>\n";
+		$item .= mu_feed_google_shipping( $country, $currency );
 		$item .= "\t\t<g:availability>" . esc_xml( mu_feed_google_availability( $product->get_stock_status() ) ) . "</g:availability>\n";
 		$item .= "\t\t<g:condition>new</g:condition>\n";
 		$item .= "\t\t<g:brand>" . esc_xml( $brand ) . "</g:brand>\n";
