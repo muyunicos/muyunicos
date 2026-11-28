@@ -227,7 +227,6 @@ if ( ! function_exists( 'mu_schema_org_fallback' ) ) {
      * Si Rank Math sí lo generó, `mu_schema_org_inject` marcó el flag y no hace nada.
      */
     function mu_schema_org_fallback() {
-        echo '<!-- mu-org-probe admin=' . ( is_admin() ? '1' : '0' ) . ' feed=' . ( is_feed() ? '1' : '0' ) . ' schemaActive=' . ( class_exists( 'RankMath\\Helper\\Module' ) && method_exists( 'RankMath\\Helper\\Module', 'is_active' ) && \RankMath\Helper\Module::is_active( 'schema' ) ? '1' : '0' ) . ' flag=' . ( empty( $GLOBALS['mu_schema_jsonld_done'] ) ? '0' : '1' ) . ' -->' . "\n";
         if ( is_admin() || is_feed() ) {
             return;
         }
@@ -246,15 +245,16 @@ if ( ! function_exists( 'mu_schema_org_fallback' ) ) {
         }
 
         $graph = [ mu_schema_org_data(), mu_schema_web_data() ];
-        echo '<!-- mu-org-built n=' . count( $graph ) . ' -->' . "\n";
 
-        // Reusa los filtros (org + rating) para dejar el grafo completo.
-        try {
-            $graph = apply_filters( 'rank_math/json_ld', $graph );
-            echo '<!-- mu-org-filtered n=' . count( (array) $graph ) . ' -->' . "\n";
-        } catch ( \Throwable $e ) {
-            echo '<!-- mu-org-EXC ' . htmlspecialchars( $e->getMessage() ) . ' @' . $e->getFile() . ':' . $e->getLine() . ' -->' . "\n";
-            return;
+        // Se llaman DIRECTO (no via apply_filters): el filtro `rank_math/json_ld`
+        // lo consume tambien Rank Math Local SEO, cuyos callbacks exigen 2 args y
+        // revientan si se los llama con uno solo desde el fallback.
+        if ( function_exists( 'mu_schema_org_inject' ) ) {
+            $graph = mu_schema_org_inject( $graph );
+        }
+
+        if ( function_exists( 'mu_schema_rating_inject' ) ) {
+            $graph = mu_schema_rating_inject( $graph );
         }
 
         $payload = [
