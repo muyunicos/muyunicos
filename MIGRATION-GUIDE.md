@@ -679,6 +679,25 @@ ERRORES 404 INTERMITENTE EN CATEGORÍAS FÍSICAS (v4.7.0)
 - Monitoreo actual: Widget del dashboard ("Muy Únicos - Performance Monitor") +
   debug.log ([MU-BOT404], [MU-NAVCHIPS]) + cabecera X-MU-Bot-404 vía curl.
 
+FIX RAIZ 404 CATEGORIAS FISICAS — REBUILD EN CRON (v4.8.2)
+- Causa raíz confirmada (código, no inferida): mu_rebuild_all_indexes() corre el
+  rebuild sin fijar HTTP_HOST. En cron/CLI is_restricted_user() devolvía true
+  (host '' != 'muyunicos.com'), asi que filter_category_terms() filtraba el
+  get_terms() interno de build_category_redirect_map() a SOLO categorias
+  digitales. El mapa muyu_cat_redirect_map quedaba sin las fisicas (outlet,
+  stickers, tienda-juegosparawii) y su redireccion en subdominios se rompia
+  ("menos articulos" gradual + 404 final). "Reindexar" (admin, is_admin=true)
+  lo arreglaba temporalmente; el cron lo corrompia de nuevo a los +30s.
+- Fix aplicado (inc/digital-restriction.php):
+  · build_category_redirect_map(): SQL directo a wp_terms+term_taxonomy en vez
+    de get_terms() (inmune al filtro get_terms_args en todo contexto). Consistente
+    con get_digital_product_ids()/get_product_terms() (indice agnostico de idioma).
+  · is_restricted_user(): false si no hay HTTP_HOST (cron/CLI no es restringido).
+- Sin impacto en subdominios (los restaura), precios por pais, traducciones
+  (patron ya agnostico; verificar slugs WPML) ni modulos.
+- Validacion: php -l + corrida CLI de mu_rebuild_all_indexes() sin host volcando
+  muyu_cat_redirect_map (deben aparecer outlet/stickers/wii en by_slug).
+
 ERRORES DE CRON "invalid_schedule" (LiteSpeed)
 - Causa: LiteSpeed Cache intenta reprogramar eventos cron con schedules que ya no existen
   (litespeed_filter, once_in_week) tras actualizaciones del plugin.

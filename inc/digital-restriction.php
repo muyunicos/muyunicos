@@ -1,9 +1,18 @@
 <?php
 /**
  * Muy Únicos - Digital Restriction System
- * Sistema de restricción de contenido digital v4.8.0
- *
- * CHANGELOG v4.8.0 (Limpieza + Anti-bots + Hash Gate):
+* Sistema de restricción de contenido digital v4.8.2
+*
+* CHANGELOG v4.8.2 (Fix 404-intermitente raiz — rebuild en cron):
+* - FIX: build_category_redirect_map() usa SQL directo en vez de get_terms().
+*   get_terms() disparaba filter_category_terms() que, en cron/CLI (sin
+*   HTTP_HOST), filtraba a solo categorias digitales y dejaba el mapa de
+*   redireccion SIN las categorias fisicas (outlet, stickers,
+*   tienda-juegosparawii) -> 404/vacio en subdominios tras cada rebuild.
+* - FIX: is_restricted_user() devuelve false cuando no hay HTTP_HOST
+*   (cron/CLI): ningun contexto sin host debe considerarse restringido.
+*
+* CHANGELOG v4.8.0 (Limpieza + Anti-bots + Hash Gate):
  * - REMOVED: handle_404_category_canonical_ar() — auto-recuperación de 404s en AR.
  *   Era la causa principal de los avisos "Purgar la URL" en wp-admin (4 purgas por
  *   petición 404). Ya no es necesaria: mu_litespeed_nocache_404() (compat-litespeed)
@@ -140,7 +149,7 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
 
             $host = sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ?? '' ) );
             $host = preg_replace( '/:\d+$/', '', $host );
-            $restricted = 'muyunicos.com' !== str_replace( 'www.', '', $host );
+            $restricted = ( '' !== $host ) && ( 'muyunicos.com' !== str_replace( 'www.', '', $host ) );
             return $restricted;
         }
 
@@ -414,13 +423,23 @@ if ( ! class_exists( 'MUYU_Digital_Restriction_System' ) ) {
             array $digital_category_ids,
             array $direct_category_ids
         ): array {
-            $all_cats = get_terms( [
-                'taxonomy'   => 'product_cat',
-                'hide_empty' => false,
-                'fields'     => 'all',
-            ] );
+            // [Fix 404-intermitente] SQL directo en vez de get_terms(): el filtro
+            // get_terms_args (filter_category_terms) filtraria a solo categorias
+            // digitales cuando el rebuild corre en cron/CLI (is_restricted_user()
+            // sin HTTP_HOST), dejando el mapa SIN las categorias fisicas (outlet,
+            // stickers, tienda-juegosparawii) y rompiendo su redireccion en
+            // subdominios. El indice ya es agnostico de idioma por diseno (igual
+            // que get_digital_product_ids/get_product_terms), asi que el SQL
+            // directo es consistente y inmune al filtro en cualquier contexto.
+            global $wpdb;
+            $all_cats = $wpdb->get_results( "
+                SELECT t.term_id, t.slug, tt.parent
+                FROM {$wpdb->terms} t
+                INNER JOIN {$wpdb->term_taxonomy} tt ON t.term_id = tt.term_id
+                WHERE tt.taxonomy = 'product_cat'
+            " );
 
-            if ( is_wp_error( $all_cats ) || empty( $all_cats ) ) {
+            if ( empty( $all_cats ) ) {
                 return [ 'by_id' => [], 'by_slug' => [] ];
             }
 
