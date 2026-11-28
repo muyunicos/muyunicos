@@ -192,6 +192,10 @@ if ( ! function_exists( 'mu_feed_google_item' ) ) {
 	 * @return string XML del item (vacío si se omite).
 	 */
 	function mu_feed_google_item( $product_id, $zone, $country, $data, $currency, $decimals ) {
+		if ( function_exists( 'mu_feed_exclusion_is_excluded' ) && mu_feed_exclusion_is_excluded( $product_id ) ) {
+			return '';
+		}
+
 		$product = wc_get_product( $product_id );
 
 		if ( ! $product || ! $product->is_visible() ) {
@@ -279,15 +283,46 @@ if ( ! function_exists( 'mu_feed_google_build' ) ) {
 		$xml .= "\t\t<description>Productos Muy Únicos</description>\n";
 
 		if ( mu_is_woocommerce_active() ) {
-			$query = new WP_Query(
-				array(
-					'post_type'      => 'product',
-					'post_status'    => 'publish',
-					'posts_per_page' => -1,
-					'fields'         => 'ids',
-					'no_found_rows'  => true,
-				)
+			$args = array(
+				'post_type'      => 'product',
+				'post_status'    => 'publish',
+				'posts_per_page' => -1,
+				'fields'         => 'ids',
+				'no_found_rows'  => true,
 			);
+
+			// En subdominios (usuario restringido) el feed solo lleva productos
+			// digitales; en AR (raiz) van todos. Guard anti-vacio: si el indice
+			// digital no esta armado, no filtrar (mandaria un feed vacio).
+			if ( class_exists( 'MUYU_Digital_Restriction_System' )
+				&& MUYU_Digital_Restriction_System::get_instance()->is_restricted_user()
+				&& function_exists( 'muyu_get_digital_product_ids' ) ) {
+				$digital_ids = array_map( 'intval', muyu_get_digital_product_ids() );
+
+				if ( ! empty( $digital_ids ) ) {
+					$args['post__in'] = $digital_ids;
+				}
+			}
+
+			// Fuera de las categorias excluidas del feed (Wii/Outlet/Stickers):
+			// se sacan de la query para no iterarlas (cache 1 h).
+			if ( function_exists( 'mu_feed_exclusion_term_ids' ) ) {
+				$excl = mu_feed_exclusion_term_ids();
+
+				if ( ! empty( $excl ) ) {
+					$args['tax_query'] = array(
+						array(
+							'taxonomy'         => 'product_cat',
+							'field'            => 'term_id',
+							'terms'            => $excl,
+							'operator'         => 'NOT IN',
+							'include_children' => false,
+						),
+					);
+				}
+			}
+
+			$query = new WP_Query( $args );
 
 			foreach ( $query->posts as $product_id ) {
 				$xml .= mu_feed_google_item( $product_id, $zone, $country, $data, $currency, $decimals );
@@ -342,6 +377,17 @@ if ( ! function_exists( 'mu_feed_google_intercept' ) ) {
 }
 add_action( 'template_redirect', 'mu_feed_google_intercept', 0 );
 
+if ( ! function_exists( 'mu_feed_google_purge_cache' ) ) {
+	/**
+	 * Borra el cache del feed de todos los paises (todos los subdominios).
+	 */
+	function mu_feed_google_purge_cache() {
+		foreach ( muyu_get_countries_data() as $code => $data ) {
+			delete_transient( 'pmu_feed_' . $code );
+		}
+	}
+}
+
 if ( ! function_exists( 'mu_feed_google_flush_cache' ) ) {
 	/**
 	 * Invalida la caché del feed al guardar/actualizar un producto.
@@ -353,9 +399,7 @@ if ( ! function_exists( 'mu_feed_google_flush_cache' ) ) {
 			return;
 		}
 
-		foreach ( muyu_get_countries_data() as $code => $data ) {
-			delete_transient( 'pmu_feed_' . $code );
-		}
+		mu_feed_google_purge_cache();
 	}
 }
 add_action( 'save_post_product', 'mu_feed_google_flush_cache' );

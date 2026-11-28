@@ -373,6 +373,7 @@ mu_load_module( 'seo-noindex-categorias' ); // noindex del árbol no-core (Wii/e
 mu_load_module( 'schema-org' );          // Schema base: Organization/LocalBusiness (NAP real) + WebSite sobre el grafo de Rank Math — se fusiona sin duplicar; va ANTES de schema-rating
 mu_load_module( 'schema-rating' );       // AggregateRating/Review (Trustindex 4.9/108) sobre el grafo de Rank Math — depende de Rank Math y de mu_reviews_master_db
 mu_load_module( 'feed-google' );         // Feed Google Shopping por país (WCPBC) — depende de geo.php
+mu_load_module( 'feed-exclusion' );      // Excluye categorías (Wii/Outlet/Stickers) del feed de Google (plugin + feed propio)
 mu_load_module( 'digital-restriction' ); // Digital Restriction System
 mu_load_module( 'auth-modal' );          // Authentication modal
 mu_load_module( 'login' );               // wp-login.php customization (hooks only fire on login screen)
