@@ -179,6 +179,52 @@ if ( ! function_exists( 'mu_feed_google_link' ) ) {
 	}
 }
 
+if ( ! function_exists( 'mu_feed_google_translate' ) ) {
+	/**
+	 * Traduce un texto al idioma del pais usando las traducciones de wpLingua.
+	 *
+	 * @param string $text Texto original (es).
+	 * @param string $lang Idioma destino (es/pt/en).
+	 * @return string Texto traducido, o el original si no hay traduccion.
+	 */
+	function mu_feed_google_translate( $text, $lang ) {
+		$text = (string) $text;
+		$lang = strtolower( (string) $lang );
+
+		if ( '' === trim( $text ) || 'es' === $lang || ! function_exists( 'wplng_get_translations' ) ) {
+			return $text;
+		}
+
+		static $map = null;
+		if ( null === $map ) {
+			$map = array();
+			$all = wplng_get_translations();
+
+			if ( is_array( $all ) ) {
+				foreach ( $all as $group ) {
+					if ( ! is_array( $group ) ) {
+						continue;
+					}
+					foreach ( $group as $entry ) {
+						if ( isset( $entry['source'] ) && is_string( $entry['source'] )
+							&& ! empty( $entry['translations'] ) && is_array( $entry['translations'] ) ) {
+							$map[ $entry['source'] ] = $entry['translations'];
+						}
+					}
+				}
+			}
+		}
+
+		$needle = function_exists( 'wplng_text_esc' ) ? wplng_text_esc( trim( $text ) ) : trim( $text );
+
+		if ( isset( $map[ $needle ][ $lang ] ) && is_string( $map[ $needle ][ $lang ] ) ) {
+			return $map[ $needle ][ $lang ];
+		}
+
+		return $text;
+	}
+}
+
 if ( ! function_exists( 'mu_feed_google_item' ) ) {
 	/**
 	 * Arma el XML de un item del feed.
@@ -202,6 +248,10 @@ if ( ! function_exists( 'mu_feed_google_item' ) ) {
 			return '';
 		}
 
+		$lang        = isset( $data['lang'] ) ? (string) $data['lang'] : 'es';
+		$title       = mu_feed_google_translate( $product->get_name(), $lang );
+		$description = mu_feed_google_translate( $product->get_short_description(), $lang );
+
 		$price = mu_feed_google_price( $zone, $product_id );
 		if ( null === $price ) {
 			return '';
@@ -220,8 +270,8 @@ if ( ! function_exists( 'mu_feed_google_item' ) ) {
 
 		$item  = "\t<item>\n";
 		$item .= "\t\t<g:id>" . esc_xml( $product_id . '-' . $country ) . "</g:id>\n";
-		$item .= "\t\t<g:title>" . esc_xml( $product->get_name() ) . "</g:title>\n";
-		$item .= "\t\t<g:description>" . esc_xml( $product->get_short_description() ) . "</g:description>\n";
+		$item .= "\t\t<g:title>" . esc_xml( $title ) . "</g:title>\n";
+		$item .= "\t\t<g:description>" . esc_xml( $description ) . "</g:description>\n";
 		$item .= "\t\t<g:link>" . esc_xml( $link ) . "</g:link>\n";
 		$item .= "\t\t<g:price>" . esc_xml( number_format( $price, $decimals, '.', '' ) . ' ' . $currency ) . "</g:price>\n";
 		$item .= "\t\t<g:availability>" . esc_xml( mu_feed_google_availability( $product->get_stock_status() ) ) . "</g:availability>\n";
